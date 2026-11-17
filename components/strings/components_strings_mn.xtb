@@ -118,6 +118,7 @@
 <translation id="1195558154361252544">Таны зөвшөөрөх сайтаас бусад бүх сайтын мэдэгдлийг автоматаар хориглоно</translation>
 <translation id="1197088940767939838">Улбар шар</translation>
 <translation id="1198412233443148072"><ph name="MEMBER_FIRST_NAME" /> “<ph name="WEBSITE_TITLE" />” табыг хассан</translation>
+<translation id="119944043368869598">Бүгдийг арилгах</translation>
 <translation id="1201402288615127009">Дараагийнх</translation>
 <translation id="1201895884277373915">Энэ сайтаас илүү ихийг</translation>
 <translation id="1204184165594298176">{0,plural, =1{Файлыг хуулахыг блоклосон}other{<ph name="FILE_COUNT" /> файлыг хуулахыг блоклосон}}</translation>
@@ -618,7 +619,6 @@
 <translation id="2059166748188874810">Хотын захиргаа</translation>
 <translation id="2059202684901022309">22 x 34 инч</translation>
 <translation id="2063929825539050431">Энэ хуудсыг өөр төхөөрөмж рүү шуурхай илгээхийн тулд хаяг оруулах хэсгийг удаан дарна уу</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{1 зөвлөмж}other{# зөвлөмж}}</translation>
 <translation id="2066969741541525119">Танай байгууллага уг сайтыг блоклосон байна</translation>
 <translation id="2071156619270205202">Энэ карт нь виртуал картын дугаарын эрхгүй байна.</translation>
 <translation id="2071852865256799872">Танай байгууллага таны хөтчийг удирддаг бөгөөд <ph name="PROFILE_DOMAIN" /> таны профайлыг удирддаг</translation>
@@ -665,6 +665,7 @@
 <translation id="2126374524350484896">PDF бүтээгч:</translation>
 <translation id="2127090458081644412">Нууц үгийг энэ төхөөрөмжид хадгалсан</translation>
 <translation id="2127747486437921899">Налуу</translation>
+<translation id="2129163794581571479">Personal Intelligence-тэй Gemini-р дэмжсэн. Сайжруулсан автомат бөглөлтийг сайжруулахын тулд таны хүсэлт, хуудасны гарчиг, URL-г хянаж магадгүй. <ph name="BEGIN_LINK" />Тохиргоог удирдах<ph name="END_LINK" /></translation>
 <translation id="2130448033692577677">DnsOverHttpsMode удирдамжийг тохируулаагүй байгаа учраас таны тодорхойлсон загваруудыг хэрэгжүүлэхгүй байж болзошгүй.</translation>
 <translation id="2130699163006053678">A3x7</translation>
 <translation id="2131006834960167560">Төлбөрийг автоматаар бөглөхийг идэвхжүүлэх сонголтыг бүтэн өндрөөр нээсэн.</translation>
@@ -710,7 +711,6 @@
 <translation id="2188375229972301266">Доод буланд олон нүх цоолох</translation>
 <translation id="218940509700321686">CSV</translation>
 <translation id="2190094353033916816">Энэ бодлого нь машин болон хэрэглэгчийн түвшнүүдэд өөр өөр утга хэрэглэсэн байна. Бодлого зориулалтын дагуу ажиллаж байна.</translation>
-<translation id="219061769324072544">Кредит,карт,дебит</translation>
 <translation id="2191980191135734720">Дараагийн алхамд гол төлөв хурууны хээгээ ашиглан дэлгэцийнхээ түгжээг тайлна уу. Та мөн <ph name="LINK_TEXT" /> боломжтой.</translation>
 <translation id="2194856509914051091">Анхаарч үзэх зүйлс</translation>
 <translation id="2195729137168608510">И-мэйл хамгаалалт</translation>
@@ -1081,6 +1081,7 @@
 <translation id="2807052079800581569">Y тэнхлэгийн дагуу зургийн байршил</translation>
 <translation id="2808278141522721006">Та Windows Hello-г <ph name="SETTINGS" />-д асаах эсвэл унтраах боломжтой</translation>
 <translation id="2820957248982571256">Шалгаж байна...</translation>
+<translation id="282457273878278063">Холбоо барих мэдээллийг удирдах</translation>
 <translation id="2824775600643448204">Хаяг ба хайлтын цонх</translation>
 <translation id="2826760142808435982">Энэхүү холболтыг <ph name="CIPHER" /> ашиглаж шифрлэж таниулсан бөгөөд энэ нь түлхүүр солилцох  механизмын дагуу <ph name="KX" />-ыг ашигладаг.</translation>
 <translation id="2828797285817981634">Одоогоор хөдөлгөөн мэдрэгчийг зөвшөөрсөн</translation>
@@ -1576,6 +1577,7 @@
 <translation id="3655670868607891010">Хэрэв та энэ мессежийг хэт олон удаа харж байга бол <ph name="HELP_LINK" />-ийг үзээрэй.</translation>
 <translation id="3658742229777143148">Засвар хийгдсэн</translation>
 <translation id="3659521826520353662">Администраторын тодорхойлсон аль вебсайтад хэзээ зочилсон болох: <ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3663760610864720538">Personal Intelligence-тэй Gemini-р дэмжсэн. <ph name="BEGIN_LINK" />Тохиргоог удирдах<ph name="END_LINK" /></translation>
 <translation id="3664479564786885722">Энэ бүтээгдэхүүнийг борлуулдаг бусад дэлгүүрээс худалдан авах бусад сонголтыг хайна уу.</translation>
 <translation id="3664782872746246217">Түлхүүр үг:</translation>
 <translation id="3670030362669914947">Тоо</translation>
@@ -1596,6 +1598,7 @@
 <translation id="3693516565203081475">Төлбөрийн хэрэгсэл сонгох</translation>
 <translation id="3698353241727597930">Танай администратор <ph name="FILES" />-г танай байгууллагын удирддаг <ph name="CLOUD_STORAGE" />-н хадгалах санд хадгалахаар тохируулсан. Таныг эдгээр файлыг устгах үед хянаж, аудит хийж, хадгалж магадгүй.</translation>
 <translation id="3698629142018988477">Сайт үүсгэх товчлуур, Google Sites-д шинэ сайт шуурхай үүсгэхийн тулд идэвхжүүлнэ үү</translation>
+<translation id="3698708128812719147">Веб хөтчийн хаана ч Ctrl товчийг хоёр удаа дарж нэмэлт мэдээлэл хайх, бөглөх боломжтой</translation>
 <translation id="3700094625653511150">Дараа төлөх сонголтуудыг нуухын тулд <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /> руу очно уу</translation>
 <translation id="3700966190175650601">Та нууц үгнүүдийг бөглөхөд хурууны хээгээ ашиглаж байна</translation>
 <translation id="3701427423622901115">Шинэчлэлтийг хүлээн зөвшөөрсөн.</translation>
@@ -1863,7 +1866,6 @@
 <translation id="4121428309786185360">-д хугацаа нь дуусна</translation>
 <translation id="4123572138124678573">Доод буланд гурван нүх цоолох</translation>
 <translation id="412601465078863288">Байршуулах үйлдэл завсарласан</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{1 бусад}other{# бусад}}</translation>
 <translation id="4129810348470013900">Ямар нэг алдаа гарлаа. Интернэт холболтоо шалгаад, дахин оролдоно уу.</translation>
 <translation id="4130226655945681476">Сүлжээний кабель, модем болон чиглүүлэгчийг шалгаж байна</translation>
 <translation id="4132448310531350254">Аппуудын "<ph name="POLICY_IDS_LIST" />"-с file_extension "<ph name="FILE_EXTENSION" />"-н хуулбар хариуцагчдыг лавласан</translation>
@@ -1899,6 +1901,7 @@
 <translation id="4185037616931963178">Залруулгын хяналтын дугаарыг (redress number) аюулгүй шинэчлээрэй</translation>
 <translation id="4186035307311647330">Үнэ хянахаа болих</translation>
 <translation id="4191334393248735295">Урт</translation>
+<translation id="4192770747482479191">Веб хөтчийн хаана ч ⌘ товчийг хоёр удаа дарж нэмэлт мэдээлэл хайх, бөглөх боломжтой</translation>
 <translation id="4195459680867822611">Chrome-н зөвлөгөө харах товчлуур, Chrome-н онцлогуудын талаар мэдэж авахын тулд идэвхжүүлнэ үү</translation>
 <translation id="4195643157523330669">Шинэ таб дээр нээх</translation>
 <translation id="4196861286325780578">&amp; Зөөвөрлөх үйлдлийг дахин хийх</translation>
@@ -2216,7 +2219,6 @@
 <translation id="4725766358270333890">Microsoft OneDrive-т <ph name="COUNT" /> файл байршуулж байна</translation>
 <translation id="4726672564094551039">Тохиргоог дахин ачаалах</translation>
 <translation id="4728558894243024398">Платформ</translation>
-<translation id="4730773064303503917">Wallet-г ашиглан Pix-г найз нөхөд, бизнесүүд рүү илгээгээрэй</translation>
 <translation id="4730977633786878901">Шүүмж</translation>
 <translation id="4731638775147756694">Энэ аппликэйшнийг таны администратор хориглосон байна</translation>
 <translation id="4732860731866514038"><ph name="LANGUAGE" /> хэлний багцыг татаж байна... <ph name="PERCENT" />%</translation>
@@ -2847,6 +2849,7 @@
 <translation id="573974402615125334">Табын бүлэг хуваалцах, нэгдэх, хамтран ажиллахын тулд түүх, табаа синк хийнэ үү</translation>
 <translation id="5740911612628596808">Дугтуй C9</translation>
 <translation id="574392208103952083">Дунд зэрэг</translation>
+<translation id="5744350700955456407">Сайжруулсан автомат бөглөлт нь Gmail, Зураг зэрэг аппаас захиалгын дугаар, нислэгийн баталгаажуулах код зэрэг мэдээллийг олж, автоматаар бөглөх боломжтой боллоо</translation>
 <translation id="5745586894920491759">Chrome хуудасны гарчиг, URL-г үүлэнд боловсруулдаг</translation>
 <translation id="5745733273847572235">Таны байршлыг хүсэх боломжтой</translation>
 <translation id="5750869797196646528">Гар хянах</translation>
@@ -3227,7 +3230,6 @@
 <translation id="638289054711715023">Агшдаг тугалган цаас</translation>
 <translation id="6383221683286411806">Төлбөр гарч болзошгүй.</translation>
 <translation id="6384448607821972818">Сэргээх нууц үгийг харуулсан</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{1 бусад зөвлөмж}other{# бусад зөвлөмж}}</translation>
 <translation id="6386565501269869892">Юү дугтуй 4</translation>
 <translation id="6387645831795005740">Халдагч этгээдүүд заримдаа URL-д үл анзаарагдам, бага зэргийн өөрчлөлт оруулж, сайтуудыг дуурайдаг.</translation>
 <translation id="6389470377220713856">Картан дээрх нэр</translation>
@@ -4835,7 +4837,6 @@
 <translation id="9168814207360376865">Танд хадгалсан төлбөрийн хэрэгсэл байгаа эсэхийг шалгахыг сайтуудад зөвшөөрөх</translation>
 <translation id="9169931577761441333"><ph name="APP_NAME" />-г Үндсэн нүүрэнд нэмэх</translation>
 <translation id="9170848237812810038">&amp; Буцаах</translation>
-<translation id="9170906125144697215">Апп сэлгэхгүйгээр Pix-р төлөөрэй</translation>
 <translation id="9171296965991013597">Аппыг орхих уу?</translation>
 <translation id="9173282814238175921">Дан документ/Шинэ хүснэгт</translation>
 <translation id="9173995187295789444">Bluetooth төхөөрөмжүүдийг хайж байна...</translation>

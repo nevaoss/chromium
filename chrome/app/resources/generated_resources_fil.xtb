@@ -163,6 +163,7 @@ Suriin ang iyong mga password anumang oras sa <ph name="GOOGLE_PASSWORD_MANAGER"
 <translation id="1109482864356262001">Hindi gagana ang mga feature na nangangailangan ng mga sensor ng paggalaw o liwanag</translation>
 <translation id="1110155001042129815">Mag-intay</translation>
 <translation id="1110965959145884739">Piliin kung aling mga wika ang ii-install sa device na ito. Ibinabahagi ang mga file ng wika sa mga user para makatipid ng disk space. <ph name="BEGIN_LINK_LEARN_MORE" />Matuto pa<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="111168944932507021">Mag-focus sa grupo ng tab</translation>
 <translation id="1112227834592480032">Piliin ang button ng Google Lens, pagkatapos ay mag-click at mag-drag sa isang problem</translation>
 <translation id="1112420131909513020">Gumagamit ng bluetooth ang tab sa background</translation>
 <translation id="1112998165730922436">Naka-pause ang pag-cast</translation>
@@ -571,7 +572,6 @@ Suriin ang iyong mga password anumang oras sa <ph name="GOOGLE_PASSWORD_MANAGER"
 <translation id="1433478348197382180">Reading Mode</translation>
 <translation id="1433980411933182122">Pag-startup</translation>
 <translation id="1434659328474177625">Na-verify ng <ph name="ISSUER" /> ang iyong email</translation>
-<translation id="1434886155212424586">Ang homepage ay ang pahina ng Bagong Tab</translation>
 <translation id="1435940442311036198">Gumamit ng passkey sa ibang device</translation>
 <translation id="1436390408194692385">May bisa sa loob ng <ph name="TICKET_TIME_LEFT" /></translation>
 <translation id="1436671784520050284">Ipagpatuloy ang pag-set up</translation>
@@ -1035,7 +1035,6 @@ Suriin ang iyong mga password anumang oras sa <ph name="GOOGLE_PASSWORD_MANAGER"
 <translation id="178092663238929451">I-set up ang Nearby Share para tumanggap at magpadala ng mga file sa mga tao sa paligid mo</translation>
 <translation id="1781164264587898620">Mag-apply ng pagkakansela ng ingay at mga pagpapaganda ng audio.</translation>
 <translation id="1781291988450150470">Kasalukuyang PIN</translation>
-<translation id="1781502536226964113">Buksan ang page ng Bagong Tab</translation>
 <translation id="1781553166608855614">Sinasalitang wika</translation>
 <translation id="1781771911845953849">Mga account at pag-sync</translation>
 <translation id="1782101999402987960">Bina-block ang mga update ng iyong administrator</translation>
@@ -1549,7 +1548,6 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="2175927920773552910">QR Code</translation>
 <translation id="2177950615300672361">Tab na Incognito: <ph name="TAB_NAME" /></translation>
 <translation id="2178056538281447670">Microsoft 365</translation>
-<translation id="2178545675770638239">Pumili ng Password</translation>
 <translation id="2178614541317717477">CA Compromise</translation>
 <translation id="2180082148774168439">I-access ang site na ito sa isang nakalaang window sa iyong computer</translation>
 <translation id="2180620921879609685">I-block ang content sa anumang page</translation>
@@ -1560,7 +1558,6 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="2184754597051264978">Hindi ka na masa-sign in ng Gemini sa <ph name="URL" /></translation>
 <translation id="2186206192313702726">Google Lens</translation>
 <translation id="2186539124645132614">Magsimula ng bagong chat sa Gemini</translation>
-<translation id="2186711480981247270">Ibinahaging page mula sa ibang device</translation>
 <translation id="2187675480456493911">Naka-sync sa iba pang device sa iyong account. Hindi masi-sync ang mga setting na binago ng iba pang user. <ph name="LINK_BEGIN" />Matuto pa<ph name="LINK_END" /></translation>
 <translation id="2187906491731510095">Na-update ang mga extension</translation>
 <translation id="2188881192257509750">Buksan ang <ph name="APPLICATION" /></translation>
@@ -2064,7 +2061,6 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="256481480019204378">Google Account ID</translation>
 <translation id="256517381556987641">Sa ngayon, may nahanap na <ph name="ITEMS_FOUND" /> file ang Pag-sync ng file at sinusuri pa rin ang storage space. Subukang i-on ulit ang Pag-sync ng file sa loob ng ilang minuto.</translation>
 <translation id="2566146433999774844">Sumali sa grupo ng tab kasama ni <ph name="OWNER_FIRST_NAME" /> at <ph name="NUM_OTHER_MEMBERS" /> pang iba</translation>
-<translation id="256726287944589768">Ipakita ang footer sa page na Bagong Tab</translation>
 <translation id="2568774940984945469">Infobar Container</translation>
 <translation id="257088987046510401">Mga tema</translation>
 <translation id="2572032849266859634">Ipinagkaloob na sa <ph name="VOLUME_NAME" /> ang read-only na access.</translation>
@@ -2155,6 +2151,7 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="2636266464805306348">Mga Pamagat ng Window</translation>
 <translation id="2637313651144986786">Maghanap sa Mga Tab...</translation>
 <translation id="2637400434494156704">Maling PIN. May isa kang pagtatangkang natitira.</translation>
+<translation id="2637852492915204064">Isara ang Paghahanap sa Tab</translation>
 <translation id="263796568413910992">Magtanong sa <ph name="SEARCH_ENGINE_NAME" /> o mag-type ng URL</translation>
 <translation id="2640299212685523844">Gamitin ang GTK</translation>
 <translation id="264083724974021997">Kumonekta sa iyong telepono - Dialog</translation>
@@ -2233,11 +2230,11 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="2696675923413008404">Ipinapadala sa Google ang content mula sa site na ito, kabilang ang URL nito, at posibleng makita ito ng mga taong tagasuri para mapahusay ang feature na ito</translation>
 <translation id="269941332914175387">Ilunsad ulit ang browser para i-load ang data ng profile mo at panatilihin itong naka-encrypt</translation>
 <translation id="2699911226086014512">Hindi nagamit ang PIN na may code <ph name="RETRIES" />.</translation>
-<translation id="2701330563083355633">Ibinahagi mula kay <ph name="DEVICE_NAME" /></translation>
 <translation id="2701737434167469065">Mag-sign in, <ph name="EMAIL" /></translation>
 <translation id="2701960282717219666">MAC Address ng Network</translation>
 <translation id="2702720509009999256">Tingnan ang iyong koneksyon sa internet at piliin ang "Subukan ulit," o piliin ang "Buksan sa basic na editor" para gamitin ang mga limitadong opsyon sa pagtingin at pag-edit.</translation>
 <translation id="2702801445560668637">Listahan ng Babasahin</translation>
+<translation id="2703151507515080771">{NUM_TABS,plural, =1{I-unfocus ang tab}one{I-unfocus ang mga tab}other{I-unfocus ang mga tab}}</translation>
 <translation id="270414148003105978">Mga mobile network</translation>
 <translation id="2704184184447774363">Microsoft Document Signing</translation>
 <translation id="2704606927547763573">Kinopya</translation>
@@ -2633,7 +2630,6 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="2989474696604907455">hindi naka-attach</translation>
 <translation id="2989523299700148168">Mga kamakailang binisita</translation>
 <translation id="2989786307324390836">DER-encoded binary, single certificate</translation>
-<translation id="2989805286512600854">Buksan sa Bagong Tab</translation>
 <translation id="2990313168615879645">Mag-add ng Google Account</translation>
 <translation id="2990375978470734995">Para magkabisa ang pagbabagong ito, ikonekta ulit ang iyong mga external na accessory.</translation>
 <translation id="2990500505358145117">I-edit ang shortcut ng pinahusay na autofill</translation>
@@ -3154,6 +3150,7 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="3379268272734690">Disyerto</translation>
 <translation id="3382737653173267704">Tingnan ang pamilya</translation>
 <translation id="338323348408199233">I-block ang trapiko nang walang VPN</translation>
+<translation id="3384827779079384219">{NUM_TABS,plural, =1{Mag-focus sa tab}one{Mag-focus sa mga tab}other{Mag-focus sa mga tab}}</translation>
 <translation id="3385053436247851142">Mag-sign in sa Microsoft</translation>
 <translation id="3385092118218578224"><ph name="DISPLAY_ZOOM" />%</translation>
 <translation id="3385172418915595177">Nagbibigay ang Katumpakan ng Lokasyon ng mas tumpak na lokasyon para sa mga app at serbisyo. Para magawa ito, pana-panahong pinoproseso ng Google ang impormasyon tungkol sa mga sensor ng device at wireless na signal mula sa iyong device para i-crowdsource ang mga lokasyon ng wireless na signal. Ginagamit ang mga ito nang hindi ibinibigay ang pagkakakilanlan mo para mapahusay ang katumpakan ng lokasyon at mga serbisyong batay sa lokasyon, at para mapahusay, maibigay, at mapanatili sa pangkalahatan ang mga serbisyo ng Google batay sa mga lehitimong interes ng Google at mga third party para matugunan ang mga pangangailangan ng mga user.</translation>
@@ -3426,6 +3423,7 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="3582057310199111521">Nailagay sa isang mapanlinlang na site at nakita sa paglabag sa data</translation>
 <translation id="3582299299336701326">Padilimin ang maliliwanag na screen, at paliwanagin ang madidilim na screen. Pindutin ang Search + Ctrl + H para i-on at i-off ang pag-invert ng kulay.</translation>
 <translation id="3584169441612580296">Basahin at baguhin ang mga larawan, musika at iba pang media sa iyong computer</translation>
+<translation id="358562596990359723">Isara ang paghahanap sa tab</translation>
 <translation id="3586741240886978899">Ginamit mo sa site na ito</translation>
 <translation id="3586806079541226322">Hindi mabuksan ang file na ito</translation>
 <translation id="3586931643579894722">Magtago ng mga detalye</translation>
@@ -3905,7 +3903,6 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="3909701002594999354">Ipakita ang Lahat ng &amp;Control</translation>
 <translation id="3909791450649380159">Al&amp;isin</translation>
 <translation id="39103738135459590">Code sa pag-activate</translation>
-<translation id="3911824782900911339">Page na Bagong Tab</translation>
 <translation id="3913689539406883376">I-on kapag hindi nakasaksak ang iyong computer</translation>
 <translation id="3914173277599553213">Kinakailangan</translation>
 <translation id="3914568430265141791">Buksan ang folder na <ph name="FOLDER_TITLE" /></translation>
@@ -4463,7 +4460,6 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="4354344420232759511">Lalabas dito ang mga site na binibisita mo</translation>
 <translation id="4356100841225547054">I-off ang volume</translation>
 <translation id="4357583358198801992">Ipakita ang mga grupo ng tab</translation>
-<translation id="4357812592970409234">Matuto pa tungkol sa background ng iyong page na Bagong Tab</translation>
 <translation id="4358361163731478742">Walang app ang sumusuporta sa pagpili ng wika ng app</translation>
 <translation id="4358995225307748864">Pumili ng app para buksan</translation>
 <translation id="4359408040881008151">Na-install dahil sa (mga) nakadependeng extension.</translation>
@@ -4538,6 +4534,7 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="4406308048672435032">Puwede mong gawing hindi aktibo ang tab na ito o mag-refresh para makita ulit ang buong listahan</translation>
 <translation id="4406883609789734330">Instant Caption</translation>
 <translation id="4406963243402726564">Hindi na-save na data</translation>
+<translation id="4408595563209996725">{NUM_TABS,plural, =1{I-unfocus ang Tab}one{I-unfocus ang Mga Tab}other{I-unfocus ang Mga Tab}}</translation>
 <translation id="4408599188496843485">T&amp;ulong</translation>
 <translation id="4409340274650920844">{NUM_APPS,plural,offset:2 =1{Puwedeng i-record ng iyong administrator ang screen mo gamit ang <ph name="APP0_NAME" />. Aabisuhan ka kapag nagsimula na ang pag-record.}=2{Puwedeng i-record ng iyong administrator ang screen mo gamit ang <ph name="APP0_NAME" /> at <ph name="APP1_NAME" />. Aabisuhan ka kapag nagsimula na ang pag-record.}=3{Puwedeng i-record ng iyong administrator ang screen mo gamit ang <ph name="APP0_NAME" />, <ph name="APP1_NAME" />, at 1 pang app. Aabisuhan ka kapag nagsimula na ang pag-record.}one{Puwedeng i-record ng iyong administrator ang screen mo gamit ang <ph name="APP0_NAME" />, <ph name="APP1_NAME" />, at # pang app. Aabisuhan ka kapag nagsimula na ang pag-record.}other{Puwedeng i-record ng iyong administrator ang screen mo gamit ang <ph name="APP0_NAME" />, <ph name="APP1_NAME" />, at # pang app. Aabisuhan ka kapag nagsimula na ang pag-record.}}</translation>
 <translation id="4409697491990005945">Mga Margin</translation>
@@ -5349,6 +5346,7 @@ Gamitin ang Ctrl + Alt + Bawasan ang Liwanag para mag-zoom out.</translation>
 <translation id="5031769842769721381">{SELECTED_ITEMS,plural, =0{Mga address}=1{Mga address ({SELECTED_ITEMS})}one{Mga address ({SELECTED_ITEMS})}other{Mga address ({SELECTED_ITEMS})}}</translation>
 <translation id="5032430150487044192">Hindi magawa ang QR Code</translation>
 <translation id="5033137252639132982">Hindi pinapayagang gumamit ng mga sensor ng paggalaw</translation>
+<translation id="5034158480345261097">Puwedeng gamitin ng <ph name="ACTOR_NAME" /> ang Google Password Manager para mag-sign in para sa iyo. <ph name="BEGIN_LINK" />Alamin kung paano pinapangasiwaan ng <ph name="ACTOR_NAME" /> ang iyong data<ph name="END_LINK" /></translation>
 <translation id="5035846135112863536">Piliin ang "Higit pang detalye" sa ibaba para kumuha ng higit pang impormasyon mula sa <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" />.</translation>
 <translation id="5037676449506322593">Select All</translation>
 <translation id="5038621320029329200">Mga Pinagkakatiwalaang Certificate</translation>
@@ -6564,6 +6562,7 @@ Puwede kang magtalaga ng maraming switch sa pagkilos na ito.</translation>
 <translation id="5985556342298151179">Na-install ang Chrome app ng administrator ng iyong device.</translation>
 <translation id="5985899926376570122">Pinaganda</translation>
 <translation id="5986442691296752186">Bigyan ang mga Linux app ng kontrol sa mga USB device.</translation>
+<translation id="5987624353990540124">{COUNT,plural, =1{Hindi magbubukas ang iyong Isolated window pagkatapos mong maglunsad ulit}one{Hindi na muling magbubukas ang iyong {COUNT} Isolated window pagkatapos mong maglunsad ulit}other{Hindi na muling magbubukas ang iyong {COUNT} na Isolated window pagkatapos mong maglunsad ulit}}</translation>
 <translation id="598810097218913399">Alisin ang pagkakatalaga</translation>
 <translation id="5988563937187882754">Tumingin sa kanan</translation>
 <translation id="5989497858237037960">Habang nagba-browse ka sa mga site, ine-encrypt ang mga content ng page ng mga ito at sine-save ang mga ito sa iyong device. Posibleng makaapekto ito sa performance ng Chrome</translation>
@@ -6738,7 +6737,6 @@ Puwede kang magtalaga ng maraming switch sa pagkilos na ito.</translation>
 <translation id="6130887916931372608">Key ng Keyboard</translation>
 <translation id="6131511889181741773">Splatter</translation>
 <translation id="6132251717264923430">Na-pin ang button</translation>
-<translation id="6134418895482326458">I-hide ang footer sa page na Bagong Tab</translation>
 <translation id="6134428719487602109">Alisin ang lahat ng user account at i-reset ang iyong Chromebook para magmukhang bago.</translation>
 <translation id="6135826623269483856">Hindi pinapayagang pamahalaan ang mga window sa lahat ng iyong display</translation>
 <translation id="6136285399872347291">backspace</translation>
@@ -6888,6 +6886,7 @@ Puwede kang magtalaga ng maraming switch sa pagkilos na ito.</translation>
 <translation id="6242852299490624841">I-focus ang tab na ito</translation>
 <translation id="6243774244933267674">Hindi available ang server</translation>
 <translation id="6244245036423700521">I-import ang ONC File</translation>
+<translation id="6244558433635108262">{COUNT,plural, =1{Hindi na magbubukas ulit ang iyong Isolated window.}one{Hindi na magbubukas ulit ang iyong # Isolated window.}other{Hindi na magbubukas ulit ang iyong # na Isolated window.}}</translation>
 <translation id="6245523954602476652">Maa-access mo ito sa Google Password Manager.</translation>
 <translation id="6247557882553405851">Google Password Manager</translation>
 <translation id="6247620186971210352">Walang nakitang app</translation>
@@ -7413,6 +7412,7 @@ May # ka pang nakompromisong password. Inirerekomenda ng Google Password Manager
 <translation id="6651762277693024112">Awtomatikong tatakbo tuwing bibisitahin mo ang site na ito</translation>
 <translation id="6654509035557065241">Magtakda ng gustong network</translation>
 <translation id="6655190889273724601">Developer mode</translation>
+<translation id="6656413384508017053">{NUM_TABS,plural, =1{Mag-focus sa Tab}one{Mag-focus sa Mga Tab}other{Mag-focus sa Mga Tab}}</translation>
 <translation id="6657180931610302174">Magdagdag ng username?</translation>
 <translation id="6657240842932274095">Payagan ang mga serbisyo ng system na gamitin ang iyong lokasyon?</translation>
 <translation id="6657585470893396449">Password</translation>
@@ -7780,6 +7780,7 @@ May # ka pang nakompromisong password. Inirerekomenda ng Google Password Manager
 <translation id="6916676294509106572">Naka-hide ang Outlook Calendar</translation>
 <translation id="6916818963747321523">I-expand Lahat</translation>
 <translation id="6917873303492266709">Para mag-share ng, sumali sa, at mag-collaborate sa mga grupo ng tab, buksan ang mga setting at i-on ang Payagan ang pag-sign in sa Chrome</translation>
+<translation id="6918598482167821721">Mga tab ng iba pang device</translation>
 <translation id="6919354101107095996">Subukang mag-sign in sa site. Pagkatapos, mag-download ulit</translation>
 <translation id="6919461818524183254">Pumili ng shortcut</translation>
 <translation id="6919952941889172531">I-on din ang Pinahusay na Ligtas na Pag-browse para sa profile na ito sa Chrome?</translation>
@@ -8536,6 +8537,7 @@ May # ka pang nakompromisong password. Inirerekomenda ng Google Password Manager
 <translation id="7495149565104413027">Android App</translation>
 <translation id="7497322070873193353">Google AI</translation>
 <translation id="7497981768003291373">Wala kang kamakailang nakuhang log ng text ng WebRTC.</translation>
+<translation id="7499684925421947861">Payagan ang <ph name="ACTOR_NAME" /> na mag-sign in sa <ph name="DOMAIN" /> para sa iyo?</translation>
 <translation id="7501957181231305652">o</translation>
 <translation id="7502220299952823578">Idagdag sa listahang "palaging panatilihing aktibo ang mga site na ito"</translation>
 <translation id="7502528909759062987">I-pause ang pag-cast ng tab sa <ph name="DEVICE_NAME" /></translation>
@@ -8719,6 +8721,7 @@ May # ka pang nakompromisong password. Inirerekomenda ng Google Password Manager
 <translation id="7650178491875594325">I-restore ang lokal na data</translation>
 <translation id="7650582458329409456">{COUNT,plural, =1{1 fingerprint ang na-set up}one{{COUNT} fingerprint ang na-set up}other{{COUNT} na fingerprint ang na-set up}}</translation>
 <translation id="7650677314924139716">Wi-Fi lang ang kasalukuyang setting ng paggamit ng data</translation>
+<translation id="7650721582841150356">Ilunsad ulit sa ibang pagkakataon...</translation>
 <translation id="7651182181030187705">Para makuha ang bookmark na ito sa lahat ng iyong device, i-verify na ikaw ito</translation>
 <translation id="7651400349472467012">Available ang instant na hotspot</translation>
 <translation id="7651754152638505879">Na-pause ang gawain</translation>
@@ -9624,7 +9627,6 @@ Ilagay ang iyong key file sa ligtas na lugar. Kailangan mo ito upang lumikha ng 
 <translation id="8317965619823678157">kopyahin ang mga password</translation>
 <translation id="8318266828739827371">Gumamit ng split-screen view para makita ang naka-magnify na bahagi ng iyong screen. Gamitin ang Search + Ctrl + D para i-on at i-off ang naka-dock na magnifier.</translation>
 <translation id="8318680582681577962">Subframe ng Incognito na PDF: <ph name="SUBFRAME_SITE" /></translation>
-<translation id="8319105959731007612">Pinipigilan ng Pag-isolate ng Proseso ang iba pang application na mag-tamper sa <ph name="IDS_SHORT_PRODUCT_NAME" />.</translation>
 <translation id="8320212361750431956">Kamakailang Aktibidad</translation>
 <translation id="8321476692217554900">mga notification</translation>
 <translation id="8322000044173139239">I-verify na ikaw ito para magamit ang iyong mga passkey sa device na ito</translation>
@@ -9780,6 +9782,7 @@ Ilagay ang iyong key file sa ligtas na lugar. Kailangan mo ito upang lumikha ng 
 <translation id="844059392176531372">I-share ang Grupo ng Tab na “<ph name="GROUP_NAME" />”</translation>
 <translation id="844063558976952706">Palagi sa site na ito</translation>
 <translation id="8441313165929432954">I-enable/I-disable ang Pag-tether</translation>
+<translation id="8442599250002885105">{COUNT,plural, =1{May Incognito o Isolated window na nakabukas. Hindi na ito magbubukas ulit.}one{May # Incognito at Isolated window na nakabukas sa mga profile. Hindi na magbubukas ulit ang mga ito.}other{May # na Incognito at Isolated window na nakabukas sa mga profile. Hindi na magbubukas ulit ang mga ito.}}</translation>
 <translation id="8443986842926457191">Mahigit 2048 character ang URL</translation>
 <translation id="8445281870900174108">Ginagamit ng tab na ito ang iyong camera</translation>
 <translation id="8446884382197647889">Matuto Pa</translation>
@@ -9936,6 +9939,7 @@ Ilagay ang iyong key file sa ligtas na lugar. Kailangan mo ito upang lumikha ng 
 <translation id="8563043098557365232">Pinapayagan lang sa mga serbisyo ng system</translation>
 <translation id="8563898784671745643">I-mute ang Site sa Ibaba</translation>
 <translation id="8564220755011656606">Hindi ma-access ang mikropono</translation>
+<translation id="8564894539416715395">Bagong page ng tab</translation>
 <translation id="8565021320663436446">Alisin si <ph name="MEMBER_FULL_NAME" />?</translation>
 <translation id="8566916288687510520">May natanggap na bagong password</translation>
 <translation id="8567946600191652875">Hindi dapat bababa sa 6 na character at dapat may kahit isang titik o simbolo man lang</translation>
@@ -10047,6 +10051,7 @@ Ilagay ang iyong key file sa ligtas na lugar. Kailangan mo ito upang lumikha ng 
 <translation id="8652400352452647993">Nagka-error sa extension ng pack</translation>
 <translation id="8654151524613148204">Masyadong malaki ang file upang mapangasiwaan ng iyong computer. Paumanhin.</translation>
 <translation id="8655295600908251630">Channel</translation>
+<translation id="8656101380279383244">Mag-focus sa Grupo ng Tab</translation>
 <translation id="8656888282555543604">I-enable ang pag-log ng braille</translation>
 <translation id="8657393004602556571">Gusto mo bang i-discard ang feedback?</translation>
 <translation id="8657542881463614516">Gumamit ng galaw na pag-swipe para mag-navigate sa mga page</translation>
@@ -10462,6 +10467,7 @@ Puwedeng kasama rito ang impormasyon tungkol sa naka-install na software, mga fi
 <translation id="8963117664422609631">Pumunta sa mga setting ng site</translation>
 <translation id="8964927371396953727">I-verify na ikaw ito para magamit at ma-save ang mga password sa iyong account, <ph name="ACCOUNT_EMAIL" /></translation>
 <translation id="8965037249707889821">Ilagay ang lumang password</translation>
+<translation id="8967403839792635452">Nagde-develop ng mga extension? Manatiling up to date sa <ph name="BEGIN_LINK" />Ano'ng Bago<ph name="END_LINK" /> gamit ang developer documentation ng Extension ng Chrome.</translation>
 <translation id="8967427617812342790">Idagdag sa listahan ng babasahin</translation>
 <translation id="8968527460726243404">Pangsulat ng Larawan ng ChromeOS na System</translation>
 <translation id="8968766641738584599">I-save ang card</translation>
@@ -10553,6 +10559,7 @@ Puwedeng kasama rito ang impormasyon tungkol sa naka-install na software, mga fi
 <translation id="9020362265352758658">4x</translation>
 <translation id="9021662811137657072">May nakitang virus</translation>
 <translation id="902236149563113779">Karaniwang tina-track ng mga site ang posisyon ng iyong camera para sa mga feature ng AR, gaya ng mga laro o mga heads-up na direksyon</translation>
+<translation id="9022465823323373917">{COUNT,plural, =1{May {COUNT} Incognito o Isolated window na nakabukas. Hindi na ito muling magbubukas pagkatapos mong maglunsad ulit}one{May {COUNT} Incognito at Isolated window na nakabukas sa mga profile. Hindi na muling magbubukas ang mga ito pagkatapos mong maglunsad ulit}other{May {COUNT} na Incognito at Isolated window na nakabukas sa mga profile. Hindi na muling magbubukas ang mga ito pagkatapos mong maglunsad ulit}}</translation>
 <translation id="9022847679183471841">Ang account na ito ay ginagamit na ni <ph name="AVATAR_NAME" /> sa computer na ito.</translation>
 <translation id="9023015617655685412">I-bookmark ang tab na ito...</translation>
 <translation id="902319268551617004">Mag-scan ng QR Code gamit ang camera ng iyong device o ilagay ang code sa pag-activate na ibinigay ng carrier mo.</translation>
@@ -10770,7 +10777,6 @@ Puwedeng kasama rito ang impormasyon tungkol sa naka-install na software, mga fi
 <translation id="9185698642371842814">Magtanong sa AI Mode</translation>
 <translation id="9186743636216815027">{NUM_APPS,plural,offset:2 =1{Puwedeng i-record ng iyong administrator ang screen mo gamit ang <ph name="APP0_NAME" />. Hindi ka aabisuhan kapag nagsimula na ang pag-record.}=2{Puwedeng i-record ng iyong administrator ang screen mo gamit ang <ph name="APP0_NAME" /> at <ph name="APP1_NAME" />. Hindi ka aabisuhan kapag nagsimula na ang pag-record.}=3{Puwedeng i-record ng iyong administrator ang screen mo gamit ang <ph name="APP0_NAME" />, <ph name="APP1_NAME" />, at 1 pang app. Hindi ka aabisuhan kapag nagsimula na ang pag-record.}one{Puwedeng i-record ng iyong administrator ang screen mo gamit ang <ph name="APP0_NAME" />, <ph name="APP1_NAME" />, at # pang app. Hindi ka aabisuhan kapag nagsimula na ang pag-record.}other{Puwedeng i-record ng iyong administrator ang screen mo gamit ang <ph name="APP0_NAME" />, <ph name="APP1_NAME" />, at # pang app. Hindi ka aabisuhan kapag nagsimula na ang pag-record.}}</translation>
 <translation id="9187967020623675250">Hindi magkatugma ang mga key. Pumindot ng anumang key para <ph name="RESPONSE" />.</translation>
-<translation id="9188142767272053574">I-enable ang Pag-isolate ng Proseso</translation>
 <translation id="9192019773545828776">Makarinig ng pasalitang feedback para magamit mo ang iyong device nang hindi tumitingin sa screen. Available ang braille na feedback gamit ang isang nakakonektang device. Gamitin ang Ctrl + Alt + Z para i-on at i-off ang ChromeVox. Gamitin ang Search + Pakaliwang arrow o Pakanang arrow para mag-navigate. Gamitin ang Search + Space para pumili (mag-activate).</translation>
 <translation id="9195969368671142407">Kapag nilimitahan ng iyong organisasyon ang pag-save sa Google Account mo, hindi ka puwedeng mag-share ng o sumali sa mga grupo ng tab</translation>
 <translation id="9197456336762295195">I-scan ang QR code na ito gamit ang camera sa device na may passkey mo para sa google.com</translation>

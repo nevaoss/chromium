@@ -251,7 +251,7 @@ void StartupBrowserCreatorImpl::Launch(
     Profile* profile,
     chrome::startup::IsProcessStartup process_startup,
     bool restore_tabbed_browser) {
-  DCHECK(profile);
+  CHECK(profile, base::NotFatalUntil::M162);
   profile_ = profile;
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
@@ -299,7 +299,7 @@ BrowserWindowInterface* StartupBrowserCreatorImpl::OpenTabsInBrowser(
     chrome::startup::IsProcessStartup process_startup,
     const StartupTabs& tabs,
     TabOverWrite is_active_tab_overwrite) {
-  DCHECK(!tabs.empty());
+  CHECK(!tabs.empty(), base::NotFatalUntil::M162);
 
   // If we don't yet have a profile, try to use the one we're given from
   // |browser|. While we may not end up actually using |browser| (since it
@@ -309,16 +309,11 @@ BrowserWindowInterface* StartupBrowserCreatorImpl::OpenTabsInBrowser(
   }
 
 #if BUILDFLAG(IS_LINUX)
-  std::string startup_id =
-      command_line_->GetSwitchValueASCII(base::nix::kXdgActivationTokenSwitch);
-  if (startup_id.empty()) {
-    startup_id = command_line_->GetSwitchValueASCII("desktop-startup-id");
+  auto token = base::nix::GetXdgActivationTokenFromCommandLine(*command_line_);
+  if (!token) {
+    token = base::nix::TakeXdgActivationToken();
   }
-  if (startup_id.empty()) {
-    if (auto token = base::nix::TakeXdgActivationToken()) {
-      startup_id = *token;
-    }
-  }
+  std::string startup_id = std::move(token).value_or("");
 #endif
 
   // Launchers that only need to hand a URL to an already-running browser can
@@ -362,8 +357,8 @@ BrowserWindowInterface* StartupBrowserCreatorImpl::OpenTabsInBrowser(
         CreateBrowserWindow(std::move(params));
     if (auto* manager =
             InitialWebUIWindowMetricsManager::From(browser_window)) {
-      manager->SetWindowCreationInfo(
-          waap::NewWindowCreationSource::kBrowserInitiated, now);
+      manager->SetWindowCreationInfo(waap::NewWindowCreationSource::kLaunch,
+                                     now);
     }
     browser = browser_window;
   }

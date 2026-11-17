@@ -153,29 +153,36 @@ void ChipController::RestartTimersOnMouseHover() {
   if (is_confirmation_showing_) {
     collapse_timer_.Start(FROM_HERE, kPermissionConfirmationDisplayDuration,
                           this, &ChipController::CollapseConfirmation);
-  } else if (chip_->IsFullyCollapsed()) {
-    // Quiet chip can collapse from a verbose state to an icon state. After it
-    // is collapsed, it should be dismissed.
-    StartDismissTimer();
   } else {
-    StartCollapseTimer();
+    StartCollapseOrDismissTimer();
   }
 }
 
 void ChipController::OnWidgetDestroying(views::Widget* widget) {
-  DCHECK_EQ(GetBubbleWidget(), widget);
+  CHECK_EQ(GetBubbleWidget(), widget, base::NotFatalUntil::M162);
   ResetTimers();
 
   disallowed_custom_cursors_scope_.RunAndReset();
 
   if (!prompt_decision_.has_value()) {
-    observation_.Reset();
     widget->RemoveObserver(this);
     bubble_tracker_.SetView(nullptr);
-    // This method will be called only if a user dismissed permission prompt
-    // popup bubble. In case the user made decision, prompt_decision_ will not
-    // be empty.
-    OnPromptBubbleDismissed();
+    if (IsPermissionPromptChipVisible() &&
+        permission_prompt_model_->ShouldKeepChipOnBubbleClose()) {
+      // The request stays pending. The user can reopen the bubble from the
+      // chip, which collapses and expires like a chip without a bubble.
+      // TODO(crbug.com/567563304): Remember on the request that the user
+      // closed the bubble, so that a recreated prompt, e.g. after switching
+      // tabs, starts with only the chip. Currently, the bubble opens again
+      // and the timers start over.
+      StartCollapseOrDismissTimer();
+    } else {
+      observation_.Reset();
+      // This method will be called only if a user dismissed permission prompt
+      // popup bubble. In case the user made decision, prompt_decision_ will
+      // not be empty.
+      OnPromptBubbleDismissed();
+    }
   }
 
   permission_prompt_observers_.Notify(&Observer::OnPermissionPromptHidden);
@@ -537,7 +544,7 @@ void ChipController::AnimateExpand() {
 
 void ChipController::HandleConfirmation(
     permissions::PermissionAction user_decision) {
-  DCHECK(permission_prompt_model_);
+  CHECK(permission_prompt_model_, base::NotFatalUntil::M162);
   permission_prompt_model_->UpdateWithUserDecision(user_decision);
   SyncChipWithModel();
   if (active_chip_permission_request_manager_.has_value() &&
@@ -632,7 +639,7 @@ void ChipController::HideChip() {
 }
 
 void ChipController::OpenPermissionPromptBubble() {
-  DCHECK(!IsBubbleShowing());
+  CHECK(!IsBubbleShowing(), base::NotFatalUntil::M162);
   if (!permission_prompt_model_ || !permission_prompt_model_->GetDelegate() ||
       permission_prompt_model_->GetDelegate()->Requests().empty() ||
       !location_bar_->GetWebContents()) {
@@ -702,7 +709,8 @@ void ChipController::OnPromptBubbleAnchorReady() {
                       ->GetContentSettingBubbleModelDelegate(),
                   web_contents->GetPrimaryPage());
       ui::TrackedElement* anchor = location_bar_->GetAnchorOrNull();
-      DCHECK(anchor);  // We should get here only if location bar is visible.
+      CHECK(anchor, base::NotFatalUntil::M162);  // We should get here only if
+                                                 // location bar is visible.
       ContentSettingBubbleContents* quiet_request_bubble =
           new ContentSettingBubbleContents(
               std::move(content_setting_bubble_model), web_contents,
@@ -727,7 +735,7 @@ void ChipController::OnPromptBubbleAnchorReady() {
 
 void ChipController::ClosePermissionPromptBubbleWithReason(
     views::Widget::ClosedReason reason) {
-  DCHECK(IsBubbleShowing());
+  CHECK(IsBubbleShowing(), base::NotFatalUntil::M162);
   GetBubbleWidget()->CloseWithReason(reason);
 }
 
@@ -741,7 +749,7 @@ void ChipController::ObservePromptBubble() {
 }
 
 void ChipController::OnPromptBubbleDismissed() {
-  DCHECK(permission_prompt_model_);
+  CHECK(permission_prompt_model_, base::NotFatalUntil::M162);
   if (!permission_prompt_model_) {
     return;
   }
@@ -779,8 +787,9 @@ void ChipController::OnPromptExpired() {
 
 void ChipController::OnRequestChipButtonPressed() {
   if (IsBubbleShowing()) {
-    // A mouse click on chip while a permission prompt is open should dismiss
-    // the prompt and collapse the chip
+    // A mouse click on chip while a permission prompt is open should close
+    // the prompt, which dismisses the request unless it keeps the chip. See
+    // OnWidgetDestroying().
     ClosePermissionPromptBubbleWithReason(
         views::Widget::ClosedReason::kCloseButtonClicked);
   } else {
@@ -826,6 +835,16 @@ void ChipController::StartDismissTimer() {
                            // hence the dismiss timer should be longer.
                            : base::Seconds(18),
                        this, &ChipController::OnPromptExpired);
+}
+
+void ChipController::StartCollapseOrDismissTimer() {
+  if (chip_->IsFullyCollapsed()) {
+    // Quiet chip can collapse from a verbose state to an icon state. After it
+    // is collapsed, it should be dismissed.
+    StartDismissTimer();
+  } else {
+    StartCollapseTimer();
+  }
 }
 
 void ChipController::ResetTimers() {

@@ -50,6 +50,7 @@ android_library("java") {
     "//third_party/androidx:androidx_annotation_annotation_java",
     "//third_party/androidx:androidx_appcompat_appcompat_java",
     "//third_party/androidx:androidx_appcompat_appcompat_resources_java",
+    "//third_party/androidx:androidx_browser_browser_java",
     "//third_party/androidx:androidx_constraintlayout_constraintlayout_java",
     "//third_party/androidx:androidx_core_core_java",
     "//third_party/androidx:androidx_fragment_fragment_java",
@@ -207,6 +208,7 @@ android_resources("java_resources") {
     "java/res/values-large/dimens.xml",
     "java/res/values-xlarge/dimens.xml",
     "java/res/values/dimens.xml",
+    "java/res/values/styles.xml",
   ]
   deps = [
     "//chrome/app:java_strings_grd",
@@ -324,6 +326,7 @@ android_library("javatests") {
     "//chrome/browser/profiles/android:java",
     "//chrome/browser/signin/services/android:java",
     "//chrome/browser/sync/android:java",
+    "//chrome/browser/ui/android/enterprise_signals_disclaimer:java",
     "//chrome/browser/ui/android/night_mode:night_mode_java_test_support",
     "//chrome/browser/ui/android/signin:java_resources",
     "//chrome/browser/ui/messages/android:java",
@@ -347,6 +350,7 @@ android_library("javatests") {
     "//third_party/android_deps:espresso_java",
     "//third_party/androidx:androidx_annotation_annotation_java",
     "//third_party/androidx:androidx_appcompat_appcompat_java",
+    "//third_party/androidx:androidx_browser_browser_java",
     "//third_party/androidx:androidx_fragment_fragment_java",
     "//third_party/androidx:androidx_test_core_java",
     "//third_party/androidx:androidx_test_monitor_java",

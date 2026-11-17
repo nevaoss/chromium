@@ -2844,6 +2844,10 @@ bool StyleEngine::HasRulesForId(const AtomicString& id) const {
 
 void StyleEngine::InitialStyleChanged() {
   InvalidateInitialStyle();
+  // Cached styles may depend on the old settings, e.g. minimum font size.
+  if (resolver_) {
+    resolver_->InvalidateMatchedPropertiesCache();
+  }
   MarkViewportStyleDirty();
   // We need to update the viewport style immediately because media queries
   // evaluated in MediaQueryAffectingValueChanged() below may rely on the
@@ -4776,10 +4780,11 @@ void StyleEngine::UpdateForcedBackgroundColor() {
   CHECK(GetDocument().GetPage());
   mojom::blink::ColorScheme color_scheme = mojom::blink::ColorScheme::kLight;
   forced_background_color_ = LayoutTheme::GetTheme().SystemColor(
-      CSSValueID::kCanvas, color_scheme,
-      GetDocument().GetPage()->GetColorProviderForPainting(
-          color_scheme, forced_colors_ != ForcedColors::kNone),
-      GetDocument().IsInWebAppScope() && GetDocument().IsInitialProfile());
+      CSSValueID::kCanvas,
+      /*theme_info=*/
+      {.color_provider = GetDocument().GetPage()->GetColorProviderForPainting(
+           color_scheme, forced_colors_ != ForcedColors::kNone),
+       .color_scheme = color_scheme});
 }
 
 mojom::blink::ColorScheme StyleEngine::AdjustAboutBlankColorScheme(

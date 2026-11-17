@@ -47,6 +47,7 @@
 #include "chrome/browser/signin/chrome_signin_helper.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
+#include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/search/ntp_user_data_logger.h"
@@ -55,6 +56,7 @@
 #include "chrome/browser/ui/webui/cr_components/composebox/composebox_handler.h"
 #include "chrome/browser/ui/webui/cr_components/most_visited/most_visited_handler.h"
 #include "chrome/browser/ui/webui/cr_components/most_visited/most_visited_pref_observer.h"
+#include "chrome/browser/ui/webui/cr_components/searchbox/plural_string_provider.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h"
 #include "chrome/browser/ui/webui/customize_buttons/customize_buttons_handler.h"
 #include "chrome/browser/ui/webui/favicon_source.h"
@@ -66,7 +68,6 @@
 #include "chrome/browser/ui/webui/new_tab_page/new_tab_page_handler.h"
 #include "chrome/browser/ui/webui/new_tab_page/untrusted_source.h"
 #include "chrome/browser/ui/webui/page_not_available_for_guest/page_not_available_for_guest_ui.h"
-#include "chrome/browser/ui/webui/plural_string_handler.h"
 #include "chrome/browser/ui/webui/sanitized_image/sanitized_image_source.h"
 #include "chrome/browser/ui/webui/searchbox/realbox_handler.h"
 #include "chrome/browser/ui/webui/theme_source.h"
@@ -189,6 +190,9 @@ constexpr char kAIMDisplayMode[] = "50";
 // The value for the "atvm" (AIM Threads Visibility Mode) query parameter.
 // value "3" corresponds to Threads Visibility Mode "Always Open".
 constexpr char kAIMThreadsVisibilityMode[] = "3";
+// The value for the "csui" (Conversational Search UI) query parameter.
+// value "3" enables CGI parameter color-scheme triggering (cs=0|1).
+constexpr char kAIMConversationalSearchUI[] = "3";
 // Google Search page shown in the NTP's left-hand side (LHS) panel, relative
 // to the Google base URL.
 constexpr char kLhsRelativeUrl[] = "/search?nem=341";
@@ -226,12 +230,12 @@ bool AreActionChipsEnabled(Profile* profile) {
       ntp_realbox::IsNtpRealboxNextEnabled(profile) &&
       base::FeatureList::IsEnabled(ntp_features::kNtpNextFeatures);
   bool action_chips_eligible =
-      (base::FeatureList::IsEnabled(ntp_features::kNtpScaledActionChips) ||
-       base::FeatureList::IsEnabled(ntp_features::kNtpScaledActionChipsSmall))
-          ? ntp_next_features_enabled
-          : (aim_eligibility_service &&
-             aim_eligibility_service->IsAimEligible() &&
-             num_tools_eligible >= 2);
+      ntp_next_features_enabled &&
+      ((base::FeatureList::IsEnabled(ntp_features::kNtpScaledActionChips) ||
+        base::FeatureList::IsEnabled(
+            ntp_features::kNtpScaledActionChipsSmall)) ||
+       (aim_eligibility_service && aim_eligibility_service->IsAimEligible() &&
+        num_tools_eligible >= 2));
   return action_chips_eligible &&
          (!ntp_features::kNtpNextDisablementParam.Get() ||
           profile->GetPrefs()->GetBoolean(prefs::kNtpToolChipsVisible));
@@ -281,11 +285,21 @@ base::DictValue NewTabPageUI::GetLoadTimeData(
       /*is_contextual_tasks=*/true);
   dict.Set("threadsUrl", threads_url.spec());
 
+  const auto* theme_service = ThemeServiceFactory::GetForProfile(profile);
+  const bool is_dark_mode =
+      theme_service && theme_service->BrowserUsesDarkColors();
   GURL expanded_lhs_url = google_base_url.Resolve(kLhsRelativeUrl);
   if (ntp_features::kNtpThreadsRailHybridParam.Get()) {
     expanded_lhs_url = net::AppendQueryParameter(expanded_lhs_url, "atvm",
                                                  kAIMThreadsVisibilityMode);
   }
+  expanded_lhs_url =
+      lens::AppendDarkModeParamToURL(expanded_lhs_url, is_dark_mode);
+  expanded_lhs_url = net::AppendQueryParameter(expanded_lhs_url, "csui",
+                                               kAIMConversationalSearchUI);
+  expanded_lhs_url = net::AppendQueryParameter(
+      expanded_lhs_url, lens::kLanguageCodeParameterKey,
+      g_browser_process->GetApplicationLocale());
   if (auto forced_host = contextual_tasks::GetForcedEmbeddedPageHost()) {
     expanded_lhs_url = forced_host->ApplyToUrl(expanded_lhs_url);
   }
@@ -889,15 +903,6 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->AddResourcePaths(kNewTabSharedResources);
 #endif  // BUILDFLAG(OPTIMIZE_WEBUI)
 
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-  // Overrides the mapping installed by SetupWebUIDataSource() above, so the
-  // stable logo path serves the 2026 version of the Google logo.
-  if (UseGoogleLogo26()) {
-    source->AddResourcePath("icons/google_logo.svg",
-                            IDR_NEW_TAB_PAGE_BRANDED_GOOGLE_LOGO_SVG);
-  }
-#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
-
   // Allow embedding of iframes for the doodle and
   // chrome-untrusted://new-tab-page for other external content and resources.
   // NOTE: Use caution when overriding content security policies as that cean
@@ -979,14 +984,6 @@ NewTabPageUI::NewTabPageUI(content::WebUI* web_ui)
   }
 
   CreateAndAddNewTabPageUiHtmlSource(profile_, session_allows_drag_and_drop);
-
-  // Add a handler to provide pluralized strings.
-  auto plural_string_handler = std::make_unique<PluralStringHandler>();
-  plural_string_handler->AddLocalizedString("modulesTabGroupsTabsText",
-                                            IDS_SAVED_TAB_GROUP_TABS_COUNT);
-  plural_string_handler->AddLocalizedString("sharingTabs",
-                                            IDS_COMPOSE_SHARING_TABS);
-  web_ui->AddMessageHandler(std::move(plural_string_handler));
 
   content::URLDataSource::Add(profile_,
                               std::make_unique<SanitizedImageSource>(profile_));
@@ -1175,6 +1172,16 @@ void NewTabPageUI::BindInterface(
 }
 
 void NewTabPageUI::BindInterface(
+    mojo::PendingReceiver<plural_string::mojom::PluralStringProvider>
+        receiver) {
+  PluralStringProvider::MessageIdMap message_ids =
+      GetSearchboxPluralStringIds();
+  message_ids.emplace("modulesTabGroupsTabsText",
+                      IDS_SAVED_TAB_GROUP_TABS_COUNT);
+  PluralStringProvider::Create(std::move(receiver), std::move(message_ids));
+}
+
+void NewTabPageUI::BindInterface(
     mojo::PendingReceiver<composebox::mojom::PageHandlerFactory>
         pending_receiver) {
   auto* aim_service = AimEligibilityServiceFactory::GetForProfile(profile_);
@@ -1260,7 +1267,7 @@ void NewTabPageUI::CreatePageHandler(
     mojo::PendingRemote<new_tab_page::mojom::Page> pending_page,
     mojo::PendingReceiver<new_tab_page::mojom::PageHandler>
         pending_page_handler) {
-  DCHECK(pending_page.is_valid());
+  CHECK(pending_page.is_valid(), base::NotFatalUntil::M162);
 
   page_handler_ = std::make_unique<NewTabPageHandler>(
       std::move(pending_page_handler), std::move(pending_page), profile_,
@@ -1314,7 +1321,7 @@ void NewTabPageUI::CreatePageHandler(
     mojo::PendingRemote<most_visited::mojom::MostVisitedPage> pending_page,
     mojo::PendingReceiver<most_visited::mojom::MostVisitedPageHandler>
         pending_page_handler) {
-  DCHECK(pending_page.is_valid());
+  CHECK(pending_page.is_valid(), base::NotFatalUntil::M162);
   most_visited_page_handler_ = std::make_unique<MostVisitedHandler>(
       std::move(pending_page_handler), std::move(pending_page), profile_,
       web_contents(),

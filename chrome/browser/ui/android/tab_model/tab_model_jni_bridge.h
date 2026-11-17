@@ -60,7 +60,7 @@ class TabModelJniBridge : public TabModel {
                                       int64_t native_browser_window_ptr,
                                       int new_index);
   void SetMuteSetting(const std::vector<TabAndroid*>& tabs, bool mute);
-  int32_t GetSessionIdForTesting();
+  int32_t GetNativeSessionId();
   chrome::android::ActivityType GetActivityTypeForTesting();
 
   // TabModel::
@@ -147,11 +147,14 @@ class TabModelJniBridge : public TabModel {
   std::set<split_tabs::SplitTabId> ListSplits() override;
   std::optional<tab_groups::TabGroupVisualData> GetTabGroupVisualData(
       tab_groups::TabGroupId group_id) override;
+  std::optional<split_tabs::SplitTabVisualData> GetSplitTabVisualData(
+      split_tabs::SplitTabId split_id) override;
   gfx::Range GetTabGroupTabIndices(tab_groups::TabGroupId group_id) override;
   std::optional<tab_groups::TabGroupId> CreateTabGroup(
       const std::vector<tabs::TabHandle>& tabs) override;
   std::optional<split_tabs::SplitTabId> CreateSplit(
-      const std::vector<tabs::TabHandle>& tabs) override;
+      const std::vector<tabs::TabHandle>& tabs,
+      const split_tabs::SplitTabVisualData& visual_data) override;
   void SetTabGroupVisualData(
       tab_groups::TabGroupId group_id,
       const tab_groups::TabGroupVisualData& visual_data) override;

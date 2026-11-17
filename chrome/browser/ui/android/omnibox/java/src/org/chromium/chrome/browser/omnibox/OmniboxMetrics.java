@@ -169,7 +169,7 @@ public class OmniboxMetrics {
      * Record how long the Suggestion List needed to measure its content and children in wall time.
      */
     public static TimingMetric recordSuggestionListMeasureWallTime() {
-        return TimingMetric.shortThreadTime("Android.Omnibox.SuggestionList.MeasureTime3");
+        return TimingMetric.shortUptime("Android.Omnibox.SuggestionList.MeasureTime3");
     }
 
     /**
@@ -182,7 +182,7 @@ public class OmniboxMetrics {
 
     /** Record the amount of wall time needed to create a new suggestion view. */
     public static TimingMetric recordSuggestionViewCreateWallTime() {
-        return TimingMetric.shortThreadTime("Android.Omnibox.SuggestionView.CreateTime3");
+        return TimingMetric.shortUptime("Android.Omnibox.SuggestionView.CreateTime3");
     }
 
     /** Record thread time spent inflating the Suggestion dropdown. */
@@ -238,8 +238,8 @@ public class OmniboxMetrics {
     }
 
     /**
-     * Record the total cumulative thread time spent creating all views in the PrewarmingRecycled
-     * View Pool when async view inflation is disabled.
+     * Record the total cumulative thread time spent creating all views in the
+     * PreWarmingRecycledViewPool.
      */
     public static void recordPreWarmingViewsThreadTime(long totalThreadTimeMs) {
         RecordHistogram.recordMediumTimesHistogram(
@@ -247,21 +247,12 @@ public class OmniboxMetrics {
     }
 
     /**
-     * Record the total cumulative wall time spent creating all views in the PrewarmingRecycled View
-     * Pool when async view inflation is disabled.
+     * Record the total cumulative wall time spent creating all views in the
+     * PreWarmingRecycledViewPool.
      */
     public static void recordPreWarmingViewsWallTime(long totalWallTimeMs) {
         RecordHistogram.recordMediumTimesHistogram(
                 "Android.Omnibox.SuggestionsDropdown.PreWarmingViewsWallTime", totalWallTimeMs);
-    }
-
-    /**
-     * Record the number of views successfully pre-created in the PrewarmingRecycledViewPool when
-     * async view inflation is disabled.
-     */
-    public static void recordPreWarmedViewsCount(int count) {
-        RecordHistogram.recordExactLinearHistogram(
-                "Android.Omnibox.SuggestionsDropdown.PreWarmedViewsCount", count, 30);
     }
 
     /**

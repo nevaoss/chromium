@@ -37,6 +37,8 @@ BASE_DECLARE_FEATURE(kGlicAndroidOffscreenRendering);
 
 BASE_DECLARE_FEATURE(kGlicClearTurnIdOnPanelWillOpen);
 
+BASE_DECLARE_FEATURE(kGlicChromeStatusIconWin);
+
 BASE_DECLARE_FEATURE(kGlicOSIconVariant);
 extern const base::FeatureParam<int> kGlicOSIconVariantParam;
 
@@ -75,8 +77,6 @@ BASE_DECLARE_FEATURE(kGlicDynamicChromeTools);
 BASE_DECLARE_FEATURE(kGlicLiveMode);
 
 BASE_DECLARE_FEATURE(kGlicSummarizeVideoSuggestion);
-
-BASE_DECLARE_FEATURE(kGlicFixTimeToFirstQueryKillSwitch);
 
 BASE_DECLARE_FEATURE(kGlicContextMenu);
 extern const base::FeatureParam<std::string> kGlicContextMenuArm;
@@ -159,7 +159,6 @@ BASE_DECLARE_FEATURE(kGlicWebClientLoadTimes);
 extern const base::FeatureParam<int> kGlicPreLoadingTimeMs;
 extern const base::FeatureParam<int> kGlicMinLoadingTimeMs;
 extern const base::FeatureParam<int> kGlicMaxLoadingTimeMs;
-extern const base::FeatureParam<int> kGlicReloadMaxLoadingTimeMs;
 
 BASE_DECLARE_FEATURE(kGlicContextualCueingV2AutoSubmit);
 BASE_DECLARE_FEATURE(kGlicContextualCuesHandleEdu);
@@ -207,8 +206,6 @@ BASE_DECLARE_FEATURE(kGlicOptInDialogA11yFix);
 BASE_DECLARE_FEATURE(kGlicStructuredYieldMetadata);
 
 BASE_DECLARE_FEATURE(kGlicNoWebview);
-// Returns true if kGlicNoWebview is enabled or if GEiC is enabled.
-bool IsGlicNoWebviewEnabled();
 // When enabled, appends the primary account email as the authuser query
 // parameter to the guest URL when NoWebview is enabled.
 BASE_DECLARE_FEATURE(kGlicSetAuthUser);
@@ -242,6 +239,9 @@ BASE_DECLARE_FEATURE(kGlicColdWarmingUsePerformanceManager);
 BASE_DECLARE_FEATURE(kGlicSsr);
 
 BASE_DECLARE_FEATURE(kGlicClientDataStorage);
+
+BASE_DECLARE_FEATURE(kGlicShowNotTellTutorials);
+extern const base::FeatureParam<int> kGlicShowNotTellTutorialsArm;
 }  // namespace features
 
 #endif  // CHROME_BROWSER_GLIC_PUBLIC_FEATURES_H_

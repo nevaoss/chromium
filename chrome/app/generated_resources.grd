@@ -1084,9 +1084,6 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_CONTENT_CONTEXT_AUTOFILL_FEEDBACK" desc="The name of the Autofill Feedback command in the content area context menu">
             Help improve autofill
           </message>
-          <message name="IDS_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS_SELECT_PASSWORD" desc="This is a context menu entry in the passwords submenu. It triggers the password selection bubble.">
-            Select password
-          </message>
           <message name="IDS_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS_IMPORT_PASSWORDS" desc="This is a context menu entry. It opens chrome://password-manager. It can be either in the context menu (for non-syncing users) or in the passwords submenu (for syncing users).">
             Import passwords
           </message>
@@ -1444,9 +1441,6 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_CONTENT_CONTEXT_AUTOFILL_PREDICTION_IMPROVEMENTS" desc="In Title Case: The name of the Autofill manual fallback for payment methods attribute command in the content area context menu." translateable="false">
             Autocomplete
           </message>
-          <message name="IDS_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS_SELECT_PASSWORD" desc="In Title Case: This is a context menu entry in the passwords submenu. It triggers the password selection bubble.">
-            Select Password
-          </message>
           <message name="IDS_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS_IMPORT_PASSWORDS" desc="In Title Case: This is a context menu entry. It opens chrome://password-manager. It can be either in the context menu (for non-syncing users) or in the passwords submenu (for syncing users).">
             Import Passwords
           </message>
@@ -1487,6 +1481,9 @@ are declared in tools/grit/grit_args.gni.
           Hide This Plugin
         </message>
       </if>
+      <message name="IDS_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS_SELECT_PASSWORD" desc="This is a context menu entry in the passwords submenu. It triggers the password selection bubble.">
+        Select password
+      </message>
       <!-- Since Flash is a proper noun we don't have to distinguish between title and non-title case. -->
       <message name="IDS_CONTENT_CONTEXT_ENABLE_FLASH" desc="The name of the Enable Flash command on the blocked plugin context menu. 'Flash' is the name of a plugin and should not be translated.">
         Enable Flash
@@ -7996,7 +7993,7 @@ Keep your key file in a safe place. You will need it to create new versions of y
         Show cards
       </message>
       <message name="IDS_NTP_CUSTOMIZE_SHOW_FOOTER_LABEL" desc="The label for the option to show footer in the customization menu on the New Tab Page">
-        Show footer on New Tab page
+        Show footer on new tab page
       </message>
       <message name="IDS_NTP_CUSTOMIZE_SHOW_CHIPS_LABEL" desc="The label for the option to show the Google Search tools options in the New Tab Page" meaning="Toggle to display/hide the Search tool options in the New Tab Page.">
         Show options
@@ -9357,10 +9354,10 @@ Keep your key file in a safe place. You will need it to create new versions of y
         Learn about how your browser is managed
       </message>
       <message name="IDS_HIDE_NEW_TAB_FOOTER" desc="Label for option to hide New Tab Footer feature, a UI that may show at the bottom of the New Tab Page.">
-        Hide footer on New Tab page
+        Hide footer on new tab page
       </message>
       <message name="IDS_NEW_TAB_FOOTER_BACKGROUND_ATTRIBUTION_ARIA_DESC" desc="Attribution shown in the New Tab footer when the New Tab page has a background applied.">
-        Learn more about your New Tab page background
+        Learn more about your new tab page background
       </message>
       <message name="IDS_NEW_TAB_FOOTER_BACKGROUND_ATTRIBUTION_TEXT" desc="ARIA (accessibility) role description for a link in the New Tab footer which opens the page for the New Tab page background.">
         <ph name="ATTRIBUTION_LINE_1">$1<ex>Background Name</ex></ph>, <ph name="ATTRIBUTION_LINE_2">$2<ex>Artist Name</ex></ph>
@@ -10736,11 +10733,20 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_ORGANIZER_PANEL_NO_RECENTLY_CLOSED_TABS" desc="Text shown in the recently closed tabs section of the organizer panel when there are no recently closed tabs.">
         No recently closed tabs
       </message>
+      <message name="IDS_ORGANIZER_PANEL_COLLAPSE" desc="The tooltip for an organizer panel section header when it is expanded.">
+        Collapse
+      </message>
+      <message name="IDS_ORGANIZER_PANEL_EXPAND" desc="The tooltip for an organizer panel section header when it is collapsed.">
+        Expand
+      </message>
       <message name="IDS_ORGANIZER_PANEL_SHOW_ALL" desc="The label for the menu item in an organizer panel list section header that shows all items in the section.">
         Show all
       </message>
       <message name="IDS_ORGANIZER_PANEL_SHOW_SOME" desc="The label for the menu item in an organizer panel list section header that limits the section to showing a few items.">
         Show some
+      </message>
+      <message name="IDS_ORGANIZER_PANEL_OPTIONS" desc="The tooltip for the button in an organizer panel section header that opens the options menu.">
+        Options
       </message>
       <message name="IDS_ORGANIZER_PANEL_SPLIT_VIEW" desc="The title for a split view item in an organizer panel list section.">
         Split view
@@ -14089,7 +14095,7 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
           Homepage
         </message>
         <message name="IDS_RESET_PROFILE_SETTINGS_HOMEPAGE_IS_NTP" desc="Tag in the feedback details of the Reset Profile Settings dialog">
-          Homepage is the New Tab page
+          Homepage is the new tab page
         </message>
         <message name="IDS_RESET_PROFILE_SETTINGS_YES" desc="'Yes' value for 'Homepage is NTP' and 'Show homebutton' in the feedback details of the Reset Profile Settings dialog">
           Yes
@@ -14141,20 +14147,11 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
       <message name="IDS_SEND_TAB_TO_SELF_SEND_BUTTON_LABEL" desc="The label of the Send button in the Send Tab to Self bubble.">
         Send
       </message>
-      <message name="IDS_TOOLBAR_BUTTON_SEND_TAB_TO_SELF_FROM_DEVICE" desc="The label for the device a received tab was sent from. Shown in the toolbar bubble.">
-        Shared from <ph name="DEVICE_NAME">$1<ex>Ted's Pixel2</ex></ph>
-      </message>
-      <message name="IDS_TOOLBAR_BUTTON_SEND_TAB_TO_SELF_TITLE" desc="The title for the received tab dialog shown from the toolbar button.">
-        Page shared from another device
-      </message>
       <message name="IDS_SEND_TAB_TO_SELF_DEVICE_PICKER_TITLE" desc="Title for the Send Tab To Self device picker bubble.">
         Choose a device
       </message>
       <message name="IDS_SEND_TAB_TO_SELF_DEVICE_PICKER_SUBTITLE" desc="Subtitle for the Send Tab To Self device picker bubble.">
         Select the device where you want to get this link.
-      </message>
-      <message name="IDS_TOOLBAR_BUTTON_SEND_TAB_TO_SELF_BUTTON_LABEL" desc="The label for the button in the received tab dialog shown from the toolbar button.">
-        Open in New Tab
       </message>
       <message name="IDS_MENU_SEND_TAB_TO_SELF" desc="The label of a menu entry to share the current tab to another device">
         Send to your &amp;device

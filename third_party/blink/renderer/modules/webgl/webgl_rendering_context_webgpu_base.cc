@@ -32,6 +32,7 @@
 #include "third_party/blink/renderer/modules/webgl/webgl_renderbuffer.h"
 #include "third_party/blink/renderer/modules/webgl/webgl_sampler.h"
 #include "third_party/blink/renderer/modules/webgl/webgl_shader.h"
+#include "third_party/blink/renderer/modules/webgl/webgl_shader_precision_format.h"
 #include "third_party/blink/renderer/modules/webgl/webgl_sync.h"
 #include "third_party/blink/renderer/modules/webgl/webgl_texture.h"
 #include "third_party/blink/renderer/modules/webgl/webgl_transform_feedback.h"
@@ -959,8 +960,31 @@ void WebGLRenderingContextWebGPUBase::cullFace(GLenum mode) {
   driver_gl_.fn.glCullFaceFn(mode);
 }
 
-void WebGLRenderingContextWebGPUBase::deleteBuffer(WebGLBuffer*) {
-  NOTIMPLEMENTED();
+void WebGLRenderingContextWebGPUBase::deleteBuffer(WebGLBuffer* buffer) {
+  if (!DeleteObject(buffer)) {
+    return;
+  }
+
+  // glDeleteBuffers reset the GL bindings to 0. Do the same for Blink's.
+  for (Member<WebGLBuffer>* binding : {
+           &array_buffer_binding_,
+           &copy_read_buffer_binding_,
+           &copy_write_buffer_binding_,
+           &element_array_buffer_binding_,
+           &pixel_pack_buffer_binding_,
+           &pixel_unpack_buffer_binding_,
+           &transform_feedback_buffer_binding_,
+           &uniform_buffer_binding_,
+       }) {
+    if (*binding == buffer) {
+      *binding = nullptr;
+    }
+  }
+  // TODO(413078308): With VAOs and transform feedback objects, call their
+  // UnbindBuffer(). It releases their attachment to the buffer, otherwise the
+  // GL buffer is never deleted. For VAOs, this replaces
+  // element_array_buffer_binding_. Also clear the indexed bindings once
+  // implemented.
 }
 
 void WebGLRenderingContextWebGPUBase::deleteFramebuffer(
@@ -1036,9 +1060,21 @@ void WebGLRenderingContextWebGPUBase::depthRange(GLfloat z_near,
   driver_gl_.fn.glDepthRangeFn(z_near, z_far);
 }
 
-void WebGLRenderingContextWebGPUBase::detachShader(WebGLProgram*,
-                                                   WebGLShader*) {
-  NOTIMPLEMENTED();
+void WebGLRenderingContextWebGPUBase::detachShader(WebGLProgram* program,
+                                                   WebGLShader* shader) {
+  if (!ValidateProgramOrShader("detachShader", program) ||
+      !ValidateProgramOrShader("detachShader", shader)) {
+    return;
+  }
+
+  // ANGLE generates INVALID_OPERATION if the shader isn't attached.
+  RETURN_IF_GL_ERROR(
+      driver_gl_.fn.glDetachShaderFn(program->Object(), shader->Object()));
+
+  // Update the JS wrappers. This may delete a shader marked for deletion.
+  // ANGLE accepted the detach, so Blink must agree the shader was attached.
+  CHECK(program->DetachShader(shader));
+  shader->OnDetached(ContextGL());
 }
 
 void WebGLRenderingContextWebGPUBase::disable(GLenum cap) {
@@ -1198,9 +1234,20 @@ WebGLActiveInfo* WebGLRenderingContextWebGPUBase::getActiveUniform(
 }
 
 std::optional<HeapVector<Member<WebGLShader>>>
-WebGLRenderingContextWebGPUBase::getAttachedShaders(WebGLProgram*) {
-  NOTIMPLEMENTED();
-  return {};
+WebGLRenderingContextWebGPUBase::getAttachedShaders(WebGLProgram* program) {
+  if (!ValidateProgramOrShader("getAttachedShaders", program)) {
+    return std::nullopt;
+  }
+
+  // Must return the JS wrappers, so use Blink's tracking.
+  HeapVector<Member<WebGLShader>> shader_objects;
+  for (GLenum shader_type : {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER}) {
+    WebGLShader* shader = program->GetAttachedShader(shader_type);
+    if (shader) {
+      shader_objects.push_back(shader);
+    }
+  }
+  return shader_objects;
 }
 
 GLint WebGLRenderingContextWebGPUBase::getAttribLocation(WebGLProgram* program,
@@ -1427,13 +1474,23 @@ WebGLShaderPrecisionFormat*
 WebGLRenderingContextWebGPUBase::getShaderPrecisionFormat(
     GLenum shader_type,
     GLenum precision_type) {
-  NOTIMPLEMENTED();
-  return nullptr;
+  std::array<GLint, 2> range = {0, 0};
+  GLint precision = 0;
+  RETURN_IF_GL_ERROR(driver_gl_.fn.glGetShaderPrecisionFormatFn(
+                         shader_type, precision_type, range.data(), &precision),
+                     nullptr);
+  return MakeGarbageCollected<WebGLShaderPrecisionFormat>(range[0], range[1],
+                                                          precision);
 }
 
-String WebGLRenderingContextWebGPUBase::getShaderSource(WebGLShader*) {
-  NOTIMPLEMENTED();
-  return {};
+String WebGLRenderingContextWebGPUBase::getShaderSource(WebGLShader* shader) {
+  if (!ValidateProgramOrShader("getShaderSource", shader)) {
+    return String();
+  }
+
+  // ANGLE only has the ASCII-sanitized copy. Return the original source.
+  // A null String would become JS null, which WebGL reserves for errors.
+  return shader->Source().IsNull() ? g_empty_string : shader->Source();
 }
 
 std::optional<Vector<String>>
@@ -1481,8 +1538,11 @@ ScriptValue WebGLRenderingContextWebGPUBase::getVertexAttrib(ScriptState*,
 
 int64_t WebGLRenderingContextWebGPUBase::getVertexAttribOffset(GLuint index,
                                                                GLenum pname) {
-  NOTIMPLEMENTED();
-  return 0;
+  void* pointer = nullptr;
+  RETURN_IF_GL_ERROR(driver_gl_.fn.glGetVertexAttribPointervRobustANGLEFn(
+                         index, pname, 1, nullptr, &pointer),
+                     0);
+  return static_cast<int64_t>(reinterpret_cast<intptr_t>(pointer));
 }
 
 void WebGLRenderingContextWebGPUBase::hint(GLenum target, GLenum mode) {
@@ -3895,7 +3955,8 @@ cc::Layer* WebGLRenderingContextWebGPUBase::CcLayer() const {
   return nullptr;
 }
 
-void WebGLRenderingContextWebGPUBase::Reshape(int width, int height) {
+void WebGLRenderingContextWebGPUBase::Reshape(gfx::Size old_size,
+                                              gfx::Size new_size) {
   NOTIMPLEMENTED();
 }
 
@@ -4138,12 +4199,13 @@ void WebGLRenderingContextWebGPUBase::InitializeContext() {
   device_ = wgpu::Device::Acquire(reinterpret_cast<WGPUDevice>(wgpuDevice));
 
   // Create a GL Context.
-  // TODO(413078308): Request version 2 vs 3 depending on WebGL version.
   // TODO(413078308): Request a WebGL compatibility context when requesting
   // extensions is supported both for basic functionality and WebGL extensions.
   const auto context_attribs = std::to_array<EGLint>({
+      // WebGL 1.0 is based on OpenGL ES 2.0, WebGL 2.0 on OpenGL ES 3.0.
+      // ANGLE then rejects the ES3-only enums on WebGL 1.0 contexts.
       EGL_CONTEXT_MAJOR_VERSION,
-      IsWebGL() ? 3 : 2,
+      IsWebGL2() ? 3 : 2,
       EGL_CONTEXT_MINOR_VERSION,
       0,
       EGL_CONTEXT_WEBGL_COMPATIBILITY_ANGLE,

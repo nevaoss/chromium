@@ -10,6 +10,7 @@
 <translation id="1016495303386450659">Закладку оновлено</translation>
 <translation id="1018804590490383958">Відсканувати й заповнити автоматично</translation>
 <translation id="1019990162050689579">Історія дій у додатках Gemini</translation>
+<translation id="102471647093736603">Утримуйте, щоб перемістити</translation>
 <translation id="102645702181682900">Завдання розпочато</translation>
 <translation id="102916930470544692">Ключ доступу</translation>
 <translation id="1030376737535466765">Відкрити Менеджер паролів</translation>
@@ -66,6 +67,7 @@
 <translation id="1179890706672152411">Пам’ять заповнена</translation>
 <translation id="1181037720776840403">Видалити</translation>
 <translation id="1190609913194133056">Центр сповіщень</translation>
+<translation id="1191987227666124897">Запит на відмову</translation>
 <translation id="1196534270480620381">Створи короткий підсумок цієї сторінки</translation>
 <translation id="1199631150313925648">Ввести вручну</translation>
 <translation id="1199963004393929848">Зелена тема</translation>
@@ -193,10 +195,10 @@
 <translation id="154312949627292154">Відкривайте вкладки, надіслані з інших пристроїв, на екрані блокування.</translation>
 <translation id="1544653821167545205">Підсумуй вміст сторінки</translation>
 <translation id="1545749641540134597">Сканувати QR-код</translation>
-<translation id="1545757265410828525">Історія цін</translation>
 <translation id="1547610699249301703">Діліться паролями</translation>
 <translation id="1554043146674176775">Вимкнути режим ШІ</translation>
 <translation id="1554477036522844996">Нове вікно</translation>
+<translation id="1557806604681757705">ваш комп’ютер</translation>
 <translation id="1558391695376153246">Закрити анонімні вкладки</translation>
 <translation id="1560153516220021659">Згорнута кнопка на додатковій панелі інструментів</translation>
 <translation id="1562601408588733317">Керуйте пошуком і заповненням інформації за допомогою Gemini</translation>
@@ -411,7 +413,7 @@
 <translation id="2219935992754556187">Chrome захищає ваші чутливі дані за допомогою функції Face ID.</translation>
 <translation id="2220529011494928058">Повідомити про проблему</translation>
 <translation id="2223461067862937305">Створити QR-код</translation>
-<translation id="222798989929574238">Ви виконали пошук за понад 20 фотографіями</translation>
+<translation id="222798989929574238">Ви використали для пошуку понад 20 фотографій</translation>
 <translation id="2230173723195178503">Веб-сторінку завантажено</translation>
 <translation id="2236949375853147973">Мої дії</translation>
 <translation id="2237869114829007407">Отримуйте огляди й ключову статистику для будь-якої сторінки або теми</translation>
@@ -483,7 +485,6 @@
 <translation id="2434405374328098816">Ви вже зберегли пароль для користувача <ph name="USERNAME" /> на веб-сайті <ph name="WEBSITE" /></translation>
 <translation id="2434918313224755415">Щоб переглядати вебсторінки в анонімному режимі, прокрутіть екран уліво.</translation>
 <translation id="2435457462613246316">Показати пароль</translation>
-<translation id="2451607499823206582">Відстеження</translation>
 <translation id="2458827363789845126">{count,plural, =1{{count} запис історії}one{{count} запис історії}few{{count} записи історії}many{{count} записів історії}other{{count} запису історії}}</translation>
 <translation id="2461070143328828326">Налаштування паролю</translation>
 <translation id="2462736546165239215">Тут ви можете переглянути всю історію веб-перегляду.</translation>
@@ -623,6 +624,7 @@
 <translation id="2870560284913253234">Сайт</translation>
 <translation id="2876369937070532032">Надсилає в Google URL-адреси деяких відвіданих сторінок, коли ваша безпека під загрозою</translation>
 <translation id="2883151425485251736">Переглядайте й редагуйте теми, які ви сховали в обліковому записі</translation>
+<translation id="2884437560239137197">Зверніть увагу</translation>
 <translation id="288655811176831528">Закрити вкладку</translation>
 <translation id="2888631381369839306">Сповіщення про відстеження цін увімкнено</translation>
 <translation id="2893168226686371498">Веб-переглядач за умовчанням</translation>
@@ -1208,6 +1210,7 @@
 <translation id="4808744395915275922">Оновлення</translation>
 <translation id="4813345808229079766">З’єднання</translation>
 <translation id="4821595350501541683">Вкладки було закрито, а дані веб-перегляду – видалено</translation>
+<translation id="4823322556950229674">Щоб перемістити адресний рядок і кнопку "Назад" у нижню частину екрана, натисніть і утримуйте їх</translation>
 <translation id="4824480232751123840">Об’єм</translation>
 <translation id="4824497107140370669">{count,plural, =0{{domain}}=1{{domain} і ще 1}one{{domain} і ще {count}}few{{domain} і ще {count}}many{{domain} і ще {count}}other{{domain} і ще {count}}}</translation>
 <translation id="4826588772550366629">камеру та мікрофон</translation>
@@ -1398,7 +1401,6 @@
 <translation id="5371112366564891538">Збільшити розмір тексту</translation>
 <translation id="5376135254804080693">Скасувати вибір</translation>
 <translation id="537853552771686272">Керуйте темами й сайтами, які вас цікавлять</translation>
-<translation id="5385892579392932755">ваш ноутбук</translation>
 <translation id="5390458669633674385">{count,plural, =1{Закрито {count} вкладку}one{Закрито {count} вкладку}few{Закрито {count} вкладки}many{Закрито {count} вкладок}other{Закрито {count} вкладки}}</translation>
 <translation id="5394975111793637642">Сховати картку "Вибрані відгуки про товари"</translation>
 <translation id="5414763847370083940">Ви отримаєте сповіщення, коли на якомусь сайті знизиться ціна.</translation>
@@ -1463,6 +1465,7 @@
 <translation id="559567008082979829">Налаштуйте автоматичне видалення завантажених файлів через місяць.</translation>
 <translation id="5596627076506792578">Інші опції</translation>
 <translation id="560322036295180549">Вимкнено адміністратором організації</translation>
+<translation id="5604254791550001355">Редагувати запит</translation>
 <translation id="5611398002774823980">Зберегти в обліковому записі</translation>
 <translation id="5612225021788368236">Закрити пропозицію щодо вебпереглядача за умовчанням</translation>
 <translation id="561269594905823128">Натисніть <ph name="BEGIN_BOLD" />Вибрати файл<ph name="END_BOLD" /></translation>
@@ -1528,7 +1531,6 @@
 <translation id="5768870767339201169">Продовжуйте роботу з місця, де ви зупинилися</translation>
 <translation id="5779117921996157216">{count,plural, =1{У вас є {count} зламаний пароль, який може загрожувати вашій безпеці. Змініть його, щоб захистити свої дані.}one{У вас є {count} зламаний пароль, який може загрожувати вашій безпеці. Змініть їх, щоб захистити свої дані.}few{У вас є {count} зламані паролі, які можуть загрожувати вашій безпеці. Змініть їх, щоб захистити свої дані.}many{У вас є {count} зламаних паролів, які можуть загрожувати вашій безпеці. Змініть їх, щоб захистити свої дані.}other{У вас є {count} зламаного пароля, які можуть загрожувати вашій безпеці. Змініть їх, щоб захистити свої дані.}}</translation>
 <translation id="5791632441210678828">Кнопка сортування для фіду підписок.</translation>
-<translation id="5799263916847593256">Відкрийте, щоб переглянути історію цін</translation>
 <translation id="5801568494490449797">Налаштування</translation>
 <translation id="5803566855766646066">Відхилити цю нову картку?</translation>
 <translation id="5804241973901381774">Дозволи</translation>
@@ -1666,6 +1668,7 @@
 <translation id="6227958838185907047">Увійти як <ph name="NAME" /> (<ph name="EMAIL" />)</translation>
 <translation id="6231782223312638214">Пропозиції</translation>
 <translation id="6232329973559504466">Пошук в анонімному режимі</translation>
+<translation id="6233463157595806945">Потрібні вхідні дані</translation>
 <translation id="6234310016144827337">Перевірте з’єднання й повторіть спробу</translation>
 <translation id="6236952928980352967">Відновити попередження</translation>
 <translation id="623755660902014047">Режим читання</translation>
@@ -1696,6 +1699,7 @@
 <translation id="6307792728709337290">Збережіть картку в обліковому записі Google, щоб автоматично заповнювати її дані під час цієї і майбутніх покупок у Chrome.</translation>
 <translation id="6316141353357700666">Виберіть потрібний пароль зі списку.</translation>
 <translation id="6321526113093607004">Додати в закладки</translation>
+<translation id="6322064144568952786">Завдання не виконано</translation>
 <translation id="6324054713176642683">Виберіть тему, колір або завантажте власну фотографію.</translation>
 <translation id="6327249202318869726">Gemini вимкнено для вашого облікового запису. Щоб дізнатися більше, зверніться до свого адміністратора.</translation>
 <translation id="6331836477476466332">Безпечніший і потужніший вебпереглядач</translation>
@@ -1878,7 +1882,6 @@
 <translation id="6815692190508268848">Налаштування зовнішнього вигляду застосовано</translation>
 <translation id="681631578600400068">Збережіть дані посвідчення водія</translation>
 <translation id="6825078212112407882">{count,plural, =1{Закладку збережено у вашому обліковому записі Google ({email})}one{{count} закладку збережено у вашому обліковому записі Google ({email}).}few{{count} закладки збережено у вашому обліковому записі Google ({email}).}many{{count} закладок збережено у вашому обліковому записі Google ({email}).}other{{count} закладки збережено у вашому обліковому записі Google ({email}).}}</translation>
-<translation id="6826004672264649705">Ви вже відстежуєте ціну на цей товар. Відкрийте, щоб переглянути історію цін.</translation>
 <translation id="6830728435402077660">Не захищено</translation>
 <translation id="6831043979455480757">Перекласти</translation>
 <translation id="6842136130964845393">Щоб не втратити доступ до своїх збережених паролів, підтвердьте свою особу</translation>
@@ -2013,6 +2016,7 @@
 <translation id="7241135764990439166">Анонімний режим недоступний</translation>
 <translation id="7245288034498365666">Організовуйте роботу й заощаджуйте час</translation>
 <translation id="7253951228444156601">Перевірка паролів…</translation>
+<translation id="725583671816239562">Завдання виконано</translation>
 <translation id="7261217796641151584">Поділитися групою</translation>
 <translation id="7266578100016339897">Так ви зможете краще впорядкувати роботу. Це можна будь-коли змінити в налаштуваннях.</translation>
 <translation id="7270491814777319521">Застосовуються <ph name="BEGIN_LINK" />Загальні положення й умови Google<ph name="END_LINK" /> і <ph name="BEGIN_LINK" />Примітка про конфіденційність додатків Gemini<ph name="END_LINK" />. Gemini – це штучний інтелект, і він може припускатися помилок (зокрема щодо людей).</translation>
@@ -2055,6 +2059,7 @@
 <translation id="7411034503745719324"><ph name="EMAIL" />. <ph name="MANAGED_STATUS" />.</translation>
 <translation id="7412027924265291969">Продовжити</translation>
 <translation id="741204030948306876">Увімкнути</translation>
+<translation id="7417055777338419059">Створюйте код, тексти й презентації</translation>
 <translation id="7419565702166471774">Завжди використовувати надійні з’єднання</translation>
 <translation id="7423098979219808738">Спершу запитувати</translation>
 <translation id="7425053386765766120">Додати спосіб оплати…</translation>
@@ -2319,7 +2324,6 @@
 <translation id="8187200657863701733">Поточний рівень Chrome</translation>
 <translation id="8189484403434216074">Створіть групу вкладок</translation>
 <translation id="8189615296021678665">Натисніть "Зберегти", щоб легко отримати доступ до цього пароля під час наступного входу.</translation>
-<translation id="8193953846147532858"><ph name="BEGIN_LINK" />Ваші пристрої<ph name="END_LINK" /> · <ph name="EMAIL" /></translation>
 <translation id="8195191503358432289">Додати пароль</translation>
 <translation id="8195936400946057039">Захистіть себе від загроз в Інтернеті</translation>
 <translation id="8205564605687841303">Скасувати</translation>
@@ -2644,7 +2648,6 @@
 <translation id="9149866541089851383">Редагувати...</translation>
 <translation id="9152637745605628097">Виберіть тему, колір або завантажте зображення</translation>
 <translation id="9153159728062222866">Більше не потрібно копіювати й вставляти</translation>
-<translation id="9159628751968616911">Надіслати вебсторінку</translation>
 <translation id="9162412286847966593">Дані й записи вашої організації не використовуватимуться для покращення моделей генеративного ШІ. <ph name="BEGIN_LINK" />Про вашу конфіденційність і Gemini<ph name="END_LINK" /></translation>
 <translation id="9162432979321511934">Увімкніть автозаповнення паролів</translation>
 <translation id="9165320910061267720">Щоб отримувати сповіщення про зниження цін, увімкніть їх у налаштуваннях iOS.</translation>

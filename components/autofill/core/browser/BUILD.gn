@@ -1077,8 +1077,6 @@ static_library("browser") {
     "payments/multiple_request_payments_network_interface.h",
     "payments/multiple_request_payments_network_interface_base.cc",
     "payments/multiple_request_payments_network_interface_base.h",
-    "payments/offer_notification_handler.cc",
-    "payments/offer_notification_handler.h",
     "payments/offer_notification_options.h",
     "payments/otp_unmask_delegate.h",
     "payments/otp_unmask_result.h",

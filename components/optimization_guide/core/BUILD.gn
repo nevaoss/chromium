@@ -61,15 +61,13 @@ component("features") {
     # remote model execution / MQLS.
     "feature_registry/enterprise_policy_registry.cc",
     "feature_registry/enterprise_policy_registry.h",
+    "feature_registry/feature_keys.h",
     "feature_registry/feature_registration.cc",
     "feature_registry/feature_registration.h",
     "feature_registry/mqls_feature_registry.cc",
     "feature_registry/mqls_feature_registry.h",
     "feature_registry/settings_ui_registry.cc",
     "feature_registry/settings_ui_registry.h",
-
-    # TODO(crbug.com/514743962): This belongs with remote model execution.
-    "model_execution/feature_keys.h",
 
     # TODO(crbug.com/514743962): This is mostly on-device model things,
     # with a couple stray remote model execution things.
@@ -906,10 +904,6 @@ source_set("model_execution_unit_tests") {
       "//components/private_ai:testing",
     ]
   }
-
-  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-  # enable the diagnostic by removing this line.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 }
 
 source_set("unit_tests") {

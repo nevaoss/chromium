@@ -3885,8 +3885,6 @@ Jika <ph name="NTPCARDSVISIBLE" /> disetel ke nonaktif, Kartu Outlook tidak akan
       Jika kebijakan disetel ke Nonaktif, perangkat yang terdaftar tidak akan melaporkan informasi sesi kios.</translation>
 <translation id="3303770131697159224">Setelan izin Pengelolaan Jendela Default</translation>
 <translation id="3303911765031636277">Kebijakan konfigurasi untuk Chrome Enterprise Connector OnFileAttached</translation>
-<translation id="3305586786770047829">Jika kebijakan ini disetel ke 0 atau tidak disetel, kebijakan <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> hanya akan diterapkan pada cakupan pengguna untuk pengguna terafiliasi.
-Jika kebijakan ini disetel ke 1, kebijakan <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> akan diterapkan pada cakupan pengguna, meskipun pengguna tersebut tidak terafiliasi.</translation>
 <translation id="3307744348419745296">Jangan izinkan konfigurasi jaringan Wi-Fi disinkronkan di seluruh perangkat <ph name="PRODUCT_OS_NAME" /> dan ponsel Android yang terhubung</translation>
 <translation id="3308724602356134956">Jika Anda menetapkan kebijakan, <ph name="PRODUCT_OS_NAME" />
 
@@ -6826,19 +6824,6 @@ Kebijakan ini adalah penangguhan sementara agar pengguna memiliki waktu untuk me
 <translation id="5120168808610189805">Aktifkan impor halaman beranda saat browser pertama kali dijalankan</translation>
 <translation id="5124321040285474825">Setelan untuk fitur AI generatif di Isi Otomatis</translation>
 <translation id="5124368997194894978">Aktifkan booting pada tegangan AC (arus bolak-balik)</translation>
-<translation id="5124652340668722849">Mengonfigurasi daftar Domain Penyediaan (PvD) yang akan digunakan <ph name="PRODUCT_NAME" /> untuk mengambil konfigurasi proxy secara dinamis.
-
-Kebijakan ini memungkinkan penentuan daftar nama domain atau URI aset yang mewakili Domain Penyediaan sebagaimana ditentukan dalam RFC 8801 ("Discovering Provisioning Domain Names and Data"). Untuk setiap PvD, browser me-resolve konfigurasi JSON yang sesuai dengan membuat permintaan HTTPS ke jalur endpoint yang sudah dikenal: "https://[<ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />]/.well-known/pvd".
-
-Setiap entri dalam daftar ini menentukan:
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />: Pengidentifikasi Domain Penyediaan (nama domain).
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_AUTH_CONFIG" />: Konfigurasi autentikasi opsional. Jika tidak dikonfigurasi atau disetel ke "none", tidak ada autentikasi yang dilakukan. Jika disetel ke "profile_bearer_token", browser akan mengambil token akses OAuth2 dengan cakupan yang diberikan untuk akun utama yang login dan melampirkannya di header "Authorization" sebagai token "Bearer".
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_EXTRA_HEADERS" />: Daftar opsional header HTTP kustom yang akan disertakan saat membuat kueri endpoint PvD. Nilai dinamis dapat dimasukkan, seperti "profile_id" (yang mewakili ID unik dan stabil dari profil browser di perangkat, yang memungkinkan penargetan konfigurasi per profil) atau "accept_language" (yang mewakili bahasa pilihan browser).
-
-Konfigurasi yang diambil diuraikan sesuai dengan skema RFC 8801. Hanya aturan pemilihan rute dan proxy terkait dengan konfigurasi proxy dari payload JSON PvD yang diterapkan. Jika kebijakan ini tidak disetel, tidak ada Domain Penyediaan yang akan dibuat kueri atau digunakan untuk mengambil konfigurasi proxy.</translation>
 <translation id="5130213897914754028">Cegah situs menggunakan SharedArrayBuffer</translation>
 <translation id="5130935469849337738">Selalu tawarkan terjemahan</translation>
 <translation id="513314432051760916">Kebijakan untuk mengontrol apakah setelan Pengukuran iklan <ph name="PRIVACY_SANDBOX_NAME" /> dapat dinonaktifkan untuk pengguna Anda.
@@ -9006,17 +8991,6 @@ Catatan: Kebijakan ini hanya berlaku untuk platform yang mendukung ekstensi.</tr
       Jika kebijakan disetel ke Salah (False), Signed HTTP Exchange tidak akan dimuat.</translation>
 <translation id="6368011194414932347">Konfigurasikan URL halaman beranda</translation>
 <translation id="6368403635025849609">Izinkan JavaScript di situs ini</translation>
-<translation id="6368652917086795891">Mengonfigurasi setelan koneksi untuk <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> di <ph name="PRODUCT_NAME" />.
-
-Kebijakan ini digantikan oleh kebijakan <ph name="GEMINI_ENTERPRISE_URL_POLICY_NAME" />. Jika keduanya ditetapkan, <ph name="GEMINI_ENTERPRISE_URL_POLICY_NAME" /> akan diprioritaskan.
-
-Kebijakan ini mengonfigurasi URL aplikasi web <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> melalui <ph name="GEMINI_ENTERPRISE_SETTINGS_URL_POLICY_VALUE" />. URL tersebut harus valid, menggunakan skema HTTPS, mengarah ke domain <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" />, serta tidak mencantumkan nama pengguna maupun sandi. Jika persyaratan ini tidak terpenuhi, kebijakan akan diabaikan dan <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> tidak akan dikonfigurasi.
-
-Jika kebijakan ini disetel, <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> akan dikonfigurasi untuk pengguna yang login dengan akun terkelola atau browser terkelola.
-
-Jika kebijakan ini tidak disetel, <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> tidak akan dikonfigurasi.
-
-Perhatikan bahwa kebijakan ini tidak mengontrol integrasi <ph name="GOOGLE_GEMINI_PRODUCT_NAME" /> umum, yang dapat dikontrol oleh kebijakan <ph name="GEMINI_SETTINGS_POLICY_NAME" />.</translation>
 <translation id="6368671810229507360">WebRTC</translation>
 <translation id="6370742079247037704">Jangan izinkan penggunaan API AI bawaan.</translation>
 <translation id="6371005337713685988">Setelan Set Situs Terkait</translation>
@@ -9850,15 +9824,6 @@ kebijakan ini saat browser berjalan.</translation>
 <translation id="6833988859168635883">Halaman Awal, Halaman Beranda, dan halaman Tab Baru</translation>
 <translation id="6835254082476223414">Aktifkan pencadangan dan pemulihan mesin virtual Linux</translation>
 <translation id="6835883744948188639">Tampilkan permintaan berulang kepada pengguna yang menunjukkan bahwa peluncuran ulang direkomendasikan</translation>
-<translation id="683688607121170501">Setelan ini memungkinkan pengguna beralih ke Akun Google lain di dalam area konten jendela browser dan aplikasi Android setelah mereka login ke perangkat <ph name="PRODUCT_OS_NAME" />.
-
-      Jika kebijakan ini ditetapkan ke false, pengguna tidak diizinkan untuk login ke Akun Google lain dari area konten browser non-Penyamaran dan aplikasi Android.
-
-      Jika kebijakan ini tidak ditetapkan atau ditetapkan ke true, perilaku default akan digunakan: pengguna diizinkan untuk login ke Akun Google lain dari area konten browser dan aplikasi Android, kecuali akun anak karena area konten non-Penyamaran dalam akun anak akan diblokir.
-
-      Jika tidak diizinkan untuk login ke akun lain melalui Mode penyamaran, sebaiknya blokir mode tersebut menggunakan kebijakan IncognitoModeAvailability.
-
-      Perlu diketahui bahwa pengguna akan dapat mengakses layanan Google dalam kondisi tidak terautentikasi dengan memblokir cookienya.</translation>
 <translation id="6841254611279513739">Menyetel kebijakan pencetakan ke hanya warna, hanya monokrom, atau tanpa batasan mode warna. Jika kebijakan tidak disetel, artinya tidak ada batasan.</translation>
 <translation id="6843008643303282259">Kecepatan upload yang diinginkan dalam kbit/dtk.</translation>
 <translation id="6843296367238757293">Kebijakan ini tidak digunakan lagi. Penggunaannya tidak disarankan. Baca selengkapnya di https://support.google.com/chrome/a/answer/7643500</translation>
@@ -11009,7 +10974,6 @@ baca lisan akan diaktifkan.</translation>
 <translation id="7491720878670299691">Interval pada saat data jaringan disurvei dan diperiksa untuk mencari aktivitas. Batas minimum yang diizinkan adalah 1 menit.
 
       Jika tidak disetel, interval default 1 menit akan berlaku.</translation>
-<translation id="7496284563199466390">Mengontrol pengguna terkelola mana yang dapat menetapkan kebijakan <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" />.</translation>
 <translation id="7498595166686106721">
       Kebijakan izin perekaman layar mendapat akses ke getDisplayMedia(), sesuai spesifikasi berikut: https://www.w3.org/TR/screen-capture/#feature-policy-integration. Namun, jika kebijakan ini disetel ke Nonaktif, persyaratan ini tidak akan diterapkan dan getDisplayMedia() akan diizinkan dari konteks yang seharusnya dilarang. Kebijakan Perusahaan ini bersifat sementara dan akan dihapus setelah <ph name="PRODUCT_NAME" /> versi 100. Kebijakan ini dimaksudkan untuk berhenti memblokir Pengguna versi bisnis yang aplikasinya tidak sesuai spesifikasi, tetapi perlu waktu untuk diperbaiki.
 

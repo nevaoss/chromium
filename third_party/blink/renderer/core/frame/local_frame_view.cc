@@ -205,6 +205,7 @@
 #include "ui/gfx/geometry/point_conversions.h"
 #include "ui/gfx/geometry/quad_f.h"
 #include "ui/gfx/geometry/rect_f.h"
+#include "ui/gfx/geometry/size_conversions.h"
 
 // Used to check for dirty layouts violating document lifecycle rules.
 // If arg evaluates to true, the program will continue. If arg evaluates to
@@ -701,7 +702,15 @@ void LocalFrameView::AdjustViewSize() {
     return;
 
   DCHECK_EQ(frame_->View(), this);
-  SetLayoutOverflowSize(ToPixelSnappedRect(layout_view->DocumentRect()).size());
+  const gfx::Size size = ToPixelSnappedRect(layout_view->DocumentRect()).size();
+  SetLayoutOverflowSize(size);
+  if (const std::optional<PhysicalRect>& overflow =
+          layout_view->ScrollableOverflowWithoutPaddingBox()) {
+    layout_overflow_size_without_padding_box_ =
+        ToPixelSnappedRect(*overflow).size();
+  } else {
+    layout_overflow_size_without_padding_box_ = size;
+  }
 }
 
 void LocalFrameView::CountObjectsNeedingLayout(unsigned& needs_layout_objects,
@@ -1304,10 +1313,14 @@ LocalFrameView::NaturalSizeLayoutScope::~NaturalSizeLayoutScope() {
 }
 
 bool LocalFrameView::RecordNaturalDimensions() {
-  if (natural_size_ == layout_overflow_size_) {
+  const gfx::Size& size =
+      RuntimeEnabledFeatures::ResponsiveIframesShrinkEnabled()
+          ? layout_overflow_size_without_padding_box_
+          : layout_overflow_size_;
+  if (natural_size_ == size) {
     return false;
   }
-  natural_size_ = layout_overflow_size_;
+  natural_size_ = size;
   return true;
 }
 
@@ -4992,6 +5005,7 @@ void LocalFrameView::RenderThrottlingStatusChanged() {
     }
   }
 
+  SetIntersectionObservationState(kDesired);
   if (!CanThrottleRendering()) {
     // Start ticking animation frames again if necessary.
     if (GetPage())
@@ -5079,8 +5093,19 @@ LocalFrameView::GetIntersectionObservationFlags(
     flags.Put(IntersectionObservation::kReportImplicitRootBounds);
   }
 
-  if (!target_frame.IsLocalRoot() && !target_frame.OwnerLayoutObject())
+  if (!target_frame.IsLocalRoot() && !target_frame.OwnerLayoutObject()) {
     flags.Put(IntersectionObservation::kAncestorFrameIsDetachedFromLayout);
+  }
+
+  // If this is true, then we skipped lifecycle update work and we should not
+  // try to do any geometry computation, but should still queue degenerate
+  // "not intersecting" notifications for any observations that were previously
+  // intersecting.
+  if (RuntimeEnabledFeatures::
+          StaleIntersectionGeometryForThrottledFramesEnabled() &&
+      intersection_observation_state_ != kRequired && CanThrottleRendering()) {
+    flags.Put(IntersectionObservation::kStaleGeometry);
+  }
 
   // Observers with explicit roots only need to be checked on the same frame,
   // since in this case target and root must be in the same document.

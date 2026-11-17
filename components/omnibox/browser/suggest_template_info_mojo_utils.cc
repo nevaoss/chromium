@@ -4,28 +4,20 @@
 
 #include "components/omnibox/browser/suggest_template_info_mojo_utils.h"
 
+#include <cstdint>
 #include <optional>
 #include <string>
-#include <vector>
 
 #include "base/containers/to_vector.h"
 #include "components/omnibox/browser/autocomplete_match.h"
 #include "components/omnibox/browser/autocomplete_match_type.h"
+#include "components/omnibox/browser/fusebox_action.mojom.h"
+#include "components/omnibox/browser/fusebox_action_mojo_utils.h"
 #include "third_party/omnibox_proto/suggest_template_info.pb.h"
 
 namespace suggest_template_info {
 
 namespace {
-
-// Converts `classifications` to their Mojo representation.
-std::vector<mojom::ACMatchClassificationPtr> CreateClassifications(
-    const ACMatchClassifications& classifications) {
-  return base::ToVector(classifications,
-                        [](const ACMatchClassification& classification) {
-                          return mojom::ACMatchClassification::New(
-                              classification.offset, classification.style);
-                        });
-}
 
 // Returns the color for text with the classification `style`. If both URL and
 // DIM are set, URL wins. Other styles get kUnknown and keep the line's default
@@ -98,6 +90,33 @@ mojom::ImagePtr GetImage(const AutocompleteMatch& match) {
   return mojom::Image::New(match.image_url, match.image_dominant_color);
 }
 
+// Returns the icon from the server-provided SuggestTemplateInfo of `match`, or
+// kIconTypeUnspecified if it has none.
+mojom::IconType GetTypeIcon(const AutocompleteMatch& match) {
+  static_assert(
+      static_cast<int32_t>(omnibox::SuggestTemplateInfo::IconType_MAX) ==
+          static_cast<int32_t>(mojom::IconType::kMaxValue),
+      "IconType enum values must match between the proto and the mojom.");
+  if (!match.suggest_template ||
+      !omnibox::SuggestTemplateInfo::IconType_IsValid(
+          match.suggest_template->type_icon())) {
+    return mojom::IconType::kIconTypeUnspecified;
+  }
+  return static_cast<mojom::IconType>(match.suggest_template->type_icon());
+}
+
+// Returns the FuseboxAction from the server-provided SuggestTemplateInfo of
+// `match`, or null if it has none.
+fusebox_action::mojom::FuseboxActionPtr GetFuseboxAction(
+    const AutocompleteMatch& match) {
+  if (!match.suggest_template ||
+      !match.suggest_template->has_fusebox_action()) {
+    return nullptr;
+  }
+  return fusebox_action::SyncFuseboxActionProtoToMojo(
+      match.suggest_template->fusebox_action());
+}
+
 }  // namespace
 
 mojom::SuggestTemplateInfoPtr CreateSuggestTemplateInfo(
@@ -117,18 +136,16 @@ mojom::SuggestTemplateInfoPtr CreateSuggestTemplateInfo(
       swap ? match.contents_class : match.description_class;
   suggest_template->primary_text = CreateFormattedString(
       swap ? match.description : match.contents, primary_text_class);
-  suggest_template->primary_text_class =
-      CreateClassifications(primary_text_class);
   suggest_template->secondary_text = CreateFormattedString(
       swap ? match.contents : match.description, secondary_text_class);
-  suggest_template->secondary_text_class =
-      CreateClassifications(secondary_text_class);
   suggest_template->secondary_text_placement = GetSecondaryTextPlacement(match);
   suggest_template->image = GetImage(match);
   if (match.suggest_template && match.suggest_template->has_style()) {
     suggest_template->style =
         static_cast<mojom::SuggestStyle>(match.suggest_template->style());
   }
+  suggest_template->type_icon = GetTypeIcon(match);
+  suggest_template->fusebox_action = GetFuseboxAction(match);
   return suggest_template;
 }
 

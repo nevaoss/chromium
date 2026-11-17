@@ -62,8 +62,6 @@
 #include "components/omnibox/browser/autocomplete_match.h"
 #include "components/omnibox/browser/autocomplete_result.h"
 #include "components/omnibox/browser/contextual_search_provider.h"
-#include "components/omnibox/browser/fusebox_action.mojom.h"
-#include "components/omnibox/browser/fusebox_action_mojo_utils.h"
 #include "components/omnibox/browser/omnibox_client.h"
 #include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/omnibox/browser/omnibox_metrics_constants.h"
@@ -401,7 +399,6 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
       {"addTab", IDS_NTP_COMPOSEBOX_TAB_PICKER_ADD_TABS_TITLE},
       {"shareTabs", IDS_COMPOSE_ADD_TABS},
       {"recentTabsSuffix", IDS_NTP_COMPOSEBOX_RECENT_TAB_SUFFIX},
-      {"currentTabSuffix", IDS_COMPOSE_CURRENT_TAB},
       {"sharingTabsWithGoogle", IDS_COMPOSE_SHARING_TABS_WITH_GOOGLE},
       {"addOpenTabsToAskAnything", IDS_COMPOSE_ADD_OPEN_TABS_TO_ASK_ANYTHING},
       {"stsMegaplusAutomaticallyAddTabsHeader",
@@ -1071,11 +1068,6 @@ SearchboxHandler::CreateAutocompleteMatch(
   mojom_match->tail_suggest_common_prefix = match.tail_suggest_common_prefix;
 
   mojom_match->is_contextual_suggestion = match.IsContextualSearchSuggestion();
-
-  if (match.suggest_template && match.suggest_template->has_fusebox_action()) {
-    mojom_match->fusebox_action = fusebox_action::SyncFuseboxActionProtoToMojo(
-        match.suggest_template->fusebox_action());
-  }
 
   if (SupportsKeywordMode()) {
     KeywordState keyword_state;

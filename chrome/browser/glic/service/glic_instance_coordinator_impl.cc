@@ -109,9 +109,10 @@ bool CanLiveModeBehaviorTakeEffect(const Target& target) {
 constexpr base::MemoryConsumerTraits kGlicInstanceCoordinatorTraits(
     // Each awake Glic instance can use up to a hundred megabytes.
     base::MemoryConsumerTraits::EstimatedMemoryUsage::kLarge,
-    // Iterates active instances to identify and hibernate background
-    // candidates.
-    base::MemoryConsumerTraits::ReleaseMemoryCost::kRequiresTraversal,
+    // The released memory isn't accessed directly: it's mostly the renderer's,
+    // freed by the OS when the process exits. Only instance metadata is walked
+    // to pick which ones to hibernate.
+    base::MemoryConsumerTraits::ReleaseMemoryDataAccess::kNone,
     // Hibernating a background Glic instance preserves session state.
     base::MemoryConsumerTraits::InformationRetention::kLossless,
     // Releases memory synchronously.
@@ -404,7 +405,7 @@ GlicInstanceCoordinatorImpl::ActivateTabWithConversation(
     return GlicInstanceCoordinator::ActivateTabResult::kConversationNotFound;
   }
 
-  std::vector<tabs::TabInterface*> target_tabs;
+  std::vector<raw_ptr<tabs::TabInterface>> target_tabs;
 
   // Try to get tabs from the actor task manager first.
   GlicActorTaskManager* task_manager = instance->GetActorTaskManager();
@@ -1369,7 +1370,7 @@ void GlicInstanceCoordinatorImpl::SwitchConversation(
       // BindTab is not called again, so we must manually overwrite all
       // currently pinned tabs' pin triggers to kConversationChange to make the
       // pin trigger correct.
-      for (auto* tab :
+      for (tabs::TabInterface* tab :
            target_instance->GetSharingManagerInternal().GetPinnedTabs()) {
         target_instance->GetSharingManagerInternal().SetPinTrigger(
             tab->GetHandle(), GlicPinTrigger::kConversationChange);

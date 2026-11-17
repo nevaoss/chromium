@@ -536,8 +536,14 @@ void MoveTabsToWindowImpl(BrowserWindowInterface* source,
 
 BrowserWindowInterface* CreateNewBrowser(BrowserWindowInterface* browser,
                                          bool user_gesture) {
+  base::TimeTicks now = base::TimeTicks::Now();
   auto params = BrowserWindowCreateParams(browser->GetProfile(), user_gesture);
-  return CreateBrowserWindow(std::move(params));
+  BrowserWindowInterface* new_browser = CreateBrowserWindow(std::move(params));
+  if (auto* manager = InitialWebUIWindowMetricsManager::From(new_browser)) {
+    manager->SetWindowCreationInfo(
+        waap::NewWindowCreationSource::kMoveTabsToNewWindow, now);
+  }
+  return new_browser;
 }
 
 struct MruTabResult {
@@ -554,6 +560,10 @@ std::optional<MruTabResult> GetGlobalMruTab(
 
   collection->ForEach(
       [&](BrowserWindowInterface* b) {
+        if (!WindowFeatureController::From(b)->CanSupportWindowFeature(
+                WindowFeatureController::WindowFeature::kFeatureTabStrip)) {
+          return true;
+        }
         TabStripModel* model = b->GetTabStripModel();
         int i = 0;
         for (auto it = model->begin(); it != model->end(); ++it, ++i) {
@@ -711,8 +721,7 @@ tabs::TabInterface* GetTabAndRevertIfNecessaryHelper(
     case WindowOpenDisposition::NEW_WINDOW: {
       std::unique_ptr<WebContents> new_tab = current_contents->Clone();
       WebContents* raw_new_tab = new_tab.get();
-      BrowserWindowInterface* new_browser = CreateBrowserWindow(
-          BrowserWindowCreateParams(browser->GetProfile(), true));
+      BrowserWindowInterface* new_browser = CreateNewBrowser(browser, true);
       new_browser->GetTabStripModel()->AddWebContents(std::move(new_tab), -1,
                                                       ui::PAGE_TRANSITION_LINK,
                                                       AddTabTypes::ADD_ACTIVE);
@@ -996,7 +1005,7 @@ BrowserWindowInterface* OpenEmptyWindow(Profile* profile,
   BrowserWindowInterface* browser = CreateBrowserWindow(std::move(params));
   if (auto* manager = InitialWebUIWindowMetricsManager::From(browser)) {
     manager->SetWindowCreationInfo(
-        waap::NewWindowCreationSource::kBrowserInitiated, now);
+        waap::NewWindowCreationSource::kNewEmptyWindow, now);
   }
 
   // Startup tabs could be created during browser creation. Add an empty tab
@@ -1714,7 +1723,6 @@ void MoveTabsToNewWindow(BrowserWindowInterface* browser,
   }
 
   BrowserWindowInterface* new_browser;
-  base::TimeTicks now = base::TimeTicks::Now();
   if (browser->GetType() == BrowserWindowInterface::Type::TYPE_APP &&
       web_app::AppBrowserController::From(browser)->has_tab_strip()) {
     auto* app_controller = web_app::AppBrowserController::From(browser);
@@ -1725,10 +1733,6 @@ void MoveTabsToNewWindow(BrowserWindowInterface* browser,
     web_app::MaybeAddPinnedHomeTab(new_browser, app_controller->app_id());
   } else {
     new_browser = CreateNewBrowser(browser, true);
-  }
-  if (auto* manager = InitialWebUIWindowMetricsManager::From(new_browser)) {
-    manager->SetWindowCreationInfo(
-        waap::NewWindowCreationSource::kBrowserInitiated, now);
   }
 
   MoveTabsToWindowImpl(browser, new_browser, tab_indices);
@@ -2047,8 +2051,7 @@ void ConvertPopupToTabbedBrowser(BrowserWindowInterface* browser) {
   // object first, before removing the existing object from the browser-list in
   // order to avoid incorrectly triggering a shutdown.
   BrowserWindowInterface* new_tabbed_browser =
-      CreateBrowserWindow(BrowserWindowCreateParams(
-          *browser->GetProfile(), /*from_user_gesture=*/true));
+      CreateNewBrowser(browser, /*user_gesture=*/true);
   // This method moves a WebContents from a non-normal browser window to a
   // normal browser window. We cannot move the Tab over directly since TabModel
   // enforces the requirement that it cannot move between window types.
@@ -2569,6 +2572,13 @@ void ShowTabSearch(BrowserWindowInterface* browser) {
 }
 
 void CloseTabSearch(BrowserWindowInterface* browser) {
+  if (organizer_panel::IsOrganizerPanelFeatureEnabled()) {
+    auto* controller = OrganizerPanelController::From(browser);
+    if (controller && controller->IsOrganizerPanelVisible()) {
+      controller->SetOrganizerVisible(false);
+      return;
+    }
+  }
   BrowserWindow::FromBrowser(browser)->CloseTabSearchBubble();
 }
 
@@ -2999,8 +3009,7 @@ BrowserWindowInterface* OpenInChrome(
           ->FindTabbedBrowser();
 
   if (!target_browser) {
-    target_browser = CreateBrowserWindow(
-        BrowserWindowCreateParams(hosted_app_browser->GetProfile(), true));
+    target_browser = CreateNewBrowser(hosted_app_browser, true);
   }
 
   base::WeakPtr<BrowserWindowInterface> target_browser_weak =

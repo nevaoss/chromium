@@ -4224,35 +4224,131 @@ void NavigationRequest::ComputeDownloadPolicyForTesting() {
   ComputeDownloadPolicy();
 }
 
-void NavigationRequest::CheckForIsolationOptIn(const GURL& url) {
-  // Check whether an origin-keyed agent cluster is explicitly requested, either
-  // opting in or out, before attempting to isolate it. If an explicit request
-  // was made, then we must check if the origin has been previously
-  // encountered in order to remain consistent within the isolation context
-  // (BrowserContext). Note: we only do the global walk for explicit opt-outs
-  // when OriginAgentCluster-by-default is enabled, but that check is made in
-  // IsOriginAgentClusterOptOutRequested().
-  if (!IsOriginAgentClusterOptInRequested() &&
-      !IsOriginAgentClusterOptOutRequested()) {
+bool NavigationRequest::IsAdExclusionFromOriginKeyedProcessesEnabled(
+    BrowserContext* browser_context) {
+  return base::FeatureList::IsEnabled(
+             features::kExcludeAdsFromOriginIsolation) &&
+         SiteIsolationPolicy::AreOriginAgentClustersEnabledByDefault(
+             browser_context) &&
+         SiteIsolationPolicy::AreOriginKeyedProcessesEnabledByDefault(
+             browser_context);
+}
+
+bool NavigationRequest::CalculateExcludeAdFromOriginKeyedProcess(
+    BrowserContext* browser_context) {
+  return IsAdExclusionFromOriginKeyedProcessesEnabled(browser_context) &&
+         response() && !IsOriginAgentClusterOptInRequested() &&
+         !IsOriginAgentClusterOptOutRequested() &&
+         (IsAdTaggedByHostFilter() || HasSameSiteAdAncestor());
+}
+
+void NavigationRequest::RecordAdExclusionResultHistogram() {
+  // At READY_TO_COMMIT, all WillProcessResponse() throttles are done. The
+  // subresource filter throttle defers WillProcessResponse() until its ruleset
+  // checks are done, so IsAdTaggedByHostFilter() is final here.
+  // HasSameSiteAdAncestor() reads the ad state of the ancestor frames, which
+  // can still change.
+  CHECK_GE(state_, READY_TO_COMMIT);
+
+  // Only navigations that call OnResponseStarted() get an ad decision. Others
+  // skip it. This includes commits without a URL loader (for example
+  // about:blank, about:srcdoc, and MHTML subframes from the archive), and
+  // back-forward cache and prerender activations. These navigations do not get
+  // a process from the ad exclusion, so there is no result to record.
+  if (!exclude_ad_from_origin_keyed_process_.has_value()) {
     return;
   }
 
-  auto* policy = ChildProcessSecurityPolicyImpl::GetInstance();
-  url::Origin origin = url::Origin::Create(url);
+  // A main frame cannot be an excluded ad: the ad host filter tag applies only
+  // to child frames, and a main frame has no ad ancestor.
+  BrowserContext* browser_context =
+      frame_tree_node_->navigator().controller().GetBrowserContext();
+  if (IsInOutermostMainFrame() ||
+      !IsAdExclusionFromOriginKeyedProcessesEnabled(browser_context)) {
+    return;
+  }
+
+  const bool excluded_at_decision =
+      exclude_ad_from_origin_keyed_process_.value();
+  if (!excluded_at_decision &&
+      !CalculateExcludeAdFromOriginKeyedProcess(browser_context)) {
+    base::UmaHistogramEnumeration(
+        "Navigation.OriginAgentCluster.AdExclusionResult",
+        AdExclusionResult::kNotAdExcluded);
+    return;
+  }
+
+  AgentClusterKey::OACStatus oac_status =
+      GetRenderFrameHost()->GetSiteInstance()->GetSiteInfo().oac_status();
+  bool is_origin_keyed =
+      oac_status == AgentClusterKey::OACStatus::kOriginKeyedByDefault ||
+      oac_status == AgentClusterKey::OACStatus::kOriginKeyedByHeader;
+  AdExclusionResult result;
+  if (excluded_at_decision) {
+    result = is_origin_keyed ? AdExclusionResult::kAdOriginKeyedByExistingState
+                             : AdExclusionResult::kAdSiteKeyed;
+  } else {
+    result = is_origin_keyed ? AdExclusionResult::kAdTagAfterDecisionOriginKeyed
+                             : AdExclusionResult::kAdTagAfterDecisionSiteKeyed;
+  }
+  base::UmaHistogramEnumeration(
+      "Navigation.OriginAgentCluster.AdExclusionResult", result);
+}
+
+void NavigationRequest::FreezeExcludeAdFromOriginKeyedProcess() {
+  // Make the ad decision one time, before the global walk in
+  // MaybeRegisterExistingOriginAsHavingDefaultIsolation(). The ad inputs can
+  // change asynchronously, for example while the browser defers process
+  // selection. If a later step calculates the decision again, a navigation can
+  // skip the walk and record a site-keyed state later.
+  exclude_ad_from_origin_keyed_process_ =
+      CalculateExcludeAdFromOriginKeyedProcess(
+          frame_tree_node_->navigator().controller().GetBrowserContext());
+}
+
+void NavigationRequest::MaybeRegisterExistingOriginAsHavingDefaultIsolation(
+    const GURL& url) {
+  // FreezeExcludeAdFromOriginKeyedProcess() must run first, because the global
+  // walk decision below uses the frozen ad decision.
+  CHECK(exclude_ad_from_origin_keyed_process_.has_value());
+
+  // Check whether an origin-keyed agent cluster is explicitly requested, either
+  // opting in or out, before attempting to isolate it. If an explicit request
+  // was made, then we must check if the origin has been previously encountered
+  // in order to remain consistent within the isolation context
+  // (BrowserContext). Note: we only do the global walk for explicit opt-outs
+  // when OriginAgentCluster-by-default is enabled, but that check is made in
+  // IsOriginAgentClusterOptOutRequested().
+  //
+  // An ad that gets a site-keyed process (see
+  // AddOriginAgentClusterStateIfNecessary()) records a site-keyed state for its
+  // origin. Since this is different than the default origin-keyed state, it
+  // also needs the global walk. Without it, one BrowsingInstance can have two
+  // keys for one origin, and a commit to the origin-keyed process fails the
+  // CanAccessOrigin() check.
+  if (!IsOriginAgentClusterOptInRequested() &&
+      !IsOriginAgentClusterOptOutRequested() &&
+      exclude_ad_from_origin_keyed_process_.value() == false) {
+    return;
+  }
+
   auto* browser_context =
       frame_tree_node_->navigator().controller().GetBrowserContext();
+
+  auto* policy = ChildProcessSecurityPolicyImpl::GetInstance();
+  url::Origin origin = url::Origin::Create(url);
   if (policy->RecordOriginAgentClusterRequestIfNew(browser_context, origin)) {
     // This is a new request for isolating |origin|, either by explicitly opting
-    // it in or out. Do a global walk of session history to find any existing
-    // instances of |origin|, so that those existing BrowsingInstances can give
-    // it default isolation. Only new BrowsingInstances and ones that have not
-    // seen |origin| before will honor the request. We don't always have a value
-    // for render_frame_host_ at this point, so we map the global-walk call onto
-    // NavigatorDelegate to get it into WebContents. We definitely need to do
-    // the global walk prior to deciding on the render_frame_host_ to commit to.
-    // We must exclude ourselves from the global walk otherwise we may mark our
-    // origin as having default isolation before it gets the change to register
-    // itself as opted-in/out.
+    // it in/out or by an ad that gets a site-keyed process. Do a global walk of
+    // session history to find any existing instances of |origin|, so that those
+    // existing BrowsingInstances can give it default isolation. Only new
+    // BrowsingInstances and ones that have not seen |origin| before will honor
+    // the request. We don't always have a value for render_frame_host_ at this
+    // point, so we map the global-walk call onto NavigatorDelegate to get it
+    // into WebContents. We definitely need to do the global walk prior to
+    // deciding on the render_frame_host_ to commit to. We must exclude
+    // ourselves from the global walk otherwise we may mark our origin as having
+    // default isolation before it registers its own state.
     frame_tree_node_->navigator()
         .GetDelegate()
         ->RegisterExistingOriginAsHavingDefaultIsolation(
@@ -4285,13 +4381,8 @@ void NavigationRequest::AddOriginAgentClusterStateIfNecessary(
         OriginAgentClusterIsolationState::CreateNonIsolatedByHeader();
   }
 
-  if (!oac_isolation_state.has_value() && response() &&
-      (IsAdTaggedByHostFilter() || HasSameSiteAdAncestor()) &&
-      SiteIsolationPolicy::AreOriginAgentClustersEnabledByDefault(
-          isolation_context.browser_context()) &&
-      SiteIsolationPolicy::AreOriginKeyedProcessesEnabledByDefault(
-          isolation_context.browser_context()) &&
-      base::FeatureList::IsEnabled(features::kExcludeAdsFromOriginIsolation)) {
+  if (!oac_isolation_state.has_value() &&
+      exclude_ad_from_origin_keyed_process_.value_or(false)) {
     // If it's an ad frame, OAC is on by default, and we know that there isn't
     // an OAC response header, force the eventual process to be site-keyed for
     // process isolation for this BrowsingInstance, bypassing the default
@@ -4730,11 +4821,16 @@ UrlInfo NavigationRequest::GetUrlInfo() {
       .WithEmbedderIsolationInfo(embedder_isolation_info_);
 
   if (base::FeatureList::IsEnabled(features::kExcludeAdsFromOriginIsolation)) {
-    // When excluding ads from origin isolation, an ad navigation is treated as
-    // site-keyed either if its URL matches the ad host filter list, or if it is
-    // same-site to an ancestor ad frame that was forced site-keyed.
+    // After the final response, use the decision from
+    // FreezeExcludeAdFromOriginKeyedProcess(). This makes the process selection
+    // and the commit validation use the same decision as the global walk.
+    // Before the final response, use the current inputs, because that result
+    // affects only the speculative RenderFrameHost.
     url_info_init.WithIsAdTaggedForSiteKeying(
-        (response() && IsAdTaggedByHostFilter()) || HasSameSiteAdAncestor());
+        exclude_ad_from_origin_keyed_process_.has_value()
+            ? exclude_ad_from_origin_keyed_process_.value()
+            : (response() && IsAdTaggedByHostFilter()) ||
+                  HasSameSiteAdAncestor());
   }
 
   // Compute the CrossOriginIsolationKey for the navigation.
@@ -5049,28 +5145,90 @@ void NavigationRequest::OnResponseStarted(
   // request that happened to return the header) by checking `is_prefetched`.
   // `was_in_prefetch_cache` and `kNavigationalPrefetch` are browser-controlled
   // flags set by the prefetch serving loaders, so they are safe from server
-  // spoofing. Prerender commits are excluded here because the page is not yet
-  // presented to the user; the beacon should be sent when the prerender is
-  // activated.
-  if (IsPrefetchActivationBeaconEnabled(GetURL(),
-                                        response_head_->headers.get()) &&
-      !IsInPrerenderedMainFrame() && response_head_->parsed_headers &&
+  // spoofing. Back-forward cache restorations and subframes are excluded
+  // because prefetch activation only occurs on primary main frame navigations
+  // and back-forward restorations should not re-trigger beacons. Prerender
+  // initial commits are also excluded because the page is not yet presented to
+  // the user; the beacon should be sent when the prerender is activated.
+  if (IsInPrimaryMainFrame() && response_head_->parsed_headers &&
       response_head_->parsed_headers->prefetch_activation_beacon_endpoint
           .has_value()) {
     const GURL& endpoint =
         *response_head_->parsed_headers->prefetch_activation_beacon_endpoint;
-    bool is_prefetched =
-        response_head_->was_in_prefetch_cache ||
-        response_head_->navigation_delivery_type ==
-            network::mojom::NavigationDeliveryType::kNavigationalPrefetch;
-    bool is_prerender_activation_sending_beacon =
-        IsPrerenderedPageActivation() &&
-        base::FeatureList::IsEnabled(features::kPrerenderActivationBeacon);
-    if (is_prefetched && endpoint.is_valid() &&
-        url::Origin::Create(endpoint).IsSameOriginWith(
-            url::Origin::Create(GetURL())) &&
-        !is_prerender_activation_sending_beacon) {
-      activation_beacon_url_ = endpoint;
+    if (endpoint.is_valid()) {
+      bool is_prefetched =
+          !IsServedFromBackForwardCache() &&
+          (response_head_->was_in_prefetch_cache ||
+           response_head_->navigation_delivery_type ==
+               network::mojom::NavigationDeliveryType::kNavigationalPrefetch);
+      const GURL& target_url = IsPrerenderedPageActivation()
+                                   ? GetPrerenderHostRegistry()
+                                         .GetRenderFrameHostForReservedHost(
+                                             *activating_prerender_host_id_)
+                                         ->GetLastCommittedURL()
+                                   : GetURL();
+      // A prerender activation is handled by `PrerenderActivationBeacon` unless
+      // it was upgraded from a prefetch and `PrerenderActivationBeacon` is not
+      // enabled, in which case it falls back to `PrefetchActivationBeacon`.
+      bool use_prerender_beacon = false;
+      PreloadActivationBeaconFeatureState feature_state;
+      if (IsPrerenderedPageActivation()) {
+        PreloadActivationBeaconFeatureState prerender_state =
+            GetPrerenderActivationBeaconFeatureState(
+                target_url, response_head_->headers.get());
+        if (!is_prefetched ||
+            prerender_state == PreloadActivationBeaconFeatureState::kEnabled) {
+          use_prerender_beacon = true;
+          feature_state = prerender_state;
+        } else {
+          feature_state = GetPrefetchActivationBeaconFeatureState(
+              target_url, response_head_->headers.get());
+        }
+      } else {
+        feature_state = GetPrefetchActivationBeaconFeatureState(
+            target_url, response_head_->headers.get());
+      }
+
+      PreloadActivationBeaconStatus beacon_status;
+      if (feature_state ==
+          PreloadActivationBeaconFeatureState::kDisabledByFeatureFlag) {
+        beacon_status = PreloadActivationBeaconStatus::kDisabledByFeatureFlag;
+      } else if (feature_state ==
+                 PreloadActivationBeaconFeatureState::kNoOriginTrialToken) {
+        beacon_status = PreloadActivationBeaconStatus::kNoOriginTrialToken;
+      } else if (!url::Origin::Create(endpoint).IsSameOriginWith(
+                     url::Origin::Create(target_url))) {
+        beacon_status = PreloadActivationBeaconStatus::kCrossOrigin;
+      } else if (use_prerender_beacon) {
+        beacon_status = PreloadActivationBeaconStatus::kHandledByPrerender;
+      } else if (is_prefetched) {
+        activation_beacon_url_ = endpoint;
+        beacon_status = PreloadActivationBeaconStatus::kHandledByPrefetch;
+      } else {
+        beacon_status = PreloadActivationBeaconStatus::kNotInPreloadContext;
+      }
+      base::UmaHistogramEnumeration(
+          "Preloading.ActivationBeacon.StatusOnResponseStarted", beacon_status);
+      if (beacon_status ==
+          PreloadActivationBeaconStatus::kNotInPreloadContext) {
+        // Check `IsRestore()` and `IsReload()` before `IsHistory()` because
+        // session/tab restore and reload navigations can also be marked as
+        // history navigations, and we want to attribute them to their more
+        // specific navigation type.
+        PreloadActivationBeaconNonPreloadNavigationType nav_type =
+            PreloadActivationBeaconNonPreloadNavigationType::kCommonNavigation;
+        if (IsRestore()) {
+          nav_type =
+              PreloadActivationBeaconNonPreloadNavigationType::kTabRestore;
+        } else if (IsReload()) {
+          nav_type = PreloadActivationBeaconNonPreloadNavigationType::kRefresh;
+        } else if (IsHistory()) {
+          nav_type =
+              PreloadActivationBeaconNonPreloadNavigationType::kBackForward;
+        }
+        base::UmaHistogramEnumeration(
+            "Preloading.ActivationBeacon.NonPreloadNavigationType", nav_type);
+      }
     }
   }
   ssl_info_ = response_head_->ssl_info;
@@ -5191,10 +5349,14 @@ void NavigationRequest::OnResponseStarted(
     }
   }
 
-  // The navigation may have encountered a header that requests isolation for
-  // the url's origin. Before we pick the renderer, make sure we update the
-  // origin-isolation opt-ins appropriately.
-  CheckForIsolationOptIn(GetURL());
+  // Before the browser selects the renderer, freeze the ad decision. All later
+  // isolation steps use this decision.
+  FreezeExcludeAdFromOriginKeyedProcess();
+
+  // Record a new isolation request for the origin. A request is an opt-in or
+  // opt-out Origin-Agent-Cluster header, or an ad that gets a site-keyed
+  // process. For a new request, this call first does the global walk.
+  MaybeRegisterExistingOriginAsHavingDefaultIsolation(GetURL());
 
   const bool is_first_response = commit_params_->redirects.empty();
   UpdateNavigationHandleTimingsOnResponseReceived(/*is_redirect=*/false,
@@ -6178,6 +6340,7 @@ void NavigationRequest::OnStartChecksComplete(
   // before actually loading resource.
   bool report_raw_headers = false;
   GURL devtools_referrer_override;
+  headers_before_devtools_overrides_ = begin_params_->headers;
   devtools_instrumentation::ApplyNetworkRequestOverrides(
       frame_tree_node_, common_params_->url, begin_params_.get(),
       &report_raw_headers, &devtools_user_agent_override_,
@@ -6509,6 +6672,35 @@ void NavigationRequest::OnRedirectChecksComplete(
     // DO NOT ADD CODE after this. The previous call to OnRequestFailedInternal
     // has destroyed the NavigationRequest.
     return;
+  }
+
+  // DevTools overrides were applied in OnStartChecksComplete() for the
+  // original URL. Revert those that must not apply to the redirect URL because
+  // the session that set them may not attach to it, before
+  // OnNavigationRequestWillBeSent() detaches such sessions.
+  net::HttpRequestHeaders headers_before_devtools_overrides;
+  headers_before_devtools_overrides.AddHeadersFromString(
+      headers_before_devtools_overrides_);
+  net::HttpRequestHeaders current_headers;
+  current_headers.AddHeadersFromString(begin_params_->headers);
+  bool headers_reverted = false;
+  if (!devtools_instrumentation::RevertDisallowedNetworkOverridesOnRedirect(
+          frame_tree_node_, common_params_->url,
+          headers_before_devtools_overrides, &current_headers,
+          &headers_update_params_, &devtools_user_agent_override_,
+          &devtools_accept_language_override_, &headers_reverted)) {
+    // Requests with an overridden Referer are canceled on redirect.
+    OnRequestFailedInternal(
+        network::URLLoaderCompletionStatus(net::ERR_BLOCKED_BY_CLIENT),
+        true /* skip_throttles */, std::nullopt /* error_page_content */,
+        false /* collapse_frame */);
+    // DO NOT ADD CODE after this. The previous call to OnRequestFailedInternal
+    // has destroyed the NavigationRequest.
+    return;
+  }
+  if (headers_reverted) {
+    begin_params_->headers = current_headers.ToString();
+    request_headers_.reset();
   }
 
   devtools_instrumentation::OnNavigationRequestWillBeSent(*this);
@@ -9689,7 +9881,8 @@ void NavigationRequest::DidCommitNavigation(
     auto* manager =
         PreloadActivationReportManager::GetOrCreateForBrowserContext(
             GetWebContents()->GetBrowserContext());
-    manager->ReportActivation(activation_beacon_url_, GetRenderFrameHost());
+    manager->ReportActivation(activation_beacon_url_, GetRenderFrameHost(),
+                              PreloadActivationReportType::kPrefetch);
     GetContentClient()->browser()->LogWebFeatureForCurrentPage(
         GetRenderFrameHost(),
         blink::mojom::WebFeature::kPrefetchAndPrerenderActivationBeacon);
@@ -9970,6 +10163,7 @@ void NavigationRequest::ReadyToCommitNavigation(bool is_error) {
         previous_render_frame_host, GetRenderFrameHost(), *common_params_.get(),
         ready_to_commit_time_, origin_agent_cluster_end_result_,
         did_receive_early_hints_before_cross_origin_redirect_);
+    RecordAdExclusionResultHistogram();
   }
 
   std::optional<url::Origin> origin_to_commit = GetOriginToCommit();
@@ -10857,7 +11051,17 @@ NavigationRequest::GetAssociatedRFHType() const {
   // we only update the value for non-pending commit navigations (i.e. the
   // NavigationRequest owned by the FrameTreeNode). See the comments in
   // `RenderFrameHostManager::CommitPendingIfNecessary()` for more details.
-  CHECK(state_ < READY_TO_COMMIT || state_ == WILL_FAIL_REQUEST)
+  // Note that CANCELING navigations haven't moved to their final
+  // RenderFrameHost yet and are still owned by the FrameTreeNode: they will
+  // either be deleted, move to WILL_FAIL_REQUEST, or (if they were canceled
+  // during WILL_FAIL_REQUEST) move to READY_TO_COMMIT to commit an error page.
+  // So it's still OK to check the associated RFH type. This
+  // can happen when e.g. a NavigationThrottle cancels a navigation and the
+  // NavigationRequest is not deleted synchronously, and in the meantime
+  // `RenderFrameHostManager::DiscardSpeculativeRFHIfUnused()` is called because
+  // another navigation's NavigationClient got disconnected.
+  CHECK(state_ < READY_TO_COMMIT || state_ == WILL_FAIL_REQUEST ||
+        state_ == CANCELING)
       << "Use GetRenderFrameHost() instead when the final RenderFrameHost "
          "for the navigation has been picked";
   return associated_rfh_type_;

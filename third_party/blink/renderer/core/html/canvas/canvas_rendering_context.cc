@@ -61,11 +61,6 @@
 namespace blink {
 namespace {
 BASE_FEATURE(kAllowAcceleratedTexElement, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Delay for recording the UKM for canvas accessibility to allow the canvas
-// element to update its accessibility related information. This value is chosen
-// arbitrarily and can be subject to optimization.
-constexpr base::TimeDelta kAccessibilityUkmRecordingDelay = base::Seconds(5);
 }
 
 CanvasRenderingContext::CanvasRenderingContext(
@@ -334,13 +329,6 @@ void CanvasRenderingContext::MaybeRecordUKMCanvasAccessibility() {
     return;
   }
 
-  // If heuristic collection is disabled, record the UKM immediately.
-  if (!base::FeatureList::IsEnabled(
-          ::features::kEnableCollectAccessibilityHeuristicInCanvasUkm)) {
-    RecordUKMCanvasAccessibility();
-    return;
-  }
-
   if (did_schedule_accessibility_ukm_recording_) {
     return;
   }
@@ -384,6 +372,9 @@ void CanvasRenderingContext::RecordUKMCanvasAccessibility() {
     HTMLCanvasElement* canvas_element = static_cast<HTMLCanvasElement*>(host);
     // Non offscreen canvases are only collected if they are visible.
     if (!canvas_element->IsDisplayed()) {
+      // Reset the scheduling flag so that when the canvas becomes displayed
+      // later, UKM recording will be rescheduled.
+      did_schedule_accessibility_ukm_recording_ = false;
       return;
     }
 
@@ -391,16 +382,24 @@ void CanvasRenderingContext::RecordUKMCanvasAccessibility() {
         const Vector<AtomicString>, keyboard_event_types,
         ({event_type_names::kKeydown, event_type_names::kKeypress,
           event_type_names::kKeyup}));
+    // Include modern pointer and touch events in addition to legacy mouse
+    // events, as interactive canvas applications frequently bind to pointer
+    // or touch handlers instead of mouse handlers.
     DEFINE_STATIC_LOCAL(
-        const Vector<AtomicString>, mouse_event_types,
+        const Vector<AtomicString>, interactive_event_types,
         ({event_type_names::kClick, event_type_names::kMousedown,
           event_type_names::kMouseup, event_type_names::kMousemove,
-          event_type_names::kMouseover, event_type_names::kMouseout}));
+          event_type_names::kMouseover, event_type_names::kMouseout,
+          event_type_names::kPointerdown, event_type_names::kPointerup,
+          event_type_names::kPointermove, event_type_names::kPointercancel,
+          event_type_names::kPointerover, event_type_names::kPointerout,
+          event_type_names::kTouchstart, event_type_names::kTouchmove,
+          event_type_names::kTouchend, event_type_names::kTouchcancel}));
 
     has_keyboard_listener =
         canvas_element->HasAnyEventListeners(keyboard_event_types);
     has_mouse_listener =
-        canvas_element->HasAnyEventListeners(mouse_event_types);
+        canvas_element->HasAnyEventListeners(interactive_event_types);
   }
 
   const auto& ukm_params = host->GetUkmParameters();

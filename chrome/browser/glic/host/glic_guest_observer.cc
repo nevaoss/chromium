@@ -12,6 +12,7 @@
 #include "chrome/browser/glic/host/glic_theme_util.h"
 #include "chrome/browser/glic/host/guest_util.h"
 #include "chrome/browser/glic/public/features.h"
+#include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/guest_view/browser/guest_view_base.h"
 #include "content/public/browser/navigation_handle.h"
@@ -47,7 +48,12 @@ GlicGuestObserver::Metrics::~Metrics() = default;
 
 void GlicGuestObserver::Metrics::DidFinishNavigation(
     content::NavigationHandle* navigation_handle) {
-  if (!features::IsGlicNoWebviewEnabled()) {
+  Profile* profile =
+      navigation_handle && navigation_handle->GetWebContents()
+          ? Profile::FromBrowserContext(
+                navigation_handle->GetWebContents()->GetBrowserContext())
+          : nullptr;
+  if (!GlicKeyedService::IsNoWebviewEnabled(profile)) {
     return;
   }
   if (navigation_handle->IsInPrimaryMainFrame() &&
@@ -60,8 +66,13 @@ void GlicGuestObserver::Metrics::DidFinishNavigation(
   }
 }
 
-void GlicGuestObserver::Metrics::DocumentOnLoadCompletedInPrimaryMainFrame() {
-  if (!features::IsGlicNoWebviewEnabled()) {
+void GlicGuestObserver::Metrics::DocumentOnLoadCompletedInPrimaryMainFrame(
+    content::WebContents* web_contents) {
+  Profile* profile =
+      web_contents
+          ? Profile::FromBrowserContext(web_contents->GetBrowserContext())
+          : nullptr;
+  if (!GlicKeyedService::IsNoWebviewEnabled(profile)) {
     return;
   }
   if (!navigation_commit_time_.is_null() && !has_recorded_load_complete_) {
@@ -136,7 +147,7 @@ void GlicGuestObserver::DidFinishNavigation(
 }
 
 void GlicGuestObserver::DocumentOnLoadCompletedInPrimaryMainFrame() {
-  metrics_.DocumentOnLoadCompletedInPrimaryMainFrame();
+  metrics_.DocumentOnLoadCompletedInPrimaryMainFrame(web_contents());
 }
 
 void GlicGuestObserver::MaybeEnableMojoJsBindings(

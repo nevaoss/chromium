@@ -153,7 +153,6 @@
 #include "chrome/browser/preloading/prefetch/no_state_prefetch/no_state_prefetch_manager_factory.h"
 #include "chrome/browser/preloading/prefetch/prefetch_service/chrome_prefetch_service_delegate.h"
 #include "chrome/browser/preloading/prefetch/search_prefetch/field_trial_settings.h"
-#include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_keep_alive_request_tracker.h"
 #include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_url_loader.h"
 #include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_url_loader_interceptor.h"
 #include "chrome/browser/preloading/preloading_features.h"
@@ -281,6 +280,7 @@
 #include "components/error_page/common/error_page_switches.h"
 #include "components/error_page/common/localized_error.h"
 #include "components/google/core/common/google_switches.h"
+#include "components/google/core/common/google_util.h"
 #include "components/guest_view/browser/guest_view_base.h"
 #include "components/guest_view/buildflags/buildflags.h"
 #include "components/heap_profiling/in_process/heap_profiler_controller.h"
@@ -2857,11 +2857,15 @@ bool ChromeContentBrowserClient::IsTopChromeWebUIURL(const GURL& url) {
 bool ChromeContentBrowserClient::IsMultiCaptureAllowed(
     content::RenderFrameHost* render_frame_host) {
 #if BUILDFLAG(IS_CHROMEOS)
-  return multi_capture::MultiCaptureDataServiceFactory::GetForBrowserContext(
-             WebContents::FromRenderFrameHost(render_frame_host)
-                 ->GetBrowserContext())
-      ->IsMultiCaptureAllowed(
-          render_frame_host->GetLastCommittedOrigin().GetURL());
+  return CHECK_DEREF(
+             multi_capture::MultiCaptureSessionControllerFactory::
+                 GetForBrowserContext(render_frame_host->GetBrowserContext()))
+             .IsSessionEligibleForMultiCapture() &&
+         CHECK_DEREF(
+             multi_capture::MultiCaptureDataServiceFactory::
+                 GetForBrowserContext(render_frame_host->GetBrowserContext()))
+             .IsMultiCaptureAllowed(
+                 render_frame_host->GetLastCommittedOrigin().GetURL());
 #else
   return false;
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -4468,6 +4472,16 @@ bool ChromeContentBrowserClient::IsUnboundedElementAllowed(
   }
 #endif
   return false;
+}
+
+bool ChromeContentBrowserClient::IsUnboundedElementEscapingAllowed(
+    content::RenderFrameHost* subframe,
+    content::RenderFrameHost* outermost_main_frame) {
+  return IsUnboundedElementAllowed(subframe) && outermost_main_frame &&
+         google_util::IsGoogleDomainUrl(
+             outermost_main_frame->GetLastCommittedOrigin().GetURL(),
+             google_util::ALLOW_SUBDOMAIN,
+             google_util::ALLOW_NON_STANDARD_PORTS);
 }
 
 bool ChromeContentBrowserClient::IsUnboundedElementAllowedForSubframesOf(
@@ -7198,10 +7212,6 @@ bool ChromeContentBrowserClient::WillCreateRestrictedCookieManager(
 
 void ChromeContentBrowserClient::OnNetworkServiceCreated(
     network::mojom::NetworkService* network_service) {
-#if BUILDFLAG(IS_ANDROID)
-  content::BoostNetworkThreadPriorityDuringStartup();
-#endif  // BUILDFLAG(IS_ANDROID)
-
   PrefService* local_state;
   if (g_browser_process) {
     DCHECK(g_browser_process->local_state());
@@ -7753,13 +7763,15 @@ content::SmartCardDelegate* ChromeContentBrowserClient::GetSmartCardDelegate() {
 bool ChromeContentBrowserClient::ShowPaymentHandlerWindow(
     content::BrowserContext* browser_context,
     const GURL& url,
+    const std::optional<gfx::Size>& preferred_web_contents_size,
     base::OnceCallback<void(bool, int, int)> callback) {
 #if BUILDFLAG(IS_ANDROID)
   return false;
 #else
   payments::PaymentRequestDisplayManagerFactory::GetInstance()
       ->GetForBrowserContext(browser_context)
-      ->ShowPaymentHandlerWindow(url, std::move(callback));
+      ->ShowPaymentHandlerWindow(url, preferred_web_contents_size,
+                                 std::move(callback));
   return true;
 #endif
 }
@@ -9819,24 +9831,9 @@ ChromeContentBrowserClient::MaybeCreateKeepAliveRequestTracker(
     content::BrowserContext* browser_context,
     content::KeepAliveRequestTracker::IsContextDetachedCallback
         is_context_detached_callback) {
-  // Do not need to track non-keepalive requests.
-  if (!request.keepalive || !request.keepalive_token.has_value()) {
-    return {};
-  }
-  std::vector<std::unique_ptr<content::KeepAliveRequestTracker>> trackers;
-  std::unique_ptr<ChromeKeepAliveRequestTracker> chrome_tracker =
-      ChromeKeepAliveRequestTracker::MaybeCreateKeepAliveRequestTracker(
-          request, ukm_source_id, is_context_detached_callback);
-  if (chrome_tracker) {
-    trackers.push_back(std::move(chrome_tracker));
-  }
-  std::unique_ptr<SearchPrefetchKeepAliveRequestTracker> search_tracker =
-      SearchPrefetchKeepAliveRequestTracker::MaybeCreateKeepAliveRequestTracker(
-          request, browser_context);
-  if (search_tracker) {
-    trackers.push_back(std::move(search_tracker));
-  }
-  return trackers;
+  return ChromeKeepAliveRequestTracker::MaybeCreateTrackers(
+      request, ukm_source_id, browser_context,
+      std::move(is_context_detached_callback));
 }
 
 std::optional<std::vector<std::u16string>>

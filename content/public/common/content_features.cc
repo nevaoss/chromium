@@ -84,14 +84,6 @@ BASE_FEATURE(kAndroidRemoveSetLocalFocusWorkaroundOnBaklava,
 // text.
 BASE_FEATURE(kAndroidReplayDelKeyEvent, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Blocks the misspelling suggestion span in composition mode.
-BASE_FEATURE(kAndroidBlockMisspellingSuggestionSpanInCompositionMode,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Blocks the grammar suggestion span in composition mode.
-BASE_FEATURE(kAndroidBlockGrammarSuggestionSpanInCompositionMode,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Warm up a spare renderer after each navigation on Android.
 BASE_FEATURE(kAndroidWarmUpSpareRendererWithTimeout,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -996,6 +988,10 @@ BASE_FEATURE_PARAM(base::TimeDelta,
 // low priority.
 BASE_FEATURE(kRestrictThreadPoolInBackground,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When the View for a RenderFrameHost is HiddenButPainting, report the
+// RenderFrameHost VisibilityState as Hidden.
+BASE_FEATURE(kRFHHiddenWhenHiddenButPainting, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, sends the spare renderer information when setting the
 // priority of renderers. Currently only Android handles the spare renderer

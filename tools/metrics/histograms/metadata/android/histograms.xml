@@ -1487,7 +1487,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BrowsingDataModel.ModelDestructionTime" units="ms"
-    expires_after="2026-06-21">
+    expires_after="2027-04-20">
   <owner>alimariam@google.com</owner>
   <owner>dullweber@chromium.org</owner>
   <owner>chrome-browser-privacy-team@google.com</owner>
@@ -2673,6 +2673,18 @@ chromium-metrics-reviews@google.com.
     Reports under which context (incognito or non-incognito) and visual
     component (search box or loupe) Hub Search is entered through. This includes
     tablet specific data which only has the loupe icon enabled.
+  </summary>
+</histogram>
+
+<histogram name="Android.InAppUpdate.AppMenu.Action"
+    enum="InAppUpdateAppMenuAction" expires_after="2027-03-10">
+  <owner>vakh@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records user interactions with the 3-dot app menu update item in Chrome for
+    Android, capturing the action taken (initiating download, completing
+    restart, observing an in-progress download, falling back to an external
+    update flow, or encountering a restart failure).
   </summary>
 </histogram>
 
@@ -4624,18 +4636,6 @@ chromium-metrics-reviews@google.com.
 
     Recorded once per activity start when AsyncViewInflator inflates the
     OmniboxSuggestionsDropdown.
-  </summary>
-</histogram>
-
-<histogram name="Android.Omnibox.SuggestionsDropdown.PreWarmedViewsCount"
-    units="count" expires_after="2027-03-07">
-  <owner>peterkang@google.com</owner>
-  <owner>chrome-mobile-search@google.com</owner>
-  <summary>
-    Records the number of ViewHolders successfully created during pre-warming of
-    the OmniboxSuggestionsDropdown RecycledViewPool.
-
-    Recorded once per activity start when pre-warming finishes.
   </summary>
 </histogram>
 
@@ -8844,7 +8844,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.PrimaryCpuAbiBitness"
-    enum="PrimaryCpuAbiBitness" expires_after="2026-11-30">
+    enum="PrimaryCpuAbiBitness" expires_after="2027-10-19">
   <owner>tasak@google.com</owner>
   <owner>lizeb@chromium.org</owner>
   <owner>ziadyoussef@chromium.org</owner>

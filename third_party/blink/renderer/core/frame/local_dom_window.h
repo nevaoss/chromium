@@ -188,7 +188,7 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   HttpsState GetHttpsState() const final;
   ResourceFetcher* Fetcher() final;
   bool CanExecuteScripts(ReasonForCallingCanExecuteScripts) final;
-  void ExceptionThrown(ErrorEvent*) final;
+  void ExceptionThrown(ErrorEvent*, SanitizeScriptErrors) final;
   void AddInspectorIssue(AuditsIssue) final;
   EventTarget* ErrorEventTarget() final { return this; }
   KURL OutgoingReferrerUrl() const final;
@@ -290,7 +290,7 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   Navigator* clientInformation() { return navigator(); }
 
   bool offscreenBuffering() const;
-  bool alwaysOnTop() const;
+  bool alwaysOnTopPopup() const;
 
   int outerHeight() const;
   int outerWidth() const;

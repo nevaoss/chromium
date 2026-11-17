@@ -502,7 +502,7 @@ struct AIPageContentTableRowData {
 
 struct AIPageContentMathData {
   // Stripped, sanitized MathML markup for the equation.
-  // Omitted if serialization fails (e.g. exceeds 64 KiB or 128 nesting levels).
+  // Omitted if serialization fails (e.g. exceeds 64 KiB or 64 nesting levels).
   string? stripped_mathml;
 
   // Whether the equation is laid out as a block rather than inline (from

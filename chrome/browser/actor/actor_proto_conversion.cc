@@ -78,6 +78,8 @@
 #include "components/optimization_guide/proto/features/actions_data.pb.h"
 #include "components/optimization_guide/proto/features/common_quality_data.pb.h"
 #include "components/origin_gating/core/task_policy_config.h"
+#include "components/page_content_annotations/content/page_context_fetcher.h"
+#include "components/page_content_annotations/content/page_context_fetcher_metrics.h"
 #include "components/password_manager/core/browser/features/password_features.h"
 #include "components/sessions/core/session_id.h"
 #include "components/tabs/public/tab_interface.h"
@@ -447,7 +449,6 @@ std::unique_ptr<ToolRequest> CreateNavigateRequest(
                                                GURL(action.url()));
 }
 
-#if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
 std::unique_ptr<ToolRequest> CreateCreateTabRequest(
     const CreateTabAction& action) {
   if (!action.has_window_id()) {
@@ -484,6 +485,7 @@ std::unique_ptr<ToolRequest> CreateCloseTabRequest(
   return std::make_unique<CloseTabToolRequest>(actor_surface_handle);
 }
 
+#if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
 std::unique_ptr<ToolRequest> CreateCreateWindowRequest(
     const CreateWindowAction& action) {
   return std::make_unique<CreateWindowToolRequest>();
@@ -957,7 +959,6 @@ CreateToolRequest(const optimization_guide::proto::Action& action) {
       const WaitAction& wait_action = action.wait();
       return CreateWaitRequest(wait_action);
     }
-#if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
     case optimization_guide::proto::Action::kCreateTab: {
       const CreateTabAction& create_tab_action = action.create_tab();
       return CreateCreateTabRequest(create_tab_action);
@@ -970,7 +971,6 @@ CreateToolRequest(const optimization_guide::proto::Action& action) {
       const ActivateTabAction& activate_tab_action = action.activate_tab();
       return CreateActivateTabRequest(activate_tab_action);
     }
-#endif  // !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
     case optimization_guide::proto::Action::kAttemptLogin: {
       const AttemptLoginAction& attempt_login_action = action.attempt_login();
       return CreateAttemptLoginRequest(attempt_login_action);
@@ -1064,6 +1064,8 @@ constexpr auto ToUnknown =
 // Maps each `ToolRequestVariant` alternative to its `ActuationCapability`. The
 // build flags mirror `ToolRequestVariant`, which omits those types on Android.
 constexpr absl::Overload kGetCapabilityFn{
+    ToCapability<ActivateTabToolRequest,
+                 apc::RuleMetadata::CAPABILITY_ACTIVATE_TAB>,
     ToCapability<AttemptLoginToolRequest,
                  apc::RuleMetadata::CAPABILITY_ATTEMPT_LOGIN>,
     ToCapability<AttemptFormFillingToolRequest,
@@ -1071,6 +1073,9 @@ constexpr absl::Overload kGetCapabilityFn{
     ToCapability<AttemptOtpFillingToolRequest,
                  apc::RuleMetadata::CAPABILITY_ATTEMPT_OTP_FILLING>,
     ToCapability<ClickToolRequest, apc::RuleMetadata::CAPABILITY_CLICK>,
+    ToCapability<CloseTabToolRequest, apc::RuleMetadata::CAPABILITY_CLOSE_TAB>,
+    ToCapability<CreateTabToolRequest,
+                 apc::RuleMetadata::CAPABILITY_CREATE_TAB>,
     ToCapability<DragAndReleaseToolRequest,
                  apc::RuleMetadata::CAPABILITY_DRAG_AND_RELEASE>,
     ToCapability<FileUploadToolRequest,
@@ -1096,15 +1101,10 @@ constexpr absl::Overload kGetCapabilityFn{
     ToCapability<TypeToolRequest, apc::RuleMetadata::CAPABILITY_TYPE>,
     ToCapability<WaitToolRequest, apc::RuleMetadata::CAPABILITY_WAIT>,
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
-    ToCapability<ActivateTabToolRequest,
-                 apc::RuleMetadata::CAPABILITY_ACTIVATE_TAB>,
     ToCapability<ActivateWindowToolRequest,
                  apc::RuleMetadata::CAPABILITY_ACTIVATE_WINDOW>,
-    ToCapability<CloseTabToolRequest, apc::RuleMetadata::CAPABILITY_CLOSE_TAB>,
     ToCapability<CloseWindowToolRequest,
                  apc::RuleMetadata::CAPABILITY_CLOSE_WINDOW>,
-    ToCapability<CreateTabToolRequest,
-                 apc::RuleMetadata::CAPABILITY_CREATE_TAB>,
     ToCapability<CreateWindowToolRequest,
                  apc::RuleMetadata::CAPABILITY_CREATE_WINDOW>,
     ToCapability<LoadAndExtractContentToolRequest,
@@ -1115,18 +1115,17 @@ constexpr absl::Overload kGetCapabilityFn{
     ToUnknown<AddBookmarkToolRequest>,
     ToUnknown<ChangePasswordToolRequest>,
     ToUnknown<CloseGeminiPanelToolRequest>,
+    ToUnknown<EnterFullscreenToolRequest>,
+    ToUnknown<ExitFullscreenToolRequest>,
     ToUnknown<FindAndHighlightToolRequest>,
+    ToUnknown<OpenKnownPageToolRequest>,
     ToUnknown<PerformSearchToolRequest>,
     ToUnknown<PromptGeminiPanelToolRequest>,
     ToUnknown<ReloadPageToolRequest>,
     ToUnknown<RemoveBookmarkToolRequest>,
+    ToUnknown<ScrollPageToolRequest>,
     ToUnknown<SiteBasedSearchToolRequest>,
-#if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
-    ToUnknown<EnterFullscreenToolRequest>,
-    ToUnknown<ExitFullscreenToolRequest>,
-    ToUnknown<OpenKnownPageToolRequest>,
     ToUnknown<SwitchTabToolRequest>,
-#endif  // !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
 };
 
 }  // namespace
@@ -1257,14 +1256,11 @@ bool PopulateTabIdsForScriptToolActions(
     const std::string& doc_token =
         script_tool.document_identifier().serialized_token();
 
-    tabs::TabInterface* tab = nullptr;
-    auto it = resolved_tabs.find(doc_token);
-    if (it != resolved_tabs.end()) {
-      tab = it->second;
-    } else {
-      tab = FindTabForDocumentIdentifier(profile, doc_token, active_tab);
-      resolved_tabs.emplace(doc_token, tab);
+    auto [it, inserted] = resolved_tabs.try_emplace(doc_token, nullptr);
+    if (inserted) {
+      it->second = FindTabForDocumentIdentifier(profile, doc_token, active_tab);
     }
+    tabs::TabInterface* tab = it->second;
 
     if (!tab) {
       return false;
@@ -1500,6 +1496,9 @@ void FetchCallback(
 
   FetchPageContextResult& fetch_result = **result;
   bool has_apc = fetch_result.annotated_page_content_result.has_value();
+  RecordPageContextApcStatus(
+      has_apc ? optimization_guide::AIPageContentExtractionStatus::kSuccess
+              : fetch_result.annotated_page_content_result.error().status);
   tab_observation->set_annotated_page_content_result(
       has_apc ? apc::TabObservation::ANNOTATED_PAGE_CONTENT_OK
               : apc::TabObservation::ANNOTATED_PAGE_CONTENT_ERROR);
@@ -1507,6 +1506,12 @@ void FetchCallback(
   bool has_screenshot = fetch_result.screenshot_result.has_value();
   bool screenshot_required =
       !base::FeatureList::IsEnabled(actor::kGlicActorSkipScreenshot);
+  if (screenshot_required) {
+    RecordPageContextScreenshotStatus(
+        has_screenshot
+            ? page_content_annotations::ScreenshotCaptureStatus::kSuccess
+            : fetch_result.screenshot_result.error().status);
+  }
   tab_observation->set_screenshot_result(
       has_screenshot || !screenshot_required
           ? apc::TabObservation::SCREENSHOT_OK

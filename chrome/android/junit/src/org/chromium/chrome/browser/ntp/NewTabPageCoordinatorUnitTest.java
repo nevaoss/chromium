@@ -53,6 +53,7 @@ import org.chromium.base.FeatureOverrides;
 import org.chromium.base.TriState;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneshotSupplierImpl;
+import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.supplier.SettableNullableObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
@@ -84,7 +85,6 @@ import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinator
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils;
 import org.chromium.chrome.browser.omnibox.SearchEngineService;
 import org.chromium.chrome.browser.omnibox.fusebox.ComposeboxQueryControllerBridge;
-import org.chromium.chrome.browser.omnibox.fusebox.ComposeboxQueryControllerBridgeJni;
 import org.chromium.chrome.browser.omnibox.status.StatusProperties.StatusIconResource;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
@@ -117,6 +117,8 @@ import org.chromium.components.browser_ui.widget.displaystyle.DisplayStyleObserv
 import org.chromium.components.browser_ui.widget.displaystyle.HorizontalDisplayStyle;
 import org.chromium.components.browser_ui.widget.displaystyle.UiConfig;
 import org.chromium.components.browser_ui.widget.displaystyle.VerticalDisplayStyle;
+import org.chromium.components.contextual_search.InputState;
+import org.chromium.components.contextual_search.InputStateBuilder;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.OmniboxFeatureList;
 import org.chromium.components.omnibox.OmniboxFocusReason;
@@ -126,6 +128,7 @@ import org.chromium.components.search_engines.TemplateUrlService;
 import org.chromium.components.signin.SigninFeatures;
 import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.components.sync.SyncService;
+import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.ui.base.ActivityResultTracker;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modaldialog.ModalDialogManager;
@@ -153,7 +156,7 @@ public class NewTabPageCoordinatorUnitTest {
     @Rule public FakeTimeTestRule mFakeTimeTestRule = new FakeTimeTestRule();
 
     @Mock private ComposeplateUtils.Natives mMockComposeplateUtilsJni;
-    @Mock private ComposeboxQueryControllerBridge.Natives mMockComposeboxQueryControllerBridgeJni;
+    @Mock private ComposeboxQueryControllerBridge mComposeboxQueryControllerBridge;
     @Mock private HomeModulesRankingHelper.Natives mHomeModulesRankingHelperJniMock;
     @Mock private NewTabPageManager mManager;
     @Mock private Tab mTab;
@@ -205,6 +208,8 @@ public class NewTabPageCoordinatorUnitTest {
     private final SettableNonNullObservableSupplier<StatusIconResource> mAiModeButtonIconSupplier =
             ObservableSuppliers.createNonNull(
                     new StatusIconResource(R.drawable.ic_search_spark_24dp, Resources.ID_NULL));
+    private final SettableMonotonicObservableSupplier<InputState> mInputStateSupplier =
+            ObservableSuppliers.createMonotonic();
 
     @Before
     public void setUp() {
@@ -227,11 +232,11 @@ public class NewTabPageCoordinatorUnitTest {
         ComposeplateUtilsJni.setInstanceForTesting(mMockComposeplateUtilsJni);
         when(mMockComposeplateUtilsJni.isAimEntrypointEligible(mProfile)).thenReturn(true);
         when(mMockComposeplateUtilsJni.isEnabledByPolicy(mProfile)).thenReturn(true);
-        ComposeboxQueryControllerBridgeJni.setInstanceForTesting(
-                mMockComposeboxQueryControllerBridgeJni);
-        when(mMockComposeboxQueryControllerBridgeJni.isToolAllowedForProfile(
-                        mProfile, ToolMode.TOOL_MODE_IMAGE_GEN))
-                .thenReturn(true);
+        ComposeboxQueryControllerBridge.setInstanceForTesting(mComposeboxQueryControllerBridge);
+        mInputStateSupplier.set(
+                new InputStateBuilder().withAllowedTools(ToolMode.TOOL_MODE_IMAGE_GEN).build());
+        when(mComposeboxQueryControllerBridge.getInputStateSupplier())
+                .thenReturn(mInputStateSupplier);
         IncognitoUtils.setEnabledForTesting(true);
 
         // Setup for home modules.
@@ -950,14 +955,39 @@ public class NewTabPageCoordinatorUnitTest {
         ChromeFeatureList.NTP_AURORA_V2 + ":action_chips/2"
     })
     public void testOptionalButton_CreateImage_ImageGenNotAllowed_FallsBackToCanvas() {
-        when(mMockComposeboxQueryControllerBridgeJni.isToolAllowedForProfile(
-                        mProfile, ToolMode.TOOL_MODE_IMAGE_GEN))
-                .thenReturn(false);
+        mInputStateSupplier.set(new InputStateBuilder().withAllowedTools().build());
+        // Tool availability is checked when the composeplate is created, so recreate the
+        // coordinator.
+        mCoordinator.destroy();
+        clearInvocations(mComposeboxQueryControllerBridge);
+        createCoordinator();
+
+        // The session used to determine the allowed tools is closed right away, and only one is
+        // created even though the chip type is queried multiple times during initialization.
+        verify(mComposeboxQueryControllerBridge).destroy();
+        verifyOptionalButtonFellBackToCanvas();
+    }
+
+    /**
+     * Verifies that the Create image chip falls back to the canvas chip when no Composebox session
+     * can be created.
+     */
+    @Test
+    @EnableFeatures({
+        ChromeFeatureList.NTP_AURORA,
+        ChromeFeatureList.NTP_AURORA_V2 + ":action_chips/2"
+    })
+    public void testOptionalButton_CreateImage_NoComposeboxSession_FallsBackToCanvas() {
+        ComposeboxQueryControllerBridge.setInstanceForTesting(null);
         // Tool availability is checked when the composeplate is created, so recreate the
         // coordinator.
         mCoordinator.destroy();
         createCoordinator();
 
+        verifyOptionalButtonFellBackToCanvas();
+    }
+
+    private void verifyOptionalButtonFellBackToCanvas() {
         assertNotNull(mCoordinator.getComposeplateCoordinatorForTesting());
         View optionalButton = mNewTabPageLayout.findViewById(R.id.optional_button);
         assertEquals(View.VISIBLE, optionalButton.getVisibility());
@@ -993,6 +1023,66 @@ public class NewTabPageCoordinatorUnitTest {
     @Test
     public void testComposeplateButtonClicked_ActionChipsDisabled() {
         testComposeplateButtonClickedImpl(/* expectedFocusSearchBox= */ false);
+    }
+
+    /**
+     * Verifies that on devices that don't support the fusebox, the AI Mode button remains visible
+     * and clicking it navigates to the AI Mode SRP rather than focusing the AI Mode omnibox.
+     */
+    @Test
+    @EnableFeatures({
+        ChromeFeatureList.NTP_AURORA,
+        ChromeFeatureList.NTP_AURORA_V2 + ":action_chips/1"
+    })
+    public void testComposeplateButtonClicked_NonFuseboxDevice_NavigatesToSrp() {
+        DeviceInfo.setIsAutomotiveForTesting(true);
+        when(mTemplateUrlService.getComposeplateUrl()).thenReturn(JUnitTestGURLs.URL_1);
+
+        View composeplateButton = mNewTabPageLayout.findViewById(R.id.composeplate_button);
+        assertEquals(View.VISIBLE, composeplateButton.getVisibility());
+
+        composeplateButton.performClick();
+
+        verify(mManager, never())
+                .focusSearchBox(anyBoolean(), eq(AutocompleteRequestType.AI_MODE), anyInt(), any());
+        verify(mManager).loadUrl(any(LoadUrlParams.class), eq(false));
+    }
+
+    /**
+     * Verifies that the Create image chip falls back to the default chip on devices that don't
+     * support the fusebox.
+     */
+    @Test
+    @EnableFeatures({
+        ChromeFeatureList.NTP_AURORA,
+        ChromeFeatureList.NTP_AURORA_V2 + ":action_chips/2"
+    })
+    public void testOptionalButton_CreateImage_NonFuseboxDevice_FallsBackToDefault() {
+        testOptionalButtonNonFuseboxDeviceImpl();
+    }
+
+    /**
+     * Verifies that the gallery chip falls back to the default chip on devices that don't support
+     * the fusebox.
+     */
+    @Test
+    @EnableFeatures({
+        ChromeFeatureList.NTP_AURORA,
+        ChromeFeatureList.NTP_AURORA_V2 + ":action_chips/3"
+    })
+    public void testOptionalButton_Gallery_NonFuseboxDevice_FallsBackToDefault() {
+        testOptionalButtonNonFuseboxDeviceImpl();
+    }
+
+    private void testOptionalButtonNonFuseboxDeviceImpl() {
+        // The chip type is resolved when the composeplate is created, so recreate the coordinator.
+        mCoordinator.destroy();
+        DeviceInfo.setIsAutomotiveForTesting(true);
+        createCoordinator();
+
+        assertNotNull(mCoordinator.getComposeplateCoordinatorForTesting());
+        View optionalButton = mNewTabPageLayout.findViewById(R.id.optional_button);
+        assertEquals(View.GONE, optionalButton.getVisibility());
     }
 
     /**
@@ -1047,16 +1137,48 @@ public class NewTabPageCoordinatorUnitTest {
         IncognitoUtils.setEnabledForTesting(false);
         createCoordinator();
 
+        verifyComposeplateDisabledAndUninflatedBetweenDseChanges();
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.NTP_AURORA_V2)
+    public void testComposeplateEnabled_AuroraV2Disabled() {
+        assertEquals(TriState.TRUE, mCoordinator.getIsComposeplateEnabledForTesting());
+        assertNotNull(mCoordinator.getComposeplateCoordinatorForTesting());
+        assertNotNull(mNewTabPageLayout.findViewById(R.id.composeplate_view));
+    }
+
+    @Test
+    @EnableFeatures({
+        ChromeFeatureList.NTP_AURORA,
+        ChromeFeatureList.NTP_AURORA_V2 + ":layout_type/3"
+    })
+    public void testComposeplateDisabled_RemoveEnabled() {
+        verifyComposeplateDisabledAndUninflatedBetweenDseChanges();
+    }
+
+    @Test
+    @EnableFeatures({
+        ChromeFeatureList.NTP_AURORA,
+        ChromeFeatureList.NTP_AURORA_V2 + ":layout_type/2"
+    })
+    public void testComposeplateDisabled_InsideMvtEnabled() {
+        verifyComposeplateDisabledAndUninflatedBetweenDseChanges();
+    }
+
+    private void verifyComposeplateDisabledAndUninflatedBetweenDseChanges() {
         // Verifies that even when Google is the search provider and offers an AI Mode entry point,
-        // disabling incognito mode prevents the composeplate from being enabled or created.
+        // the composeplate is prevented from being enabled or created.
         assertEquals(TriState.FALSE, mCoordinator.getIsComposeplateEnabledForTesting());
         assertNull(mCoordinator.getComposeplateCoordinatorForTesting());
+        assertNull(mNewTabPageLayout.findViewById(R.id.composeplate_view));
 
-        // Switching the default search engine doesn't enable the composeplate either.
+        // Switching the default search engine doesn't enable or inflate the composeplate either.
         changeSearchEngine(/* isGoogle= */ false, /* hasAiModeButtonUiConfig= */ true);
         changeSearchEngine(/* isGoogle= */ true, /* hasAiModeButtonUiConfig= */ true);
         assertEquals(TriState.FALSE, mCoordinator.getIsComposeplateEnabledForTesting());
         assertNull(mCoordinator.getComposeplateCoordinatorForTesting());
+        assertNull(mNewTabPageLayout.findViewById(R.id.composeplate_view));
     }
 
     @Test
@@ -1789,7 +1911,7 @@ public class NewTabPageCoordinatorUnitTest {
     public void testSideUiObserver_liveResize_doesNotUpdateUiConfigInset() {
         SideUiObserver observer = captureSideUiObserver();
 
-        observer.onSideUiSpecsChanged(
+        observer.onSideUiSpecsChangeStarted(
                 new SideUiSpecs(/* leftContainerWidth= */ 300, /* rightContainerWidth= */ 0),
                 UiUpdateRequest.getRequestForTesting(
                         /* suppressAnimations= */ true, UpdateReason.RESIZE_LIVE));
@@ -1802,7 +1924,7 @@ public class NewTabPageCoordinatorUnitTest {
         SideUiObserver observer = captureSideUiObserver();
 
         int leftWidthPx = 300;
-        observer.onSideUiSpecsChanged(
+        observer.onSideUiSpecsChangeStarted(
                 new SideUiSpecs(leftWidthPx, /* rightContainerWidth= */ 0),
                 UiUpdateRequest.getRequestForTesting(
                         /* suppressAnimations= */ true, UpdateReason.RESIZE_COMMITTED));

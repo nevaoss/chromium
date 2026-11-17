@@ -56,6 +56,7 @@
 #include "chrome/browser/image_fetcher/image_fetcher_service_factory.h"
 #include "chrome/browser/indigo/indigo_cue_target.h"
 #include "chrome/browser/indigo/indigo_page_action_controller.h"
+#include "chrome/browser/lens/lens_suggestion_tool.h"
 #include "chrome/browser/loader/from_gws_navigation_and_keep_alive_request_observer.h"
 #include "chrome/browser/login_detection/login_detection_tab_helper.h"
 #include "chrome/browser/lookalikes/safety_tip_web_contents_observer.h"
@@ -277,6 +278,7 @@
 #include "components/page_content_annotations/core/page_content_extraction_types.h"
 #include "components/passage_embeddings/core/passage_embeddings_features.h"
 #include "components/performance_manager/embedder/performance_manager_registry.h"
+#include "components/performance_manager/public/performance_manager.h"
 #include "components/permissions/permission_indicators_tab_data.h"
 #include "components/permissions/permission_recovery_success_rate_tracker.h"
 #include "components/permissions/permission_request_manager.h"
@@ -697,6 +699,9 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
         glic_selection_suggestion_tool_ =
             std::make_unique<glic::SelectionSuggestionTool>(tab);
       }
+      if (base::FeatureList::IsEnabled(lens::kLensSelectionSuggestions)) {
+        lens_suggestion_tool_ = std::make_unique<lens::LensSuggestionTool>(tab);
+      }
       glic_selection_overlay_controller_ =
           GetUserDataFactory().CreateInstance<glic::SelectionOverlayController>(
               tab, &tab, profile->GetPrefs());
@@ -793,7 +798,8 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
 
   gmail_otp_opt_in_bubble_controller_ =
       GetUserDataFactory()
-          .CreateInstance<autofill::GmailOtpOptInBubbleController>(tab, tab);
+          .CreateInstance<autofill::GmailOtpOptInBubbleController>(
+              tab, tab, tab.GetContents());
 
   customize_chrome_side_panel_controller_ =
       std::make_unique<customize_chrome::SidePanelControllerViews>(tab);
@@ -1439,17 +1445,26 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
         HistoryTabHelper::FromWebContents(tab.GetContents()));
   }
 
-  if (!blocked_content::PopupBlockerTabHelper::FromWebContents(
-          tab.GetContents())) {
-    if (auto* pm_registry =
-            performance_manager::PerformanceManagerRegistry::GetInstance()) {
+  if (auto* pm_registry =
+          performance_manager::PerformanceManagerRegistry::GetInstance()) {
+    // A WebContents reparented into a new TabModel (e.g. via
+    // web_app::ReparentWebContentsIntoBrowserImpl) already has its PageType set
+    // to kTab, and PageNodeImpl::SetType CHECKs that SetPageType is only called
+    // once per WebContents.
+    base::WeakPtr<performance_manager::PageNode> page_node =
+        performance_manager::PerformanceManager::
+            GetPrimaryPageNodeForWebContents(tab.GetContents());
+    if (page_node &&
+        page_node->GetType() != performance_manager::PageType::kTab) {
       pm_registry->SetPageType(tab.GetContents(),
                                performance_manager::PageType::kTab);
     }
   }
 
-  blocked_content::PopupBlockerTabHelper::CreateForWebContents(
-      tab.GetContents());
+  popup_blocker_tab_helper_ =
+      GetUserDataFactory()
+          .CreateInstance<blocked_content::PopupBlockerTabHelper>(
+              tab, tab, tab.GetContents());
 
   resource_coordinator::ResourceCoordinatorTabHelper::CreateForWebContents(
       tab.GetContents());
@@ -1481,7 +1496,7 @@ autofill::BubbleManager* TabFeatures::SetBubbleManagerForTesting(
 void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
                                       content::WebContents* old_contents,
                                       content::WebContents* new_contents) {
-  DCHECK_EQ(old_contents, tab->GetContents());
+  CHECK_EQ(old_contents, tab->GetContents(), base::NotFatalUntil::M162);
 
   Profile* profile = tab->GetBrowserWindowInterface()->GetProfile();
 
@@ -1728,6 +1743,14 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
     wallet_reminder_notice_bubble_controller_ =
         GetUserDataFactory()
             .CreateInstance<autofill::WalletReminderNoticeBubbleController>(
+                *tab, *tab, new_contents);
+  }
+
+  if (gmail_otp_opt_in_bubble_controller_) {
+    gmail_otp_opt_in_bubble_controller_.reset();
+    gmail_otp_opt_in_bubble_controller_ =
+        GetUserDataFactory()
+            .CreateInstance<autofill::GmailOtpOptInBubbleController>(
                 *tab, *tab, new_contents);
   }
 
@@ -2139,15 +2162,23 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
         new_contents, HistoryTabHelper::FromWebContents(new_contents));
   }
 
-  if (!blocked_content::PopupBlockerTabHelper::FromWebContents(new_contents)) {
-    if (auto* pm_registry =
-            performance_manager::PerformanceManagerRegistry::GetInstance()) {
+  if (auto* pm_registry =
+          performance_manager::PerformanceManagerRegistry::GetInstance()) {
+    base::WeakPtr<performance_manager::PageNode> page_node =
+        performance_manager::PerformanceManager::
+            GetPrimaryPageNodeForWebContents(new_contents);
+    if (page_node &&
+        page_node->GetType() != performance_manager::PageType::kTab) {
       pm_registry->SetPageType(new_contents,
                                performance_manager::PageType::kTab);
     }
   }
 
-  blocked_content::PopupBlockerTabHelper::CreateForWebContents(new_contents);
+  popup_blocker_tab_helper_.reset();
+  popup_blocker_tab_helper_ =
+      GetUserDataFactory()
+          .CreateInstance<blocked_content::PopupBlockerTabHelper>(*tab, *tab,
+                                                                  new_contents);
 
   resource_coordinator::ResourceCoordinatorTabHelper::CreateForWebContents(
       new_contents);

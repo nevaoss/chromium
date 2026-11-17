@@ -29,6 +29,7 @@
 #include "chrome/browser/search/background/ntp_custom_background_service_factory.h"
 #include "chrome/browser/sharing_hub/sharing_hub_features.h"
 #include "chrome/browser/ttc/core/ttc_keyed_service.h"
+#include "chrome/browser/ui/actions/actions_util.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/actions/command_action_updater.h"
 #include "chrome/browser/ui/browser_actions.h"
@@ -39,6 +40,10 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "ui/base/class_property.h"
 #include "ui/base/models/menu_separator_types.h"
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+#include "chrome/browser/global_features.h"
+#include "chrome/browser/lifetime/scheduled_restart_manager.h"
+#endif
 #if BUILDFLAG(IS_CHROMEOS)
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
@@ -94,6 +99,7 @@
 #include "components/send_tab_to_self/features.h"
 #include "components/signin/public/base/signin_pref_names.h"
 #include "components/skills/features.h"
+#include "components/sync/base/features.h"
 #include "components/user_education/common/tutorial/tutorial_description.h"
 #include "components/user_education/common/tutorial/tutorial_registry.h"
 #include "components/user_education/common/tutorial/tutorial_service.h"
@@ -542,9 +548,37 @@ void ActionAppMenuManager::AddNotificationActions(actions::ActionItem* root) {
               return true;
             };
 
-        maybe_add_notification(
-            kActionUpgradeDialog,
-            {.minor_text = AppMenuModel::GetUpgradeDialogSubstringText()});
+        if (maybe_add_notification(
+                kActionUpgradeDialog,
+                {.minor_text =
+                     AppMenuModel::GetUpgradeDialogSubstringText()})) {
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+          actions::ActionItem* scheduled_restart_action =
+              actions::ActionManager::Get().FindAction(
+                  kActionScheduledRestartDialog, scope);
+          CHECK(scheduled_restart_action);
+          // Only update visibility when `ScheduledRestartManager` exists. In
+          // production the action starts hidden when the manager is absent; in
+          // unit tests without `GlobalFeatures`, tests set `ActionItem`
+          // visibility directly.
+          if (g_browser_process && g_browser_process->GetFeatures()) {
+            if (auto* srm = g_browser_process->GetFeatures()
+                                ->scheduled_restart_manager()) {
+              scheduled_restart_action->SetVisible(
+                  scheduled_restart::ScheduledRestartManager::
+                      IsAppMenuItemEnabled() &&
+                  srm->IsUpgradeAvailableForScheduling());
+            }
+          }
+          if (scheduled_restart_action->GetVisible()) {
+            section.AddAction(
+                kActionScheduledRestartDialog,
+                {.display_type = DisplayType::kNotification,
+                 .item_height = AppMenuActionItem::ItemHeight::kMedium,
+                 .element_id = AppMenuModel::kScheduledRestartMenuItem});
+          }
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+        }
 
         // At most one non-upgrade notification item (Safety Hub, Global
         // Error, or Default Browser, which are ordered by priority) should
@@ -602,11 +636,13 @@ void ActionAppMenuManager::AddBlockHeaderActions(actions::ActionItem* root) {
         Profile* profile = browser_window_interface_->GetProfile();
         std::optional<std::u16string> new_tab_text_override;
         if (profile->IsEnterpriseIsolatedModeProfile()) {
-          new_tab_text_override = BrowserActions::GetMnemonicTitleText(
-              l10n_util::GetStringUTF16(IDS_NEW_ISOLATED_TAB));
+          new_tab_text_override = chrome::GetCleanText(
+              l10n_util::GetStringUTF16(IDS_NEW_ISOLATED_TAB),
+              chrome::CleanTextOptions::kEllipses);
         } else if (profile->IsIncognitoProfile()) {
-          new_tab_text_override = BrowserActions::GetMnemonicTitleText(
-              l10n_util::GetStringUTF16(IDS_NEW_INCOGNITO_TAB));
+          new_tab_text_override = chrome::GetCleanText(
+              l10n_util::GetStringUTF16(IDS_NEW_INCOGNITO_TAB),
+              chrome::CleanTextOptions::kEllipses);
         }
         section
             .AddAction(
@@ -627,10 +663,10 @@ void ActionAppMenuManager::AddBlockHeaderActions(actions::ActionItem* root) {
                 {.display_type = DisplayType::kBlock,
                  .text_override =
                      profile->IsEnterpriseIsolatedModeProfile()
-                         ? std::make_optional(
-                               BrowserActions::GetMnemonicTitleText(
-                                   l10n_util::GetStringUTF16(
-                                       IDS_NEW_ISOLATED_WINDOW)))
+                         ? std::make_optional(chrome::GetCleanText(
+                               l10n_util::GetStringUTF16(
+                                   IDS_NEW_ISOLATED_WINDOW),
+                               chrome::CleanTextOptions::kEllipses))
                          : std::nullopt});
           } else {
             section.AddAction(
@@ -638,10 +674,10 @@ void ActionAppMenuManager::AddBlockHeaderActions(actions::ActionItem* root) {
                 {.display_type = DisplayType::kBlock,
                  .text_override =
                      profile->IsIncognitoProfile()
-                         ? std::make_optional(
-                               BrowserActions::GetMnemonicTitleText(
-                                   l10n_util::GetStringUTF16(
-                                       IDS_NEW_INCOGNITO_WINDOW)))
+                         ? std::make_optional(chrome::GetCleanText(
+                               l10n_util::GetStringUTF16(
+                                   IDS_NEW_INCOGNITO_WINDOW),
+                               chrome::CleanTextOptions::kEllipses))
                          : std::nullopt,
                  .element_id = AppMenuModel::kIncognitoMenuItem});
           }
@@ -728,6 +764,11 @@ void ActionAppMenuManager::AddYourChromeActions(actions::ActionItem* root) {
                   recent_tabs_menu_->GetWeakPtr()),
               /*build_submenu=*/std::nullopt,
               {.element_id = AppMenuModel::kHistoryMenuItem});
+
+          section.AddSubmenu(
+              kActionOtherDeviceTabsSubmenu, [](AppMenuBuilder& sub) {},
+              {.element_id = AppMenuModel::kOtherDeviceTabsMenuItem,
+               .is_submenu = true});
         }
 
         section.AddAction(kActionShowDownloadsPage,

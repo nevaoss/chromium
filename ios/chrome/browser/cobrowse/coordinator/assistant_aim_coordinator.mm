@@ -21,6 +21,8 @@
 #import "ios/chrome/browser/cobrowse/model/cobrowse_context.h"
 #import "ios/chrome/browser/cobrowse/model/cobrowse_util.h"
 #import "ios/chrome/browser/cobrowse/model/ios_contextual_tasks_service_factory.h"
+#import "ios/chrome/browser/cobrowse/shared/metrics/assistant_aim_metrics_constants.h"
+#import "ios/chrome/browser/cobrowse/shared/metrics/assistant_aim_metrics_recorder.h"
 #import "ios/chrome/browser/cobrowse/ui/assistant_aim_ui_constants.h"
 #import "ios/chrome/browser/cobrowse/ui/assistant_aim_view_controller.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_input_plate_coordinator.h"
@@ -115,6 +117,7 @@ class AssistantAIMUIStateProvider
   // Handler for container related interactions.
   __weak id<AssistantContainerCommands> _containerHandler;
   ActivityReporter* _activityReporter;
+  AssistantAIMMetricsRecorder* _metricsRecorder;
 }
 
 - (instancetype)initWithBaseViewController:(UIViewController*)viewController
@@ -124,6 +127,7 @@ class AssistantAIMUIStateProvider
   if (self) {
     _activityReporter =
         [[ActivityReporter alloc] initWithDomain:ActivityReportDomainAssistant];
+    _metricsRecorder = [[AssistantAIMMetricsRecorder alloc] init];
   }
   return self;
 }
@@ -146,6 +150,7 @@ class AssistantAIMUIStateProvider
 
   _viewController = [[AssistantAIMViewController alloc] init];
   _viewController.delegate = self;
+  _viewController.metricsRecorder = _metricsRecorder;
 
   _containerHandler = HandlerForProtocol(self.browser->GetCommandDispatcher(),
                                          AssistantContainerCommands);
@@ -168,6 +173,7 @@ class AssistantAIMUIStateProvider
                                   self.browser->GetProfile())];
 
   _mediator.delegate = self;
+  _mediator.metricsRecorder = _metricsRecorder;
   _mediator.sceneHandler =
       HandlerForProtocol(self.browser->GetCommandDispatcher(), SceneCommands);
   _mediator.consumer = _viewController;
@@ -192,6 +198,7 @@ class AssistantAIMUIStateProvider
                            isNTP:NO];
   ComposeboxFocusParams* focusParams = [[ComposeboxFocusParams alloc]
       initWithEntrypoint:ComposeboxEntrypoint::kCobrowse];
+  focusParams.assistantMetricsRecorder = _metricsRecorder;
   _inputPlateCoordinator = [[ComposeboxInputPlateCoordinator alloc]
       initWithBaseViewController:_viewController
                          browser:self.browser
@@ -227,6 +234,11 @@ class AssistantAIMUIStateProvider
       animateAssistantContainerToDetent:targetDetent
                                duration:0
                                   curve:UIViewAnimationCurveEaseInOut];
+
+  CobrowseContext* context = agent ? agent->GetCobrowseContext() : nil;
+  AssistantAimEntrypoint entrypoint =
+      context ? context.entrypoint : AssistantAimEntrypoint::kUnknown;
+  [_metricsRecorder recordSessionStartedWithEntrypoint:entrypoint];
 }
 
 - (void)stop {
@@ -234,6 +246,9 @@ class AssistantAIMUIStateProvider
     return;
   }
   _isStopping = YES;
+  [_metricsRecorder recordSessionEnded];
+  _metricsRecorder = nil;
+
   CobrowseBrowserAgent* agent = CobrowseBrowserAgent::FromBrowser(self.browser);
   if (agent) {
     agent->SetUIStateProvider(nullptr);
@@ -275,6 +290,8 @@ class AssistantAIMUIStateProvider
       [_mediator updateContext];
       if (minimized) {
         _currentDetent = AssistantContainerDetent::kMinimized;
+        [_metricsRecorder
+            recordDetentChanged:AssistantContainerDetent::kMinimized];
       }
 
       AssistantContainerDetent targetDetent = _currentDetent;
@@ -285,6 +302,7 @@ class AssistantAIMUIStateProvider
       _currentDetent = targetDetent;
 
       [_activityReporter reportActive];
+      [_metricsRecorder recordVisibilityChanged:YES];
 
       [_containerHandler
           animateAssistantContainerToDetent:_currentDetent
@@ -295,6 +313,7 @@ class AssistantAIMUIStateProvider
     _isHiding = YES;
     [self dismissAssistantContainerAnimated:YES completion:nil];
     [_activityReporter reportInactive];
+    [_metricsRecorder recordVisibilityChanged:NO];
   }
 }
 
@@ -316,6 +335,7 @@ class AssistantAIMUIStateProvider
   // Initially the assistant is only hidden, the actual closing happens after
   // the snackbar dismisses and the undo window elapses.
   _isHiding = YES;
+  [_metricsRecorder recordVisibilityChanged:NO];
   __weak __typeof(self) weakSelf = self;
   [self dismissAssistantContainerAnimated:YES
                                completion:^{
@@ -466,6 +486,19 @@ class AssistantAIMUIStateProvider
   [sceneHandler revealAssistant];
 }
 
+// Handles user tapping Undo on the close snackbar.
+- (void)didUndoCloseAssistant {
+  [_metricsRecorder recordClosedSnackbarResolvedWithUndo:YES];
+  [self revealAssistant];
+}
+
+// Handles the close snackbar dismissing without an Undo action.
+- (void)didConfirmCloseAssistant {
+  [_metricsRecorder recordClosedSnackbarResolvedWithUndo:NO];
+  [_metricsRecorder recordSessionEnded];
+  [self closeAssistant];
+}
+
 // Shows the undo snackbar with a confirmation message.
 //
 // While the snackbar is shown the assistant is hidden. If the user presses
@@ -488,12 +521,12 @@ class AssistantAIMUIStateProvider
   // See crbug.com/525452659 for more details.
   message.action.handler = ^{
     didUndo = YES;
-    [weakSelf revealAssistant];
+    [weakSelf didUndoCloseAssistant];
   };
 
   self.undoSnackbarDismissCompletion = ^{
     if (!didUndo) {
-      [weakSelf closeAssistant];
+      [weakSelf didConfirmCloseAssistant];
     }
   };
   message.completionHandler = ^(BOOL success) {
@@ -547,6 +580,7 @@ class AssistantAIMUIStateProvider
 - (void)assistantContainer:(AssistantContainerViewController*)container
            didChangeDetent:(AssistantContainerDetent)newDetent {
   _currentDetent = newDetent;
+  [_metricsRecorder recordDetentChanged:newDetent];
   // Attempt to dismiss the keyboard when the sheet is collapsing.
   if (newDetent == AssistantContainerDetent::kMedium ||
       newDetent == AssistantContainerDetent::kMinimized) {

@@ -14,8 +14,10 @@
 #include "base/files/scoped_temp_dir.h"
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
+#include "base/memory/raw_ptr.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
+#include "base/task/cancelable_task_tracker.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/scoped_path_override.h"
@@ -27,8 +29,10 @@
 #include "chrome/browser/context_hub/context_hub_service.h"
 #include "chrome/browser/context_hub/context_hub_service_factory.h"
 #include "chrome/browser/context_hub/features.h"
+#include "chrome/browser/context_hub/memory_bank/memory_bank_chat_types.h"
 #include "chrome/browser/context_hub/prefs.h"
 #include "chrome/browser/context_hub/topics/topics_feedback_exporter.h"
+#include "chrome/browser/favicon/favicon_service_factory.h"
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/optimization_guide/mock_optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
@@ -37,6 +41,8 @@
 #include "chrome/browser/ui/webui/context_hub/context_hub.mojom-features.h"
 #include "chrome/browser/ui/webui/context_hub/context_hub.mojom.h"
 #include "chrome/test/base/testing_profile.h"
+#include "components/favicon/core/test/mock_favicon_service.h"
+#include "components/favicon_base/favicon_types.h"
 #include "components/history/core/browser/history_database_params.h"
 #include "components/history/core/browser/history_service.h"
 #include "components/history/core/browser/history_types.h"
@@ -45,6 +51,7 @@
 #include "components/history/core/browser/url_row.h"
 #include "components/history/core/test/test_history_database.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
+#include "components/keyed_service/core/keyed_service.h"
 #include "components/keyed_service/core/service_access_type.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/optimization_guide/proto/features/context_hub.pb.h"
@@ -68,6 +75,10 @@
 #include "net/base/url_util.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/skia/include/core/SkColor.h"
+#include "ui/gfx/color_utils.h"
+#include "ui/gfx/geometry/size.h"
+#include "ui/gfx/image/image_unittest_util.h"
 #include "url/gurl.h"
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -941,6 +952,56 @@ TEST(ContextHubMojomTraitsTest, MemoryBankEntrySerialization_Image) {
   EXPECT_EQ(output.tab_title, "Gallery Title");
   EXPECT_FALSE(output.selected_text.has_value());
   EXPECT_EQ(output.image_url, GURL("https://example.com/photo.png"));
+}
+
+TEST(ContextHubMojomTraitsTest, ChatReferenceSerialization) {
+  context_hub::MemoryBankChatCitation input{
+      .title = "Example Doc",
+      .url = GURL("https://example.com/doc"),
+  };
+
+  context_hub::MemoryBankChatCitation output;
+  ASSERT_TRUE(mojo::test::SerializeAndDeserialize<
+              browser::context_hub::mojom::ChatReference>(input, output));
+  EXPECT_EQ(output.title, "Example Doc");
+  EXPECT_EQ(output.url, GURL("https://example.com/doc"));
+}
+
+TEST(ContextHubMojomTraitsTest, MemoryBankChatMessageSerialization) {
+  context_hub::MemoryBankChatHistoryTurn user_input;
+  user_input.turn.set_role(
+      optimization_guide::proto::ChatHistoryTurn::ROLE_USER);
+  user_input.turn.set_message_content("What did I read?");
+
+  context_hub::MemoryBankChatHistoryTurn user_output;
+  ASSERT_TRUE(mojo::test::SerializeAndDeserialize<
+              browser::context_hub::mojom::MemoryBankChatMessage>(user_input,
+                                                                  user_output));
+  EXPECT_EQ(user_output.turn.role(),
+            optimization_guide::proto::ChatHistoryTurn::ROLE_USER);
+  EXPECT_EQ(user_output.turn.message_content(), "What did I read?");
+  EXPECT_TRUE(user_output.citations.empty());
+
+  context_hub::MemoryBankChatHistoryTurn assistant_input;
+  assistant_input.turn.set_role(
+      optimization_guide::proto::ChatHistoryTurn::ROLE_ASSISTANT);
+  assistant_input.turn.set_message_content("Summary of your memories.");
+  assistant_input.citations.push_back(context_hub::MemoryBankChatCitation{
+      .title = "Article 1",
+      .url = GURL("https://example.com/1"),
+  });
+
+  context_hub::MemoryBankChatHistoryTurn assistant_output;
+  ASSERT_TRUE(mojo::test::SerializeAndDeserialize<
+              browser::context_hub::mojom::MemoryBankChatMessage>(
+      assistant_input, assistant_output));
+  EXPECT_EQ(assistant_output.turn.role(),
+            optimization_guide::proto::ChatHistoryTurn::ROLE_ASSISTANT);
+  EXPECT_EQ(assistant_output.turn.message_content(),
+            "Summary of your memories.");
+  ASSERT_EQ(assistant_output.citations.size(), 1u);
+  EXPECT_EQ(assistant_output.citations[0].title, "Article 1");
+  EXPECT_EQ(assistant_output.citations[0].url, GURL("https://example.com/1"));
 }
 
 TEST_F(ContextHubPageHandlerTest, GetAutoTodos_Empty) {
@@ -2286,19 +2347,24 @@ TEST_F(ContextHubPageHandlerTest, GetAndClearMemoryBankChatHistory) {
   task_environment_.FastForwardBy(base::Milliseconds(1));
   service->AddMemoryBankChatHistoryTurn(
       optimization_guide::proto::ChatHistoryTurn::ROLE_ASSISTANT,
-      "Assistant response");
+      "Assistant response",
+      {{.title = "Ref Title", .url = GURL("https://example.com/ref")}});
 
-  base::test::TestFuture<
-      std::vector<browser::context_hub::mojom::ChatMessagePtr>>
+  base::test::TestFuture<const std::vector<MemoryBankChatHistoryTurn>&>
       get_future;
   handler_->GetMemoryBankChatHistory(get_future.GetCallback());
-  auto history = get_future.Take();
+  std::vector<MemoryBankChatHistoryTurn> history = get_future.Take();
   ASSERT_EQ(history.size(), 2u);
-  EXPECT_EQ(history[0]->role, browser::context_hub::mojom::ChatRole::kUser);
-  EXPECT_EQ(history[0]->content, "User query");
-  EXPECT_EQ(history[1]->role,
-            browser::context_hub::mojom::ChatRole::kAssistant);
-  EXPECT_EQ(history[1]->content, "Assistant response");
+  EXPECT_EQ(history[0].turn.role(),
+            optimization_guide::proto::ChatHistoryTurn::ROLE_USER);
+  EXPECT_EQ(history[0].turn.message_content(), "User query");
+  EXPECT_TRUE(history[0].citations.empty());
+  EXPECT_EQ(history[1].turn.role(),
+            optimization_guide::proto::ChatHistoryTurn::ROLE_ASSISTANT);
+  EXPECT_EQ(history[1].turn.message_content(), "Assistant response");
+  ASSERT_EQ(history[1].citations.size(), 1u);
+  EXPECT_EQ(history[1].citations[0].title, "Ref Title");
+  EXPECT_EQ(history[1].citations[0].url, GURL("https://example.com/ref"));
 
   base::test::TestFuture<void> clear_future;
   handler_->ClearMemoryBankChatHistory(clear_future.GetCallback());
@@ -2357,19 +2423,16 @@ TEST_F(ContextHubPageHandlerTest, AskGeminiWithContext_Success) {
       ContextHubServiceFactory::GetForProfile(&profile_);
   ASSERT_TRUE(service);
 
-  base::test::TestFuture<
-      browser::context_hub::mojom::ChatMessagePtr,
-      std::vector<browser::context_hub::mojom::ChatReferencePtr>>
-      future;
+  base::test::TestFuture<const MemoryBankChatHistoryTurn&> future;
   handler_->AskGeminiWithContext("Summarize memories", {1, 2},
                                  /*save_to_history=*/true,
                                  future.GetCallback());
 
-  auto [response, references] = future.Take();
-  ASSERT_TRUE(response);
-  EXPECT_EQ(response->role, browser::context_hub::mojom::ChatRole::kAssistant);
-  EXPECT_EQ(response->content, "Gemini response for prompt.");
-  EXPECT_TRUE(references.empty());
+  MemoryBankChatHistoryTurn response = future.Take();
+  EXPECT_EQ(response.turn.role(),
+            optimization_guide::proto::ChatHistoryTurn::ROLE_ASSISTANT);
+  EXPECT_EQ(response.turn.message_content(), "Gemini response for prompt.");
+  EXPECT_TRUE(response.citations.empty());
   EXPECT_EQ(service->GetMemoryBankChatHistory().size(), 2u);
 }
 
@@ -2434,21 +2497,18 @@ TEST_F(ContextHubPageHandlerTest, AskGeminiWithContext_WithSelectedEntries) {
             nullptr);
       });
 
-  base::test::TestFuture<
-      browser::context_hub::mojom::ChatMessagePtr,
-      std::vector<browser::context_hub::mojom::ChatReferencePtr>>
-      ask_future;
+  base::test::TestFuture<const MemoryBankChatHistoryTurn&> ask_future;
   handler_->AskGeminiWithContext("Summarize", {entry_id},
                                  /*save_to_history=*/false,
                                  ask_future.GetCallback());
 
-  auto [response, references] = ask_future.Take();
-  ASSERT_TRUE(response);
-  EXPECT_EQ(response->role, browser::context_hub::mojom::ChatRole::kAssistant);
-  EXPECT_EQ(response->content, "Summary of Test Page.");
-  ASSERT_EQ(references.size(), 1u);
-  EXPECT_EQ(references[0]->title, "Test Page");
-  EXPECT_EQ(references[0]->url, GURL("https://example.com/test"));
+  MemoryBankChatHistoryTurn response = ask_future.Take();
+  EXPECT_EQ(response.turn.role(),
+            optimization_guide::proto::ChatHistoryTurn::ROLE_ASSISTANT);
+  EXPECT_EQ(response.turn.message_content(), "Summary of Test Page.");
+  ASSERT_EQ(response.citations.size(), 1u);
+  EXPECT_EQ(response.citations[0].title, "Test Page");
+  EXPECT_EQ(response.citations[0].url, GURL("https://example.com/test"));
   EXPECT_TRUE(service->GetMemoryBankChatHistory().empty());
 }
 
@@ -3103,6 +3163,8 @@ TEST_F(ContextHubPageHandlerTest, GetTopics_MapsResolvedJourneys) {
   EXPECT_EQ(topics[0]->collections[0]->items[0]->url,
             GURL("https://example.com/collection-item"));
   EXPECT_FALSE(topics[0]->collections[0]->items[0]->site_name);
+  EXPECT_EQ(topics[0]->collections[0]->items[0]->visit_time,
+            base::Time::FromTimeT(600));
 }
 
 TEST_F(ContextHubPageHandlerTest, GetTopics_NoJourneys) {
@@ -3393,6 +3455,91 @@ TEST_F(ContextHubPageHandlerTest, GetTopicPageImageUrl_NonWebUrl) {
   }
 }
 
+class ContextHubPageHandlerFaviconColorTest : public ContextHubPageHandlerTest {
+ public:
+  void SetUp() override {
+    ContextHubPageHandlerTest::SetUp();
+    favicon_service_ =
+        static_cast<testing::NiceMock<favicon::MockFaviconService>*>(
+            FaviconServiceFactory::GetInstance()->SetTestingFactoryAndUse(
+                &profile_, base::BindOnce([](content::BrowserContext*) {
+                  return static_cast<std::unique_ptr<KeyedService>>(
+                      std::make_unique<
+                          testing::NiceMock<favicon::MockFaviconService>>());
+                })));
+  }
+
+  // Makes the favicon service reply with a `size`x`size` favicon filled with
+  // `color`, or with no favicon if `color` is unset.
+  void SetFavicon(std::optional<SkColor> color, int size = 16) {
+    ON_CALL(*favicon_service_, GetRawFaviconForPageURL)
+        .WillByDefault(
+            [color, size](const GURL&, const favicon_base::IconTypeSet&, int,
+                          bool, favicon_base::FaviconRawBitmapCallback callback,
+                          base::CancelableTaskTracker*) {
+              favicon_base::FaviconRawBitmapResult result;
+              if (color) {
+                result.bitmap_data = gfx::test::CreatePNGBytes(size, *color);
+                result.pixel_size = gfx::Size(size, size);
+              }
+              std::move(callback).Run(result);
+              return base::CancelableTaskTracker::kBadTaskId;
+            });
+  }
+
+  std::optional<SkColor> GetFaviconColor(const GURL& url) {
+    base::test::TestFuture<std::optional<SkColor>> future;
+    handler_->GetTopicPageFaviconColor(url, future.GetCallback());
+    return future.Get();
+  }
+
+ protected:
+  raw_ptr<testing::NiceMock<favicon::MockFaviconService>> favicon_service_;
+};
+
+TEST_F(ContextHubPageHandlerFaviconColorTest, NonWebUrl) {
+  SetFavicon(SK_ColorBLUE);
+  for (const GURL& url : {GURL("chrome://settings"), GURL("file:///a"),
+                          GURL("javascript:alert(1)"), GURL()}) {
+    EXPECT_FALSE(GetFaviconColor(url)) << url;
+  }
+}
+
+TEST_F(ContextHubPageHandlerFaviconColorTest, NoFavicon) {
+  SetFavicon(std::nullopt);
+  EXPECT_FALSE(GetFaviconColor(GURL("https://example.com/")));
+}
+
+TEST_F(ContextHubPageHandlerFaviconColorTest, ReturnsDominantColor) {
+  // Lightness 0.38, within the range kept as is.
+  const SkColor favicon_color = SkColorSetRGB(0x20, 0x60, 0xA0);
+  SetFavicon(favicon_color);
+  EXPECT_CALL(*favicon_service_,
+              GetRawFaviconForPageURL(
+                  GURL("https://example.com/page?q=1"),
+                  favicon_base::IconTypeSet({favicon_base::IconType::kFavicon}),
+                  _, /*fallback_to_host=*/true, _, _));
+
+  std::optional<SkColor> color =
+      GetFaviconColor(GURL("https://example.com/page?q=1"));
+  ASSERT_TRUE(color);
+  // Allow for rounding in the HSL conversion that clamps the lightness.
+  EXPECT_NEAR(SkColorGetR(favicon_color), SkColorGetR(*color), 1);
+  EXPECT_NEAR(SkColorGetG(favicon_color), SkColorGetG(*color), 1);
+  EXPECT_NEAR(SkColorGetB(favicon_color), SkColorGetB(*color), 1);
+  EXPECT_EQ(SK_AlphaOPAQUE, SkColorGetA(*color));
+}
+
+TEST_F(ContextHubPageHandlerFaviconColorTest, ClampsLightness) {
+  SetFavicon(SK_ColorWHITE);
+  std::optional<SkColor> color = GetFaviconColor(GURL("https://example.com/"));
+  ASSERT_TRUE(color);
+  color_utils::HSL hsl;
+  color_utils::SkColorToHSL(*color, &hsl);
+  // White is darkened, so the tint behind the favicon isn't white on white.
+  EXPECT_LT(hsl.l, 0.7);
+}
+
 #if !BUILDFLAG(IS_ANDROID)
 TEST_F(ContextHubPageHandlerTest, OpenUrlsInTabGroup_OnlyOpensWebUrls) {
   std::vector<GURL> opened_urls;
@@ -3459,9 +3606,10 @@ TEST_F(ContextHubPageHandlerTest,
 TEST_F(ContextHubPageHandlerTest,
        OpenUrlsInTabGroup_FeaturesDisabled_ReportsBadMessage) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitWithFeatures(
-      {}, {browser::context_hub::mojom::kTopics,
-           browser::context_hub::mojom::kSmartSearch});
+  feature_list.InitWithFeatures({},
+                                {browser::context_hub::mojom::kAutoTodos,
+                                 browser::context_hub::mojom::kTopics,
+                                 browser::context_hub::mojom::kSmartSearch});
 
   EXPECT_CALL(*mock_tab_provider_, OpenUrlsInTabGroup(_, _)).Times(0);
 
@@ -3471,9 +3619,31 @@ TEST_F(ContextHubPageHandlerTest,
                                base::DoNothing());
 
   EXPECT_EQ(
-      "OpenUrlsInTabGroup cannot be called without Topics or SmartSearch "
-      "enabled.",
+      "OpenUrlsInTabGroup cannot be called without AutoTodos, Topics, or "
+      "SmartSearch enabled.",
       bad_message_observer.WaitForBadMessage());
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       OpenUrlsInTabGroup_AutoTodosOnlyEnabled_Succeeds) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures({browser::context_hub::mojom::kAutoTodos},
+                                {browser::context_hub::mojom::kTopics,
+                                 browser::context_hub::mojom::kSmartSearch});
+
+  std::vector<GURL> opened_urls;
+  EXPECT_CALL(*mock_tab_provider_, OpenUrlsInTabGroup("History Todo", _))
+      .WillOnce([&](const std::string&, base::span<const GURL> urls) {
+        opened_urls.assign(urls.begin(), urls.end());
+        return true;
+      });
+
+  base::test::TestFuture<bool> future;
+  handler_->OpenUrlsInTabGroup("History Todo", {GURL("https://example.com/a")},
+                               future.GetCallback());
+
+  EXPECT_TRUE(future.Get());
+  EXPECT_THAT(opened_urls, testing::ElementsAre(GURL("https://example.com/a")));
 }
 
 TEST_F(ContextHubPageHandlerTest, OpenTopic_TopicId) {

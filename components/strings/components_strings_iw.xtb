@@ -118,6 +118,7 @@
 <translation id="1195558154361252544">הצגת ההודעות חסומה באופן אוטומטי בכל האתרים, מלבד האתרים שבהם היא אושרה</translation>
 <translation id="1197088940767939838">כתום</translation>
 <translation id="1198412233443148072">הכרטיסייה "<ph name="WEBSITE_TITLE" />" הוסרה על ידי <ph name="MEMBER_FIRST_NAME" /></translation>
+<translation id="119944043368869598">ניקוי הכול</translation>
 <translation id="1201402288615127009">הבא</translation>
 <translation id="1201895884277373915">עוד מאתר זה</translation>
 <translation id="1204184165594298176">{0,plural, =1{אין אפשרות להעתיק את הקובץ}one{אין אפשרות להעתיק <ph name="FILE_COUNT" /> קבצים}two{אין אפשרות להעתיק <ph name="FILE_COUNT" /> קבצים}other{אין אפשרות להעתיק <ph name="FILE_COUNT" /> קבצים}}</translation>
@@ -618,7 +619,6 @@
 <translation id="2059166748188874810">מחוז</translation>
 <translation id="2059202684901022309">‏22x34 אינץ'</translation>
 <translation id="2063929825539050431">כדי לשלוח במהירות את הדף הזה למכשיר אחר, צריך ללחוץ לחיצה ארוכה על סרגל הכתובות</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{הצעה אחת}one{# הצעות}two{שתי הצעות}other{# הצעות}}</translation>
 <translation id="2066969741541525119">האתר שבכתובת הזו נחסם על ידי הארגון שלך</translation>
 <translation id="2071156619270205202">הכרטיס הזה לא עומד בדרישות לקבלת מספר כרטיס וירטואלי.</translation>
 <translation id="2071852865256799872">הדפדפן מנוהל על ידי הארגון שלך והפרופיל שלך מנוהל על ידי <ph name="PROFILE_DOMAIN" /></translation>
@@ -665,6 +665,7 @@
 <translation id="2126374524350484896">‏האפליקציה שהמירה ל-PDF:</translation>
 <translation id="2127090458081644412">הסיסמה נשמרה במכשיר הזה</translation>
 <translation id="2127747486437921899">נטוי</translation>
+<translation id="2129163794581571479">‏מבוסס על Gemini עם AI מותאם אישית. כדי לייעל את המילוי האוטומטי המשופר, יכול להיות שהבקשות, כותרות הדפים וכתובות ה-URL ייבדקו. <ph name="BEGIN_LINK" />ניהול ההגדרות<ph name="END_LINK" /></translation>
 <translation id="2130448033692577677">‏לא ניתן להחיל את התבניות שבחרת, מפני שמדיניות DnsOverHttpsMode לא הוגדרה.</translation>
 <translation id="2130699163006053678">A3x7</translation>
 <translation id="2131006834960167560">האפשרות "הפעלת מילוי אוטומטי של פרטי תשלום" נפתחה בגובה מלא.</translation>
@@ -710,7 +711,6 @@
 <translation id="2188375229972301266">ניקובים מרובים בחלק התחתון</translation>
 <translation id="218940509700321686">‏ערכים מופרדים בפסיקים (CSV)</translation>
 <translation id="2190094353033916816">המדיניות הזו מוגדרת עם ערכים שונים ברמת המחשב וברמת המשתמש. המדיניות פועלת כצפוי.</translation>
-<translation id="219061769324072544">אשראי,כרטיס,חיוב מיידי</translation>
 <translation id="2191980191135734720">בשלב הבא, צריך לבטל את נעילת המסך, בדרך כלל באמצעות טביעת האצבע. אפשר גם <ph name="LINK_TEXT" />.</translation>
 <translation id="2194856509914051091">מה כדאי לקחת בחשבון</translation>
 <translation id="2195729137168608510">הגנת אימייל </translation>
@@ -1081,6 +1081,7 @@
 <translation id="2807052079800581569">‏מיקום תמונה על ציר Y</translation>
 <translation id="2808278141522721006">‏אפשר להפעיל או להשבית את Windows Hello ב<ph name="SETTINGS" /></translation>
 <translation id="2820957248982571256">מתבצעת סריקה…</translation>
+<translation id="282457273878278063">ניהול הפרטים ליצירת קשר</translation>
 <translation id="2824775600643448204">שורת חיפוש וכתובות אתרים</translation>
 <translation id="2826760142808435982">החיבור מוצפן ומאומת באמצעות <ph name="CIPHER" /> ומשתמש ב-<ph name="KX" /> כמנגנון להחלפת מפתחות.</translation>
 <translation id="2828797285817981634">יש הרשאה זמנית להשתמש בחיישני התנועה</translation>
@@ -1575,6 +1576,7 @@
 <translation id="3655670868607891010">אם נתקלת בזה לעתים קרובות, כדאי לנסות את ה<ph name="HELP_LINK" /> האלה.</translation>
 <translation id="3658742229777143148">גרסה קודמת</translation>
 <translation id="3659521826520353662">אתרים בהגדרת האדמין שבהם מבקרים, וזמני הביקורים: <ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3663760610864720538">‏מבוסס על Gemini עם AI מותאם אישית. <ph name="BEGIN_LINK" />ניהול ההגדרות<ph name="END_LINK" /></translation>
 <translation id="3664479564786885722">חיפוש של אפשרויות קנייה נוספות בחנויות אחרות שמוכרות את המוצר הזה.</translation>
 <translation id="3664782872746246217">מילות מפתח:</translation>
 <translation id="3670030362669914947">מספר</translation>
@@ -1595,6 +1597,7 @@
 <translation id="3693516565203081475">בחירת אמצעי תשלום</translation>
 <translation id="3698353241727597930">האדמינים הגדירו שהמערכת תשמור <ph name="FILES" /> באחסון שלך ב-<ph name="CLOUD_STORAGE" /> שמנוהל על ידי הארגון. אם הקבצים האלה ימחקו, יכול להיות שיתבצע מעקב אחריהם, בדיקה ושמירה שלהם.</translation>
 <translation id="3698629142018988477">‏הכפתור ליצירת אתר, מפעילים אותו כדי ליצור במהירות אתר חדש ב-Google Sites</translation>
+<translation id="3698708128812719147">‏כדי למצוא ולמלא עוד פרטים, עליך ללחוץ פעמיים על Ctrl בכל מקום באינטרנט</translation>
 <translation id="3700094625653511150">כדי להסתיר את האפשרויות לתשלום אחר כך, צריך לעבור אל <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /></translation>
 <translation id="3700966190175650601">בחרת להשתמש בטביעת האצבע למילוי סיסמאות</translation>
 <translation id="3701427423622901115">האיפוס אושר.</translation>
@@ -1862,7 +1865,6 @@
 <translation id="4121428309786185360">בתוקף עד </translation>
 <translation id="4123572138124678573">3 ניקובים בחלק התחתון</translation>
 <translation id="412601465078863288">פג הזמן שהוקצב להעלאה</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{אחד נוסף}one{# נוספים}two{שניים נוספים}other{# נוספים}}</translation>
 <translation id="4129810348470013900">הפעולה לא הצליחה. כדאי לבדוק את החיבור לאינטרנט ולנסות שוב.</translation>
 <translation id="4130226655945681476">כדאי לבדוק את כבלי הרשת, את המודם ואת הנתב</translation>
 <translation id="4132448310531350254">‏מתבצעת הפניה לרכיבי handler כפולים עבור סיומת הקובץ '<ph name="FILE_EXTENSION" />' על ידי האפליקציות הבאות: <ph name="POLICY_IDS_LIST" />.</translation>
@@ -1898,6 +1900,7 @@
 <translation id="4185037616931963178">‏עדכון מספר ה-Redress באופן מאובטח</translation>
 <translation id="4186035307311647330">ביטול המעקב אחר המחירים</translation>
 <translation id="4191334393248735295">אורך</translation>
+<translation id="4192770747482479191">כדי למצוא ולמלא עוד פרטים, עליך ללחוץ פעמיים על הסמל ⌘ בכל מקום באינטרנט</translation>
 <translation id="4195459680867822611">‏הכפתור להצגת טיפים ל-Chrome, מפעילים אותו כדי לקבל מידע על התכונות של Chrome</translation>
 <translation id="4195643157523330669">פתיחה בכרטיסייה חדשה</translation>
 <translation id="4196861286325780578">&amp;ביצוע מחדש של העברה</translation>
@@ -2215,7 +2218,6 @@
 <translation id="4725766358270333890">‏מתבצעת העלאה של <ph name="COUNT" /> קבצים ל-Microsoft OneDrive</translation>
 <translation id="4726672564094551039">טעינת המדיניות מחדש</translation>
 <translation id="4728558894243024398">פלטפורמה</translation>
-<translation id="4730773064303503917">‏שימוש ב-Pix מאפשר להעביר כסף לחברים ולשלם לעסקים באמצעות Wallet</translation>
 <translation id="4730977633786878901">ביקורות</translation>
 <translation id="4731638775147756694">האפליקציה נחסמה על ידי מנהל המערכת</translation>
 <translation id="4732860731866514038">חבילת השפה <ph name="LANGUAGE" /> בהורדה… <ph name="PERCENT" />%</translation>
@@ -2851,6 +2853,7 @@ Del</translation>
 <translation id="573974402615125334">כדי לשתף, להצטרף ולשתף פעולה בקבוצות של כרטיסיות, צריך לסנכרן את ההיסטוריה ואת הכרטיסיות</translation>
 <translation id="5740911612628596808">‏מעטפה – C9</translation>
 <translation id="574392208103952083">בינוני</translation>
+<translation id="5744350700955456407">‏המילוי האוטומטי המשופר יכול עכשיו למצוא ולמלא פרטים כמו מספרי הזמנות וקודי אישור לטיסות מתוך אפליקציות כמו Gmail ו-Photos</translation>
 <translation id="5745586894920491759">‏‫Chrome מעבד את כותרות הדפים וכתובות ה-URL בענן</translation>
 <translation id="5745733273847572235">האתר יכול לבקש הרשאת גישה למיקום המכשיר</translation>
 <translation id="5750869797196646528">מעקב אחר תנועות הידיים</translation>
@@ -3232,7 +3235,6 @@ Del</translation>
 <translation id="638289054711715023">Shrink Foil</translation>
 <translation id="6383221683286411806">ייתכנו חיובים באתר.</translation>
 <translation id="6384448607821972818">סיסמת השחזור מוצגת</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{הצעה אחת נוספת}one{# הצעות נוספות}two{שתי הצעות נוספות}other{# הצעות נוספות}}</translation>
 <translation id="6386565501269869892">‏מעטפה – You 4</translation>
 <translation id="6387645831795005740">‏תוקפים שמחקים אתרים לפעמים משתמשים בכתובת ה-URL של האתר המקורי ועושים בה שינויים קלים ביותר כדי שיהיה קשה להבחין בהבדל.</translation>
 <translation id="6389470377220713856">שם על הכרטיס</translation>
@@ -4841,7 +4843,6 @@ Del</translation>
 <translation id="9168814207360376865">מתן הרשאה לאתרים לבדוק אם שמרת אמצעי תשלום</translation>
 <translation id="9169931577761441333">הוספה של <ph name="APP_NAME" /> למסך דף הבית</translation>
 <translation id="9170848237812810038">&amp;ביטול</translation>
-<translation id="9170906125144697215">‏אפשר לשלם באמצעות Pix בלי לעבור בין אפליקציות</translation>
 <translation id="9171296965991013597">לצאת מהאפליקציה?</translation>
 <translation id="9173282814238175921">מסמך יחיד/גיליון חדש</translation>
 <translation id="9173995187295789444">‏מתבצע חיפוש של מכשירי Bluetooth...</translation>

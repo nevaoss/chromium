@@ -414,16 +414,14 @@ BASE_FEATURE(kCrosContentAdjustedRefreshRate,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
+// Do not create GLContext on DrDC thread (and Android WebView render thread) if
+// GL is not used by viz (eg when vulkan is used).
+BASE_FEATURE(kSkipDisabledGLContextOnDrDC, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kNoCompositorFrameAcks, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<int> kNumberPendingFramesUntilThrottle{
     &kNoCompositorFrameAcks, "pending_frames", 1};
 BASE_FEATURE(kDisplaySchedulerAsClient, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables optimizations in `DirectRenderer` and `OcclusionCuller` that reuses
-// pre-existing loops to access filter data from `AggregatedRenderPassDrawQuad`.
-// This is a temporary flag to work as a kill switch for the optimization and
-// should be removed as soon as we confirm that the optimization is stable.
-BASE_FEATURE(kRpdqFilterLookupOptimizations, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Kill switch for constraining render pass texture sampling to logical content
 // bounds. Remove after the behavior is stable.

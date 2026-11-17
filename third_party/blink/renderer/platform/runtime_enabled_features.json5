@@ -1395,6 +1395,11 @@
       base_feature: "none",
     },
     {
+      // Precompute :hover styles and apply hover effects on the compositor
+      // without involving the main thread.
+      name: "CompositeHoverStyle",
+    },
+    {
       name: "CompositingDecisionAtAnimationPhaseBoundaries"
     },
     {
@@ -1649,6 +1654,10 @@
       // https://drafts.csswg.org/css-backgrounds/#layering
       // https://github.com/w3c/csswg-drafts/issues/7164
       name: "CSSBackgroundLayerCountIndependence",
+      status: "experimental",
+    },
+    {
+      name: "CSSBorderRadiusSideShorthands",
       status: "experimental",
     },
     // https://chromestatus.com/feature/5459864205393920
@@ -1911,7 +1920,7 @@
       // :muted, and :volume-locked for media elements.
       // https://drafts.csswg.org/selectors/#resource-pseudos
       name: "CSSMediaElementPseudos",
-      status: "experimental",
+      status: "stable",
     },
     {
       // https://drafts.csswg.org/css-values-5/#progress
@@ -2199,7 +2208,7 @@
     },
     {
       name: "CSSTextDecorationSkipSpaces",
-      status: "stable",
+      status: "experimental",
     },
     {
       // crbug.com/417306102
@@ -2741,7 +2750,7 @@
       // See https://crbug.com/40943926 and
       // https://html.spec.whatwg.org/multipage/dnd.html#security-risks-in-the-drag-and-drop-model
       name: "DragThresholdRequiresMouseMovement",
-      status: "test"
+      status: "stable",
     },
     {
       // See: crrev.com/c/7874048
@@ -3884,6 +3893,11 @@
       status: "stable",
     },
     {
+      // Initial letter block-axis positioning fixes. See crbug.com/573256240
+      name: "InitialLetterBlockPositioning",
+      status: "stable",
+    },
+    {
       // See crbug.com/40695399
       name: "InlineBlockLineNavigation",
       status: "stable",
@@ -4425,11 +4439,6 @@
       status: "experimental",
     },
     {
-      // Killswitch M149. Functionality changed in M151.
-      name: "MergeStickyLayers",
-      status: "stable",
-    },
-    {
       name: "MessagePortCloseEvent",
       status: "test",
     },
@@ -4957,6 +4966,11 @@
       public: true,
       status: "experimental",
       base_feature: "none",
+    },
+    {
+      // Lets a payment app set the size of its Payment Handler window through
+      // the `preferredSize` option of PaymentRequestEvent.openWindow().
+      name: "PaymentHandlerStaticCustomSize",
     },
     {
       // https://chromestatus.com/feature/5198846820352000
@@ -5506,6 +5520,11 @@
       status: "stable",
     },
     {
+      // Kill switch for https://crbug.com/570579609.
+      name: "ResponsiveIframesShrink",
+      status: "stable",
+    },
+    {
       name: "RestrictGamepadAccess",
       public: true,
       status: "experimental",
@@ -5663,6 +5682,10 @@
       // Spec: https://wicg.github.io/sanitizer-api/
       // Tracking bug: crbug.com/356601280
       name: "SanitizerAPI",
+      status: "stable",
+    },
+    {
+      name: "SanitizeWorkerErrorPropagation",
       status: "stable",
     },
     {
@@ -6149,6 +6172,10 @@
       status: "stable",
     },
     {
+      name: "SkipHtmlInterchangeInForeignContent",
+      status: "stable",
+    },
+    {
       // Kill switch for crbug.com/41254682: skips paint invalidation for
       // paint-only style changes (e.g. animation frames) on objects that were
       // and stay visibility:hidden.
@@ -6289,6 +6316,15 @@
       name: "SrcsetSelectionMatchesImageSet",
       status: "stable",
     },
+    // Supports two-dimensional source sizes ("contain"/"cover" <length>
+    // <length>) in sizes, takes the srcset 'h' descriptor and the width/height
+    // attributes into account during source selection, and makes auto-sizes
+    // take the content box height and object-fit into account.
+    // https://github.com/whatwg/html/pull/13053
+    {
+      name: "SrcsetTwoDimensionalSizes",
+      status: "experimental",
+    },
     // Used as argument in attribute of stable-release functions/interfaces
     // where a runtime-enabled feature name is required for correct IDL syntax.
     // This is a global flag; do not change its status.
@@ -6308,6 +6344,20 @@
       // observers while a stale cached image is revalidating.
       // https://crbug.com/40757070
       name: "StaleImageNaturalSizeDuringRevalidation",
+      status: "stable",
+    },
+    {
+      // Without this flag, an IntersectionObserver target inside a
+      // render-throttled iframe will continue to compute its intersection state
+      // as long as `NeedsLayout()` is `false` for its containing document. This
+      // is a faulty mechanism, as `NeedsLayout()` does not reliably indicate
+      // whether a document's rendering is out of date. When the flag is enabled
+      // all IntersectionObserver targets inside an iframe that becomes
+      // throttled will promptly generate a "not intersecting" notification.
+      // This is a web-visible change in behavior (though it does not reveal any
+      // new information), so it's hidden behind a flag to provide a kill switch
+      // in the event of breakage.
+      name: "StaleIntersectionGeometryForThrottledFrames",
       status: "stable",
     },
     {
@@ -6443,6 +6493,10 @@
       status: "stable",
     },
     {
+      name: "SvgHyperlinkElementUtils",
+      status: "experimental",
+    },
+    {
       name: "SvgIgnoreNegativeEllipseRadii",
       status: "stable",
     },
@@ -6509,7 +6563,7 @@
     },
     {
       name: "SVGTextPathSideAttribute",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "SvgUseNestedResourceDocuments",
@@ -6813,7 +6867,17 @@
       base_feature: "none",
     },
     {
+      // If enabled and opted-in per property, style tracks the animating
+      // element(s) that each property's computed value is derived from.
+      // Used when deciding which animations can run on the compositor.
       name: "TrackAnimatedSources",
+      status: "stable",
+    },
+    {
+      // Also tracks properties that inherit-by-default, such as `color`.
+      // On a separate flag to collect data on runtime performance impact.
+      name: "TrackAnimatedSourcesForInheritedProperties",
+      depends_on: ["TrackAnimatedSources"],
       status: "test",
     },
     {
@@ -7794,6 +7858,12 @@
     {
       name: "WebXRVisibilityMask",
       depends_on: ["WebXR"],
+      status: "stable",
+    },
+    // Normalize DOM wheel pixel deltas for inherited pinch zoom in child
+    // widgets without changing the native event used for scrolling.
+    {
+      name: "WheelEventDeltaExternalPageScale",
       status: "stable",
     },
     // Expose the momentum field in mouse wheel events that indicates whether an

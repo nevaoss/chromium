@@ -36,8 +36,6 @@ BASE_DECLARE_FEATURE(kLegacySearchIntegrityCheck);
 
 BASE_DECLARE_FEATURE(kImportExportFlags);
 
-BASE_DECLARE_FEATURE(kInfoBarInlineLinks);
-
 // Shows a "+N" count pill in the bottom-most infobar while lower-priority
 // infobars wait in the prioritization queue.
 BASE_DECLARE_FEATURE(kInfoBarQueuedCountPill);
@@ -301,6 +299,14 @@ BASE_DECLARE_FEATURE(kMigrateManagementPageToWebUIOnMobile);
 BASE_DECLARE_FEATURE(kViewsJSAppModalDialog);
 #endif
 
+#if BUILDFLAG(IS_MAC)
+// When enabled, a new browser window does not activate the input method for
+// its focused location bar until the window has presented its first frame.
+// Activating some input methods (for example Japanese) blocks the main thread
+// and delays the first frame.
+BASE_DECLARE_FEATURE(kMacDeferInputContextUntilFirstPaint);
+#endif
+
 // Controls whether the site-specific data dialog shows a related installed
 // applications section.
 BASE_DECLARE_FEATURE(kPageSpecificDataDialogRelatedInstalledAppsSection);
@@ -397,6 +403,7 @@ BASE_DECLARE_FEATURE_PARAM(std::string, kAiOverlayDialogApiKey);
 BASE_DECLARE_FEATURE_PARAM(std::string, kAiOverlayDialogMockJsonPath);
 BASE_DECLARE_FEATURE_PARAM(bool, kAiOverlayDialogUseMes);
 BASE_DECLARE_FEATURE_PARAM(bool, kAiOverlayDialogPageTools);
+BASE_DECLARE_FEATURE_PARAM(bool, kAiOverlayDialogNext);
 BASE_DECLARE_FEATURE(kAiOverlayDisableNavigationContext);
 
 BASE_DECLARE_FEATURE(kTabGroupsFocusing);

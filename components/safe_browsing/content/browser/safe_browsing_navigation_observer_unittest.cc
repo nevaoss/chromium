@@ -1264,4 +1264,79 @@ TEST_F(SBNavigationObserverTest,
       nav_list->GetNavigationEvent(0U));
 }
 
+// Regression test for b/568560137.
+TEST_F(SBNavigationObserverTest,
+       FindNavigationEventPropagatesUserGestureToRetargetingEvent) {
+  base::Time now = base::Time::Now();
+  SessionID source_tab_id = SessionID::FromSerializedValue(1);
+  SessionID target_tab_id = SessionID::FromSerializedValue(2);
+
+  auto retargeting_event = std::make_unique<NavigationEvent>();
+  retargeting_event->source_url = GURL("http://foo/0");
+  retargeting_event->source_main_frame_url = GURL("http://foo/0");
+  retargeting_event->original_request_url = GURL("http://foo/new_tab");
+  retargeting_event->source_tab_id = source_tab_id;
+  retargeting_event->target_tab_id = target_tab_id;
+  retargeting_event->last_updated = now;
+  retargeting_event->navigation_initiation =
+      ReferrerChainEntry::RENDERER_INITIATED_WITHOUT_USER_GESTURE;
+  navigation_event_list()->RecordNavigationEvent(std::move(retargeting_event));
+
+  auto new_tab_event = std::make_unique<NavigationEvent>();
+  new_tab_event->original_request_url = GURL("http://foo/new_tab");
+  new_tab_event->source_tab_id = target_tab_id;
+  new_tab_event->target_tab_id = target_tab_id;
+  new_tab_event->has_committed = true;
+  new_tab_event->last_updated = now;
+  new_tab_event->navigation_initiation =
+      ReferrerChainEntry::RENDERER_INITIATED_WITH_USER_GESTURE;
+  navigation_event_list()->RecordNavigationEvent(std::move(new_tab_event));
+
+  ReferrerChain referrer_chain;
+  EXPECT_EQ(SafeBrowsingNavigationObserverManager::SUCCESS,
+            navigation_observer_manager_->IdentifyReferrerChainByEventURL(
+                GURL("http://foo/new_tab"), target_tab_id,
+                /*user_gesture_count_limit=*/2, &referrer_chain));
+  ASSERT_EQ(1, referrer_chain.size());
+  EXPECT_EQ(ReferrerChainEntry::RENDERER_INITIATED_WITH_USER_GESTURE,
+            referrer_chain.Get(0).navigation_initiation());
+  EXPECT_EQ("http://foo/0", referrer_chain.Get(0).referrer_url());
+  EXPECT_TRUE(referrer_chain.Get(0).is_retargeting());
+}
+
+// Regression test for b/568560137.
+TEST_F(SBNavigationObserverTest,
+       RecordNewWebContentsWithFrameTransientUserActivation) {
+  sessions::SessionTabHelper::CreateForWebContents(web_contents(),
+                                                   base::NullCallback());
+  std::unique_ptr<content::WebContents> target_web_contents =
+      CreateTestWebContents();
+  sessions::SessionTabHelper::CreateForWebContents(target_web_contents.get(),
+                                                   base::NullCallback());
+
+  content::RenderFrameHost* subframe =
+      content::RenderFrameHostTester::For(main_rfh())->AppendChild("subframe");
+  subframe = content::NavigationSimulator::NavigateAndCommitFromDocument(
+      GURL("http://bar/subframe"), subframe);
+  content::RenderFrameHostTester::For(subframe)->SimulateUserActivation();
+
+  navigation_observer_manager_->RecordNewWebContents(
+      web_contents(), subframe, GURL("http://foo/new_tab"),
+      ui::PAGE_TRANSITION_LINK, target_web_contents.get(),
+      /*renderer_initiated=*/true);
+
+  ASSERT_EQ(2U, navigation_event_list()->NavigationEventsSize());
+  VerifyNavigationEvent(
+      GURL("http://bar/subframe"),  // source_url
+      GURL("http://foo/0"),         // source_main_frame_url
+      GURL("http://foo/new_tab"),   // original_request_url
+      GURL("http://foo/new_tab"),   // destination_url
+      sessions::SessionTabHelper::IdForTab(web_contents()),
+      sessions::SessionTabHelper::IdForTab(target_web_contents.get()),
+      ReferrerChainEntry::RENDERER_INITIATED_WITH_USER_GESTURE,
+      false,  // has_committed
+      false,  // has_server_redirect
+      navigation_event_list()->GetNavigationEvent(1U));
+}
+
 }  // namespace safe_browsing

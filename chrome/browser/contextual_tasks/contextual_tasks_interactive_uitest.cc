@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include "base/base64.h"
+#include "base/base64url.h"
 #include "base/callback_list.h"
 #include "base/check_deref.h"
 #include "base/command_line.h"
@@ -34,6 +35,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_test_user_variation.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_interface.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
@@ -116,7 +118,9 @@
 #include "third_party/lens_server_proto/aim_communication.pb.h"
 #include "third_party/lens_server_proto/aim_query.pb.h"
 #include "third_party/lens_server_proto/lens_overlay_cluster_info.pb.h"
+#include "third_party/lens_server_proto/lens_overlay_contextual_inputs.pb.h"
 #include "third_party/lens_server_proto/lens_overlay_server.pb.h"
+#include "third_party/lens_server_proto/search_communication.pb.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/accelerators/accelerator.h"
@@ -4122,6 +4126,463 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
           true));
 }
 
+class ContextualTasksSeparateViewportRequestIdsInteractiveUiTest
+    : public ContextualTasksInteractiveUiTest {
+ public:
+  ContextualTasksSeparateViewportRequestIdsInteractiveUiTest() = default;
+  ~ContextualTasksSeparateViewportRequestIdsInteractiveUiTest() override =
+      default;
+
+  void SetUpFeatureList() override {
+    auto enabled = GetDefaultEnabledFeatures();
+    auto disabled = GetDefaultDisabledFeatures();
+    enabled.push_back(
+        {lens::features::kLensUseSeparateRequestIdForViewportImages, {}});
+    feature_list_.InitWithFeaturesAndParameters(enabled, disabled);
+  }
+};
+
+IN_PROC_BROWSER_TEST_P(
+    ContextualTasksSeparateViewportRequestIdsInteractiveUiTest,
+    LensOverlayRegionSearchHandoff) {
+  UseRealLensQueryFlowRouter();
+  WaitForTemplateURLServiceToLoad();
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayId);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
+
+  const DeepQuery kThreadFrame = {"contextual-tasks-app", "#threadFrame"};
+  const DeepQuery kSelectionOverlay = {"lens-overlay-app",
+                                       "lens-selection-overlay"};
+
+  auto* const browser_view = BrowserView::GetBrowserViewForBrowser(browser());
+  auto off_center_point = base::BindLambdaForTesting([browser_view]() {
+    gfx::Point off_center =
+        browser_view->GetContentsView()->GetBoundsInScreen().CenterPoint();
+    off_center.Offset(100, 100);
+    return off_center;
+  });
+
+  auto get_lens_controller = [this]() {
+    return LensSearchController::FromTabWebContents(
+        browser()->tab_strip_model()->GetActiveWebContents());
+  };
+
+  RunTestSequence(
+      // (1)-(2) Navigate to a page and select Lens from the app menu.
+      OpenLensOverlay(),
+
+      // (3) The Lens overlay opens from the app menu entry point.
+      InAnyContext(WaitForShow(LensOverlayController::kOverlayId)),
+      CheckResult(
+          [get_lens_controller]() {
+            return get_lens_controller()->invocation_source();
+          },
+          std::make_optional(lens::LensOverlayInvocationSource::kAppMenu)),
+
+      // (4) Drag to select a region in the overlay.
+      SelectRegionInLensOverlay(kOverlayId, std::move(off_center_point)),
+
+      // (5) The region query opens the Contextual Tasks side panel for a task
+      // associated with the tab, and the panel loads the region results URL.
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      Check(
+          [this]() {
+            return ContextualTasksPanelController::From(browser())
+                ->IsPanelOpenForContextualTask();
+          },
+          "Side panel is open for a contextual task"),
+      Check(
+          [this]() {
+            return CHECK_DEREF(ContextualTasksServiceFactory::GetForProfile(
+                                   browser()->GetProfile()))
+                .GetContextualTaskForTab(sessions::SessionTabHelper::IdForTab(
+                    browser()->tab_strip_model()->GetActiveWebContents()))
+                .has_value();
+          },
+          "Active tab is associated with a contextual task"),
+      NameViewRelative(kContextualTasksSidePanelWebViewElementId,
+                       "LensRegionHandoffSidePanelContents",
+                       [](ContextualTasksWebView* web_view) -> views::View* {
+                         return web_view->content_web_view();
+                       }),
+      InstrumentNonTabWebView(kSidePanelId,
+                              "LensRegionHandoffSidePanelContents"),
+      WaitForElementExists(kSidePanelId, kThreadFrame),
+      WaitForJsResultAt(kSidePanelId, kThreadFrame,
+                        "el => {"
+                        "  if (!el.src || !URL.canParse(el.src)) return false;"
+                        "  const url = new URL(el.src);"
+                        "  return url.origin === 'https://www.google.com' &&"
+                        "         url.pathname === '/search' &&"
+                        "         url.searchParams.get('udm') === '26' &&"
+                        "         url.searchParams.get('lns_mode') === 'un' &&"
+                        "         url.searchParams.get('lns_fp') === '1' &&"
+                        "         Boolean(url.searchParams.get('cinpts')) &&"
+                        "         !url.searchParams.has('vsrid') &&"
+                        "         Boolean(url.searchParams.get('vsint')) &&"
+                        "         Boolean(url.searchParams.get('gsessionid'));"
+                        "}"),
+      CheckJsResultAt(
+          kSidePanelId, kThreadFrame,
+          "el => new URL(el.src).searchParams.get('cinpts')",
+          testing::Truly([](const std::string& cinpts_param) {
+            std::string serialized_proto;
+            if (!base::Base64UrlDecode(
+                    cinpts_param, base::Base64UrlDecodePolicy::DISALLOW_PADDING,
+                    &serialized_proto)) {
+              return false;
+            }
+            lens::LensOverlayContextualInputs proto;
+            if (!proto.ParseFromString(serialized_proto)) {
+              return false;
+            }
+            if (proto.inputs_size() != 2) {
+              return false;
+            }
+            bool viewport_is_first = proto.inputs(0).is_viewport_image();
+            const auto& viewport_input =
+                proto.inputs(viewport_is_first ? 0 : 1);
+            const auto& page_input = proto.inputs(viewport_is_first ? 1 : 0);
+            return viewport_input.is_viewport_image() &&
+                   viewport_input.request_id().media_type() ==
+                       lens::LensOverlayRequestId::MEDIA_TYPE_DEFAULT_IMAGE &&
+                   !page_input.is_viewport_image() &&
+                   page_input.request_id().media_type() ==
+                       lens::LensOverlayRequestId::MEDIA_TYPE_WEBPAGE &&
+                   viewport_input.request_id().context_id() ==
+                       page_input.request_id().context_id() &&
+                   viewport_input.request_id().uuid() !=
+                       page_input.request_id().uuid();
+          })),
+
+      // (6) The overlay stays open with the region still selected.
+      CheckResult(
+          [get_lens_controller]() {
+            return get_lens_controller()
+                ->lens_overlay_controller()
+                ->IsOverlayShowing();
+          },
+          true),
+      InAnyContext(WaitForJsResultAt(
+          kOverlayId, kSelectionOverlay,
+          "el => !!el.shadowRoot?.querySelector('#postSelectionRenderer')"
+          "?.hasSelection?.()")),
+      CheckResult(
+          [get_lens_controller]() {
+            return get_lens_controller()
+                ->lens_overlay_controller()
+                ->HasRegionSelection();
+          },
+          true));
+}
+
+IN_PROC_BROWSER_TEST_P(
+    ContextualTasksSeparateViewportRequestIdsInteractiveUiTest,
+    AddAndSubmitTabFromComposebox) {
+  SkipIfIncognito("Tab sharing is not supported in Incognito mode.");
+
+  const GURL kGenericPageUrl = embedded_test_server()->GetURL("/title1.html");
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
+
+  const DeepQuery kFaviconGroup = {
+      "contextual-tasks-app", "#composebox",       "#composebox",
+      "#contextEntrypoint",   "#entrypointButton", "composebox-favicon-group"};
+
+  const DeepQuery kSubmitButton = {"contextual-tasks-app", "#composebox",
+                                   "#composebox", "cr-composebox-submit",
+                                   "#submitContainer"};
+
+  RunTestSequence(
+      InstrumentTab(kPrimaryTab, 0),
+      NavigateWebContents(kPrimaryTab, GURL(chrome::kChromeUIVersionURL)),
+      AddInstrumentedTab(kGenericTab, kGenericPageUrl),
+      WaitForWebContentsReady(kGenericTab, kGenericPageUrl),
+      SelectTab(kTabStripElementId, 0),
+      OpenContextualTasksInSidePanel(kSidePanelId),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelId, 0),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, 0),
+      WaitForFaviconGroupWithTitle(kSidePanelId, "title1.html"),
+      WaitForComposeboxFilesCount(kSidePanelId, 1),
+      WaitForSubmitButtonEnabled(kSidePanelId),
+      ClickButton(kSidePanelId, kSubmitButton),
+      WaitForJsResult(kInnerWebContentsId,
+                      "() => Boolean(Array.isArray(window.receivedMessages) && "
+                      "window.receivedMessages.filter(buf => new "
+                      "Uint8Array(buf)[0] === 18).length > 0)"),
+      WithElement(kInnerWebContentsId, [](ui::TrackedElement* el) {
+        auto* web_contents = AsInstrumentedWebContents(el)->web_contents();
+        std::string base64_msg =
+            content::EvalJs(
+                web_contents,
+                "btoa(Array.from(new "
+                "Uint8Array(window.receivedMessages.filter(buf => new "
+                "Uint8Array(buf)[0] === 18)[0])).map(b => "
+                "String.fromCharCode(b)).join(''))")
+                .ExtractString();
+        std::string decoded_msg;
+        ASSERT_TRUE(base::Base64Decode(base64_msg, &decoded_msg));
+        lens::ClientToAimMessage message;
+        ASSERT_TRUE(message.ParseFromString(decoded_msg));
+
+        EXPECT_TRUE(message.has_submit_query());
+        const auto& payload = message.submit_query().payload();
+        ASSERT_EQ(payload.lens_image_query_data_size(), 2);
+
+        const auto& page_data = payload.lens_image_query_data(0);
+        const auto& viewport_data = payload.lens_image_query_data(1);
+
+        EXPECT_EQ(page_data.request_id().media_type(),
+                  lens::LensOverlayRequestId::MEDIA_TYPE_WEBPAGE);
+        EXPECT_EQ(page_data.contextual_input_upload_type(),
+                  lens::LensOverlayContextualInputUploadType::
+                      CONTEXTUAL_INPUT_UPLOAD_TYPE_EXPLICIT);
+        EXPECT_EQ(page_data.request_id().sequence_id(), 1);
+        EXPECT_EQ(page_data.request_id().image_sequence_id(), 0);
+        EXPECT_EQ(page_data.request_id().long_context_id(), 1);
+
+        EXPECT_EQ(viewport_data.request_id().media_type(),
+                  lens::LensOverlayRequestId::MEDIA_TYPE_DEFAULT_IMAGE);
+        EXPECT_EQ(viewport_data.contextual_input_upload_type(),
+                  lens::LensOverlayContextualInputUploadType::
+                      CONTEXTUAL_INPUT_UPLOAD_TYPE_EXPLICIT);
+        EXPECT_EQ(viewport_data.request_id().sequence_id(), 1);
+        EXPECT_EQ(viewport_data.request_id().image_sequence_id(), 1);
+        EXPECT_EQ(viewport_data.request_id().long_context_id(), 0);
+
+        EXPECT_NE(page_data.request_id().uuid(),
+                  viewport_data.request_id().uuid());
+        EXPECT_NE(page_data.request_id().context_id(), 0);
+        EXPECT_EQ(page_data.request_id().context_id(),
+                  viewport_data.request_id().context_id());
+      }));
+}
+
+IN_PROC_BROWSER_TEST_P(
+    ContextualTasksSeparateViewportRequestIdsInteractiveUiTest,
+    RecontextualizationViewportAndPageChanges) {
+  SkipIfIncognito(
+      "Auto-suggested tab sharing is not supported in Incognito mode.");
+
+  const GURL kGenericPageUrl = embedded_test_server()->GetURL("/title1.html");
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
+
+  const DeepQuery kComposeboxContainer = {"contextual-tasks-app", "#composebox",
+                                          "#composebox"};
+
+  const DeepQuery kSubmitButton = {"contextual-tasks-app", "#composebox",
+                                   "#composebox", "cr-composebox-submit",
+                                   "#submitContainer"};
+
+  ContextualTasksPanelController* coordinator =
+      ContextualTasksPanelController::From(browser());
+
+  uint64_t page_uuid = 0;
+  uint64_t viewport_uuid = 0;
+  int64_t session_context_id = 0;
+
+  auto extract_submit_query_message =
+      [](ui::TrackedElement* el,
+         int message_index) -> lens::ClientToAimMessage {
+    auto* web_contents = AsInstrumentedWebContents(el)->web_contents();
+    std::string base64_msg =
+        content::EvalJs(
+            web_contents,
+            base::StringPrintf(
+                "btoa(Array.from(new "
+                "Uint8Array(window.receivedMessages.filter(buf => new "
+                "Uint8Array(buf)[0] === 18)[%d])).map(b => "
+                "String.fromCharCode(b)).join(''))",
+                message_index))
+            .ExtractString();
+    std::string decoded_msg;
+    CHECK(base::Base64Decode(base64_msg, &decoded_msg));
+    lens::ClientToAimMessage message;
+    CHECK(message.ParseFromString(decoded_msg));
+    return message;
+  };
+
+  RunTestSequence(
+      InstrumentTab(kPrimaryTab, 0), Do([&]() {
+        TestTabContextualizationController::screenshot_color_ = SK_ColorRED;
+        coordinator->Show(
+            false,
+            omnibox::DESKTOP_CHROME_LENS_CONTEXTUAL_SEARCHBOX_ENTRY_POINT);
+      }),
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      NameViewRelative(kContextualTasksSidePanelWebViewElementId,
+                       "SidePanelContentWebViewName",
+                       [](ContextualTasksWebView* web_view) -> views::View* {
+                         return web_view->content_web_view();
+                       }),
+      InstrumentNonTabWebView(kSidePanelWebContentsId,
+                              "SidePanelContentWebViewName"),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelWebContentsId,
+                                 0),
+      WaitForElementExists(kSidePanelWebContentsId, kComposeboxContainer),
+      NavigateWebContents(kPrimaryTab, kGenericPageUrl),
+
+      // Turn 1: Auto-suggested tab chip is submitted (initial page + viewport
+      // upload).
+      WaitForFaviconGroupWithTitle(kSidePanelWebContentsId, "title1.html"),
+      ClickButton(kSidePanelWebContentsId, kSubmitButton),
+      WaitForJsResult(kInnerWebContentsId,
+                      "() => Boolean(Array.isArray(window.receivedMessages) && "
+                      "window.receivedMessages.filter(buf => new "
+                      "Uint8Array(buf)[0] === 18).length > 0)"),
+      WithElement(
+          kInnerWebContentsId,
+          [&](ui::TrackedElement* el) {
+            lens::ClientToAimMessage message =
+                extract_submit_query_message(el, /*message_index=*/0);
+            ASSERT_TRUE(message.has_submit_query());
+            const auto& payload = message.submit_query().payload();
+            ASSERT_EQ(payload.lens_image_query_data_size(), 2);
+
+            const auto& page_id = payload.lens_image_query_data(0).request_id();
+            const auto& viewport_id =
+                payload.lens_image_query_data(1).request_id();
+            page_uuid = page_id.uuid();
+            viewport_uuid = viewport_id.uuid();
+            session_context_id = page_id.context_id();
+
+            EXPECT_NE(page_uuid, 0u);
+            EXPECT_NE(viewport_uuid, 0u);
+            EXPECT_NE(page_uuid, viewport_uuid);
+            EXPECT_NE(session_context_id, 0);
+            EXPECT_EQ(viewport_id.context_id(), session_context_id);
+
+            EXPECT_EQ(page_id.media_type(),
+                      lens::LensOverlayRequestId::MEDIA_TYPE_WEBPAGE);
+            EXPECT_EQ(page_id.sequence_id(), 1);
+            EXPECT_EQ(page_id.image_sequence_id(), 0);
+            EXPECT_EQ(page_id.long_context_id(), 1);
+
+            EXPECT_EQ(viewport_id.media_type(),
+                      lens::LensOverlayRequestId::MEDIA_TYPE_DEFAULT_IMAGE);
+            EXPECT_EQ(viewport_id.sequence_id(), 1);
+            EXPECT_EQ(viewport_id.image_sequence_id(), 1);
+            EXPECT_EQ(viewport_id.long_context_id(), 0);
+          }),
+
+      // Turn 2: Submit a second query without changing either the page content
+      // or the viewport screenshot; QueryContextualizer should not reupload.
+      InputText(kSidePanelWebContentsId, "second query"),
+      ClickButton(kSidePanelWebContentsId, kSubmitButton),
+      VerifyMultipleSubmitQueryMessage("second query",
+                                       /*expected_viewport_image_count=*/0,
+                                       /*expected_upload_image_count=*/0,
+                                       /*expected_upload_file_count=*/0,
+                                       /*expected_added_input_names=*/{},
+                                       /*expected_message_index=*/1),
+
+      // Turn 3: Change only the viewport screenshot color (page content
+      // unchanged).
+      Do([&]() {
+        TestTabContextualizationController::screenshot_color_ = SK_ColorBLUE;
+      }),
+      InputText(kSidePanelWebContentsId, "third query"),
+      ClickButton(kSidePanelWebContentsId, kSubmitButton),
+      WaitForJsResult(kInnerWebContentsId,
+                      "() => Boolean(Array.isArray(window.receivedMessages) && "
+                      "window.receivedMessages.filter(buf => new "
+                      "Uint8Array(buf)[0] === 18).length > 2)"),
+      WithElement(
+          kInnerWebContentsId,
+          [&](ui::TrackedElement* el) {
+            lens::ClientToAimMessage message =
+                extract_submit_query_message(el, /*message_index=*/2);
+            ASSERT_TRUE(message.has_submit_query());
+            const auto& payload = message.submit_query().payload();
+            EXPECT_EQ(payload.query_text(), "third query");
+            ASSERT_EQ(payload.lens_image_query_data_size(), 2);
+
+            const auto& page_id = payload.lens_image_query_data(0).request_id();
+            const auto& viewport_id =
+                payload.lens_image_query_data(1).request_id();
+
+            // Page request ID preserves uuid, context_id, and Turn 1's sequence
+            // numbers because page content was not reuploaded on Turn 3.
+            EXPECT_EQ(page_id.uuid(), page_uuid);
+            EXPECT_EQ(page_id.context_id(), session_context_id);
+            EXPECT_EQ(page_id.media_type(),
+                      lens::LensOverlayRequestId::MEDIA_TYPE_WEBPAGE);
+            EXPECT_EQ(page_id.sequence_id(), 1);
+            EXPECT_EQ(page_id.image_sequence_id(), 0);
+            EXPECT_EQ(page_id.long_context_id(), 1);
+
+            // Viewport request ID preserves uuid and context_id while
+            // incrementing sequence_id and image_sequence_id to 2.
+            EXPECT_EQ(viewport_id.uuid(), viewport_uuid);
+            EXPECT_EQ(viewport_id.context_id(), session_context_id);
+            EXPECT_EQ(viewport_id.media_type(),
+                      lens::LensOverlayRequestId::MEDIA_TYPE_DEFAULT_IMAGE);
+            EXPECT_EQ(viewport_id.sequence_id(), 2);
+            EXPECT_EQ(viewport_id.image_sequence_id(), 2);
+            EXPECT_EQ(viewport_id.long_context_id(), 0);
+          }),
+
+      // Turn 4: Change both the page DOM content and the viewport screenshot.
+      WithElement(kPrimaryTab,
+                  [](ui::TrackedElement* el) {
+                    auto* wc = AsInstrumentedWebContents(el)->web_contents();
+                    EXPECT_TRUE(content::ExecJs(
+                        wc,
+                        "document.body.innerText += ' Updated page content "
+                        "with enough characters to exceed byte tolerance.';"));
+                  }),
+      Do([&]() {
+        TestTabContextualizationController::screenshot_color_ = SK_ColorGREEN;
+      }),
+      InputText(kSidePanelWebContentsId, "fourth query"),
+      ClickButton(kSidePanelWebContentsId, kSubmitButton),
+      WaitForJsResult(kInnerWebContentsId,
+                      "() => Boolean(Array.isArray(window.receivedMessages) && "
+                      "window.receivedMessages.filter(buf => new "
+                      "Uint8Array(buf)[0] === 18).length > 3)"),
+      WithElement(kInnerWebContentsId, [&](ui::TrackedElement* el) {
+        lens::ClientToAimMessage message =
+            extract_submit_query_message(el, /*message_index=*/3);
+        ASSERT_TRUE(message.has_submit_query());
+        const auto& payload = message.submit_query().payload();
+        EXPECT_EQ(payload.query_text(), "fourth query");
+        ASSERT_EQ(payload.lens_image_query_data_size(), 2);
+
+        const auto& page_id = payload.lens_image_query_data(0).request_id();
+        const auto& viewport_id = payload.lens_image_query_data(1).request_id();
+
+        // Page request ID increments sequence_id and long_context_id to 2.
+        EXPECT_EQ(page_id.uuid(), page_uuid);
+        EXPECT_EQ(page_id.context_id(), session_context_id);
+        EXPECT_EQ(page_id.media_type(),
+                  lens::LensOverlayRequestId::MEDIA_TYPE_WEBPAGE);
+        EXPECT_EQ(page_id.sequence_id(), 2);
+        EXPECT_EQ(page_id.image_sequence_id(), 0);
+        EXPECT_EQ(page_id.long_context_id(), 2);
+
+        // Viewport request ID increments sequence_id and image_sequence_id
+        // to 3.
+        EXPECT_EQ(viewport_id.uuid(), viewport_uuid);
+        EXPECT_EQ(viewport_id.context_id(), session_context_id);
+        EXPECT_EQ(viewport_id.media_type(),
+                  lens::LensOverlayRequestId::MEDIA_TYPE_DEFAULT_IMAGE);
+        EXPECT_EQ(viewport_id.sequence_id(), 3);
+        EXPECT_EQ(viewport_id.image_sequence_id(), 3);
+        EXPECT_EQ(viewport_id.long_context_id(), 0);
+      }));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    ContextualTasksSeparateViewportRequestIdsInteractiveUiTest,
+    testing::Values(UserVariation::kSignedIn,
+                    UserVariation::kSignedOut,
+                    UserVariation::kIncognito),
+    &UserVariationToString);
+
 // Enables the ephemeral branded toolbar entry point, which surfaces the
 // ephemeral Contextual Tasks toolbar button after the side panel is closed on a
 // tab associated with a task.
@@ -4589,6 +5050,312 @@ INSTANTIATE_TEST_SUITE_P(All,
                                          UserVariation::kIncognito),
                          &UserVariationToString);
 
+class ContextualTasksExtensionTabPickerInteractiveUiTest
+    : public ContextualTasksInteractiveUiTest {
+ public:
+  ContextualTasksExtensionTabPickerInteractiveUiTest() {
+    extensions::ComponentLoader::EnableBackgroundExtensionsForTesting();
+  }
+  ~ContextualTasksExtensionTabPickerInteractiveUiTest() override = default;
+
+  void SetUpFeatureList() override {
+    auto enabled = GetDefaultEnabledFeatures();
+    enabled.push_back({kContextualTasksRearchitecture, {}});
+    enabled.push_back({kContextualTasksSidePanelRearchitecture, {}});
+    enabled.push_back({kContextualTasksTabBasedSuggestions, {}});
+    enabled.push_back({kEnableContextualTasksPinButtonInToolbar, {}});
+    enabled.push_back({kContextualTasksForceEntryPointEligibility, {}});
+    enabled.push_back({extensions_features::kApiContextualTasksPrivate, {}});
+    feature_list_.InitWithFeaturesAndParameters(enabled,
+                                                GetDefaultDisabledFeatures());
+  }
+
+  void SetUpOnMainThread() override {
+    ContextualTasksInteractiveUiTest::SetUpOnMainThread();
+    ContextualTasksExtensionBridge::Get(browser()->GetProfile());
+    PinnedToolbarActionsModel::Get(browser()->GetProfile())
+        ->UpdatePinnedState(kActionSidePanelShowContextualTasks, true);
+  }
+
+  static content::RenderFrameHost* MountAndWaitForTabPickerFrame(
+      content::WebContents* host_contents) {
+    EXPECT_EQ(true, content::EvalJs(host_contents, R"(
+      new Promise((resolve) => {
+        const check = () => {
+          if (Array.isArray(window.receivedMessages)) {
+            resolve(true);
+            return;
+          }
+          setTimeout(check, 10);
+        };
+        check();
+      })
+    )"));
+
+    const GURL tab_picker_url(
+        base::StringPrintf("chrome-extension://%s/tab_picker.html?cs=0",
+                           extension_misc::kContextualTasksExtensionId));
+    EXPECT_TRUE(content::ExecJs(host_contents, R"(
+      (() => {
+        if (!Array.isArray(window.receivedSearchMessages)) {
+          window.receivedSearchMessages = [];
+          window.searchMessageWaiters = [];
+          window.addEventListener('message', (event) => {
+            if (event.data instanceof Uint8Array ||
+                event.data instanceof ArrayBuffer) {
+              const bytes = event.data instanceof Uint8Array ?
+                  event.data : new Uint8Array(event.data);
+              window.receivedSearchMessages.push(
+                  btoa(Array.from(bytes, b => String.fromCharCode(b))
+                      .join('')));
+              const waiters = window.searchMessageWaiters.splice(0);
+              for (const w of waiters) {
+                w();
+              }
+            }
+          });
+        }
+        let iframe = document.getElementById('tab-picker-iframe');
+        if (!iframe) {
+          iframe = document.createElement('iframe');
+          iframe.id = 'tab-picker-iframe';
+          document.body.appendChild(iframe);
+        }
+      })();
+    )"));
+    EXPECT_TRUE(content::NavigateIframeToURL(host_contents, "tab-picker-iframe",
+                                             tab_picker_url));
+
+    content::RenderFrameHost* picker_rfh = nullptr;
+    EXPECT_TRUE(base::test::RunUntil([&]() -> bool {
+      picker_rfh = content::FrameMatchingPredicateOrNullptr(
+          host_contents->GetPrimaryPage(),
+          base::BindRepeating([](content::RenderFrameHost* rfh) {
+            return rfh->GetLastCommittedURL().ExtractFileName() ==
+                   "tab_picker.html";
+          }));
+      return picker_rfh != nullptr;
+    }));
+    if (!picker_rfh) {
+      return nullptr;
+    }
+
+    EXPECT_EQ(true, content::EvalJs(picker_rfh, R"(
+      new Promise((resolve) => {
+        const check = () => {
+          const app = document.querySelector('tab-picker-app');
+          const trigger = app?.shadowRoot?.querySelector('#shareTabsTrigger');
+          const item = app?.shadowRoot?.querySelector(
+              'button.dropdown-item[data-index="0"]');
+          if (trigger && item && window.__extensionBrowserProxyInstance &&
+              document.readyState === 'complete') {
+            window.__handshakeCompletePromise = new Promise((res) => {
+              window.__extensionBrowserProxyInstance.callbackRouter
+                  .onHandshakeComplete.addListener(() => res(true));
+            });
+            resolve(true);
+            return;
+          }
+          setTimeout(check, 10);
+        };
+        check();
+      })
+    )"));
+
+    EXPECT_TRUE(content::ExecJs(host_contents, R"(
+      (() => {
+        const iframe = document.getElementById('tab-picker-iframe');
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.postMessage(new Uint8Array([10, 0]), '*');
+        }
+      })();
+    )"));
+
+    EXPECT_EQ(true,
+              content::EvalJs(picker_rfh, "window.__handshakeCompletePromise"));
+    return picker_rfh;
+  }
+
+  static bool WaitForOnSuggestInputsChanged(
+      content::WebContents* host_contents,
+      int expected_contexts_count,
+      lens::ClientToSearchMessage* out_message = nullptr) {
+    for (int attempt = 0; attempt < 20; ++attempt) {
+      auto result = content::EvalJs(host_contents, content::JsReplace(
+                                                       R"(
+        new Promise((resolve) => {
+          const minLen = $1;
+          const check = () => {
+            if (Array.isArray(window.receivedSearchMessages) &&
+                window.receivedSearchMessages.length >= minLen) {
+              resolve(window.receivedSearchMessages.slice());
+              return;
+            }
+            window.searchMessageWaiters.push(check);
+          };
+          check();
+        })
+      )",
+                                                       attempt + 1));
+      if (!result.is_ok()) {
+        return false;
+      }
+      const auto& list = result.ExtractList();
+      for (auto it = list.rbegin(); it != list.rend(); ++it) {
+        if (!it->is_string()) {
+          continue;
+        }
+        std::string decoded;
+        if (!base::Base64Decode(it->GetString(), &decoded)) {
+          continue;
+        }
+        lens::ClientToSearchMessage message;
+        if (!message.ParseFromString(decoded) ||
+            !message.has_on_suggest_inputs_changed()) {
+          continue;
+        }
+        if (message.on_suggest_inputs_changed().added_contexts_size() ==
+            expected_contexts_count) {
+          if (out_message) {
+            *out_message = std::move(message);
+          }
+          return true;
+        }
+        break;
+      }
+    }
+    return false;
+  }
+};
+
+// This tests the following CUJ:
+//  (1) User navigates a browser tab to an eligible webpage.
+//  (2) User clicks the pinned Contextual Tasks toolbar button to open the
+//      Contextual Tasks side panel on an AI Mode page.
+//  (3) The AI Mode page mounts the Contextual Tasks extension's
+//      tab_picker.html iframe.
+//  (4) User clicks the tab picker trigger to open the tab menu and selects
+//      the open browser tab to attach its context.
+//  (5) The tab item shows as selected in the tab picker and the AI Mode page
+//      receives an OnSuggestInputsChanged message with the uploaded tab's
+//      AddedContext.
+//  (6) User clicks the selected tab item in the tab picker again to unselect
+//      and remove its context.
+//  (7) The tab item updates to unselected and the AI Mode page receives an
+//      empty OnSuggestInputsChanged message.
+IN_PROC_BROWSER_TEST_P(
+    ContextualTasksExtensionTabPickerInteractiveUiTest,
+    TabPickerSelectAndUnselectTabEmitsOnSuggestInputsChanged) {
+  SkipIfIncognito(
+      "Contextual Tasks component extension is not enabled in Incognito.");
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
+  const GURL kArticleUrl = embedded_test_server()->GetURL("/title1.html");
+  content::RenderFrameHost* tab_picker_rfh = nullptr;
+
+  RunTestSequence(
+      // (1) Navigate the primary tab to an eligible webpage.
+      InstrumentTab(kPrimaryTab, 0), SelectTab(kTabStripElementId, 0),
+      NavigateWebContents(kPrimaryTab, kArticleUrl),
+      WaitForWebContentsPainted(kPrimaryTab),
+      WaitForWebContentsReady(kPrimaryTab, kArticleUrl),
+
+      // (2) Click the pinned Contextual Tasks toolbar button to open the side
+      // panel on the AI Mode page.
+      WaitForShow(kPinnedToolbarActionShowSidePanelContextualTasksElementId),
+      PressButton(kPinnedToolbarActionShowSidePanelContextualTasksElementId),
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      NameViewRelative(kContextualTasksSidePanelWebViewElementId,
+                       "TabPickerSidePanelContentWebViewName",
+                       [](ContextualTasksWebView* web_view) -> views::View* {
+                         return web_view->content_web_view();
+                       }),
+      InstrumentNonTabWebView(kSidePanelWebContentsId,
+                              "TabPickerSidePanelContentWebViewName"),
+      WaitForWebContentsReady(kSidePanelWebContentsId),
+
+      // (3)-(5) Mount tab_picker.html in the AI Mode page, open the tab menu,
+      // select the tab, and verify the UI selection state and emitted
+      // OnSuggestInputsChanged message.
+      Do([&]() {
+        content::WebContents* side_panel_contents =
+            ContextualTasksPanelController::From(browser())
+                ->GetActiveWebContents();
+        ASSERT_NE(side_panel_contents, nullptr);
+        tab_picker_rfh = MountAndWaitForTabPickerFrame(side_panel_contents);
+        ASSERT_NE(tab_picker_rfh, nullptr);
+
+        EXPECT_EQ(true, content::EvalJs(tab_picker_rfh, R"(
+          (async () => {
+            const app = document.querySelector('tab-picker-app');
+            const trigger = app.shadowRoot.querySelector('#shareTabsTrigger');
+            trigger.click();
+            const item = app.shadowRoot.querySelector(
+                'button.dropdown-item[data-index="0"]');
+            item.click();
+            await app.updateComplete;
+            return app.selectedTabs.length === 1 &&
+                Boolean(item.querySelector('.share-tabs-check'));
+          })();
+        )"));
+
+        lens::ClientToSearchMessage add_message;
+        ASSERT_TRUE(WaitForOnSuggestInputsChanged(
+            side_panel_contents, /*expected_contexts_count=*/1, &add_message));
+        ASSERT_EQ(add_message.on_suggest_inputs_changed().added_contexts_size(),
+                  1);
+        const auto& added =
+            add_message.on_suggest_inputs_changed().added_contexts(0);
+        EXPECT_EQ(added.search_session_id(), "test_search_session_id");
+        EXPECT_GT(added.request_id().uuid(), 0u);
+        EXPECT_EQ(added.request_id().media_type(),
+                  lens::LensOverlayRequestId::MEDIA_TYPE_WEBPAGE_AND_IMAGE);
+        EXPECT_EQ(added.contextual_input_upload_type(),
+                  lens::LensOverlayContextualInputUploadType::
+                      CONTEXTUAL_INPUT_UPLOAD_TYPE_EXPLICIT);
+      }),
+
+      // (6)-(7) Click the selected tab item again to unselect it and verify
+      // the tab is unselected and an empty OnSuggestInputsChanged message is
+      // emitted.
+      Do([&]() {
+        content::WebContents* side_panel_contents =
+            ContextualTasksPanelController::From(browser())
+                ->GetActiveWebContents();
+        ASSERT_NE(side_panel_contents, nullptr);
+        ASSERT_NE(tab_picker_rfh, nullptr);
+
+        EXPECT_TRUE(content::ExecJs(side_panel_contents,
+                                    "window.receivedSearchMessages = [];"));
+
+        EXPECT_EQ(true, content::EvalJs(tab_picker_rfh, R"(
+          (async () => {
+            const app = document.querySelector('tab-picker-app');
+            const item = app.shadowRoot.querySelector(
+                'button.dropdown-item[data-index="0"]');
+            item.click();
+            await app.updateComplete;
+            return app.selectedTabs.length === 0 &&
+                !item.querySelector('.share-tabs-check');
+          })();
+        )"));
+
+        lens::ClientToSearchMessage clear_message;
+        ASSERT_TRUE(WaitForOnSuggestInputsChanged(side_panel_contents,
+                                                  /*expected_contexts_count=*/0,
+                                                  &clear_message));
+        EXPECT_EQ(
+            clear_message.on_suggest_inputs_changed().added_contexts_size(), 0);
+      }));
+}
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         ContextualTasksExtensionTabPickerInteractiveUiTest,
+                         testing::Values(UserVariation::kSignedIn,
+                                         UserVariation::kSignedOut,
+                                         UserVariation::kIncognito),
+                         &UserVariationToString);
+
 // This tests the following CUJ:
 //  (1) User opens Lens Overlay from the 3-dot App Menu on a web page.
 //  (2) User types a query into the Lens Overlay Contextual Searchbox and
@@ -4983,6 +5750,342 @@ IN_PROC_BROWSER_TEST_F(
       }),
       UninstrumentWebContents(kInnerWebContentsId,
                               /*fail_if_not_instrumented=*/false));
+}
+
+namespace {
+
+DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kTabStateSidePanelToolbarId);
+
+constexpr char kTabStateSidePanelToolbarName[] = "TabStateSidePanelToolbar";
+constexpr char kTabStateThreadId[] = "thread1";
+constexpr char kTabStateThreadUrl[] =
+    "https://www.google.com/search?udm=50&q=Title+1&mtid=thread1";
+
+std::string RearchitectureParamName(const testing::TestParamInfo<bool>& info) {
+  return info.param ? "RearchitectureEnabled" : "RearchitectureDisabled";
+}
+
+}  // namespace
+
+// Tests that closing the side panel only applies to the tab where the user took
+// the action. The test param controls whether the Contextual Tasks
+// rearchitecture is enabled.
+class ContextualTasksSidePanelTabStateInteractiveUiTest
+    : public ContextualTasksInteractiveUiTestBase,
+      public testing::WithParamInterface<bool> {
+ public:
+  void SetUpFeatureList() override {
+    auto enabled = GetDefaultEnabledFeatures();
+    enabled.push_back({kContextualTasksEphemeralBrandedEntryPoint,
+                       {{"ContextualTasksEntryPoint", entry_point_}}});
+    auto disabled = GetDefaultDisabledFeatures();
+    if (tab_state_enabled_) {
+      enabled.push_back({kContextualTasksSidePanelTabState, {}});
+    } else {
+      disabled.push_back(kContextualTasksSidePanelTabState);
+    }
+    if (IsRearchitectureEnabled()) {
+      enabled.push_back({kContextualTasksRearchitecture, {}});
+      enabled.push_back({kContextualTasksSidePanelRearchitecture, {}});
+    } else {
+      disabled.push_back(kContextualTasksRearchitecture);
+      disabled.push_back(kContextualTasksSidePanelRearchitecture);
+    }
+    feature_list_.InitWithFeaturesAndParameters(enabled, disabled);
+  }
+
+ protected:
+  bool IsRearchitectureEnabled() const { return GetParam(); }
+
+  ContextualTasksService* GetContextualTasksService() {
+    return ContextualTasksServiceFactory::GetForProfile(
+        browser()->GetProfile());
+  }
+
+  ContextualTasksPanelController* GetPanelController() {
+    return ContextualTasksPanelController::From(browser());
+  }
+
+  SessionID GetTabId(int index) {
+    return sessions::SessionTabHelper::IdForTab(
+        browser()->tab_strip_model()->GetWebContentsAt(index));
+  }
+
+  std::optional<base::Uuid> GetTaskIdForTab(int index) {
+    std::optional<ContextualTask> task =
+        GetContextualTasksService()->GetContextualTaskForTab(GetTabId(index));
+    if (!task) {
+      return std::nullopt;
+    }
+    return task->GetTaskId();
+  }
+
+  void ActivateTab(int index) {
+    browser()->tab_strip_model()->ActivateTabAt(index);
+  }
+
+  content::WebContents* GetPanelContents() {
+    return GetPanelController()->GetActiveWebContents();
+  }
+
+  bool IsPanelOpen() {
+    return GetPanelController()->IsPanelOpenForContextualTask();
+  }
+
+  // Returns whether `panel_contents` shows the thread with `kTabStateThreadId`.
+  bool ShowsThread(content::WebContents* panel_contents) {
+    if (!panel_contents) {
+      return false;
+    }
+    if (IsRearchitectureEnabled()) {
+      // The rearchitecture panel shows the AI page directly.
+      std::string thread_id;
+      return net::GetValueForKeyInQuery(panel_contents->GetLastCommittedURL(),
+                                        "mtid", &thread_id) &&
+             thread_id == kTabStateThreadId;
+    }
+    // The legacy panel shows a WebUI that embeds the AI page.
+    content::WebUI* web_ui = panel_contents->GetWebUI();
+    return web_ui && static_cast<ContextualTasksUI*>(web_ui->GetController())
+                             ->GetThreadId() == kTabStateThreadId;
+  }
+
+  // Adds tab1 and tab2, opens the panel on tab0 with a thread, and associates
+  // tab2 with the same task, as if it was opened from the panel. tab1 isn't
+  // associated with a task.
+  MultiStep OpenPanelWithSharedThread() {
+    return Steps(Do([this]() {
+                   chrome::AddTabAt(browser(), GURL("about:blank"), -1, false);
+                   chrome::AddTabAt(browser(), GURL("about:blank"), -1, false);
+                   ContextualTasksUiServiceFactory::GetForBrowserContext(
+                       browser()->GetProfile())
+                       ->StartTaskUiInSidePanel(
+                           browser(), browser()->GetActiveTabInterface(),
+                           GURL(kTabStateThreadUrl), nullptr);
+                 }),
+                 WaitForShow(kContextualTasksSidePanelWebViewElementId),
+                 PollUntil([this]() { return ShowsThread(GetPanelContents()); },
+                           "Wait for the thread to load in the panel."),
+                 Do([this]() {
+                   std::optional<base::Uuid> task_id = GetTaskIdForTab(0);
+                   ASSERT_TRUE(task_id.has_value());
+                   shared_task_id_ = *task_id;
+                   GetContextualTasksService()->AssociateTabWithTask(
+                       shared_task_id_, GetTabId(2));
+                 }));
+  }
+
+  // Instruments the WebView that hosts the side panel toolbar as
+  // `kTabStateSidePanelToolbarId`. The toolbar is part of the panel content's
+  // WebUI in the legacy UI, and a separate WebUI in the rearchitecture.
+  MultiStep InstrumentSidePanelToolbar() {
+    if (IsRearchitectureEnabled()) {
+      return Steps(NameViewRelative(
+                       kContextualTasksSidePanelWebViewElementId,
+                       kTabStateSidePanelToolbarName,
+                       [](ContextualTasksWebView* web_view) -> views::View* {
+                         return web_view->toolbar_web_view();
+                       }),
+                   InstrumentNonTabWebView(kTabStateSidePanelToolbarId,
+                                           kTabStateSidePanelToolbarName));
+    }
+    return Steps(
+        NameViewRelative(kContextualTasksSidePanelWebViewElementId,
+                         kTabStateSidePanelToolbarName,
+                         [](ContextualTasksWebView* web_view) -> views::View* {
+                           return web_view->content_web_view();
+                         }),
+        InstrumentNonTabWebView(kTabStateSidePanelToolbarId,
+                                kTabStateSidePanelToolbarName));
+  }
+
+  // Clicks `button_id` in the side panel toolbar.
+  MultiStep ClickToolbarButton(const std::string& button_id) {
+    const DeepQuery kButton = {IsRearchitectureEnabled()
+                                   ? "contextual-tasks-toolbar-app"
+                                   : "contextual-tasks-app",
+                               "#toolbar", "#" + button_id};
+    return Steps(
+        InstrumentSidePanelToolbar(),
+        WaitForElementExists(kTabStateSidePanelToolbarId, kButton),
+        // The click can navigate or hide the panel, so don't wait for
+        // a response.
+        ExecuteJsAt(kTabStateSidePanelToolbarId, kButton, "el => el.click()",
+                    ExecuteJsMode::kFireAndForget));
+  }
+
+  std::string entry_point_ = "toolbar-ephemeral-branded";
+  bool tab_state_enabled_ = true;
+  base::Uuid shared_task_id_;
+};
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         ContextualTasksSidePanelTabStateInteractiveUiTest,
+                         testing::Bool(),
+                         &RearchitectureParamName);
+
+// This tests the following CUJ with the ephemeral toolbar button:
+//  (1) The side panel is open with the same thread on tab0 and tab2.
+//  (2) User closes the panel on tab0 from the toolbar's close button.
+//  (3) The panel stays open with the thread on tab2, and closed on tab0.
+//  (4) User reopens the panel on tab0, which resumes the thread.
+IN_PROC_BROWSER_TEST_P(ContextualTasksSidePanelTabStateInteractiveUiTest,
+                       CloseButton_KeepsPanelOpenOnTabsSharingThread) {
+  content::WebContents* panel_contents = nullptr;
+  RunTestSequence(
+      OpenPanelWithSharedThread(),
+      Do([&]() { panel_contents = GetPanelContents(); }),
+
+      ClickToolbarButton("closeButton"),
+      WaitForHide(kContextualTasksSidePanelWebViewElementId), Do([&]() {
+        EXPECT_FALSE(IsPanelOpen());
+        // tab0 stays on the thread so that the ephemeral button can resume it.
+        EXPECT_EQ(shared_task_id_, GetTaskIdForTab(0));
+
+        ActivateTab(2);
+        EXPECT_TRUE(IsPanelOpen());
+        EXPECT_EQ(panel_contents, GetPanelContents());
+        EXPECT_TRUE(ShowsThread(GetPanelContents()));
+
+        // tab1 doesn't have a thread.
+        ActivateTab(1);
+        EXPECT_FALSE(IsPanelOpen());
+
+        ActivateTab(0);
+        EXPECT_FALSE(IsPanelOpen());
+
+        // Switching between the tabs again keeps their state.
+        ActivateTab(2);
+        EXPECT_TRUE(IsPanelOpen());
+        ActivateTab(0);
+        EXPECT_FALSE(IsPanelOpen());
+
+        // Reopen the panel on tab0 as the ephemeral toolbar button does.
+        GetPanelController()->Show(
+            /*transition_from_tab=*/false,
+            omnibox::ChromeAimEntryPoint::
+                DESKTOP_CHROME_COBROWSE_TOOLBAR_BUTTON);
+      }),
+      WaitForShow(kContextualTasksSidePanelWebViewElementId), Do([&]() {
+        EXPECT_EQ(shared_task_id_, GetTaskIdForTab(0));
+        EXPECT_EQ(panel_contents, GetPanelContents());
+        EXPECT_TRUE(ShowsThread(GetPanelContents()));
+
+        ActivateTab(2);
+        EXPECT_TRUE(IsPanelOpen());
+        EXPECT_EQ(panel_contents, GetPanelContents());
+      }));
+}
+
+// This tests the following CUJ:
+//  (1) The side panel is open with the same thread on tab0 and tab2.
+//  (2) User closes the panel on tab0, and then closes tab0.
+//  (3) The panel stays open with the thread on tab2.
+IN_PROC_BROWSER_TEST_P(
+    ContextualTasksSidePanelTabStateInteractiveUiTest,
+    ClosePanelThenCloseTab_KeepsPanelOpenOnTabsSharingThread) {
+  content::WebContents* panel_contents = nullptr;
+  RunTestSequence(OpenPanelWithSharedThread(), Do([&]() {
+                    panel_contents = GetPanelContents();
+                    GetPanelController()->Close();
+                    EXPECT_FALSE(IsPanelOpen());
+
+                    // Close tab0, so tab1 and tab2 move to indices 0 and 1.
+                    browser()->tab_strip_model()->CloseWebContentsAt(
+                        0, TabCloseTypes::CLOSE_USER_GESTURE);
+                    ASSERT_EQ(2, browser()->tab_strip_model()->count());
+
+                    ActivateTab(1);
+                    EXPECT_EQ(shared_task_id_, GetTaskIdForTab(1));
+                    EXPECT_TRUE(IsPanelOpen());
+                    EXPECT_EQ(panel_contents, GetPanelContents());
+                    EXPECT_TRUE(ShowsThread(GetPanelContents()));
+                  }));
+}
+
+class ContextualTasksSidePanelTabStateNoEntryPointInteractiveUiTest
+    : public ContextualTasksSidePanelTabStateInteractiveUiTest {
+ public:
+  ContextualTasksSidePanelTabStateNoEntryPointInteractiveUiTest() {
+    entry_point_ = "no-entry-point";
+  }
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    ContextualTasksSidePanelTabStateNoEntryPointInteractiveUiTest,
+    testing::Bool(),
+    &RearchitectureParamName);
+
+// This tests the following CUJ without the ephemeral toolbar button:
+//  (1) The side panel is open with the same thread on tab0 and tab2.
+//  (2) User closes the panel on tab0 from the toolbar's close button.
+//  (3) The panel stays open with the thread on tab2, and closed on tab0.
+//  (4) User reopens the panel on tab0, which starts a new thread.
+IN_PROC_BROWSER_TEST_P(
+    ContextualTasksSidePanelTabStateNoEntryPointInteractiveUiTest,
+    CloseButton_ReopeningStartsNewThreadOnlyOnActiveTab) {
+  content::WebContents* panel_contents = nullptr;
+  RunTestSequence(
+      OpenPanelWithSharedThread(),
+      Do([&]() { panel_contents = GetPanelContents(); }),
+
+      ClickToolbarButton("closeButton"),
+      WaitForHide(kContextualTasksSidePanelWebViewElementId), Do([&]() {
+        EXPECT_FALSE(IsPanelOpen());
+        // tab0 leaves the thread, so reopening the panel starts a new one.
+        EXPECT_FALSE(GetTaskIdForTab(0).has_value());
+
+        ActivateTab(2);
+        EXPECT_TRUE(IsPanelOpen());
+        EXPECT_EQ(panel_contents, GetPanelContents());
+        EXPECT_TRUE(ShowsThread(GetPanelContents()));
+
+        ActivateTab(0);
+        EXPECT_FALSE(IsPanelOpen());
+        GetPanelController()->Show(
+            /*transition_from_tab=*/false,
+            omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT);
+      }),
+      WaitForShow(kContextualTasksSidePanelWebViewElementId), Do([&]() {
+        std::optional<base::Uuid> task_id = GetTaskIdForTab(0);
+        ASSERT_TRUE(task_id.has_value());
+        EXPECT_NE(shared_task_id_, *task_id);
+        EXPECT_NE(panel_contents, GetPanelContents());
+
+        // tab2 still shows the existing thread.
+        ActivateTab(2);
+        EXPECT_TRUE(IsPanelOpen());
+        EXPECT_EQ(shared_task_id_, GetTaskIdForTab(2));
+        EXPECT_EQ(panel_contents, GetPanelContents());
+      }));
+}
+
+// With side panel tab state disabled, closing the panel applies to all tabs
+// that share the thread.
+class ContextualTasksSidePanelTabStateDisabledInteractiveUiTest
+    : public ContextualTasksSidePanelTabStateInteractiveUiTest {
+ public:
+  ContextualTasksSidePanelTabStateDisabledInteractiveUiTest() {
+    tab_state_enabled_ = false;
+  }
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    ContextualTasksSidePanelTabStateDisabledInteractiveUiTest,
+    testing::Bool(),
+    &RearchitectureParamName);
+
+IN_PROC_BROWSER_TEST_P(
+    ContextualTasksSidePanelTabStateDisabledInteractiveUiTest,
+    CloseButton_ClosesPanelOnTabsSharingThread) {
+  RunTestSequence(
+      OpenPanelWithSharedThread(), ClickToolbarButton("closeButton"),
+      WaitForHide(kContextualTasksSidePanelWebViewElementId), Do([&]() {
+        ActivateTab(2);
+        EXPECT_FALSE(IsPanelOpen());
+      }));
 }
 
 }  // namespace contextual_tasks

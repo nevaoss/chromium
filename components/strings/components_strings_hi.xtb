@@ -118,6 +118,7 @@
 <translation id="1195558154361252544">जिन साइट को आप फ़ॉलो करते हैं उन्हें छोड़कर सभी साइट के लिए सूचनाएं अपने आप बंद हो गई हैं</translation>
 <translation id="1197088940767939838">नारंगी</translation>
 <translation id="1198412233443148072"><ph name="MEMBER_FIRST_NAME" /> ने “<ph name="WEBSITE_TITLE" />” टैब हटा दिया है</translation>
+<translation id="119944043368869598">सारा डेटा मिटाएं</translation>
 <translation id="1201402288615127009">अगला</translation>
 <translation id="1201895884277373915">इस साइट की ओर से ज़्यादा</translation>
 <translation id="1204184165594298176">{0,plural, =1{फ़ाइल को कॉपी करने से रोका गया है}one{<ph name="FILE_COUNT" /> फ़ाइल को कॉपी करने से रोका गया है}other{<ph name="FILE_COUNT" /> फ़ाइलों को कॉपी करने से रोका गया है}}</translation>
@@ -239,6 +240,7 @@
 <translation id="1393071644879491291">आपने जिस साइट पर जाने की कोशिश की है उससे जुड़े हमलावर, धोखे से आपके डिवाइस में सॉफ़्टवेयर इंस्टॉल करवा सकते हैं या आपके पासवर्ड, फ़ोन नंबर, क्रेडिट कार्ड नंबर वगैरह चुरा सकते हैं. Chrome का सुझाव है कि आप इस साइट पर न जाएं. <ph name="BEGIN_LEARN_MORE_LINK" />इस चेतावनी के बारे में ज़्यादा जानें<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="1397342126322860141">Google Wallet में आईडी कार्ड की जानकारी सुरक्षित तरीके से जोड़ें</translation>
 <translation id="1398743098754840707">टैब खुला होने पर भी, यहां जोड़ी गई साइटों को जवाबों के लिए रेफ़रंस के तौर पर इस्तेमाल नहीं किया जाएगा. अगर आपने कोई ऐसी साइट जोड़ी है जिसका इस्तेमाल फ़िलहाल किसी थ्रेड में किया जा रहा है, तो थ्रेड को उस साइट का रेफ़रंस लेना बंद करने में 30 मिनट लग सकते हैं.</translation>
+<translation id="1403359480263156644">कार्ड के मालिक का नाम अपडेट किया गया</translation>
 <translation id="1405567553485452995">हल्का हरा</translation>
 <translation id="1406370515365284486">पेमेंट के तरीके अब भी सेव रहेंगे</translation>
 <translation id="1406500794671479665">सत्यापन हो रहा है...</translation>
@@ -619,7 +621,6 @@
 <translation id="2059166748188874810">नगरपालिका</translation>
 <translation id="2059202684901022309">22 x 34 इंच</translation>
 <translation id="2063929825539050431">इस पेज को किसी दूसरे डिवाइस पर तुरंत भेजने के लिए, पता बार को दबाकर रखें</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{1 सुझाव}one{# सुझाव}other{# सुझाव}}</translation>
 <translation id="2066969741541525119">आपको जिस साइट पर जाना है उसे आपके संगठन ने ब्लॉक किया है</translation>
 <translation id="2071156619270205202">इस कार्ड को वर्चुअल कार्ड के तौर पर इस्तेमाल नहीं किया जा सकता.</translation>
 <translation id="2071852865256799872">आपके ब्राउज़र को आपका संगठन और आपकी प्रोफ़ाइल को <ph name="PROFILE_DOMAIN" /> मैनेज करता है</translation>
@@ -712,7 +713,6 @@
 <translation id="2188375229972301266">नीचे की ओर एक से ज़्यादा पंच</translation>
 <translation id="218940509700321686">कॉमा लगाकर अलग की गई वैल्यू</translation>
 <translation id="2190094353033916816">जब इस नीति को मशीन लेवल पर लागू किया जाता है, तो इसकी सेटिंग, उपयोगकर्ता लेवल पर लागू सेटिंग से अलग होती है. यह नीति अच्छे तरीके से काम कर रही है.</translation>
-<translation id="219061769324072544">क्रेडिट,कार्ड,डेबिट</translation>
 <translation id="2191980191135734720">अगले चरण में, अपना फ़िंगरप्रिंट इस्तेमाल करके स्क्रीन अनलॉक करें. इसके अलावा, <ph name="LINK_TEXT" /> भी तरीका इस्तेमाल किया जा सकता है.</translation>
 <translation id="2194856509914051091">इन बातों का ध्यान रखें</translation>
 <translation id="2195729137168608510">ईमेल सुरक्षा</translation>
@@ -910,6 +910,7 @@
 <translation id="2498091847651709837">नया कार्ड स्‍कैन करें</translation>
 <translation id="2501270939904835585">लेबल (सैटिन)</translation>
 <translation id="2501278716633472235">वापस जाएं</translation>
+<translation id="250307989715832083">हस्ताक्षर जोड़ें</translation>
 <translation id="250346157641628208">पेपर (इंकजेट)</translation>
 <translation id="2505063700931618106">कार्ड की जानकारी सेव की गई</translation>
 <translation id="2505268675989099013">खाते की सुरक्षा करें</translation>
@@ -1083,6 +1084,7 @@
 <translation id="2807052079800581569">इमेज Y की स्थिति</translation>
 <translation id="2808278141522721006"><ph name="SETTINGS" /> में, Windows Hello को चालू या बंद किया जा सकता है</translation>
 <translation id="2820957248982571256">स्कैन हो रहा है...</translation>
+<translation id="282457273878278063">संपर्क जानकारी मैनेज करें</translation>
 <translation id="2824775600643448204">पता और सर्च बार</translation>
 <translation id="2826760142808435982"><ph name="CIPHER" /> का इस्तेमाल करके कनेक्शन को एन्क्रिप्ट (सुरक्षित) किया गया है और उसकी पुष्टि की गई है. साथ ही, यह मुख्य एक्सचेंज तकनीक के रूप में <ph name="KX" /> का इस्तेमाल करता है.</translation>
 <translation id="2828797285817981634">मोशन सेंसर को फ़िलहाल अनुमति मिल गई है</translation>
@@ -1865,7 +1867,6 @@
 <translation id="4121428309786185360">इस तारीख को खत्म</translation>
 <translation id="4123572138124678573">नीचे की ओर ट्रिपल पंच</translation>
 <translation id="412601465078863288">अपलोड करने का समय खत्म हो गया</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{1 अन्य}one{# अन्‍य}other{# अन्‍य}}</translation>
 <translation id="4129810348470013900">कोई गड़बड़ी हुई. अपने इंटरनेट कनेक्शन की जांच करें और फिर से कोशिश करें.</translation>
 <translation id="4130226655945681476">नेटवर्क केबल, मोडेम और राउटर की जाँच करें</translation>
 <translation id="4132448310531350254">ऐप्लिकेशन "<ph name="POLICY_IDS_LIST" />" से जुड़े file_extensions "<ph name="FILE_EXTENSION" />" के लिए डुप्लीकेट हैंडलर.</translation>
@@ -1919,6 +1920,7 @@
 <translation id="4218327733815631046">जगह की अनुमानित जानकारी पर सेट रखें</translation>
 <translation id="4219596572397833317">बेहतर तरीके से खरीदारी करने के लिए, कीमत का इतिहास वगैरह देखें.</translation>
 <translation id="4220128509585149162">क्रैश</translation>
+<translation id="4220745762102459826">और अन्य</translation>
 <translation id="4221630205957821124">&lt;h4&gt; पहला चरण: पोर्टल में साइन इन करें&lt;/h4&gt;
     &lt;p&gt;कैफ़े या हवाई अड्डों जैसी जगहों पर मौजूद वाई-फ़ाई नेटवर्क के लिए आपको साइन इन करना होगा. साइन-इन पेज देखने के लिए, किसी ऐसे पेज पर जाएं जिस पर &lt;code&gt;http://&lt;/code&gt; का इस्तेमाल होता हो.&lt;/p&gt;
     &lt;ol&gt;
@@ -2219,7 +2221,6 @@
 <translation id="4725766358270333890">Microsoft OneDrive में <ph name="COUNT" /> फ़ाइलें अपलोड की जा रही हैं</translation>
 <translation id="4726672564094551039">नीतियां फिर से लोड करें</translation>
 <translation id="4728558894243024398">प्लेटफ़ॉर्म</translation>
-<translation id="4730773064303503917">Wallet का इस्तेमाल करके, दोस्तों और कारोबारों को Pix से पेमेंट करें</translation>
 <translation id="4730977633786878901">समीक्षाएं</translation>
 <translation id="4731638775147756694">इस ऐप्लिकेशन को आपके एडमिन ने ब्लॉक कर दिया है</translation>
 <translation id="4732860731866514038"><ph name="LANGUAGE" /> भाषा पैक डाउनलोड किया जा रहा है... <ph name="PERCENT" />%</translation>
@@ -2881,6 +2882,7 @@
 <translation id="5794065675298686371">कीमत ट्रैक करने से जुड़ी सूचनाएं पाने की सुविधा चालू करें</translation>
 <translation id="5794093550048860249">ट्रैकिंग नंबर</translation>
 <translation id="5796050750059455142">“<ph name="BEGIN_LINK" />Google के अन्य प्रॉडक्ट में उपलब्ध स्मार्ट सुविधाएं<ph name="LINK_END" />” चालू करें</translation>
+<translation id="5797916798049571144">यह आपके कार्ड की जानकारी के साथ सेव हो गया है, ताकि चेकआउट के समय यह अपने-आप भर जाए</translation>
 <translation id="5797984091151707075">एडमिन की नीति के तहत ब्लॉक किया गया</translation>
 <translation id="5804241973901381774">अनुमतियां</translation>
 <translation id="5806871454498484178">स्क्रोल और ज़ूम करने की सुविधा ब्लॉक है</translation>
@@ -3232,7 +3234,6 @@
 <translation id="638289054711715023">शृंक फ़ॉयल</translation>
 <translation id="6383221683286411806">आगे शुल्क लग सकते हैं.</translation>
 <translation id="6384448607821972818">रिकवरी पासवर्ड दिखाया गया</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{1 अन्‍य सुझाव}one{# अन्‍य सुझाव}other{# अन्‍य सुझाव}}</translation>
 <translation id="6386565501269869892">यू 4 साइज़ का लिफ़ाफ़ा</translation>
 <translation id="6387645831795005740">हमलावर कभी-कभी यूआरएल में छोटे और नज़र न आने वाले बदलाव करके साइट की नकल कर लेते हैं.</translation>
 <translation id="6389470377220713856">कार्ड पर नाम</translation>
@@ -4842,7 +4843,6 @@
 <translation id="9168814207360376865">साइट को यह देखने दें कि आपके पेमेंट के तरीके सेव किए गए हैं या नहीं</translation>
 <translation id="9169931577761441333">होम स्क्रीन पर <ph name="APP_NAME" /> जोड़ें</translation>
 <translation id="9170848237812810038">&amp;पूर्ववत् करें</translation>
-<translation id="9170906125144697215">ऐप्लिकेशन स्विच किए बिना, Pix से पेमेंट करें</translation>
 <translation id="9171296965991013597">ऐप्लिकेशन बंद करें?</translation>
 <translation id="9173282814238175921">एक दस्तावेज़/नई शीट</translation>
 <translation id="9173995187295789444">ब्लूटूथ डिवाइस के लिए स्कैन किया जा रहा है...</translation>

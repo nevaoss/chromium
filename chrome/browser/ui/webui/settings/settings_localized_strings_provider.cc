@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "base/check_deref.h"
 #include "base/command_line.h"
 #include "base/feature_list.h"
 #include "base/i18n/message_formatter.h"
@@ -85,6 +86,7 @@
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/commerce/core/commerce_constants.h"
 #include "components/content_settings/core/common/features.h"
+#include "components/device_reauth/device_auth_availability_checker.h"
 #include "components/device_reauth/device_authenticator.h"
 #include "components/dom_distiller/core/dom_distiller_features.h"
 #include "components/google/core/common/google_util.h"
@@ -1593,6 +1595,11 @@ bool CheckDeviceAuthAvailability(content::WebContents* web_contents) {
     return false;
   }
 
+  if (base::FeatureList::IsEnabled(
+          password_manager::features::kDeviceReauthRefactor)) {
+    return autofill::IsDeviceAuthAvailable(
+        client->GetDeviceAuthAvailabilityChecker().get());
+  }
   return autofill::IsDeviceAuthAvailable(
       client->GetDeviceAuthenticator().get());
 }
@@ -1689,6 +1696,14 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
        IDS_AUTOFILL_SETTINGS_EMAIL_VERIFICATION_SECTION_TITLE},
       {"emailVerificationEmptyLabel",
        IDS_AUTOFILL_SETTINGS_EMAIL_VERIFICATION_EMPTY_LABEL},
+      {"emailVerificationWhenOnConfirm",
+       IDS_AUTOFILL_SETTINGS_EMAIL_VERIFICATION_WHEN_ON_CONFIRM},
+      {"emailVerificationConsiderSupportedSites",
+       IDS_AUTOFILL_SETTINGS_EMAIL_VERIFICATION_CONSIDER_SUPPORTED_SITES},
+      {"emailVerificationConsiderPerEmail",
+       IDS_AUTOFILL_SETTINGS_EMAIL_VERIFICATION_CONSIDER_PER_EMAIL},
+      {"emailVerificationConsiderSignedIn",
+       IDS_AUTOFILL_SETTINGS_EMAIL_VERIFICATION_CONSIDER_SIGNED_IN},
       {"enableCreditCardsLabel", IDS_AUTOFILL_ENABLE_CREDIT_CARDS_TOGGLE_LABEL},
       {"enableCreditCardsSublabel",
        IDS_AUTOFILL_ENABLE_CREDIT_CARDS_TOGGLE_SUBLABEL},
@@ -3091,8 +3106,6 @@ void AddSafetyHubStrings(content::WebUIDataSource* html_source) {
        IDS_SETTINGS_SAFETY_HUB_EMPTY_STATE_MODULE_SUBHEADER},
       {"safetyHubGoSiteSettingsItem",
        IDS_SETTINGS_SAFETY_HUB_GO_SITE_SETTINGS_ITEM},
-      {"safetyHubGoNotificationSettingsItem",
-       IDS_SETTINGS_SAFETY_HUB_GO_NOTIFICATION_SETTINGS_ITEM},
       {"safetyHubUserEduModuleHeader",
        IDS_SETTINGS_SAFETY_HUB_USER_EDU_MODULE_HEADER},
       {"safetyHubUserEduDataHeader",
@@ -3110,30 +3123,6 @@ void AddSafetyHubStrings(content::WebUIDataSource* html_source) {
       {"safetyHubSBNavigationAriaLabel",
        IDS_SETTINGS_SAFETY_HUB_SB_NAVIGATION_ARIA_LABEL},
       {"safetyHubReview", IDS_SETTINGS_SAFETY_CHECK_REVIEW},
-      {"safetyHubNotificationPermissionReviewIgnoredToastLabel",
-       IDS_SETTINGS_SAFETY_CHECK_NOTIFICATION_PERMISSION_REVIEW_IGNORED_TOAST_LABEL},
-      {"safetyHubNotificationPermissionReviewBlockedToastLabel",
-       IDS_SETTINGS_SAFETY_CHECK_NOTIFICATION_PERMISSION_REVIEW_BLOCKED_TOAST_LABEL},
-      {"safetyHubNotificationPermissionReviewResetToastLabel",
-       IDS_SETTINGS_SAFETY_CHECK_NOTIFICATION_PERMISSION_REVIEW_RESET_TOAST_LABEL},
-      {"safetyHubNotificationPermissionReviewDontAllowLabel",
-       IDS_SETTINGS_SAFETY_CHECK_REVIEW_NOTIFICATION_PERMISSIONS_DONT_ALLOW_LABEL},
-      {"safetyHubNotificationPermissionReviewDontAllowAriaLabel",
-       IDS_SETTINGS_SAFETY_CHECK_REVIEW_NOTIFICATION_PERMISSIONS_DONT_ALLOW_ARIA_LABEL},
-      {"safetyHubNotificationPermissionReviewIgnoreLabel",
-       IDS_SETTINGS_SAFETY_CHECK_REVIEW_NOTIFICATION_PERMISSIONS_IGNORE_LABEL},
-      {"safetyHubNotificationPermissionReviewIgnoreAriaLabel",
-       IDS_SETTINGS_SAFETY_CHECK_REVIEW_NOTIFICATION_PERMISSIONS_IGNORE_ARIA_LABEL},
-      {"safetyHubNotificationPermissionReviewResetLabel",
-       IDS_SETTINGS_SAFETY_CHECK_REVIEW_NOTIFICATION_PERMISSIONS_RESET_LABEL},
-      {"safetyHubNotificationPermissionReviewResetAriaLabel",
-       IDS_SETTINGS_SAFETY_CHECK_REVIEW_NOTIFICATION_PERMISSIONS_RESET_ARIA_LABEL},
-      {"safetyHubNotificationPermissionReviewMoreActionsAriaLabel",
-       IDS_SETTINGS_SAFETY_CHECK_REVIEW_NOTIFICATION_PERMISSIONS_MORE_ACTIONS_ARIA_LABEL},
-      {"safetyHubNotificationPermissionReviewUndo",
-       IDS_SETTINGS_SAFETY_CHECK_TOAST_UNDO_BUTTON_LABEL},
-      {"safetyHubNotificationPermissionReviewBlockAllLabel",
-       IDS_SETTINGS_SAFETY_CHECK_NOTIFICATION_PERMISSION_REVIEW_BLOCK_ALL_LABEL},
       {"safetyHubUnusedSitePermissionsAllowAgainAriaLabel",
        IDS_SETTINGS_SAFETY_CHECK_UNUSED_SITE_PERMISSIONS_ALLOW_AGAIN_ARIA_LABEL},
       {"safetyHubUnusedSitePermissionsAllowAgainLabel",
@@ -3219,6 +3208,13 @@ void AddSearchStrings(content::WebUIDataSource* html_source, Profile* profile) {
       {"searchEnginesCancelButton", IDS_CANCEL},
       {"searchEnginesConfirmationToastLabel",
        IDS_SEARCH_ENGINE_CHOICE_SETTINGS_CONFIRMATION_TOAST_LABEL},
+      {"searchEnginesPickerTitle", IDS_SETTINGS_SEARCH_ENGINES_PICKER_TITLE},
+      {"searchEnginesMoreOptions", IDS_SETTINGS_SEARCH_ENGINES_MORE_OPTIONS},
+      {"searchEnginesMoreEngines", IDS_SETTINGS_SEARCH_ENGINES_MORE_ENGINES},
+      {"searchEnginesSearchPlaceholder",
+       IDS_SETTINGS_SEARCH_ENGINES_SEARCH_PLACEHOLDER},
+      {"searchEnginesNoSearchResults",
+       IDS_SETTINGS_SEARCH_ENGINES_NO_SEARCH_RESULTS},
       {"defaultSearch", IDS_SETTINGS_DEFAULT_SEARCH},
       {"searchActivate", IDS_SETTINGS_SEARCH_ACTIVATE},
       {"searchDeactivate", IDS_SETTINGS_SEARCH_DEACTIVATE},
@@ -3282,14 +3278,18 @@ void AddSearchStrings(content::WebUIDataSource* html_source, Profile* profile) {
   html_source->AddString("searchExplanationLearnMoreURL",
                          chrome::kOmniboxLearnMoreURL);
 
-  regional_capabilities::RegionalCapabilitiesService* regional_capabilities =
-      regional_capabilities::RegionalCapabilitiesServiceFactory::GetForProfile(
-          profile);
+  const bool is_eea =
+      CHECK_DEREF(regional_capabilities::RegionalCapabilitiesServiceFactory::
+                      GetForProfile(profile))
+          .IsInEeaCountry();
   html_source->AddLocalizedString(
       "searchEnginesSettingsDialogSubtitle",
-      regional_capabilities->IsInEeaCountry()
-          ? IDS_SEARCH_ENGINE_CHOICE_SETTINGS_SUBTITLE
-          : IDS_SEARCH_ENGINE_CHOICE_SETTINGS_SUBTITLE_NON_EEA);
+      is_eea ? IDS_SEARCH_ENGINE_CHOICE_SETTINGS_SUBTITLE
+             : IDS_SEARCH_ENGINE_CHOICE_SETTINGS_SUBTITLE_NON_EEA);
+  html_source->AddLocalizedString(
+      "searchEnginesPickerSubtitle",
+      is_eea ? IDS_SETTINGS_SEARCH_ENGINES_PICKER_SUBTITLE
+             : IDS_SETTINGS_SEARCH_ENGINES_PICKER_SUBTITLE_NON_EEA);
 }
 
 void AddSearchEnginesStrings(content::WebUIDataSource* html_source) {

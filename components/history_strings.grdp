@@ -32,6 +32,9 @@
   <message name="IDS_HISTORY_DEVICE_FILTER_ALL_DEVICES" desc="The default option in the device filter dropdown on the Chrome history page that shows browsing history from all synced devices.">
     All devices
   </message>
+  <message name="IDS_HISTORY_DEVICE_FILTER_LOCAL_DEVICE" desc="The option in the device filter on the Chrome history page for the current local device.">
+    <ph name="DEVICE_NAME">$1<ex>Google Phone</ex></ph> (this browser)
+  </message>
   <message name="IDS_HISTORY_ENTRY_ACCESSIBILITY_DELETE" desc="Name for the accessibility action to delete a single history entry.">
     Delete
   </message>
@@ -126,6 +129,22 @@
   <message name="IDS_HISTORY_SEARCH_EMBEDDINGS_MATCH_RESULTS" desc="Used when plural/multiple results are found by history search powered by AI." translateable="false">
     best matches
   </message>
+  <!-- TODO(b/573481189): Make translatable when strings are finalized. -->
+  <message name="IDS_HISTORY_TIME_PERIOD_FILTER_ALL_TIME" desc="Option in the time period filter dropdown on the history page. Selecting it shows history from all time, i.e. no time period filtering is applied. This is the default option." translateable="false">
+    All time
+  </message>
+  <message name="IDS_HISTORY_TIME_PERIOD_FILTER_YESTERDAY" desc="Option in the time period filter dropdown on the history page. Selecting it shows only history from yesterday (the day before today)." translateable="false">
+    Yesterday
+  </message>
+  <message name="IDS_HISTORY_TIME_PERIOD_FILTER_EARLIER_THIS_WEEK" desc="Option in the time period filter dropdown on the history page. Selecting it shows only history from Monday of the current week up to now." translateable="false">
+    Earlier this week
+  </message>
+  <message name="IDS_HISTORY_TIME_PERIOD_FILTER_LAST_WEEK" desc="Option in the time period filter dropdown on the history page. Selecting it shows only history from the previous calendar week (Monday to Sunday)." translateable="false">
+    Last week
+  </message>
+  <message name="IDS_HISTORY_TIME_PERIOD_FILTER_TWO_WEEKS_AGO" desc="Option in the time period filter dropdown on the history page. Selecting it shows only history from the calendar week (Monday to Sunday) before the previous one." translateable="false">
+    2 weeks ago
+  </message>
   <message name="IDS_HISTORY_SHOW_HISTORY" desc="The show history menu in the app menu">
     &amp;Open history page
   </message>
@@ -148,6 +167,9 @@
   </message>
   <message name="IDS_HISTORY_SOURCE_FILTER_CHIP_USER" desc="This string is found on a chip that filters the history results when the user selects it; it sits next to its opposite filter: 'Auto browse' (browsing activity from an auto browse task). It is at the top of the Chrome history page, where users can see their browsing history. This text is a noun and is short for the longer phrase 'Browsing history that YOU performed.' The tone should be short and telegraphic.">
     You
+  </message>
+  <message name="IDS_HISTORY_RESET_FILTERS" desc="Text used in the button to reset all applied history filters." >
+    Clear all
   </message>
   <message name="IDS_HISTORY_CLOSE_AND_RETURN_TO_PREFIX" desc="Text for the back-to-opener menu item. Format: Close and go back to &quot;[tab title]&quot;.">
     Close and go back to "<ph name="TAB_TITLE">$1</ph>"
@@ -331,43 +353,43 @@
     Gemini key browsing actions
   </message>
   <message name="IDS_HISTORY_CRITICAL_ACTION_LINKOUT_A11Y_LABEL" desc="Accessibility label for a critical action linkout icon in history item indicating the destination." translateable="false">
-    <ph name="DESTINATION">$1<ex>Contact info</ex></ph>, opens in a new tab
+    <ph name="DESTINATION">$1<ex>Go to contact info</ex></ph>, opens in a new tab
   </message>
   <message name="IDS_HISTORY_CRITICAL_ACTION_PASSWORD_FILLED" desc="Label for password filled critical action in history item." translateable="false">
-    Password filled
+    Signed in using a Google service like Password Manager
   </message>
   <message name="IDS_HISTORY_CRITICAL_ACTION_PASSWORD_TOOLTIP" desc="Tooltip for password filled critical action in history item." translateable="false">
-    Saved passwords
+    Go to Google Password Manager
   </message>
   <message name="IDS_HISTORY_CRITICAL_ACTION_FORM_FILLED" desc="Label for form filled critical action in history item." translateable="false">
     Contact info filled
   </message>
   <message name="IDS_HISTORY_CRITICAL_ACTION_FORM_TOOLTIP" desc="Tooltip for form filled critical action in history item." translateable="false">
-    Contact info
+    Go to contact info
   </message>
   <message name="IDS_HISTORY_CRITICAL_ACTION_DOWNLOAD" desc="Label for download critical action in history item." translateable="false">
     File downloaded
   </message>
   <message name="IDS_HISTORY_CRITICAL_ACTION_DOWNLOAD_TOOLTIP" desc="Tooltip for download critical action in history item." translateable="false">
-    Downloads
+    Go to downloads
   </message>
   <message name="IDS_HISTORY_CRITICAL_ACTION_SETTING_CHANGE" desc="Label for setting change critical action in history item." translateable="false">
-    Site settings modified
+    Site settings changed
   </message>
   <message name="IDS_HISTORY_CRITICAL_ACTION_SETTING_TOOLTIP" desc="Tooltip for setting change critical action in history item." translateable="false">
-    Site settings
+    Go to site settings
   </message>
   <message name="IDS_HISTORY_CRITICAL_ACTION_FEDERATED_LOGIN" desc="Label for federated login critical action in history item." translateable="false">
     Signed in with account
   </message>
   <message name="IDS_HISTORY_CRITICAL_ACTION_FEDERATED_LOGIN_TOOLTIP" desc="Tooltip for federated login critical action in history item." translateable="false">
-    Account sign-in
+    Go to account sign-in
   </message>
   <message name="IDS_HISTORY_CRITICAL_ACTION_CREDENTIALS_OTP" desc="Label for credentials OTP verification code critical action in history item." translateable="false">
     Verification code filled
   </message>
   <message name="IDS_HISTORY_CRITICAL_ACTION_CREDENTIALS_OTP_TOOLTIP" desc="Tooltip for credentials OTP verification code critical action in history item." translateable="false">
-    Verification codes
+    Go to verification codes
   </message>
   <message name="IDS_HISTORY_CRITICAL_ACTION_WEBMCP_TOOL" desc="Fallback label for WebMCP tool execution critical action in history item." translateable="false">
     Used website tool
@@ -376,7 +398,7 @@
     Used website tool: <ph name="TOOL_NAME">$1<ex>book_flight</ex></ph>
   </message>
   <message name="IDS_HISTORY_CRITICAL_ACTION_WEBMCP_TOOL_TOOLTIP" desc="Tooltip for WebMCP tool execution critical action in history item." translateable="false">
-    Website actions
+    See website actions
   </message>
   <message name="IDS_HISTORY_CRITICAL_ACTION_APP_MENU_IPH_BODY" desc="Text shown in the IPH bubble attached to the Chrome app menu teaching users where to view Gemini's auto browse actions." translateable="false">
     In Chrome history, you can see the key actions that Gemini completed while browsing for you

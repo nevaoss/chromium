@@ -14,15 +14,14 @@ export function getHtml(this: ComposeboxElement) {
   ${!this.disableComposeboxAnimation ? html`
     <search-animated-glow id="animatedSearchElement"
         animation-state="${this.animationState}"
+        glow-mode="inner-glow"
         .coloredTicTacVoiceAnimationEnabled=
             "${this.voiceSearchCoherenceEnabled}"
         .isListening="${this.isListening}"
-        .entrypointName="${this.entrypointName}"
         .requiresVoice="${this.shouldShowVoiceSearchAnimation()}"
         .transcript="${this.transcript}"
         .receivedSpeech="${this.receivedSpeech}"
         .energyEffectAnimationEnabled="${this.energyEffectAnimationEnabled}"
-        .isZeroState="${this.isZeroState}"
         .darkThemeColorsEnabled="${this.entrypointName !== ''}"
         .showingOnlyCarouselOnTopOfInput="${this.showFileCarousel
             && !this.inToolMode

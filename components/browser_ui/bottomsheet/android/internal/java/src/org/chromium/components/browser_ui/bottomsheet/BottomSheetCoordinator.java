@@ -124,8 +124,8 @@ class BottomSheetCoordinator
     /** The height of the screen in the previous layout pass. */
     private int mPreviousScreenHeight;
 
-    /** The viewport bottom inset in pixels from the previous container layout pass. */
-    private @Px int mPreviousViewportBottomInset;
+    /** The bottom inset in pixels from the previous container layout pass. */
+    private @Px int mPreviousBottomInset;
 
     /** The animator used to move the sheet to a fixed state when released by the user. */
     private @Nullable ValueAnimator mSettleAnimator;
@@ -362,10 +362,21 @@ class BottomSheetCoordinator
     }
 
     private void onInsetChanged() {
+        invalidateContentDesiredHeight();
         updateContentContainerHeight();
     }
 
-    private @Px int getEdgeToEdgeBottomInset() {
+    @VisibleForTesting
+    @Px
+    int getContentBottomPadding() {
+        return mMediator.calculateContentBottomPadding(
+                isLargeFormFactorUiEnabled(),
+                isFullHeightResizeContent(),
+                getEdgeToEdgeBottomInset());
+    }
+
+    @Px
+    int getEdgeToEdgeBottomInset() {
         if (mBottomMargin != 0) return 0;
         assert mEdgeToEdgeBottomInsetSupplier.get() != null;
         @Px
@@ -373,16 +384,6 @@ class BottomSheetCoordinator
                 ViewUtils.dpToPx(mView.getContext(), mEdgeToEdgeBottomInsetSupplier.get());
         @Px int keyboardInset = mInsetObserver.getSupplierForKeyboardInset().get();
         return Math.max(0, bottomInset - keyboardInset);
-    }
-
-    private @Px int getViewportBottomInset(@Px int e2eBottomInset) {
-        @Px int viewportBottomInset = e2eBottomInset;
-
-        if (isSheetOpen()) {
-            int visibleViewport = mVisibleViewportRect.height();
-            viewportBottomInset = Math.max(viewportBottomInset, mContainerHeight - visibleViewport);
-        }
-        return viewportBottomInset;
     }
 
     private void onContainerLayoutChange(
@@ -400,6 +401,9 @@ class BottomSheetCoordinator
         }
 
         boolean insetOrHeightChanged = updateViewportAndBottomInset(previousHeight);
+        if (insetOrHeightChanged) {
+            invalidateContentDesiredHeight();
+        }
         if (!maybeRevertStateOnLayoutChange() && insetOrHeightChanged) {
             resettleSheetOnContainerChange(keyboardDelegate);
         }
@@ -433,11 +437,9 @@ class BottomSheetCoordinator
     private boolean updateViewportAndBottomInset(@Px int previousHeight) {
         @Px int e2eBottomInset = getEdgeToEdgeBottomInset();
         updateViewport(e2eBottomInset);
-        @Px int viewportBottomInset = getViewportBottomInset(e2eBottomInset);
         boolean insetOrHeightChanged =
-                previousHeight != mContainerHeight
-                        || mPreviousViewportBottomInset != viewportBottomInset;
-        mPreviousViewportBottomInset = viewportBottomInset;
+                previousHeight != mContainerHeight || mPreviousBottomInset != e2eBottomInset;
+        mPreviousBottomInset = e2eBottomInset;
         return insetOrHeightChanged;
     }
 
@@ -1282,12 +1284,17 @@ class BottomSheetCoordinator
         }
         BottomSheetContent content = getCurrentSheetContent();
         View contentView = assumeNonNull(content).getContentView();
+        @Px int handlebarHeight = getHandlebarHeight();
+        @Px int bottomPadding = getContentBottomPadding();
+        @Px
+        int maxContentHeight = Math.max(0, getMaxSheetHeight() - handlebarHeight - bottomPadding);
         contentView.measure(
                 MeasureSpec.makeMeasureSpec(getMaxSheetWidth(), MeasureSpec.EXACTLY),
-                MeasureSpec.makeMeasureSpec(getMaxSheetHeight(), MeasureSpec.AT_MOST));
-        mContentDesiredHeight = contentView.getMeasuredHeight();
-        if (content.showHandlebar()) {
-            mContentDesiredHeight += getHandlebarHeight();
+                MeasureSpec.makeMeasureSpec(maxContentHeight, MeasureSpec.AT_MOST));
+        mContentDesiredHeight =
+                Math.min(getMaxSheetHeight(), contentView.getMeasuredHeight() + handlebarHeight);
+        if (content.coversBottomControls()) {
+            mContentDesiredHeight = Math.max(0, mContentDesiredHeight - getEdgeToEdgeBottomInset());
         }
     }
 
@@ -1460,7 +1467,7 @@ class BottomSheetCoordinator
         boolean isFullHeightResizeContent = isFullHeightResizeContent();
 
         mMediator.updateVerticalLayout(
-                getViewportBottomInset(e2eBottomInset),
+                e2eBottomInset,
                 mVisibleViewportRect,
                 mWindow.getDecorView().getHeight(),
                 getHandlebarHeight(),
@@ -1492,6 +1499,11 @@ class BottomSheetCoordinator
         return (int) getSheetHeightForState(getTargetOrCurrentState());
     }
 
+    private boolean coversBottomControls() {
+        BottomSheetContent content = getCurrentSheetContent();
+        return content != null && content.coversBottomControls();
+    }
+
     private void updateViewport(@Px int e2eBottomInset) {
         assert mWindow != null;
 
@@ -1507,8 +1519,10 @@ class BottomSheetCoordinator
 
     private void updateViewportFromDisplayFrame(View decorView, @Px int e2eBottomInset) {
         decorView.getWindowVisibleDisplayFrame(mVisibleViewportRect);
-        mVisibleViewportRect.bottom =
-                Math.min(mVisibleViewportRect.bottom, decorView.getBottom() - e2eBottomInset);
+        if (!coversBottomControls()) {
+            mVisibleViewportRect.bottom =
+                    Math.min(mVisibleViewportRect.bottom, decorView.getBottom() - e2eBottomInset);
+        }
         mVisibleViewportRect.bottom = Math.max(mVisibleViewportRect.bottom, 0);
     }
 
@@ -1519,7 +1533,11 @@ class BottomSheetCoordinator
         Insets combinedInsets =
                 insets.getInsets(
                         WindowInsetsCompat.Type.ime() | WindowInsetsCompat.Type.systemBars());
-        @Px int bottomInset = Math.max(combinedInsets.bottom, e2eBottomInset);
+        @Px
+        int bottomInset =
+                coversBottomControls()
+                        ? insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+                        : Math.max(combinedInsets.bottom, e2eBottomInset);
         bottomInset = Math.min(bottomInset, decorHeight);
 
         mVisibleViewportRect.set(

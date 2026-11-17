@@ -2334,9 +2334,7 @@ void RenderWidgetHostViewAura::SetActiveCompositionForAccessibility(
     }
   }
 }
-#endif
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS)
 ui::TextInputClient::EditingContext
 RenderWidgetHostViewAura::GetTextEditingContext() {
   ui::TextInputClient::EditingContext editing_context;
@@ -2354,15 +2352,13 @@ RenderWidgetHostViewAura::GetTextEditingContext() {
     editing_context.page_url = frame->GetLastCommittedURL();
   return editing_context;
 }
-#endif
 
-#if BUILDFLAG(IS_WIN)
 void RenderWidgetHostViewAura::NotifyOnFrameFocusChanged() {
   if (GetInputMethod()) {
     GetInputMethod()->OnUrlChanged();
   }
 }
-#endif
+#endif  // BUILDFLAG(IS_WIN)
 
 ////////////////////////////////////////////////////////////////////////////////
 // RenderWidgetHostViewAura, display::DisplayObserver implementation:

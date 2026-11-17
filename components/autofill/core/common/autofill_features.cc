@@ -411,9 +411,9 @@ BASE_FEATURE(kAutofillAiWalletPrivatePassesCapability,
 BASE_FEATURE(kAutofillAiWalletPrivatePassesDeepLink,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// If enabled, Wallet management URLs (`pass_view_url`) received via sync are
-// stored on `EntityInstance::WalletRecordTypePayload` and used for deep
-// linking to Google Wallet.
+// If enabled, Wallet management URLs (`pass_view_url`) are used for deep
+// linking to Google Wallet. Note that the processing of `pass_view_url`
+// in Chrome sync happens unconditionally even if the feature is off.
 BASE_FEATURE(kAutofillAiWalletServerProvidedDeepLink,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -499,6 +499,13 @@ BASE_FEATURE(kAutofillAndroidDesktopSuppressAccessoryOnEmpty,
 // `kAutofillAndroidDisableSuggestionsOnJSFocus`
 BASE_FEATURE(kAutofillAndroidDisableSuggestionsOnJSFocus,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+#if BUILDFLAG(IS_ANDROID)
+// Kill switch for hiding Autofill suggestions and the keyboard accessory when a
+// mouse-triggered context menu opens on Android.
+BASE_FEATURE(kAutofillAndroidHideSuggestionsOnContextMenu,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_ANDROID)
 
 // If enabled, on Android, the Autofill keyboard accessory will not be
 // displayed attached to the keyboard but will be placed below or above the
@@ -866,6 +873,13 @@ BASE_FEATURE(kAutofillGreekRegexes, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAutofillHideSuggestionsOnFocusChange,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Keeps the Autofill popup open when layout reflow (`kClamping` or
+// `kAnchoring`) produces a scroll event. The feature flag guards logic
+// only on Desktop platforms.
+// TODO(crbug.com/564353467): Remove once the experiment is over.
+BASE_FEATURE(kAutofillIgnoreLayoutInducedScrollEvents,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // When enabled, corrects missclassification of NAME_LAST as NAME_LAST_SECOND in
 // an absence of NAME_LAST_FIRST.
 // TODO(crbug.com/400995432): Clean-up when launched.
@@ -1000,6 +1014,12 @@ BASE_FEATURE(kAutofillPopupDontAcceptNonVisibleEnoughSuggestion,
 // guards against double destruction or showing while hiding.
 // TODO(crbug.com/524084900): Remove when launched.
 BASE_FEATURE(kAutofillPopupUseDeleteSoon, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, shows the updated storage notice. This notice explains how
+// saved info is used across Google and links to the Privacy Policy when saving
+// private passes to Google Wallet.
+BASE_FEATURE(kAutofillRegionalizedPrivatePassesUxRefine,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Replaces blink::WebFormElementObserver usage in FormTracker by updated logic
 // for tracking the disappearance of forms as well as other submission

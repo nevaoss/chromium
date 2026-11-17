@@ -488,6 +488,7 @@ export class ToolbarAppElement extends AppElementBase {
       open: false,
       shouldShow: false,
       isContextMenuVisible: false,
+      shouldMatchToolbarStyle: false,
       nudgeLabel: null,
     },
     layoutConstantsVersion:
@@ -495,6 +496,7 @@ export class ToolbarAppElement extends AppElementBase {
     touchUi: getTypedBoolean(ToolbarStateKey.TOUCH_UI),
     pinnedToolbarActionsState: [],
     extensionsState: [],
+    controlsAppearInactive: false,
   };
 
   private browserProxy_: BrowserProxy;
@@ -894,6 +896,17 @@ export class ToolbarAppElement extends AppElementBase {
     }
   }
 
+  override updated(changedProperties: PropertyValues<this>) {
+    super.updated(changedProperties);
+    const changedPrivateProperties =
+        changedProperties as Map<PropertyKey, unknown>;
+    if (changedPrivateProperties.has('toolbarState_')) {
+      this.toggleAttribute(
+          'controls-appear-inactive',
+          this.toolbarState_.controlsAppearInactive);
+    }
+  }
+
   /**
    * Schedules a layoutIfNeeded_() on the next animation frame, if one isn't
    * already scheduled. layoutIfNeeded_() will layout the ResponsiveControls if
@@ -1044,9 +1057,12 @@ export class ToolbarAppElement extends AppElementBase {
       this.shadowRoot.querySelector<ResponsiveControl&HTMLElement>('#media'),
     ];
 
-    const groupedControls =
-        [this.shadowRoot.querySelector<ResponsiveControl&HTMLElement>(
-            '#pinnedToolbarActions')];
+    const groupedControls = [
+      this.shadowRoot.querySelector<ResponsiveControl&HTMLElement>(
+          '#pinnedToolbarActions'),
+      this.shadowRoot.querySelector<ResponsiveControl&HTMLElement>(
+          '#extensions'),
+    ];
 
     return (this.omniboxResizingPrioritizationEnabled_ ?
                 [locationBar, ...buttons, ...groupedControls] :

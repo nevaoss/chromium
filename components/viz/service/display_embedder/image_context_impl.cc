@@ -17,7 +17,6 @@
 #include "gpu/command_buffer/service/shared_image/shared_image_factory.h"
 #include "gpu/command_buffer/service/shared_image/shared_image_format_service_utils.h"
 #include "gpu/command_buffer/service/skia_utils.h"
-#include "gpu/command_buffer/service/texture_manager.h"
 #include "skia/buildflags.h"
 #include "third_party/abseil-cpp/absl/cleanup/cleanup.h"
 #include "third_party/skia/include/core/SkCanvas.h"
@@ -135,15 +134,13 @@ ImageContextImpl::ImageContextImpl(const gpu::Mailbox& mailbox,
       is_for_render_pass_(true) {}
 
 ImageContextImpl::~ImageContextImpl() {
+  // Destroy the SkImage before `representation_` as it's a view of the
+  // representation.
+  clear_image();
   DeleteFallbackTextures();
 }
 
 void ImageContextImpl::OnContextLost() {
-  if (texture_passthrough_) {
-    texture_passthrough_->MarkContextLost();
-    texture_passthrough_.reset();
-  }
-
   if (representation_) {
     representation_->OnContextLost();
     representation_scoped_read_access_.reset();
@@ -395,8 +392,6 @@ bool ImageContextImpl::BeginAccessIfNecessaryInternal(
   representation_scoped_read_access_ =
       representation_->BeginScopedReadAccess(begin_semaphores, end_semaphores);
   if (!representation_scoped_read_access_) {
-    clear_image();
-    representation_ = nullptr;
     DLOG(ERROR) << "Failed to fulfill the promise texture - SharedImage "
                    "begin read access failed..";
     return false;
@@ -405,6 +400,7 @@ bool ImageContextImpl::BeginAccessIfNecessaryInternal(
   graphite_ycbcr_info_mismatch_ = false;
   if (!ValidateYCbCrInfo(context_state)) {
     graphite_ycbcr_info_mismatch_ = true;
+    representation_scoped_read_access_->ApplyBackendSurfaceEndState();
     representation_scoped_read_access_.reset();
     return false;
   }

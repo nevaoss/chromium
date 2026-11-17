@@ -46,7 +46,7 @@
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
 #include "components/actor/public/mojom/actor_types.mojom.h"
-#include "components/optimization_guide/core/model_execution/feature_keys.h"
+#include "components/optimization_guide/core/feature_registry/feature_keys.h"
 #include "components/optimization_guide/proto/features/quick_answers.pb.h"
 #include "components/optimization_guide/proto/features/smart_selection_suggestions.pb.h"
 #include "components/page_content_annotations/content/page_context_fetcher_options.h"
@@ -1848,19 +1848,21 @@ class SelectionOverlayInteractiveTestWithInlineFulfillment
                                        "glic-selection-overlay"};
 
   auto OpenOverlayFromSmallChip(ui::ElementIdentifier tab,
-                                ui::ElementIdentifier overlay) {
+                                ui::ElementIdentifier overlay,
+                                std::string_view paragraph_style = "") {
     const DeepQuery kOverlayApp = {"selection-overlay-app"};
 
-    // Text for the user to select.
-    static constexpr char kAddTextJs[] = R"js(
-      () => {
-        document.body.innerHTML = '<p>Explain this sentence please</p>';
-      }
-    )js";
+    // Text for the user to select. `width/height: fit-content` on `html`,
+    // `body`, and `p` ensures `SelectAll()`'s range bounding box wraps the
+    // paragraph rather than the full quirks-mode viewport.
+    std::string add_text_js = base::StrCat(
+        {"() => { document.body.innerHTML = '<style>html, body, p { width: "
+         "fit-content; height: fit-content; }</style><p style=\"",
+         paragraph_style, "\">Explain this sentence please</p>'; }"});
 
     return Steps(
         InstrumentTab(tab), NavigateWebContents(tab, GetEmptyDocURL()),
-        ExecuteJs(tab, kAddTextJs),
+        ExecuteJs(tab, add_text_js),
         // Focus the page and select the text. The small chip shows up on it.
         // This avoids an OS mouse drag, which can hang on Windows bots.
         WaitForWebContentsPainted(tab), MoveMouseTo(tab, DeepQuery{"p"}),
@@ -1923,7 +1925,7 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithInlineFulfillment,
 
   static constexpr char kCardTextJs[] = R"js(
     el => el.shadowRoot.querySelector(
-        '#inlineFulfillmentHost > glic-explain-fulfillment > .explanation')
+        '#inlineFulfillmentHost > glic-explain-fulfillment .explanation')
         ?.textContent
   )js";
   static constexpr char kChipsHiddenJs[] = R"js(
@@ -1980,6 +1982,48 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithInlineFulfillment,
       // The prompt moves so the card stays on screen.
       WaitForJsResultAt(kOverlayWebContentsId, kSelectionOverlay,
                         kPromptInViewportJs));
+}
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithInlineFulfillment,
+                       CardKeepsCueTopLeftAndGrowsDownward) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kActiveTab);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayWebContentsId);
+
+  // The fade-in animation offsets the cue, so wait for it to end.
+  static constexpr char kRecordCueAndClickExplainJs[] = R"js(
+    el => {
+      const cue = el.shadowRoot.querySelector('#floatingPromptContainer');
+      const chip = [...el.shadowRoot.querySelectorAll('.action-chip')].find(
+          c => c.querySelector('.chip-label')?.textContent === 'Explain');
+      if (!chip || cue.hidden || cue.getAnimations().length > 0) {
+        return false;
+      }
+      window.cueRect = cue.getBoundingClientRect();
+      chip.click();
+      return true;
+    }
+  )js";
+  static constexpr char kCardAtCueTopLeftJs[] = R"js(
+    el => {
+      const rect = el.shadowRoot.querySelector('#floatingPromptContainer')
+                       .getBoundingClientRect();
+      return !!el.shadowRoot.querySelector(
+                 '#inlineFulfillmentHost > glic-explain-fulfillment') &&
+             Math.abs(rect.left - cueRect.left) <= 2 &&
+             Math.abs(rect.top - cueRect.top) <= 2 &&
+             rect.bottom > cueRect.bottom;
+    }
+  )js";
+
+  RunTestSequence(
+      // Far enough below the top edge that neither the cue nor the card is
+      // clamped to the top margin.
+      OpenOverlayFromSmallChip(kActiveTab, kOverlayWebContentsId,
+                               "margin-top: 200px"),
+      WaitForJsResultAt(kOverlayWebContentsId, kSelectionOverlay,
+                        kRecordCueAndClickExplainJs),
+      WaitForJsResultAt(kOverlayWebContentsId, kSelectionOverlay,
+                        kCardAtCueTopLeftJs));
 }
 
 IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithInlineFulfillment,
@@ -2086,6 +2130,23 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithInlineFulfillment,
       MoveMouseTo(OverlayBaseController::kOverlayId,
                   GetPointWithOffset(300, 300)),
       ClickMouse(), WaitForHide(OverlayBaseController::kOverlayId),
+      EnsureNotPresent(toasts::ToastView::kToastViewId));
+}
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithInlineFulfillment,
+                       CloseOverlayWithCardCloseButtonDoesNotShowHiddenToast) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kActiveTab);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayWebContentsId);
+  const DeepQuery kCardCloseButton = {
+      "selection-overlay-app", "glic-selection-overlay",
+      "#inlineFulfillmentHost > glic-explain-fulfillment .close-button"};
+
+  RunTestSequence(
+      OpenExplainCard(kActiveTab, kOverlayWebContentsId),
+      WaitForElementVisible(kOverlayWebContentsId, kCardCloseButton),
+      ClickElement(kOverlayWebContentsId, kCardCloseButton,
+                   ExecuteJsMode::kFireAndForget),
+      WaitForHide(OverlayBaseController::kOverlayId),
       EnsureNotPresent(toasts::ToastView::kToastViewId));
 }
 

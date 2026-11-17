@@ -12,6 +12,10 @@ namespace {
 // Maximum number of actions displayed by an `ActuationInterventionType::kRow`.
 constexpr NSUInteger kMaxRowActionCount = 2;
 
+// Maximum number of actions displayed by an
+// `ActuationInterventionType::kColumn`.
+constexpr NSUInteger kMaxColumnActionCount = 3;
+
 }  // namespace
 
 @implementation ActuationWorklogAccessoryItem
@@ -123,6 +127,16 @@ constexpr NSUInteger kMaxRowActionCount = 2;
       accessoryItem:accessoryItem];
 }
 
++ (instancetype)freeformItemWithText:(NSString*)text {
+  return [[ActuationWorklogItem alloc]
+      initWithTitle:text
+           subtitle:nil
+               icon:nil
+              style:ActuationWorklogItemStyle::kFreeform
+             active:NO
+      accessoryItem:nil];
+}
+
 - (instancetype)withActive:(BOOL)active {
   return [[ActuationWorklogItem alloc] initWithTitle:self.title
                                             subtitle:self.subtitle
@@ -191,6 +205,9 @@ constexpr NSUInteger kMaxRowActionCount = 2;
     case ActuationInterventionType::kRow:
       CHECK_LE(actions.count, kMaxRowActionCount);
       break;
+    case ActuationInterventionType::kColumn:
+      CHECK_LE(actions.count, kMaxColumnActionCount);
+      break;
   }
 
   self = [super init];
@@ -220,6 +237,15 @@ constexpr NSUInteger kMaxRowActionCount = 2;
     (NSArray<ActuationInterventionAction*>*)actions {
   return [[ActuationInterventionData alloc]
       initWithType:ActuationInterventionType::kRow
+             title:nil
+          subtitle:nil
+           actions:actions];
+}
+
++ (instancetype)columnItemWithActions:
+    (NSArray<ActuationInterventionAction*>*)actions {
+  return [[ActuationInterventionData alloc]
+      initWithType:ActuationInterventionType::kColumn
              title:nil
           subtitle:nil
            actions:actions];

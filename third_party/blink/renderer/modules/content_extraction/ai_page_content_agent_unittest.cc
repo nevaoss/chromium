@@ -3142,17 +3142,17 @@ TEST_F(AIPageContentAgentTest, MathML_UnknownMathMLTagsPreserved) {
 TEST_F(AIPageContentAgentTest, MathML_RecursionDepthCapped) {
   base::HistogramTester histogram_tester;
 
-  // Override <mrow>'s default math display to avoid slow O(N^3) MathML layout
-  // on deeply nested rows.
+  // Override <mrow>'s default math display to inline to avoid slow O(N^3)
+  // MathML layout and deep block layout recursion on deeply nested rows.
   StringBuilder html;
-  html.Append("<body><style>mrow { display: block; }</style><math>");
-  // <math> is depth 1, 126 <mrow>s are depths 2..127, <mi> is depth 128, and
-  // its text node "x" is depth 129, one past the 128-level cap.
-  for (int i = 0; i < 126; ++i) {
+  html.Append("<body><style>mrow { display: inline; }</style><math>");
+  // <math> is depth 1, 62 <mrow>s are depths 2..63, <mi> is depth 64, and its
+  // text node "x" is depth 65, one past the 64-level cap.
+  for (int i = 0; i < 62; ++i) {
     html.Append("<mrow>");
   }
   html.Append("<mi>x</mi>");
-  for (int i = 0; i < 126; ++i) {
+  for (int i = 0; i < 62; ++i) {
     html.Append("</mrow>");
   }
   html.Append("</math></body>");
@@ -3167,7 +3167,7 @@ TEST_F(AIPageContentAgentTest, MathML_RecursionDepthCapped) {
   ASSERT_EQ(root.children_nodes.size(), 1u);
   const auto& math_node = *root.children_nodes[0];
 
-  // Exceeding the 128-level depth cap omits stripped_mathml so consumers fall
+  // Exceeding the 64-level depth cap omits stripped_mathml so consumers fall
   // back to descendant nodes rather than reading a truncated equation.
   CheckMathNode(math_node, /*expected_stripped_mathml=*/String(),
                 /*expected_is_block=*/false);
@@ -3183,21 +3183,21 @@ TEST_F(AIPageContentAgentTest, MathML_RecursionDepthCapped) {
 TEST_F(AIPageContentAgentTest, MathML_RecursionDepthAtCapSucceeds) {
   base::HistogramTester histogram_tester;
 
-  // Override <mrow>'s default math display to avoid slow O(N^3) MathML layout
-  // on deeply nested rows.
+  // Override <mrow>'s default math display to inline to avoid slow O(N^3)
+  // MathML layout and deep block layout recursion on deeply nested rows.
   StringBuilder html;
   StringBuilder expected;
-  html.Append("<body><style>mrow { display: block; }</style><math>");
+  html.Append("<body><style>mrow { display: inline; }</style><math>");
   expected.Append("<math>");
-  // <math> is depth 1, 125 <mrow>s are depths 2..126, <mi> is depth 127, and
-  // its text node "x" is depth 128 (right at the 128-level cap).
-  for (int i = 0; i < 125; ++i) {
+  // <math> is depth 1, 61 <mrow>s are depths 2..62, <mi> is depth 63, and its
+  // text node "x" is depth 64 (right at the 64-level cap).
+  for (int i = 0; i < 61; ++i) {
     html.Append("<mrow>");
     expected.Append("<mrow>");
   }
   html.Append("<mi>x</mi>");
   expected.Append("<mi>x</mi>");
-  for (int i = 0; i < 125; ++i) {
+  for (int i = 0; i < 61; ++i) {
     html.Append("</mrow>");
     expected.Append("</mrow>");
   }

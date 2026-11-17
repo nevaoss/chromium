@@ -572,6 +572,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.app") {
     ":chrome_test_java_helper",
     ":chrome_test_java_org.chromium.chrome.browser.tabmodel",
     "//chrome/browser/ntp_customization:java",
+    "//chrome/browser/settings:settings_in_tab_java",
     "//ui/accessibility:ui_accessibility_test_support_java",
   ]
 }
@@ -667,7 +668,10 @@ android_library(
     "src/org/chromium/chrome/browser/browserservices/ui/controller/trustedwebactivity/TrustedWebActivityCurrentPageVerifierTest.java",
   ]
 
-  deps = [ ":chrome_test_java_helper" ]
+  deps = [
+    ":chrome_test_java_helper",
+    "//chrome/browser/settings:settings_in_tab_java",
+  ]
 }
 
 android_library("chrome_test_java_org.chromium.chrome.browser.browsing_data") {
@@ -698,6 +702,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.compositor") {
     "src/org/chromium/chrome/browser/compositor/overlays/strip/TabStripGroupContextMenuTest.java",
     "src/org/chromium/chrome/browser/compositor/overlays/strip/TabStripNavigationFailureTest.java",
     "src/org/chromium/chrome/browser/compositor/overlays/strip/TabStripPinUnpinTabsTest.java",
+    "src/org/chromium/chrome/browser/compositor/overlays/strip/TabStripRenderTest.java",
     "src/org/chromium/chrome/browser/compositor/overlays/strip/TabStripTest.java",
     "src/org/chromium/chrome/browser/compositor/overlays/strip/TabStripTestUtils.java",
   ]
@@ -705,8 +710,13 @@ android_library("chrome_test_java_org.chromium.chrome.browser.compositor") {
   deps = [
     ":chrome_test_java_helper",
     "//base:holder_java",
+    "//chrome/browser/collaboration:factory_java",
+    "//chrome/browser/data_sharing:factory_java",
     "//chrome/browser/educational_tip:java",
     "//chrome/browser/ntp_customization:java",
+    "//components/collaboration/public:core_java",
+    "//components/data_sharing:test_support_java",
+    "//components/data_sharing/public:public_java",
     "//ui/accessibility:ui_accessibility_test_support_java",
   ]
 }
@@ -978,6 +988,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.metrics") {
   deps = [
     ":chrome_test_java_helper",
     "//chrome/browser/android/metrics:base_java",
+    "//chrome/browser/settings:settings_in_tab_java",
   ]
 }
 
@@ -1007,6 +1018,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.notifications") {
 
   deps = [
     ":chrome_test_java_helper",
+    "//chrome/browser/settings:settings_in_tab_java",
     "//chrome/browser/tips/android:java",
   ]
 }
@@ -1072,7 +1084,6 @@ android_library("chrome_test_java_org.chromium.chrome.browser.omnibox") {
     "src/org/chromium/chrome/browser/omnibox/OmniboxPTTest.java",
     "src/org/chromium/chrome/browser/omnibox/OmniboxTest.java",
     "src/org/chromium/chrome/browser/omnibox/SiteSearchTest.java",
-    "src/org/chromium/chrome/browser/omnibox/suggestions/OmniboxPedalsTest.java",
     "src/org/chromium/chrome/browser/omnibox/voice/VoiceSearchPTTest.java",
   ]
 
@@ -1491,6 +1502,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.sync") {
     ":chrome_test_java_helper",
     "//base:base_java_test_support",
     "//base:supplier_java",
+    "//chrome/browser/settings:settings_in_tab_java",
     "//chrome/browser/ui/android/extensions:java",
     "//chrome/browser/user_education:java",
     "//components/messages/android:manager_java",
@@ -1538,7 +1550,6 @@ android_library("chrome_test_java_org.chromium.chrome.browser.tab") {
   deps = [
     ":chrome_test_java_helper",
     "//components/tabs/public/android:java",
-    "//ui/accessibility:ui_accessibility_test_support_java",
   ]
 }
 
@@ -1886,6 +1897,7 @@ android_library("chrome_test_java_various") {
     "//chrome/browser/gsa:java",
     "//chrome/browser/ntp_customization:java",
     "//chrome/browser/omaha/android:ui_java",
+    "//chrome/browser/settings:settings_in_tab_java",
     "//chrome/browser/ui/android/bottombar:java",
     "//chrome/browser/ui/android/logo:utils_java",
     "//chrome/browser/ui/android/toolbar:adaptive_features_java",

@@ -608,10 +608,6 @@ NET_EXPORT BASE_DECLARE_FEATURE(kNoVarySearchIgnoreUnrecognizedKeys);
 // disabled, Chrome does not distinguish between SCTs based on log type.
 NET_EXPORT BASE_DECLARE_FEATURE(kEnforceOneRfc6962CtPolicy);
 
-// If enabled, Signed Certificate Timestamps (SCTs) delivered via OCSP
-// responses are ignored.
-NET_EXPORT BASE_DECLARE_FEATURE(kCertificateTransparencyIgnoreOcspScts);
-
 // Finch experiment to select a disk cache backend.
 enum class DiskCacheBackend {
   kDefault,
@@ -947,6 +943,11 @@ NET_EXPORT BASE_DECLARE_FEATURE(kEnableBootstrapIPRandomizationForDoh);
 // If enabled, the GURL conversion for NSURLs will use the data representation
 // of the URL if it differs from the absolute string.
 NET_EXPORT BASE_DECLARE_FEATURE(kUseNSURLDataForGURLConversion);
+
+// Enables asynchronous PAC resolution and request cancellation in
+// ProxyResolverApple on a shared CFRunLoop thread instead of per-resolver
+// worker threads.
+NET_EXPORT BASE_DECLARE_FEATURE(kAsyncProxyResolverApple);
 #endif  // BUILDFLAG(IS_APPLE)
 
 // Enables logical HTTP cache clearing, which adds a filter to the cache

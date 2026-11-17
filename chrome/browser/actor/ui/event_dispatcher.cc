@@ -87,18 +87,18 @@ constexpr absl::Overload PreToolEventsFn{
           MouseClick(*tab, tr.GetClickType(), tr.GetClickCount())};
     },
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
-    NoUiEvents<ActivateTabToolRequest>,
     NoUiEvents<ActivateWindowToolRequest>,
-    NoUiEvents<CloseTabToolRequest>,
     NoUiEvents<CloseWindowToolRequest>,
-    NoUiEvents<CreateTabToolRequest>,
     NoUiEvents<CreateWindowToolRequest>,
-    NoUiEvents<EnterFullscreenToolRequest>,
-    NoUiEvents<ExitFullscreenToolRequest>,
 #endif
+    NoUiEvents<ActivateTabToolRequest>,
     NoUiEvents<AddBookmarkToolRequest>,
     NoUiEvents<CloseGeminiPanelToolRequest>,
+    NoUiEvents<CloseTabToolRequest>,
+    NoUiEvents<CreateTabToolRequest>,
     NoUiEvents<DragAndReleaseToolRequest>,
+    NoUiEvents<EnterFullscreenToolRequest>,
+    NoUiEvents<ExitFullscreenToolRequest>,
     NoUiEvents<FileUploadToolRequest>,
     NoUiEvents<FindAndHighlightToolRequest>,
     NoUiEvents<HistoryBackToolRequest>,
@@ -115,22 +115,19 @@ constexpr absl::Overload PreToolEventsFn{
       return EventSequence<AsyncUiEvent>{MouseMove(*tab, pt, source)};
     },
     NoUiEvents<NavigateToolRequest>,
-#if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
     NoUiEvents<OpenKnownPageToolRequest>,
-#endif
     NoUiEvents<PauseMediaToolRequest>,
     NoUiEvents<PerformSearchToolRequest>,
     NoUiEvents<PlayMediaToolRequest>,
     NoUiEvents<PromptGeminiPanelToolRequest>,
     NoUiEvents<ReloadPageToolRequest>,
     NoUiEvents<RemoveBookmarkToolRequest>,
+    NoUiEvents<ScrollPageToolRequest>,
     NoUiEvents<ScrollToolRequest>,
     NoUiEvents<SeekMediaToolRequest>,
     NoUiEvents<SelectToolRequest>,
     NoUiEvents<SiteBasedSearchToolRequest>,
-#if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
     NoUiEvents<SwitchTabToolRequest>,
-#endif
     NoUiEvents<TranslatePageToolRequest>,
     [](const TypeToolRequest& tr) {
       std::optional<tabs::TabHandle> tab = GetTabHandle(tr);
@@ -149,20 +146,20 @@ constexpr absl::Overload PreToolEventsFn{
     NoUiEvents<ScrollToToolRequest>};
 
 constexpr absl::Overload PostToolEventsFn{
-    NoUiEvents<ClickToolRequest>,
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
-    NoUiEvents<ActivateTabToolRequest>,
     NoUiEvents<ActivateWindowToolRequest>,
-    NoUiEvents<CloseTabToolRequest>,
     NoUiEvents<CloseWindowToolRequest>,
-    NoUiEvents<CreateTabToolRequest>,
     NoUiEvents<CreateWindowToolRequest>,
+#endif
+    NoUiEvents<ActivateTabToolRequest>,
+    NoUiEvents<AddBookmarkToolRequest>,
+    NoUiEvents<ClickToolRequest>,
+    NoUiEvents<CloseGeminiPanelToolRequest>,
+    NoUiEvents<CloseTabToolRequest>,
+    NoUiEvents<CreateTabToolRequest>,
+    NoUiEvents<DragAndReleaseToolRequest>,
     NoUiEvents<EnterFullscreenToolRequest>,
     NoUiEvents<ExitFullscreenToolRequest>,
-#endif
-    NoUiEvents<AddBookmarkToolRequest>,
-    NoUiEvents<CloseGeminiPanelToolRequest>,
-    NoUiEvents<DragAndReleaseToolRequest>,
     NoUiEvents<FileUploadToolRequest>,
     NoUiEvents<FindAndHighlightToolRequest>,
     NoUiEvents<HistoryBackToolRequest>,
@@ -172,22 +169,19 @@ constexpr absl::Overload PostToolEventsFn{
 #endif
     NoUiEvents<MoveMouseToolRequest>,
     NoUiEvents<NavigateToolRequest>,
-#if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
     NoUiEvents<OpenKnownPageToolRequest>,
-#endif
     NoUiEvents<PauseMediaToolRequest>,
     NoUiEvents<PerformSearchToolRequest>,
     NoUiEvents<PlayMediaToolRequest>,
     NoUiEvents<PromptGeminiPanelToolRequest>,
     NoUiEvents<ReloadPageToolRequest>,
     NoUiEvents<RemoveBookmarkToolRequest>,
+    NoUiEvents<ScrollPageToolRequest>,
     NoUiEvents<ScrollToolRequest>,
     NoUiEvents<SeekMediaToolRequest>,
     NoUiEvents<SelectToolRequest>,
     NoUiEvents<SiteBasedSearchToolRequest>,
-#if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
     NoUiEvents<SwitchTabToolRequest>,
-#endif
     NoUiEvents<TranslatePageToolRequest>,
     NoUiEvents<TypeToolRequest>,
     NoUiEvents<WaitToolRequest>,

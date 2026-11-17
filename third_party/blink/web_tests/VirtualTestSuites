@@ -2090,6 +2090,7 @@
     "platforms": ["Linux", "Mac", "Win"],
     "bases": [
       "http/tests/inspector-protocol/browser/add-mock-camera-device-list.js",
+      "http/tests/inspector-protocol/browser/add-mock-camera-multiple-sessions.js",
       "http/tests/inspector-protocol/browser/add-mock-camera-open.js"
     ],
     "exclusive_tests": "ALL",
@@ -2460,7 +2461,7 @@
       "Win"
     ],
     "bases": [
-      "wpt_internal/persistent-widgets"
+      "external/wpt/html/semantics/embedded-content/the-persistentwidget-element/tentative"
     ],
     "args": [
       "--enable-features=PersistentWidgetAPI"
@@ -3493,7 +3494,7 @@
       "external/wpt/scheduler/tentative/yield/yield-priority-idle-callbacks.html",
       "external/wpt/soft-navigation-heuristics/navigation-api-view-transition.tentative.html",
       "fast/events/pointerevents/pinch",
-      "http/tests/devtools/isolated-code-cache",
+      "http/tests/inspector-protocol/isolated-code-cache",
       "http/tests/devtools/tracing",
       "http/tests/inspector-protocol/issues/deprecation-view-transition-prevent-svg-filter-paint.js",
       "http/tests/inspector-protocol/paint-worklet",
@@ -3519,7 +3520,6 @@
       "external/wpt/trusted-types/navigate-to-javascript-url-004.html",
       "external/wpt/trusted-types/navigate-to-javascript-url-005.html",
       "external/wpt/trusted-types/navigate-to-javascript-url-006.sub.html",
-      "external/wpt/trusted-types/navigate-to-javascript-url-007-crash.html",
       "external/wpt/trusted-types/navigate-to-javascript-url-csp-headers.html",
       "external/wpt/trusted-types/trusted-types-navigation.html",
       "external/wpt/trusted-types/trusted-types-reporting.html"
@@ -3538,7 +3538,7 @@
       "external/wpt/permissions-policy/experimental-features/vertical-scroll-touch-block-manual.tentative.html",
       "external/wpt/requestidlecallback",
       "external/wpt/scheduler/tentative/yield/yield-priority-idle-callbacks.html",
-      "http/tests/devtools/isolated-code-cache",
+      "http/tests/inspector-protocol/isolated-code-cache",
       "http/tests/inspector-protocol/issues/deprecation-view-transition-prevent-svg-filter-paint.js",
       "http/tests/inspector-protocol/paint-worklet",
       "external/wpt/css/css-view-transitions",
@@ -3560,7 +3560,6 @@
       "external/wpt/trusted-types/navigate-to-javascript-url-004.html",
       "external/wpt/trusted-types/navigate-to-javascript-url-005.html",
       "external/wpt/trusted-types/navigate-to-javascript-url-006.sub.html",
-      "external/wpt/trusted-types/navigate-to-javascript-url-007-crash.html",
       "external/wpt/trusted-types/navigate-to-javascript-url-csp-headers.html",
       "external/wpt/trusted-types/trusted-types-navigation.html",
       "external/wpt/trusted-types/trusted-types-reporting.html"
@@ -4815,7 +4814,8 @@
       "fast/parser/xml-cap-alert-xslt-enabled.html",
       "fast/parser/xml-xslt-warning-banner.html",
       "fast/parser/xml-xslt-warning-banner-polyfill.html",
-      "fast/parser/xml-xslt-warning-banner-appearance.html"
+      "fast/parser/xml-xslt-warning-banner-appearance.html",
+      "external/wpt/content-security-policy/xslt"
     ],
     "exclusive_tests": [
       "fast/parser/xml-xslt-warning-banner-appearance.html",

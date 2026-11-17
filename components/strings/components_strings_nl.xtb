@@ -118,6 +118,7 @@ Anders wordt dit geblokkeerd door je privacyinstellingen. Hierdoor werkt de cont
 <translation id="1195558154361252544">Meldingen zijn automatisch geblokkeerd voor alle sites, behalve de meldingen die je toestaat</translation>
 <translation id="1197088940767939838">Oranje</translation>
 <translation id="1198412233443148072"><ph name="MEMBER_FIRST_NAME" /> heeft het tabblad <ph name="WEBSITE_TITLE" /> verwijderd</translation>
+<translation id="119944043368869598">Alles wissen</translation>
 <translation id="1201402288615127009">Volgende</translation>
 <translation id="1201895884277373915">Meer van deze site</translation>
 <translation id="1204184165594298176">{0,plural, =1{Bestand kan niet worden gekopieerd}other{<ph name="FILE_COUNT" /> bestanden kunnen niet worden gekopieerd}}</translation>
@@ -618,7 +619,6 @@ Anders wordt dit geblokkeerd door je privacyinstellingen. Hierdoor werkt de cont
 <translation id="2059166748188874810">Gemeente</translation>
 <translation id="2059202684901022309">22 x 34 inch</translation>
 <translation id="2063929825539050431">Als je deze pagina snel naar een ander apparaat wilt sturen, houd je je vinger op de adresbalk</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{1 suggestie}other{# suggesties}}</translation>
 <translation id="2066969741541525119">De site die je wilt bezoeken, is geblokkeerd door je organisatie</translation>
 <translation id="2071156619270205202">Deze kaart kan niet worden gebruikt als een virtueel kaartnummer.</translation>
 <translation id="2071852865256799872">Je browser wordt beheerd door je organisatie en je profiel wordt beheerd door <ph name="PROFILE_DOMAIN" /></translation>
@@ -665,6 +665,7 @@ Anders wordt dit geblokkeerd door je privacyinstellingen. Hierdoor werkt de cont
 <translation id="2126374524350484896">Pdf gemaakt met:</translation>
 <translation id="2127090458081644412">Wachtwoord opgeslagen op dit apparaat</translation>
 <translation id="2127747486437921899">Cursief</translation>
+<translation id="2129163794581571479">Mogelijk gemaakt door Gemini met Personal Intelligence. Je verzoeken, paginatitels en URL's kunnen worden beoordeeld om verbeterd automatisch invullen te verbeteren. <ph name="BEGIN_LINK" />Instellingen beheren<ph name="END_LINK" /></translation>
 <translation id="2130448033692577677">De gespecificeerde templates worden misschien niet toegepast omdat het beleid DnsOverHttpsMode niet is ingesteld.</translation>
 <translation id="2130699163006053678">A3x7</translation>
 <translation id="2131006834960167560">Automatisch invullen van betalingen aanzetten is op volledige hoogte geopend.</translation>
@@ -710,7 +711,6 @@ Anders wordt dit geblokkeerd door je privacyinstellingen. Hierdoor werkt de cont
 <translation id="2188375229972301266">Meerdere perforaties onder</translation>
 <translation id="218940509700321686">Csv-bestanden</translation>
 <translation id="2190094353033916816">Dit beleid heeft verschillende waarden die zijn toegepast op machine- en gebruikersniveau. Het beleid werkt zoals bedoeld.</translation>
-<translation id="219061769324072544">Creditcard,Kaart,Pinpas</translation>
 <translation id="2191980191135734720">Ontgrendel je scherm in de volgende stap, meestal met je vingerafdruk. Je kunt ook <ph name="LINK_TEXT" />.</translation>
 <translation id="2194856509914051091">Overwegingen</translation>
 <translation id="2195729137168608510">E-mail beveiligen</translation>
@@ -1081,6 +1081,7 @@ Anders wordt dit geblokkeerd door je privacyinstellingen. Hierdoor werkt de cont
 <translation id="2807052079800581569">Y-positie van afbeelding</translation>
 <translation id="2808278141522721006">Je kunt Windows Hello aan- of uitzetten in <ph name="SETTINGS" /></translation>
 <translation id="2820957248982571256">Scannen…</translation>
+<translation id="282457273878278063">Contactgegevens beheren</translation>
 <translation id="2824775600643448204">Adres- en zoekbalk</translation>
 <translation id="2826760142808435982">De verbinding is gecodeerd en geverifieerd met <ph name="CIPHER" /> en gebruikt <ph name="KX" /> als mechanisme voor sleuteluitwisseling.</translation>
 <translation id="2828797285817981634">Bewegingssensoren voorlopig toegestaan</translation>
@@ -1570,6 +1571,7 @@ Het kan langer dan normaal duren voordat je app wordt gestart.</translation>
 <translation id="3655670868607891010">Als je deze melding vaker ziet, probeer je deze <ph name="HELP_LINK" />.</translation>
 <translation id="3658742229777143148">Revisie</translation>
 <translation id="3659521826520353662">Welke door de beheerder gedefinieerde websites worden bezocht en wanneer: <ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3663760610864720538">Mogelijk gemaakt door Gemini met Personal Intelligence. <ph name="BEGIN_LINK" />Instellingen beheren<ph name="END_LINK" /></translation>
 <translation id="3664479564786885722">Zoek meer koopopties van andere winkels die dit product verkopen.</translation>
 <translation id="3664782872746246217">Zoekwoorden:</translation>
 <translation id="3670030362669914947">Nummer</translation>
@@ -1590,6 +1592,7 @@ Het kan langer dan normaal duren voordat je app wordt gestart.</translation>
 <translation id="3693516565203081475">Een betaalmethode kiezen</translation>
 <translation id="3698353241727597930">Je beheerder heeft ingesteld dat <ph name="FILES" /> worden opgeslagen in je door het bedrijf beheerde <ph name="CLOUD_STORAGE" />-opslag. Deze bestanden kunnen worden gemonitord, gecontroleerd en bewaard als je ze verwijdert.</translation>
 <translation id="3698629142018988477">Knop Site maken. Activeer deze om snel een nieuwe site in Google Sites te maken.</translation>
+<translation id="3698708128812719147">Druk 2 keer op Ctrl ergens op het web om meer informatie te vinden en in te vullen</translation>
 <translation id="3700094625653511150">Ga naar <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /> om opties voor achteraf betalen te verbergen</translation>
 <translation id="3700966190175650601">Je gebruikt je vingerafdruk om wachtwoorden in te vullen</translation>
 <translation id="3701427423622901115">Reset bevestigd.</translation>
@@ -1856,7 +1859,6 @@ Je kunt ook contact opnemen met de site-eigenaar en voorstellen dat die upgradet
 <translation id="4121428309786185360">Verloopt op</translation>
 <translation id="4123572138124678573">Drie perforaties onder</translation>
 <translation id="412601465078863288">Time-out bij uploaden</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{1 andere persoon}other{# andere mensen}}</translation>
 <translation id="4129810348470013900">Er ging iets mis. Check je internetverbinding en probeer het opnieuw.</translation>
 <translation id="4130226655945681476">Controleer de netwerkkabels, modem en router</translation>
 <translation id="4132448310531350254">Dubbele handlers voor bestandsextensie <ph name="FILE_EXTENSION" /> waarnaar wordt verwezen door apps <ph name="POLICY_IDS_LIST" />.</translation>
@@ -1892,6 +1894,7 @@ Je kunt ook contact opnemen met de site-eigenaar en voorstellen dat die upgradet
 <translation id="4185037616931963178">Redress number beveiligd updaten</translation>
 <translation id="4186035307311647330">Prijs volgen</translation>
 <translation id="4191334393248735295">Lengte</translation>
+<translation id="4192770747482479191">Druk 2 keer op ⌘ ergens op het web om meer informatie te vinden en in te vullen</translation>
 <translation id="4195459680867822611">Knop Chrome-tips bekijken. Activeer deze voor meer informatie over Chrome-functies.</translation>
 <translation id="4195643157523330669">Openen op nieuw tabblad</translation>
 <translation id="4196861286325780578">&amp;Opnieuw verplaatsen</translation>
@@ -2209,7 +2212,6 @@ Je kunt ook contact opnemen met de site-eigenaar en voorstellen dat die upgradet
 <translation id="4725766358270333890"><ph name="COUNT" /> bestanden uploaden naar Microsoft OneDrive</translation>
 <translation id="4726672564094551039">Beleid opnieuw laden</translation>
 <translation id="4728558894243024398">Platform</translation>
-<translation id="4730773064303503917">Pix naar vrienden en bedrijven sturen via Wallet</translation>
 <translation id="4730977633786878901">Reviews</translation>
 <translation id="4731638775147756694">Deze app is geblokkeerd door je beheerder</translation>
 <translation id="4732860731866514038">Taalpakket voor <ph name="LANGUAGE" /> downloaden… <ph name="PERCENT" />%</translation>
@@ -2840,6 +2842,7 @@ Je kunt ook contact opnemen met de site-eigenaar en voorstellen dat die upgradet
 <translation id="573974402615125334">Als je tabbladgroepen wilt delen, eraan wilt deelnemen en eraan wilt samenwerken, synchroniseer je je geschiedenis en tabbladen</translation>
 <translation id="5740911612628596808">Envelop C9</translation>
 <translation id="574392208103952083">Gemiddeld</translation>
+<translation id="5744350700955456407">Verbeterd automatisch invullen kan nu informatie vinden en invullen, zoals bestelnummers en bevestigingscodes voor vluchten, uit apps zoals Gmail en Foto's</translation>
 <translation id="5745586894920491759">Chrome verwerkt paginatitels en URL's in de cloud</translation>
 <translation id="5745733273847572235">Kan om je locatie vragen</translation>
 <translation id="5750869797196646528">Handen volgen</translation>
@@ -3220,7 +3223,6 @@ Je kunt ook contact opnemen met de site-eigenaar en voorstellen dat die upgradet
 <translation id="638289054711715023">Krimpfolie</translation>
 <translation id="6383221683286411806">Er worden later mogelijk kosten in rekening gebracht.</translation>
 <translation id="6384448607821972818">Herstelwachtwoord getoond</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{1 andere suggestie}other{# andere suggesties}}</translation>
 <translation id="6386565501269869892">Envelop You 4</translation>
 <translation id="6387645831795005740">Aanvallers maken sites soms na door kleine wijzigingen in de URL aan te brengen die je moeilijk kunt zien.</translation>
 <translation id="6389470377220713856">Naam op pas</translation>
@@ -4828,7 +4830,6 @@ Aanvullende informatie:
 <translation id="9168814207360376865">Toestaan dat sites controleren of je betaalmethoden hebt opgeslagen</translation>
 <translation id="9169931577761441333"><ph name="APP_NAME" /> toevoegen aan startscherm</translation>
 <translation id="9170848237812810038">&amp;Ongedaan maken</translation>
-<translation id="9170906125144697215">Betalen met Pix zonder van app te wisselen</translation>
 <translation id="9171296965991013597">App verlaten?</translation>
 <translation id="9173282814238175921">Eén document/nieuw blad</translation>
 <translation id="9173995187295789444">Scannen naar Bluetooth-apparaten...</translation>

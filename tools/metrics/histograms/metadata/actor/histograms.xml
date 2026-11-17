@@ -100,6 +100,7 @@ chromium-metrics-reviews@google.com.
   <variant name="RemoveBookmark" summary="Remove Bookmark"/>
   <variant name="ScriptTool" summary="ScriptTool"/>
   <variant name="Scroll" summary="Scroll"/>
+  <variant name="ScrollPage" summary="Scroll Page"/>
   <variant name="ScrollTo" summary="Scroll To"/>
   <variant name="SeekMedia" summary="Seek Media"/>
   <variant name="Select" summary="Select"/>
@@ -145,6 +146,20 @@ chromium-metrics-reviews@google.com.
     <variant name=".WarmStart"
         summary="when TabModel state is already initialized (warm start)"/>
   </token>
+</histogram>
+
+<histogram name="Actor.BackgroundActuation.Restore.ColdRestore.Latency"
+    units="ms" expires_after="2027-10-15">
+  <owner>bbetini@google.com</owner>
+  <owner>ritikagup@google.com</owner>
+  <owner>clank-actor@google.com</owner>
+  <summary>
+    Records the latency of restoring and attaching a background tab from
+    BackgroundTabPool during tab state initialization (via
+    BackgroundTabRestorationHelper.maybeRestoreBackgroundTab or
+    BackgroundTabRestorationHelper.restoreRemainingBackgroundTabs). Note that
+    this metric is only recorded on Android.
+  </summary>
 </histogram>
 
 <histogram name="Actor.BackgroundActuation.Restore.Latency.Total{StartupType}"
@@ -732,6 +747,16 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Actor.PageContext.APC.Status"
+    enum="AIPageContentExtractionStatus" expires_after="2027-03-14">
+  <owner>linnan@google.com</owner>
+  <owner>chrome-synapse-team@google.com</owner>
+  <summary>
+    Records the outcome of an Annotated Page Content (APC) extraction for the
+    PerformActions response.
+  </summary>
+</histogram>
+
 <histogram name="Actor.PageContext.ObservationOutcome"
     enum="ActorObservationOutcome" expires_after="2027-03-14">
   <owner>bokan@google.com</owner>
@@ -748,6 +773,15 @@ chromium-metrics-reviews@google.com.
   <owner>bokan@google.com</owner>
   <owner>chrome-synapse-team@google.com</owner>
   <summary>Duration of screenshot for the PerformActions response.</summary>
+</histogram>
+
+<histogram name="Actor.PageContext.Screenshot.Status"
+    enum="ScreenshotCaptureStatus" expires_after="2027-03-14">
+  <owner>linnan@google.com</owner>
+  <owner>chrome-synapse-team@google.com</owner>
+  <summary>
+    Records the outcome of a screenshot capture for the PerformActions response.
+  </summary>
 </histogram>
 
 <histogram name="Actor.PageContext.TabCount" units="count"

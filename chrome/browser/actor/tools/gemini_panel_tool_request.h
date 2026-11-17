@@ -5,11 +5,13 @@
 #ifndef CHROME_BROWSER_ACTOR_TOOLS_GEMINI_PANEL_TOOL_REQUEST_H_
 #define CHROME_BROWSER_ACTOR_TOOLS_GEMINI_PANEL_TOOL_REQUEST_H_
 
+#include <optional>
 #include <string>
 #include <string_view>
 
 #include "chrome/browser/actor/actor_surface_handle.h"
 #include "chrome/browser/actor/tools/tool_request.h"
+#include "chrome/browser/glic/public/glic_passkeys.h"  // nogncheck
 #include "components/tabs/public/tab_interface.h"
 
 namespace actor {
@@ -21,12 +23,21 @@ class ToolRequestVisitorFunctor;
 class PromptGeminiPanelToolRequest : public ToolRequest {
  public:
   static constexpr char kName[] = "PromptGeminiPanel";
+  // Canonical model-facing name exposed in LLM prompt schemas and indexed by
+  // `ToolRegistry` for lookup and routing via `GetToolDefinition()`.
+  static constexpr std::string_view kModelFacingName = "prompt_gemini_panel";
+  // JSON argument key for the prompt parameter.
+  static constexpr std::string_view kPromptParam = "prompt";
 
-  PromptGeminiPanelToolRequest(ActorSurfaceHandle actor_surface_handle,
+  PromptGeminiPanelToolRequest(glic::InvokeWithAutoSubmitPasskey passkey,
+                               ActorSurfaceHandle actor_surface_handle,
                                std::string prompt);
   ~PromptGeminiPanelToolRequest() override;
   PromptGeminiPanelToolRequest(const PromptGeminiPanelToolRequest&);
   PromptGeminiPanelToolRequest& operator=(const PromptGeminiPanelToolRequest&);
+
+  // Returns the `ToolId::kPromptGeminiPanel` tool schema definition.
+  static std::optional<ToolDefinition> GetToolDefinition();
 
   // ToolRequest:
   GURL GetURLForJournal() const override;
@@ -40,6 +51,7 @@ class PromptGeminiPanelToolRequest : public ToolRequest {
   const std::string& prompt() const { return prompt_; }
 
  private:
+  glic::InvokeWithAutoSubmitPasskey auto_submit_passkey_;
   ActorSurfaceHandle actor_surface_handle_;
   std::string prompt_;
 };
@@ -49,11 +61,17 @@ class PromptGeminiPanelToolRequest : public ToolRequest {
 class CloseGeminiPanelToolRequest : public ToolRequest {
  public:
   static constexpr char kName[] = "CloseGeminiPanel";
+  // Canonical model-facing name exposed in LLM prompt schemas and indexed by
+  // `ToolRegistry` for lookup and routing via `GetToolDefinition()`.
+  static constexpr std::string_view kModelFacingName = "close_gemini_panel";
 
   explicit CloseGeminiPanelToolRequest(ActorSurfaceHandle actor_surface_handle);
   ~CloseGeminiPanelToolRequest() override;
   CloseGeminiPanelToolRequest(const CloseGeminiPanelToolRequest&);
   CloseGeminiPanelToolRequest& operator=(const CloseGeminiPanelToolRequest&);
+
+  // Returns the `ToolId::kCloseGeminiPanel` tool schema definition.
+  static std::optional<ToolDefinition> GetToolDefinition();
 
   // ToolRequest:
   GURL GetURLForJournal() const override;

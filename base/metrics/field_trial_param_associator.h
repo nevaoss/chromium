@@ -11,9 +11,9 @@
 #include <utility>
 
 #include "base/base_export.h"
-#include "base/memory/singleton.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/synchronization/lock.h"
+#include "base/thread_annotations.h"
 #include "base/types/pass_key.h"
 
 class AppShimController;
@@ -73,20 +73,23 @@ class BASE_EXPORT FieldTrialParamAssociator {
   void ClearAllCachedParams(PassKey<AppShimController>);
 
  private:
-  friend struct DefaultSingletonTraits<FieldTrialParamAssociator>;
-
   // (field_trial_name, field_trial_group)
   using FieldTrialKey = std::pair<std::string, std::string>;
   // The following type can be used for lookups without needing to copy strings.
   using FieldTrialRefKey = std::pair<const std::string&, const std::string&>;
 
   Lock lock_;
+<<<<<<< HEAD
   // TODO(neva): Remove this when Neva GCC version upgraded to 14+.
 #if defined(__GNUC__) && defined(__GNUC__) < 14 && !defined(__clang__)
   std::map<FieldTrialKey, FieldTrialParams> field_trial_params_;
 #else
   std::map<FieldTrialKey, FieldTrialParams, std::less<>> field_trial_params_;
 #endif  // defined(COMPILER_GCC) && defined(__GNUC__) < 13 && !defined(__clang__)
+=======
+  std::map<FieldTrialKey, FieldTrialParams, std::less<>> field_trial_params_
+      GUARDED_BY(lock_);
+>>>>>>> 158.0.8113.0~1
 };
 
 }  // namespace base

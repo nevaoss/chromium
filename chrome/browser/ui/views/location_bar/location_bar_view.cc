@@ -777,12 +777,13 @@ void LocationBarView::Layout(PassKey) {
 
   selected_keyword_view_->SetVisible(false);
 
-  // TODO(manukh): Move constants to layout_constants.cc.
   // The padding between the left edges of the location bar and the LHS icon,
   // e.g. the page info icon, the google G icon, the selected suggestion icon.
-  int icon_left = 5;
+  int icon_left = GetLayoutConstant(
+      LayoutConstant::kLocationBarLeadingDecorationEdgePadding);
   // The padding between the LHS icon and the text.
-  int text_left = 8;
+  int text_left = GetLayoutConstant(
+      LayoutConstant::kLocationBarLeadingDecorationInnerPadding);
 
   // Apply indentation to align the omnibox input icon and the text with those
   // of the suggestions in the popup. However, there are two exceptions where
@@ -801,11 +802,11 @@ void LocationBarView::Layout(PassKey) {
                              !location_icon_view_->ShouldShowLabel() &&
                              !ShouldShowKeywordBubble();
   if (should_indent) {
-    icon_left += 7 /*icon_indent*/;
+    icon_left += GetLayoutConstant(LayoutConstant::kLocationBarInputIconIndent);
     icon_left += omnibox_feature_configs::AdjustOmniboxIndent()
                      .Get()
                      .input_icon_indent_offset;
-    text_left += 6 /*text_indent*/;
+    text_left += GetLayoutConstant(LayoutConstant::kLocationBarInputTextIndent);
     text_left += omnibox_feature_configs::AdjustOmniboxIndent()
                      .Get()
                      .input_text_indent_offset;
@@ -900,13 +901,14 @@ void LocationBarView::Layout(PassKey) {
     // When the AIM page action is shown as the right-most page action in the
     // location bar, it should be positioned flush against the right edge of the
     // location bar.
-    constexpr int kTrailingEdgePaddingForAim = 5;
-    add_trailing_decoration(page_action_container_,
-                            /*intra_item_padding=*/0,
-                            /*edge_padding=*/
-                            GetPageActionInfo().is_aim_last_visible_page_action
-                                ? kTrailingEdgePaddingForAim
-                                : trailing_decorations_edge_padding);
+    add_trailing_decoration(
+        page_action_container_,
+        /*intra_item_padding=*/0,
+        /*edge_padding=*/
+        GetPageActionInfo().is_aim_last_visible_page_action
+            ? GetLayoutConstant(
+                  LayoutConstant::kLocationBarTrailingDecorationAimEdgePadding)
+            : trailing_decorations_edge_padding);
   }
   add_trailing_decoration(ai_mode_hint_label_, /*intra_item_padding=*/0,
                           /*edge_padding=*/trailing_decorations_edge_padding);
@@ -1805,11 +1807,22 @@ void LocationBarView::OnFullWebUiOmniboxReady() {
   const bool had_focus =
       (omnibox_view_ && omnibox_view_->HasFocus()) || is_focused_in_manager;
 
+  // A partial highlight (e.g. a drag or double-click selection made before
+  // WebUI was ready) should only transfer focus and the selection to WebUI,
+  // without querying zero-prefix suggestions or opening the dropdown.
+  const gfx::Range selection = (had_focus && omnibox_view_)
+                                   ? omnibox_view_->GetSelectionBounds()
+                                   : gfx::Range::InvalidRange();
+  const bool has_partial_highlight =
+      selection.IsValid() && !selection.is_empty() &&
+      selection.length() < omnibox_view_->GetText().length();
+
   // Capture user intent before blurring `omnibox_view_`, as
   // `OmniboxView::OnBlur()` can reset `is_user_initiated_focus_`.
   const bool query_zps =
       had_focus && omnibox_view_->is_user_initiated_focus() &&
-      !GetOmniboxController()->edit_model()->user_input_in_progress();
+      !GetOmniboxController()->edit_model()->user_input_in_progress() &&
+      !has_partial_highlight;
   if (had_focus) {
     // Make `LocationBarView` focusable so `SetFocusedView()` satisfies
     // `IsFocusable()`.

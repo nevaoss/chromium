@@ -20,6 +20,7 @@
 #include "base/memory_coordinator/utils.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/run_loop.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
 #include "base/system/sys_info.h"
 #include "base/task/bind_post_task.h"
@@ -93,8 +94,8 @@ const int kMaxKeepAliveTimeMs = 200;
 constexpr base::MemoryConsumerTraits kGpuChannelManagerTraits(
     // Can free hundreds of MB via Skia, Dawn, and persistent cache purges.
     base::MemoryConsumerTraits::EstimatedMemoryUsage::kLarge,
-    // Purging requires iterating caches and invoking GPU resource cleanup.
-    base::MemoryConsumerTraits::ReleaseMemoryCost::kRequiresTraversal,
+    // Purging iterates caches, reading the entries being freed.
+    base::MemoryConsumerTraits::ReleaseMemoryDataAccess::kReads,
     // Freed resources are caches or scratch buffers that can be recreated.
     base::MemoryConsumerTraits::InformationRetention::kLossless,
     // Asynchronous since AsyncMemoryConsumerRegistration is used.
@@ -608,6 +609,15 @@ void GpuChannelManager::PopulateCache(const gpu::GpuDiskCacheHandle& handle,
                                       const std::string& key,
                                       const std::string& data) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+
+  // Record how much of the shader disk cache has been loaded so far, to help
+  // diagnose crashes and hangs while it is being loaded.
+  const uint64_t old_loaded_kb = loaded_shader_cache_size_.InKiB();
+  loaded_shader_cache_size_ += base::ByteSize(key.size() + data.size());
+  const uint64_t loaded_kb = loaded_shader_cache_size_.InKiB();
+  if (loaded_kb != old_loaded_kb) {
+    crash_keys::shader_cache_loaded_kb.Set(base::NumberToString(loaded_kb));
+  }
 
   switch (gpu::GetHandleType(handle)) {
     case gpu::GpuDiskCacheType::kGlShaders: {

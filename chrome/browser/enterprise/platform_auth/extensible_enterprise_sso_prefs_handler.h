@@ -23,6 +23,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/task_runner.h"
 #include "base/values.h"
+#include "url/gurl.h"
 
 class PrefService;
 class PrefRegistrySimple;
@@ -40,6 +41,7 @@ class CFPreferencesObserver {
     base::apple::ScopedCFTypeRef<CFPropertyListRef> extension_id;
     base::apple::ScopedCFTypeRef<CFPropertyListRef> team_id;
     base::apple::ScopedCFTypeRef<CFPropertyListRef> hosts;
+    base::apple::ScopedCFTypeRef<CFPropertyListRef> urls;
   };
 
   virtual ~CFPreferencesObserver() = default;
@@ -52,6 +54,8 @@ class CFPreferencesObserver {
 // property with Chrome's kExtensibleEnterpriseSSOConfiguredHosts pref.
 // On construction it subscribes to the Darwin notification center to observe
 // changes to said property. Unsubscribes on destruction.
+//
+// There should ever be only a single instance of this class.
 class ExtensibleEnterpriseSSOPrefsHandler {
  public:
   explicit ExtensibleEnterpriseSSOPrefsHandler(PrefService* local_state);
@@ -71,6 +75,13 @@ class ExtensibleEnterpriseSSOPrefsHandler {
     // subdomains; otherwise the host name needs to be an exact match.
     std::optional<std::vector<std::string>> hosts;
 
+    // `URLs` entry of the payload. `std::nullopt` if the entry is missing or
+    // malformed, can be empty.
+    // Host and schema are normalized to lowercase.
+    // Entries that are not HTTP or HTTPS, have query parameters or refs are
+    // dropped.
+    std::optional<std::vector<GURL>> urls;
+
     friend bool operator==(const Config&, const Config&) = default;
   };
 
@@ -89,6 +100,10 @@ class ExtensibleEnterpriseSSOPrefsHandler {
   // Must be called on the main thread.
   void UpdatePrefs();
 
+  // Returns the most up-to-date config. If the config was never read or the
+  // last config read was invalid returns std::nullopt.
+  static std::optional<Config> GetCurrentConfig();
+
  private:
   void OnConfigRead(std::optional<Config> config);
 
@@ -96,7 +111,7 @@ class ExtensibleEnterpriseSSOPrefsHandler {
   // `std::nullopt` if a required entry is missing or malformed, or if the
   // payload doesn't belong to a supported IdP.
   static std::optional<Config> ParseConfig(
-      CFPreferencesObserver::RawConfig config);
+      CFPreferencesObserver::RawConfig raw_config);
 
   friend class ExtensibleEnterpriseSSOPrefsHandlerTest;
   friend class ScopedCFPreferenceObserverOverride;
@@ -106,6 +121,8 @@ class ExtensibleEnterpriseSSOPrefsHandler {
 
   std::unique_ptr<CFPreferencesObserver> cf_preferences_observer_;
   raw_ptr<PrefService> local_state_{nullptr};
+  std::optional<Config> current_config_;
+  scoped_refptr<base::SequencedTaskRunner> read_config_task_runner_;
 
   SEQUENCE_CHECKER(sequence_checker_);
   base::WeakPtrFactory<ExtensibleEnterpriseSSOPrefsHandler> weak_ptr_factory_{

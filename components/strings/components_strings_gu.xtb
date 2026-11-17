@@ -118,6 +118,7 @@
 <translation id="1195558154361252544">તમે જેના માટે મંજૂરી આપી હોય તે સિવાયની બધી સાઇટ માટે નોટિફિકેશનને ઑટોમૅટિક રીતે બ્લૉક કરવામાં આવે છે</translation>
 <translation id="1197088940767939838">નારંગી</translation>
 <translation id="1198412233443148072"><ph name="MEMBER_FIRST_NAME" /> દ્વારા “<ph name="WEBSITE_TITLE" />” ટૅબ કાઢી નાખવામાં આવ્યું</translation>
+<translation id="119944043368869598">બધા દૂર કરો</translation>
 <translation id="1201402288615127009">આગલું</translation>
 <translation id="1201895884277373915">આ સાઇટથી વધુ</translation>
 <translation id="1204184165594298176">{0,plural, =1{ફાઇલ કૉપિ કરવાથી બ્લૉક કરી છે}one{<ph name="FILE_COUNT" /> ફાઇલ કૉપિ કરવાથી બ્લૉક કરી છે}other{<ph name="FILE_COUNT" /> ફાઇલ કૉપિ કરવાથી બ્લૉક કરી છે}}</translation>
@@ -618,7 +619,6 @@
 <translation id="2059166748188874810">નગરપાલિકા</translation>
 <translation id="2059202684901022309">22 x 34 ઇંચ</translation>
 <translation id="2063929825539050431">આ પેજને ઝડપથી બીજા ડિવાઇસ પર મોકલવા માટે, ઍડ્રેસ બારને ટચ કરીને થોડીવાર દબાવી રાખો</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{1 સૂચન}one{# સૂચન}other{# સૂચન}}</translation>
 <translation id="2066969741541525119">આગળની સાઇટ તમારી સંસ્થા દ્વારા બ્લૉક કરવામાં આવી છે</translation>
 <translation id="2071156619270205202">આ કાર્ડનો નંબર, વર્ચ્યુઅલ કાર્ડ નંબર તરીકે ઉપયોગ માટેની યોગ્યતા ધરાવતો નથી.</translation>
 <translation id="2071852865256799872">તમારી સંસ્થા દ્વારા તમારું બ્રાઉઝર મેનેજ કરવામાં આવે છે અને <ph name="PROFILE_DOMAIN" /> દ્વારા તમારી પ્રોફાઇલ મેનેજ કરવામાં આવે છે</translation>
@@ -665,6 +665,7 @@
 <translation id="2126374524350484896">PDF નિર્માતા:</translation>
 <translation id="2127090458081644412">આ ડિવાઇસમાં પાસવર્ડ સચવાયો</translation>
 <translation id="2127747486437921899">ઇટાલિક</translation>
+<translation id="2129163794581571479">પર્સનલ ઇન્ટેલિજન્સ ધરાવતા Gemini દ્વારા સંચાલિત. ઑટોમૅટિક રીતે ભરવાની બહેતર સુવિધાને બહેતર બનાવવા માટે, તમારી વિનંતીઓ, પેજના શીર્ષકો અને URLsનો રિવ્યૂ કરવામાં આવી શકે છે. <ph name="BEGIN_LINK" />સેટિંગ મેનેજ કરો<ph name="END_LINK" /></translation>
 <translation id="2130448033692577677">DnsOverHttpsMode પૉલિસી સેટ ન કરી હોવાને કારણે તમે ઉલ્લેખ કરેલા નમૂનાને કદાચ લાગુ કરવામાં આવશે નહીં.</translation>
 <translation id="2130699163006053678">A3x7</translation>
 <translation id="2131006834960167560">'ચુકવણીઓ ઑટોમૅટિક રીતે ભરવાની સુવિધા ચાલુ કરો' બોટમ શીટને સંપૂર્ણ ઊંચાઈએ ખોલવામાં આવી.</translation>
@@ -710,7 +711,6 @@
 <translation id="2188375229972301266">નીચેની બાજુએ એકથી વધુ કાણાં પાડો</translation>
 <translation id="218940509700321686">અલ્પવિરામથી વિભાજિત મૂલ્યો</translation>
 <translation id="2190094353033916816">આ પૉલિસીમાં મશીન અને વપરાશકર્તાના લેવલ પર અલગ-અલગ મૂલ્યો લાગુ કરવામાં આવ્યા છે. પૉલિસી હેતુ મુજબ કાર્ય કરી રહી છે.</translation>
-<translation id="219061769324072544">ક્રેડિટ,કાર્ડ,ડેબિટ</translation>
 <translation id="2191980191135734720">આગલા પગલામાં, સામાન્ય રીતે તમારી ફિંગરપ્રિન્ટનો ઉપયોગ કરીને, તમારી સ્ક્રીનને અનલૉક કરો. તમે <ph name="LINK_TEXT" /> પણ કરી શકો છો.</translation>
 <translation id="2194856509914051091">ધ્યાનમાં લેવા જેવી બાબતો</translation>
 <translation id="2195729137168608510">ઇમેઇલ સુરક્ષા</translation>
@@ -1081,6 +1081,7 @@
 <translation id="2807052079800581569">છબીની Y અક્ષ પરની સ્થિતિ</translation>
 <translation id="2808278141522721006">તમે <ph name="SETTINGS" />માં જઈને Windows Hello ચાલુ કે બંધ કરી શકો છો</translation>
 <translation id="2820957248982571256">સ્કૅન કરી રહ્યાં છીએ…</translation>
+<translation id="282457273878278063">સંપર્ક માહિતી મેનેજ કરો</translation>
 <translation id="2824775600643448204">સરનામું અને શોધ બાર</translation>
 <translation id="2826760142808435982">કનેક્શન <ph name="CIPHER" />નો ઉપયોગ કરીને એન્ક્રિપ્ટ અને પ્રમાણિત કરેલુંં છે અને મુખ્ય એક્સચેન્જ મેકેનિઝ્મ તરીકે <ph name="KX" />નો ઉપયોગ કરે છે.</translation>
 <translation id="2828797285817981634">હાલ પૂરતું મોશન સેન્સરને મંજૂરી આપવામાં આવી છે</translation>
@@ -1575,6 +1576,7 @@
 <translation id="3655670868607891010">જો તમે આ વારંવાર જોઈ રહ્યાં છો, તો આ <ph name="HELP_LINK" /> અજમાવી જુઓ.</translation>
 <translation id="3658742229777143148">પુનરાવર્તન</translation>
 <translation id="3659521826520353662">ઍડમિનિસ્ટ્રેટર દ્વારા વ્યાખ્યાયિત કઈ વેબસાઇટની મુલાકાત લેવામાં આવી અને ક્યારે: <ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3663760610864720538">પર્સનલ ઇન્ટેલિજન્સ ધરાવતા Gemini દ્વારા સંચાલિત. <ph name="BEGIN_LINK" />સેટિંગ મેનેજ કરો<ph name="END_LINK" /></translation>
 <translation id="3664479564786885722">આ પ્રોડક્ટ વેચતા અન્ય સ્ટોરમાંથી ખરીદીના વધુ વિકલ્પો શોધો.</translation>
 <translation id="3664782872746246217">કીવર્ડ:</translation>
 <translation id="3670030362669914947">નંબર</translation>
@@ -1595,6 +1597,7 @@
 <translation id="3693516565203081475">ચુકવણી પદ્ધતિ પસંદ કરો</translation>
 <translation id="3698353241727597930">તમારા ઍડમિનિસ્ટ્રેટર દ્વારા <ph name="FILES" />ને એન્ટરપ્રાઇઝ દ્વારા મેનેજ કરવામાં આવતા તમારા <ph name="CLOUD_STORAGE" /> સ્ટોરેજમાં સાચવવાનું કન્ફિગ્યુર કરવામાં આવ્યું છે. આ ફાઇલોને મૉનિટર કરવામાં, ઑડિટ કરવામાં તેમજ તમે તેને ડિલીટ કરો ત્યારે જાળવી રાખવામાં આવી શકે છે.</translation>
 <translation id="3698629142018988477">'સાઇટ બનાવો' બટન, Google Sitesમાં ઝડપથી કોઈ નવી સાઇટ બનાવવા માટે સક્રિય કરો</translation>
+<translation id="3698708128812719147">વધુ માહિતી શોધવા અને ભરવા માટે વેબ પર ગમે ત્યાં બે વાર Ctrl દબાવો</translation>
 <translation id="3700094625653511150">પછીથી ચુકવણી કરવાના વિકલ્પો છુપાવવા માટે, <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /> પર જાઓ</translation>
 <translation id="3700966190175650601">પાસવર્ડ ભરવા માટે તમે તમારી ફિંગરપ્રિન્ટનો ઉપયોગ કરી રહ્યાં છો</translation>
 <translation id="3701427423622901115">રીસેટ કરવાનું સ્વીકાર્યું હતું.</translation>
@@ -1862,7 +1865,6 @@
 <translation id="4121428309786185360">ના રોજ સમાપ્ત થાય છે</translation>
 <translation id="4123572138124678573">નીચેની તરફ ત્રણ કાણાં પાડો</translation>
 <translation id="412601465078863288">અપલોડ કરવાનો સમય સમાપ્ત થયો</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{1 અન્ય}one{# અન્ય}other{# અન્ય}}</translation>
 <translation id="4129810348470013900">કંઈક ખોટું થયું. તમારું ઇન્ટરનેટ કનેક્શન ચેક કરો અને ફરી પ્રયાસ કરો.</translation>
 <translation id="4130226655945681476">નેટવર્ક કેબલ્સ, મૉડેમ અને રાઉટર તપાસીને</translation>
 <translation id="4132448310531350254">ઍપ "<ph name="POLICY_IDS_LIST" />" દ્વારા રેફરન્સ આપવામાં આવેલા file_extension "<ph name="FILE_EXTENSION" />" માટેના ડુપ્લિકેટ હૅન્ડલર.</translation>
@@ -1898,6 +1900,7 @@
 <translation id="4185037616931963178">નિવારણ નંબર સુરક્ષિત રીતે અપડેટ કરો</translation>
 <translation id="4186035307311647330">કિંમત ટ્રૅક કરવાનું બંધ કરો</translation>
 <translation id="4191334393248735295">લંબાઈ</translation>
+<translation id="4192770747482479191">વધુ માહિતી શોધવા અને ભરવા માટે વેબ પર ગમે ત્યાં બે વાર ⌘ દબાવો</translation>
 <translation id="4195459680867822611">'Chrome ટિપ જુઓ' બટન, Chromeની સુવિધાઓ વિશે જાણવા માટે સક્રિય કરો</translation>
 <translation id="4195643157523330669">નવા ટૅબમાં ખોલો</translation>
 <translation id="4196861286325780578">&amp;ખસેડવું ફરી કરો</translation>
@@ -2215,7 +2218,6 @@
 <translation id="4725766358270333890">Microsoft OneDrive પર <ph name="COUNT" /> ફાઇલ અપલોડ કરી રહ્યાં છીએ</translation>
 <translation id="4726672564094551039">પૉલિસીઓ ફરીથી લોડ કરો</translation>
 <translation id="4728558894243024398">પ્લેટફોર્મ</translation>
-<translation id="4730773064303503917">Walletનો ઉપયોગ કરીને મિત્રો અને વ્યવસાયોને Pix મોકલો</translation>
 <translation id="4730977633786878901">રિવ્યૂ</translation>
 <translation id="4731638775147756694">તમારા વ્યવસ્થાપક દ્વારા આ ઍપ્લિકેશન બ્લૉક કરવામાં આવી છે</translation>
 <translation id="4732860731866514038"><ph name="LANGUAGE" /> ભાષા પૅક ડાઉનલોડ કરી રહ્યાં છીએ... <ph name="PERCENT" />%</translation>
@@ -2846,6 +2848,7 @@
 <translation id="573974402615125334">ટૅબના ગ્રૂપ શેર કરવા, તેમાં જોડાવા અથવા તેમાં સહયોગ કરવા માટે, તમારો ઇતિહાસ અને ટૅબ સિંક કરો</translation>
 <translation id="5740911612628596808">એન્વલપ C9</translation>
 <translation id="574392208103952083">મધ્યમ</translation>
+<translation id="5744350700955456407">ઑટોમૅટિક રીતે ભરવાની બહેતર સુવિધા હવે — Gmail અને Photos જેવી ઍપમાંથી — ઑર્ડર નંબર અને ફ્લાઇટ કન્ફર્મેશન કોડ જેવી માહિતી શોધી અને ભરી શકે છે</translation>
 <translation id="5745586894920491759">Chrome ક્લાઉડમાં પેજના શીર્ષકો અને URLs પર પ્રક્રિયા કરે છે</translation>
 <translation id="5745733273847572235">તમારા સ્થાન માટે પૂછી શકે છે</translation>
 <translation id="5750869797196646528">હાથ ટ્રૅક કરવાની સુવિધા</translation>
@@ -3227,7 +3230,6 @@
 <translation id="638289054711715023">ફૉઇલ સંકોચો</translation>
 <translation id="6383221683286411806">આગળ ઉપર શુલ્ક લાગવાની શક્યતા.</translation>
 <translation id="6384448607821972818">રિકવરી પાસવર્ડ બતાવવામાં આવ્યો</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{1 અન્ય સૂચન}one{# અન્ય સૂચન}other{# અન્ય સૂચન}}</translation>
 <translation id="6386565501269869892">એન્વલપ યુ 4</translation>
 <translation id="6387645831795005740">હુમલાખોરો URLમાં સરળતાથી ન જોઈ શકાય એવા ગૌણ ફેરફારો કરીને કેટલીક વખત સાઇટની નકલ કરે છે.</translation>
 <translation id="6389470377220713856">કાર્ડ પરનું નામ</translation>
@@ -4836,7 +4838,6 @@
 <translation id="9168814207360376865">તમારી ચુકવણી પદ્ધતિઓ સાચવવામાં આવી છે કે કેમ તે ચેક કરવાની સાઇટને મંજૂરી આપો</translation>
 <translation id="9169931577761441333"><ph name="APP_NAME" />ને હોમ સ્ક્રીનમાં ઉમેરો</translation>
 <translation id="9170848237812810038">&amp;પૂર્વવત્ કરો</translation>
-<translation id="9170906125144697215">ઍપ સ્વિચ કર્યા વિના Pix વડે ચુકવણી કરો</translation>
 <translation id="9171296965991013597">ઍપ છોડીએ?</translation>
 <translation id="9173282814238175921">માત્ર એક દસ્તાવેજ/નવી શીટ</translation>
 <translation id="9173995187295789444">બ્લૂટૂથ ડિવાઇસ માટે સ્કૅન કરી રહ્યા છીએ...</translation>

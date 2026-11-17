@@ -60,6 +60,8 @@
 #include "chrome/browser/ui/zoom/chrome_zoom_level_prefs.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/webui_url_constants.h"
+#include "components/enterprise/isolated_mode/isolated_mode_features.h"
+#include "components/enterprise/isolated_mode/prefs.h"
 #include "components/policy/core/common/policy_pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "components/saved_tab_groups/public/tab_group_sync_service.h"
@@ -295,6 +297,18 @@ class ExtensionTabsTest : public ExtensionApiTest {
     return utils::ToDict(utils::RunFunctionAndReturnSingleResult(
         function.get(), update_info, profile()));
   }
+
+  // Moves the tab `tab_id` with `move_properties` and returns the moved tab.
+  base::DictValue RunMoveFunction(const Extension* extension,
+                                  int tab_id,
+                                  const std::string& move_properties) {
+    auto function = base::MakeRefCounted<TabsMoveFunction>();
+    function->set_extension(extension);
+    return utils::ToDict(utils::RunFunctionAndReturnSingleResult(
+        function.get(),
+        base::StringPrintf("[%d, %s]", tab_id, move_properties.c_str()),
+        profile()));
+  }
 };
 
 #if BUILDFLAG(ENABLE_PLATFORM_APPS)
@@ -374,9 +388,37 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, UpdateNoPermissions) {
   EXPECT_TRUE(api_test_utils::GetBoolean(result, "pinned"));
 }
 
-IN_PROC_BROWSER_TEST_F(ExtensionTabsTest,
+class ExtensionTabsIncognitoOrIsolatedModeTest
+    : public ExtensionTabsTest,
+      public testing::WithParamInterface<bool> {
+ public:
+  ExtensionTabsIncognitoOrIsolatedModeTest() {
+    scoped_feature_list_.InitWithFeatureState(
+        enterprise_isolated_mode::kEnableEnterpriseIsolatedMode, GetParam());
+  }
+
+ protected:
+  void SetUpBrowserContextKeyedServices(
+      content::BrowserContext* context) override {
+    ExtensionTabsTest::SetUpBrowserContextKeyedServices(context);
+    if (GetParam()) {
+      Profile::FromBrowserContext(context)->GetPrefs()->SetInteger(
+          enterprise_isolated_mode::kEnterpriseIsolatedModeSettings,
+          static_cast<int>(
+              enterprise_isolated_mode::IsolatedModeSetting::kEnabled));
+    }
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_P(ExtensionTabsIncognitoOrIsolatedModeTest,
                        DisallowNonIncognitoUrlInIncognitoWindow) {
   BrowserWindowInterface* incognito = CreateIncognitoBrowser();
+  EXPECT_TRUE(GetParam()
+                  ? incognito->GetProfile()->IsEnterpriseIsolatedModeProfile()
+                  : incognito->GetProfile()->IsIncognitoProfile());
 
   auto update_tab_function = base::MakeRefCounted<TabsUpdateFunction>();
   scoped_refptr<const Extension> extension(ExtensionBuilder("Test").Build());
@@ -401,6 +443,13 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest,
   EXPECT_EQ(GURL(url::kAboutBlankURL),
             tab_list->GetActiveTab()->GetContents()->GetLastCommittedURL());
 }
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         ExtensionTabsIncognitoOrIsolatedModeTest,
+                         testing::Bool(),
+                         [](const testing::TestParamInfo<bool>& info) {
+                           return info.param ? "IsolatedMode" : "Incognito";
+                         });
 
 IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, DefaultToIncognitoWhenItIsForced) {
   static const char kArgsWithoutExplicitIncognitoParam[] =
@@ -3845,6 +3894,50 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest,
   EXPECT_EQ(tabs_constants::kInvalidTabIndexBreaksGroupContiguity, error);
 }
 
+// Tests that an index past the end of the window moves the tab to the end.
+IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, TabsMoveIndexPastEndMovesToEnd) {
+  scoped_refptr<const Extension> extension =
+      ExtensionBuilder("MoveIndexPastEndTest").Build();
+  TabListInterface* tab_list = GetTabListInterface();
+  auto [tab_ids, web_contentses] = CreateAndGetTabData(tab_list, 3);
+
+  base::DictValue tab =
+      RunMoveFunction(extension.get(), tab_ids[0], R"({"index": 10000})");
+
+  EXPECT_EQ(2, utils::GetInteger(tab, "index"));
+  EXPECT_EQ(web_contentses[0], tab_list->GetTab(2)->GetContents());
+}
+
+// Tests that an index of -1 moves the tab to the end of the target window.
+IN_PROC_BROWSER_TEST_F(ExtensionTabsTest,
+                       TabsMoveNegativeIndexAcrossWindowsMovesToEnd) {
+  scoped_refptr<const Extension> extension =
+      ExtensionBuilder("MoveNegativeIndexTest").Build();
+  auto [tab_ids, web_contentses] =
+      CreateAndGetTabData(GetTabListInterface(), 2);
+  BrowserWindowInterface* window_2 =
+      CreateBrowserWindowWithType(BrowserWindowInterface::Type::TYPE_NORMAL);
+  TabListInterface* tab_list2 = TabListInterface::From(window_2);
+  CreateAndGetTabData(tab_list2, 2);
+
+  base::DictValue tab = RunMoveFunction(
+      extension.get(), tab_ids[0],
+      base::StringPrintf(R"({"windowId": %d, "index": -1})",
+                         ExtensionTabUtil::GetWindowId(window_2)));
+
+  EXPECT_EQ(2, utils::GetInteger(tab, "index"));
+  ASSERT_EQ(3, tab_list2->GetTabCount());
+  EXPECT_EQ(web_contentses[0], tab_list2->GetTab(2)->GetContents());
+}
+
+// Tests that moving an empty list of tabs fails.
+IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, TabsMoveEmptyTabListFails) {
+  auto function = base::MakeRefCounted<TabsMoveFunction>();
+  EXPECT_EQ("No tabs given.",
+            utils::RunFunctionAndReturnError(
+                function.get(), R"([[], {"index": 0}])", profile()));
+}
+
 // Tests that saved tabs in a group can be moved.
 IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, TabsMoveSavedTabGroupTabAllowed) {
   scoped_refptr<const Extension> extension =
@@ -5030,8 +5123,6 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest,
   TestStandaloneWindowController standalone_controller(
       /*base_window=*/nullptr, profile(), standalone_window_id,
       web_contents.get());
-  standalone_controller.SetBrowserWindowInterfaceForLookup(
-      browser_window_interface());
 
   scoped_refptr<const Extension> extension =
       ExtensionBuilder("CreateSplitStandaloneTabTest").Build();
@@ -5148,10 +5239,6 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest,
   TestStandaloneWindowController standalone_controller(
       /*base_window=*/nullptr, profile(), standalone_window_id,
       web_contents.get());
-  // Allow GetTabById (2 calls) to resolve the standalone tab, then return
-  // nullptr when MoveTab queries source_window->GetBrowserWindowInterface().
-  standalone_controller.SetBrowserWindowInterfaceForLookup(
-      browser_window_interface(), 2);
 
   scoped_refptr<const Extension> extension =
       ExtensionBuilder("MoveStandaloneTabTest").Build();
@@ -5183,8 +5270,6 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest,
   TestStandaloneWindowController standalone_controller(
       /*base_window=*/nullptr, profile(), standalone_window_id,
       web_contents.get());
-  standalone_controller.SetBrowserWindowInterfaceForLookup(
-      browser_window_interface());
 
   scoped_refptr<const Extension> extension =
       ExtensionBuilder("ReloadPipTabTest").Build();
@@ -5194,6 +5279,38 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest,
   std::string error =
       utils::RunFunctionAndReturnError(function.get(), args, profile());
   EXPECT_EQ(tabs_constants::kNotAllowedForPictureInPictureError, error);
+}
+
+// Verifies that TabsUpdateFunction returns an error rather than crashing on a
+// null TabInterface when openerTabId specifies a standalone tab without a
+// TabInterface.
+IN_PROC_BROWSER_TEST_F(ExtensionTabsTest,
+                       TabsUpdate_StandaloneOpenerTabIdRejected) {
+  std::unique_ptr<content::WebContents> web_contents =
+      content::WebContents::Create(
+          content::WebContents::CreateParams(profile()));
+  sessions::SessionTabHelper::CreateForWebContents(web_contents.get(),
+                                                   base::NullCallback());
+  const int standalone_tab_id = ExtensionTabUtil::GetTabId(web_contents.get());
+  ASSERT_NE(standalone_tab_id, api::tabs::TAB_ID_NONE);
+
+  const SessionID standalone_window_id = SessionID::NewUnique();
+  TestStandaloneWindowController standalone_controller(
+      /*base_window=*/nullptr, profile(), standalone_window_id,
+      web_contents.get());
+
+  const int target_tab_id = ExtensionTabUtil::GetTabId(GetActiveWebContents());
+  ASSERT_NE(target_tab_id, api::tabs::TAB_ID_NONE);
+
+  scoped_refptr<const Extension> extension =
+      ExtensionBuilder("UpdateStandaloneOpenerTabTest").Build();
+  auto function = base::MakeRefCounted<TabsUpdateFunction>();
+  function->set_extension(extension.get());
+  std::string args = base::StringPrintf(R"([%d, {"openerTabId": %d}])",
+                                        target_tab_id, standalone_tab_id);
+  std::string error =
+      utils::RunFunctionAndReturnError(function.get(), args, profile());
+  EXPECT_EQ("Tab opener must be in the same window as the updated tab.", error);
 }
 
 }  // namespace extensions

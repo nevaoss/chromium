@@ -118,6 +118,7 @@ De lo contrario, la configuración de privacidad bloqueará esta acción. Esto p
 <translation id="1195558154361252544">Las notificaciones se bloquean automáticamente en todos los sitios, excepto en los que las permites</translation>
 <translation id="1197088940767939838">Naranja</translation>
 <translation id="1198412233443148072"><ph name="MEMBER_FIRST_NAME" /> quitó la pestaña "<ph name="WEBSITE_TITLE" />"</translation>
+<translation id="119944043368869598">Borrar todo</translation>
 <translation id="1201402288615127009">Siguiente</translation>
 <translation id="1201895884277373915">Más sobre este sitio</translation>
 <translation id="1204184165594298176">{0,plural, =1{No se permite copiar el archivo}other{No se permite copiar <ph name="FILE_COUNT" /> archivos}}</translation>
@@ -618,7 +619,6 @@ De lo contrario, la configuración de privacidad bloqueará esta acción. Esto p
 <translation id="2059166748188874810">Municipalidad</translation>
 <translation id="2059202684901022309">55.88 × 86.36 cm</translation>
 <translation id="2063929825539050431">Para enviar rápidamente esta página a otro dispositivo, mantén presionada la barra de direcciones</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{1 sugerencia}other{# sugerencias}}</translation>
 <translation id="2066969741541525119">Tu organización bloqueó el sitio que intentas abrir</translation>
 <translation id="2071156619270205202">Esta tarjeta no admite un número de tarjeta virtual.</translation>
 <translation id="2071852865256799872">Tu organización administra el navegador y <ph name="PROFILE_DOMAIN" /> administra tu perfil</translation>
@@ -665,6 +665,7 @@ De lo contrario, la configuración de privacidad bloqueará esta acción. Esto p
 <translation id="2126374524350484896">Generador de PDF:</translation>
 <translation id="2127090458081644412">Se guardó la contraseña en este dispositivo</translation>
 <translation id="2127747486437921899">Cursiva</translation>
+<translation id="2129163794581571479">Gracias a la tecnología de Gemini con Inteligencia personalizada. Es posible que se revisen tus solicitudes, títulos de páginas y URLs para mejorar la función autocompletar mejorado. <ph name="BEGIN_LINK" />Administrar la configuración<ph name="END_LINK" /></translation>
 <translation id="2130448033692577677">Debido a que no se estableció la política DnsOverHttpsMode, es posible que no se apliquen las plantillas que especificaste.</translation>
 <translation id="2130699163006053678">A3x7</translation>
 <translation id="2131006834960167560">La hoja para habilitar la función Autocompletar en los pagos está totalmente abierta.</translation>
@@ -710,7 +711,6 @@ De lo contrario, la configuración de privacidad bloqueará esta acción. Esto p
 <translation id="2188375229972301266">Perforaciones múltiples en la parte inferior</translation>
 <translation id="218940509700321686">Valores separados por comas</translation>
 <translation id="2190094353033916816">Esta política tiene diferentes valores aplicados a nivel de la máquina y del usuario. La política funciona según lo previsto.</translation>
-<translation id="219061769324072544">Crédito,Tarjeta,Débito</translation>
 <translation id="2191980191135734720">Desbloquea la pantalla en el siguiente paso, por lo general, con tu huella dactilar. También puedes <ph name="LINK_TEXT" />.</translation>
 <translation id="2194856509914051091">Aspectos para tener en cuenta</translation>
 <translation id="2195729137168608510">Protección de correo electrónico</translation>
@@ -1081,6 +1081,7 @@ De lo contrario, la configuración de privacidad bloqueará esta acción. Esto p
 <translation id="2807052079800581569">Posición de la imagen en el eje Y</translation>
 <translation id="2808278141522721006">Puedes activar o desactivar Windows Hello en <ph name="SETTINGS" /></translation>
 <translation id="2820957248982571256">Buscando…</translation>
+<translation id="282457273878278063">Administrar información de contacto</translation>
 <translation id="2824775600643448204">Barra de direcciones y de búsqueda</translation>
 <translation id="2826760142808435982">La conexión se encriptó y autenticó con <ph name="CIPHER" />, y utiliza <ph name="KX" /> como el mecanismo de intercambio de claves.</translation>
 <translation id="2828797285817981634">Se permiten los sensores de movimiento por ahora</translation>
@@ -1576,6 +1577,7 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="3655670868607891010">Si este mensaje aparece con frecuencia, haz clic aquí: <ph name="HELP_LINK" />.</translation>
 <translation id="3658742229777143148">Revisión</translation>
 <translation id="3659521826520353662">Qué sitios web definidos por el administrador se visitan y cuándo: <ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3663760610864720538">Gracias a la tecnología de Gemini con Inteligencia personalizada. <ph name="BEGIN_LINK" />Administrar la configuración<ph name="END_LINK" /></translation>
 <translation id="3664479564786885722">Busca más opciones de compra en otras tiendas que vendan este producto.</translation>
 <translation id="3664782872746246217">Palabras clave:</translation>
 <translation id="3670030362669914947">Número</translation>
@@ -1596,6 +1598,7 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="3693516565203081475">Seleccionar la forma de pago</translation>
 <translation id="3698353241727597930">El administrador configuró que se guarden los archivos de <ph name="FILES" /> en tu almacenamiento de <ph name="CLOUD_STORAGE" /> administrado por la empresa. Es posible que estos archivos se supervisen, auditen y retengan cuando los borres.</translation>
 <translation id="3698629142018988477">Botón Crear sitio: actívalo para crear un sitio nuevo en Google Sites rápidamente</translation>
+<translation id="3698708128812719147">Presiona Ctrl dos veces en cualquier lugar de la Web para buscar y completar más información</translation>
 <translation id="3700094625653511150">Para ocultar las opciones de pago más tarde, ve a <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /></translation>
 <translation id="3700966190175650601">Estás usando tu huella dactilar para completar contraseñas</translation>
 <translation id="3701427423622901115">Se detectó el restablecimiento.</translation>
@@ -1863,7 +1866,6 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="4121428309786185360">Vence el</translation>
 <translation id="4123572138124678573">Perforación triple en la parte inferior</translation>
 <translation id="412601465078863288">Se agotó el tiempo de espera para subir tus archivos</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{1 más}other{# más}}</translation>
 <translation id="4129810348470013900">Se produjo un error. Revisa tu conexión a Internet y vuelve a intentarlo.</translation>
 <translation id="4130226655945681476">Comprobar los cables de red, el módem y el router</translation>
 <translation id="4132448310531350254">Controladores duplicados para la extensión de archivo "<ph name="FILE_EXTENSION" />" a los que hacen referencia las apps "<ph name="POLICY_IDS_LIST" />".</translation>
@@ -1899,6 +1901,7 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="4185037616931963178">Actualizar el número de rectificación de forma segura</translation>
 <translation id="4186035307311647330">Dejar de realizar el seguimiento de precios</translation>
 <translation id="4191334393248735295">Longitud</translation>
+<translation id="4192770747482479191">Presiona ⌘ dos veces en cualquier lugar de la Web para buscar y completar más información</translation>
 <translation id="4195459680867822611">Botón Ver sugerencias para Chrome: actívalo para conocer las funciones de Chrome</translation>
 <translation id="4195643157523330669">Abrir en una pestaña nueva</translation>
 <translation id="4196861286325780578">&amp;Rehacer Mover</translation>
@@ -2216,7 +2219,6 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="4725766358270333890">Subiendo <ph name="COUNT" /> archivos a Microsoft OneDrive</translation>
 <translation id="4726672564094551039">Volver a cargar políticas</translation>
 <translation id="4728558894243024398">Plataforma</translation>
-<translation id="4730773064303503917">Paga mediante Pix a amigos y negocios usando la Billetera</translation>
 <translation id="4730977633786878901">Opiniones</translation>
 <translation id="4731638775147756694">El administrador bloqueó esta aplicación</translation>
 <translation id="4732860731866514038">Descargando el paquete del idioma <ph name="LANGUAGE" />… <ph name="PERCENT" />%</translation>
@@ -2847,6 +2849,7 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="573974402615125334">Para compartir grupos de pestañas, unirte a ellos y colaborar, sincroniza tu historial y tus pestañas</translation>
 <translation id="5740911612628596808">Sobre C9</translation>
 <translation id="574392208103952083">Media</translation>
+<translation id="5744350700955456407">La función autocompletar mejorado ahora puede buscar y completar información, como números de pedido y códigos de confirmación de vuelos, de apps como Gmail y Fotos</translation>
 <translation id="5745586894920491759">Chrome procesa las URLs y los títulos de las páginas en la nube</translation>
 <translation id="5745733273847572235">Puede solicitar permiso para utilizar tu ubicación</translation>
 <translation id="5750869797196646528">Seguimiento de manos</translation>
@@ -3228,7 +3231,6 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="638289054711715023">Plástico retráctil</translation>
 <translation id="6383221683286411806">Es posible que se cobren cargos.</translation>
 <translation id="6384448607821972818">Se muestra la contraseña de recuperación</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{1 sugerencia más}other{# sugerencias más}}</translation>
 <translation id="6386565501269869892">Sobre You n.º 4</translation>
 <translation id="6387645831795005740">A veces, los atacantes hacen cambios sutiles y difíciles de detectar en la URL a fin de imitar otros sitios.</translation>
 <translation id="6389470377220713856">Nombre en tarj.</translation>
@@ -4838,7 +4840,6 @@ Detalles adicionales:
 <translation id="9168814207360376865">Permitir que los sitios comprueben si tienes formas de pago guardadas</translation>
 <translation id="9169931577761441333">Agrega <ph name="APP_NAME" /> a la pantalla principal</translation>
 <translation id="9170848237812810038">&amp;Deshacer</translation>
-<translation id="9170906125144697215">Paga con Pix sin cambiar de app</translation>
 <translation id="9171296965991013597">¿Deseas salir de la app?</translation>
 <translation id="9173282814238175921">Documento único/hoja nueva</translation>
 <translation id="9173995187295789444">Buscando dispositivos Bluetooth…</translation>

@@ -149,8 +149,6 @@ void InitializePlatformOverlaySettings(GPUInfo* gpu_info,
       .enable_bgra8_overlays_with_yuv_overlay_support =
           gpu_feature_info.IsWorkaroundEnabled(
               gpu::ENABLE_BGRA8_OVERLAYS_WITH_YUV_OVERLAY_SUPPORT),
-      .force_nv12_overlay_support =
-          gpu_feature_info.IsWorkaroundEnabled(gpu::FORCE_NV12_OVERLAY_SUPPORT),
       .force_rgb10a2_overlay_support = gpu_feature_info.IsWorkaroundEnabled(
           gpu::FORCE_RGB10A2_OVERLAY_SUPPORT),
       .check_ycbcr_studio_g22_left_p709_for_nv12_support =
@@ -653,9 +651,9 @@ bool GpuInitLegacy::InitializeAndStartSandbox(
           command_line, gpu_feature_info_,
           gpu_preferences_.disable_software_rasterizer, false);
       if (gl_use_swiftshader_) {
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS)
         VLOG(1) << "Quit GPU process launch to fallback to SwiftShader cleanly "
-                << "on Linux";
+                << "on ChromeOS";
         return false;
 #else
         SaveHardwareGpuInfoAndGpuFeatureInfo();
@@ -677,7 +675,7 @@ bool GpuInitLegacy::InitializeAndStartSandbox(
               << "failed";
           return false;
         }
-#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+#endif  // BUILDFLAG(IS_CHROMEOS)
       }
     } else {  // gl_use_swiftshader_ == true
       switch (gpu_preferences_.use_vulkan) {

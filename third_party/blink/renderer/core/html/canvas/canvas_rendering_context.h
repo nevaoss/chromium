@@ -31,6 +31,7 @@
 #include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/notreached.h"
+#include "base/time/time.h"
 #include "cc/paint/paint_flags.h"
 #include "components/viz/common/resources/shared_image_format_utils.h"
 #include "third_party/blink/renderer/bindings/core/v8/active_script_wrappable.h"
@@ -99,6 +100,11 @@ class CORE_EXPORT CanvasRenderingContext
    private:
     CanvasRenderingContext& this_;
   };
+
+  // Delay for recording UKM metrics to allow text and attributes to settle.
+  // This value is chosen arbitrarily and can be subject to optimization.
+  static constexpr base::TimeDelta kAccessibilityUkmRecordingDelay =
+      base::Seconds(5);
 
   CanvasRenderingContext(const CanvasRenderingContext&) = delete;
   CanvasRenderingContext& operator=(const CanvasRenderingContext&) = delete;
@@ -298,7 +304,7 @@ class CORE_EXPORT CanvasRenderingContext
 
   // WebGL & WebGPU-specific interface
   virtual void SetHdrMetadata(const gfx::HDRMetadata& hdr_metadata) {}
-  virtual void Reshape(int width, int height) {}
+  virtual void Reshape(gfx::Size old_size, gfx::Size new_size) {}
 
   virtual base::ByteSize AllocatedBufferSize() const = 0;
 
@@ -338,6 +344,7 @@ class CORE_EXPORT CanvasRenderingContext
   static CanvasPerformanceMonitor& GetCanvasPerformanceMonitor();
 
   bool did_print_in_current_task() const { return did_print_in_current_task_; }
+  bool did_draw_text_for_testing() const { return did_draw_text_; }
 
  protected:
   CanvasRenderingContext(CanvasRenderingContextHost*,

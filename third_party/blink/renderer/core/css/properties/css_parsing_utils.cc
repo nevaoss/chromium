@@ -2143,10 +2143,7 @@ static std::optional<ColorInterpolationSpace> ConsumeColorInterpolationSpace(
     ConsumeIdent(stream);
     auto& color_space = read_color_space.value();
     std::optional<Color::HueInterpolationMethod> read_hue{};
-    if (color_space == Color::ColorSpace::kHSL ||
-        color_space == Color::ColorSpace::kHWB ||
-        color_space == Color::ColorSpace::kLch ||
-        color_space == Color::ColorSpace::kOklch) {
+    if (Color::HueComponentIndex(color_space)) {
       switch (stream.Peek().Id()) {
         case CSSValueID::kShorter:
           read_hue = Color::HueInterpolationMethod::kShorter;
@@ -9161,6 +9158,58 @@ bool ConsumeRadii(std::array<CSSValue*, 4>& horizontal_radii,
   Complete4Sides(horizontal_radii);
   Complete4Sides(vertical_radii);
   return true;
+}
+
+std::optional<std::pair<CSSValue*, CSSValue*>>
+ConsumeBorderRadiusCornerShorthand(CSSParserTokenStream& stream,
+                                   const CSSParserContext& context,
+                                   CSSParserLocalContext& local_context) {
+  std::array<CSSValue*, 2> horizontal_radii = {nullptr};
+  std::array<CSSValue*, 2> vertical_radii = {nullptr};
+
+  wtf_size_t horizontal_value_count = 0;
+  for (;
+       horizontal_value_count < 2 && stream.Peek().GetType() != kDelimiterToken;
+       ++horizontal_value_count) {
+    horizontal_radii[horizontal_value_count] =
+        ConsumeLengthOrPercent(stream, context, local_context,
+                               CSSPrimitiveValue::ValueRange::kNonNegative);
+    if (!horizontal_radii[horizontal_value_count]) {
+      break;
+    }
+  }
+  if (horizontal_value_count == 0) {
+    return std::nullopt;
+  }
+  if (!horizontal_radii[1]) {
+    horizontal_radii[1] = horizontal_radii[0];
+  }
+
+  if (ConsumeSlashIncludingWhitespace(stream)) {
+    for (wtf_size_t i = 0; i < 2; ++i) {
+      vertical_radii[i] =
+          ConsumeLengthOrPercent(stream, context, local_context,
+                                 CSSPrimitiveValue::ValueRange::kNonNegative);
+      if (!vertical_radii[i]) {
+        break;
+      }
+    }
+    if (!vertical_radii[0]) {
+      return std::nullopt;
+    }
+    if (!vertical_radii[1]) {
+      vertical_radii[1] = vertical_radii[0];
+    }
+  } else {
+    vertical_radii[0] = horizontal_radii[0];
+    vertical_radii[1] = horizontal_radii[1];
+  }
+
+  return std::make_pair(
+      MakeGarbageCollected<CSSValuePair>(horizontal_radii[0], vertical_radii[0],
+                                         CSSValuePair::kDropIdenticalValues),
+      MakeGarbageCollected<CSSValuePair>(horizontal_radii[1], vertical_radii[1],
+                                         CSSValuePair::kDropIdenticalValues));
 }
 
 CSSValue* ConsumeBasicShape(CSSParserTokenStream& stream,

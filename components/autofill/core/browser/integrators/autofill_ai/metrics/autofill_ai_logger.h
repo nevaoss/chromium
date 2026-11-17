@@ -15,6 +15,7 @@
 
 #include "base/containers/flat_set.h"
 #include "base/containers/span.h"
+#include "base/memory/raw_ptr.h"
 #include "base/memory/raw_ref.h"
 #include "components/autofill/core/browser/autofill_field.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
@@ -30,6 +31,8 @@ class ProfileMetricsService;
 }
 
 namespace autofill {
+
+class EntitySuppressionManager;
 
 // A class that takes care of keeping track of metric-related states and user
 // interactions with forms.
@@ -201,15 +204,18 @@ class AutofillAiLogger {
   std::map<FieldGlobalId, std::pair<EntityType, EntityInstance::RecordType>>
       last_filled_entity_;
 
-  // `client_` owns the `AutofillAiManager` that owns this instance and
-  // therefore outlives this reference.
-  const raw_ref<AutofillClient> client_;
   AutofillAiUkmLogger ukm_logger_;
   // This instance will outlive the object as it is a keyed service attached to
   // a profile, whereas the object is indirectly owned by the client, which is
   // itself owned by the Profile through the web contents. The keyed service
   // will outlive the web contents.
   const raw_ref<metrics::ProfileMetricsService> profile_metrics_service_;
+  // This instance is also a keyed service attached to a profile and will
+  // therefore outlive the object. It is cached because the client cannot be
+  // queried for it anymore during its destruction, when this object's
+  // destructor records metrics. May be null if the client does not support
+  // entity suppression.
+  const raw_ptr<const EntitySuppressionManager> entity_suppression_manager_;
 };
 
 }  // namespace autofill

@@ -175,17 +175,12 @@ String FetchResponseData::InternalMIMEType() const {
   return mime_type_;
 }
 
-const mojo::SharedRemote<network::mojom::blink::CacheStorageSideDataWriter>&
-FetchResponseData::CacheStorageSideDataWriter() const {
+mojo::PendingRemote<network::mojom::blink::CacheStorageSideDataWriter>
+FetchResponseData::TakeCacheStorageSideDataWriter() {
   if (internal_response_) {
-    return internal_response_->CacheStorageSideDataWriter();
+    return internal_response_->TakeCacheStorageSideDataWriter();
   }
-  if (pending_cache_storage_side_data_writer_.is_valid()) {
-    cache_storage_side_data_writer_ =
-        mojo::SharedRemote<network::mojom::blink::CacheStorageSideDataWriter>(
-            std::move(pending_cache_storage_side_data_writer_));
-  }
-  return cache_storage_side_data_writer_;
+  return std::move(cache_storage_side_data_writer_->data);
 }
 
 bool FetchResponseData::RequestIncludeCredentials() const {
@@ -303,8 +298,6 @@ mojom::blink::FetchAPIResponsePtr FetchResponseData::PopulateFetchAPIResponse(
   response->request_method = request_method_;
   response->response_time = response_time_;
   response->cache_storage_cache_name = cache_storage_cache_name_;
-  response->cache_storage_side_data_writer =
-      std::move(pending_cache_storage_side_data_writer_);
   response->cors_exposed_header_names =
       HeaderSetToVector(cors_exposed_header_names_);
   response->connection_info = connection_info_;
@@ -359,7 +352,6 @@ void FetchResponseData::InitFromResourceResponse(
   SetRequestMethod(request_method);
   SetResponseTime(response.ResponseTime());
   SetCacheStorageCacheName(response.CacheStorageCacheName());
-  SetCacheStorageSideDataWriter(response.CacheStorageSideDataWriter());
 
   if (response.WasCached()) {
     SetResponseSource(network::mojom::FetchResponseSource::kHttpCache);

@@ -373,7 +373,7 @@ api::tabs::Tab ExtensionTabUtil::CreateTabObject(
   tabs::TabInterface* tab_interface =
       tab_list ? tab_list->GetTab(tab_index) : nullptr;
 
-  bool is_active = tab_interface && tab_interface->IsActivated();
+  bool is_active = tab_interface ? tab_interface->IsActivated() : true;
   tab_object.active = is_active;
   tab_object.selected = is_active;
   tab_object.highlighted = tab_interface && tab_interface->IsSelected();
@@ -647,7 +647,7 @@ bool ExtensionTabUtil::GetTabById(int tab_id,
           : nullptr;
 
   for (WindowController* window : *WindowControllerList::GetInstance()) {
-    bool is_alive = window->GetBrowserWindowInterface() &&
+    bool is_alive = !window->GetBrowserWindowInterface() ||
                     !window->GetBrowserWindowInterface()->IsDeleteScheduled();
     bool profile_matches =
         window->profile() == profile || window->profile() == incognito_profile;

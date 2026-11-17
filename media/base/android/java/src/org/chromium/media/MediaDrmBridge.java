@@ -438,9 +438,10 @@ public class MediaDrmBridge {
                 }
             }
             return MediaDrm.isCryptoSchemeSupported(cryptoScheme, containerMimeType);
-        } catch (IllegalArgumentException e) {
-            // A few devices have broken DRM HAL configs and throw an exception here regardless of
-            // the arguments; just assume this means the scheme is not supported.
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            // A few devices have broken DRM HAL configs or throw MediaDrmResetException /
+            // MediaDrmStateException when the DRM HAL service resets; assume the scheme is not
+            // supported.
             Log.e(TAG, "Exception in isCryptoSchemeSupported", e);
             return false;
         }
@@ -1189,7 +1190,7 @@ public class MediaDrmBridge {
         } catch (android.media.NotProvisionedException e) {
             // If device isn't provisioned, storage loading should fail.
             onPersistentLicenseLoadFail(sessionId, promiseId, e);
-        } catch (java.lang.IllegalStateException e) {
+        } catch (java.lang.IllegalStateException | java.lang.IllegalArgumentException e) {
             assert sessionId.drmId() != null;
             onPersistentLicenseLoadFail(sessionId, promiseId, e);
         }
@@ -1207,6 +1208,7 @@ public class MediaDrmBridge {
     private void onPersistentLicenseLoadFail(
             SessionId sessionId, final long promiseId, Exception e) {
         Log.w(TAG, "Persistent license load failed for session %s", sessionId, e);
+        mSessionEventDeferrer = null;
         closeSessionNoException(sessionId);
         mSessionManager.clearPersistentSessionInfo(
                 sessionId,
@@ -1253,7 +1255,16 @@ public class MediaDrmBridge {
             return;
         }
 
-        assert sessionId.keySetId() != null;
+        if (sessionId.keySetId() == null) {
+            // A persistent-license session only gets a key set ID once update() has delivered a
+            // persistable license, and loses it again once the license has been released. In
+            // both cases there is no persisted license to release, so per the EME spec remove()
+            // simply resolves without a license-release message. Persisting the RELEASE key type
+            // below would pass a null key set ID to native. See crbug.com/574137610.
+            Log.w(TAG, "removeSession(%s): no persistent license to release", sessionId);
+            onPromiseResolved(promiseId);
+            return;
+        }
 
         // Persist the key type before removing the keys completely.
         // 1. If we fails to persist the key type, both the persistent storage and MediaDrm think

@@ -77,7 +77,7 @@ TEST_F(TTCMediatorTest, TestSetConsumerReflectsExistingActiveSession) {
   ttc_service_->StartSession();
   TtcSessionController* session_controller = ttc_service_->session_controller();
   ASSERT_TRUE(session_controller != nullptr);
-  session_controller->OnSessionInitialized();
+  session_controller->OnConversationInitialized();
 
   TTCMediator* live_mediator =
       [[TTCMediator alloc] initWithTTCService:ttc_service_];
@@ -150,7 +150,7 @@ TEST_F(TTCMediatorTest, TestSessionLifecycleUpdatesConsumer) {
   ASSERT_TRUE(session_controller != nullptr);
 
   OCMExpect([mock_consumer_ setSessionState:TTCSessionUIState::kListening]);
-  session_controller->OnSessionInitialized();
+  session_controller->OnConversationInitialized();
   EXPECT_OCMOCK_VERIFY(mock_consumer_);
 
   OCMExpect([mock_consumer_ setSessionState:TTCSessionUIState::kIdle]);
@@ -168,10 +168,10 @@ TEST_F(TTCMediatorTest, TestSessionAudioLevelUpdatesConsumerWhenListening) {
   TtcSessionController* session_controller = ttc_service_->session_controller();
   ASSERT_TRUE(session_controller != nullptr);
 
-  session_controller->OnSessionInitialized();
+  session_controller->OnConversationInitialized();
 
   OCMExpect([mock_consumer_ setMicEnergyLevel:0.65f]);
-  session_controller->UserAudioLevelDidUpdate(0.65f);
+  session_controller->OnAudioEnergyUpdated(0.65f);
 
   EXPECT_OCMOCK_VERIFY(mock_consumer_);
 }
@@ -187,7 +187,7 @@ TEST_F(TTCMediatorTest, TestSessionAudioLevelIgnoredWhenNotListening) {
 
   // Still in kConnecting (initializing) state; audio updates should be ignored.
   [[mock_consumer_ reject] setMicEnergyLevel:0.65f];
-  session_controller->UserAudioLevelDidUpdate(0.65f);
+  session_controller->OnAudioEnergyUpdated(0.65f);
 
   EXPECT_OCMOCK_VERIFY(mock_consumer_);
 }
@@ -205,8 +205,11 @@ TEST_F(TTCMediatorTest, TestSessionErrorUpdatesConsumer) {
   OCMExpect([mock_consumer_
       didEncounterError:base::SysUTF8ToNSString(base::ToString(
                             ttc::ErrorCode::kInternalBackendError))]);
+  OCMExpect([mock_consumer_ setMicEnergyLevel:0.0f]);
+  [[mock_consumer_ reject] setSessionState:TTCSessionUIState::kIdle];
 
-  session_controller->FailWithError(ttc::ErrorCode::kInternalBackendError);
+  session_controller->OnConversationError(
+      ttc::ErrorCode::kInternalBackendError);
 
   EXPECT_OCMOCK_VERIFY(mock_consumer_);
 }
@@ -225,6 +228,31 @@ TEST_F(TTCMediatorTest, TestExternalSessionTerminationUpdatesConsumer) {
   ttc_service_->EndSession();
 
   EXPECT_FALSE(ttc_service_->is_session_active());
+  EXPECT_OCMOCK_VERIFY(mock_consumer_);
+}
+
+// Tests that starting a new session succeeds after the previous session
+// controller finishes on its own (e.g. via `StopSession`).
+TEST_F(TTCMediatorTest, TestStartNewSessionAfterControllerFinishes) {
+  mediator_.consumer = mock_consumer_;
+
+  [mediator_ startSession];
+  ASSERT_NE(ttc_service_->session_controller(), nullptr);
+
+  OCMExpect([mock_consumer_ setSessionState:TTCSessionUIState::kIdle]);
+  OCMExpect([mock_consumer_ setMicEnergyLevel:0.0f]);
+  ttc_service_->session_controller()->StopSession();
+  EXPECT_FALSE(ttc_service_->is_session_active());
+  EXPECT_OCMOCK_VERIFY(mock_consumer_);
+
+  OCMExpect([mock_consumer_ setSessionState:TTCSessionUIState::kConnecting]);
+  [mediator_ startSession];
+  EXPECT_TRUE(ttc_service_->is_session_active());
+  ASSERT_NE(ttc_service_->session_controller(), nullptr);
+  EXPECT_OCMOCK_VERIFY(mock_consumer_);
+
+  OCMExpect([mock_consumer_ setSessionState:TTCSessionUIState::kListening]);
+  ttc_service_->session_controller()->OnConversationInitialized();
   EXPECT_OCMOCK_VERIFY(mock_consumer_);
 }
 

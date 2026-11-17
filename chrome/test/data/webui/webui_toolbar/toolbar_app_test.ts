@@ -165,6 +165,7 @@ function createMockToolbarState() {
       open: false,
       shouldShow: false,
       isContextMenuVisible: false,
+      shouldMatchToolbarStyle: false,
       nudgeLabel: null as string | null,
     },
     overflowButtonControlState: {
@@ -172,6 +173,7 @@ function createMockToolbarState() {
     },
     layoutConstantsVersion: 0,
     pinnedToolbarActionsState: [],
+    controlsAppearInactive: false,
   };
 }
 
@@ -585,7 +587,7 @@ suite('ToolbarAppTest', () => {
     await microtasksFinished();
 
     const avatarButton = app.shadowRoot.querySelector('avatar-button')!;
-    const innerButton = avatarButton.shadowRoot.querySelector('#button')!;
+    const innerButton = avatarButton.$.button;
 
     // Helper to update state and check class
     const checkClass = async (state: any, expectedClass: string) => {
@@ -686,7 +688,7 @@ suite('ToolbarAppTest', () => {
     await microtasksFinished();
 
     const avatarButton = app.shadowRoot.querySelector('avatar-button')!;
-    const innerButton = avatarButton.shadowRoot.querySelector('#button')!;
+    const innerButton = avatarButton.$.button;
 
     // Helper to update state and check attribute
     const checkLinearGradientRing = async (hasLinearGradientRing: boolean) => {
@@ -705,7 +707,7 @@ suite('ToolbarAppTest', () => {
       await microtasksFinished();
       const icon = avatarButton.shadowRoot.querySelector('#icon')!;
       const iconStyle = window.getComputedStyle(icon);
-      const actualButton = innerButton.shadowRoot!.querySelector('#button')!;
+      const actualButton = innerButton.$.button;
       const buttonStyle = window.getComputedStyle(actualButton);
 
       if (hasLinearGradientRing) {
@@ -741,9 +743,9 @@ suite('ToolbarAppTest', () => {
     await microtasksFinished();
 
     const avatarButton = app.shadowRoot.querySelector('avatar-button')!;
-    const innerChip = avatarButton.shadowRoot.querySelector('#button')!;
+    const innerChip = avatarButton.$.button;
     const visualTarget =
-        innerChip.shadowRoot!.querySelector('.iph-visual-target')!;
+        innerChip.shadowRoot.querySelector('.iph-visual-target')!;
     assertTrue(!!visualTarget);
 
     avatarButton.classList.add('anchor-highlight');
@@ -767,9 +769,9 @@ suite('ToolbarAppTest', () => {
     await microtasksFinished();
 
     const avatarButton = app.shadowRoot.querySelector('avatar-button')!;
-    const innerChip = avatarButton.shadowRoot.querySelector('#button')!;
+    const innerChip = avatarButton.$.button;
     const visualTarget =
-        innerChip.shadowRoot!.querySelector('.iph-visual-target')!;
+        innerChip.shadowRoot.querySelector('.iph-visual-target')!;
     assertTrue(!!visualTarget);
 
     avatarButton.hasHelpBubble = true;
@@ -794,7 +796,7 @@ suite('ToolbarAppTest', () => {
     await microtasksFinished();
 
     const avatarButton = app.shadowRoot.querySelector('avatar-button')!;
-    const innerChip = avatarButton.shadowRoot.querySelector('#button')!;
+    const innerChip = avatarButton.$.button;
     const setHighlighted =
         highlightCallbacks.get('kToolbarAvatarButtonElementId')!;
     assertTrue(!!setHighlighted);
@@ -1125,5 +1127,96 @@ suite('ToolbarAppTest', () => {
     assertFalse(
         controlIds.includes('glic-button'),
         'Glic button should be excluded from responsive controls when resizing flag is disabled');
+  });
+
+  test('ControlsAppearInactive', async () => {
+    loadTimeData.overrideValues({enableAppMenuButton: true});
+    const rootStyle = document.documentElement.style;
+    rootStyle.setProperty('--color-toolbar-button-icon', 'rgb(1, 2, 3)');
+    rootStyle.setProperty(
+        '--color-toolbar-button-icon-inactive', 'rgb(4, 5, 6)');
+
+    app = document.createElement('toolbar-app');
+    document.body.appendChild(app);
+    const state = createMockToolbarState();
+    browserProxy.fireToolbarStateListener([], state);
+    await microtasksFinished();
+
+    const reloadIconButton =
+        app.shadowRoot.querySelector('reload-button')!.shadowRoot.querySelector(
+            '#button')!;
+    const appMenuChip = app.shadowRoot.querySelector('app-menu-button')!
+                            .shadowRoot.querySelector('toolbar-chip-button')!;
+    function getFillColor(): string {
+      return getComputedStyle(reloadIconButton)
+          .getPropertyValue('--cr-icon-button-fill-color')
+          .trim();
+    }
+    assertFalse(app.hasAttribute('controls-appear-inactive'));
+    assertEquals('rgb(1, 2, 3)', getFillColor());
+    assertEquals('rgb(1, 2, 3)', getComputedStyle(appMenuChip).color);
+
+    state.controlsAppearInactive = true;
+    browserProxy.fireToolbarStateListener([], {...state});
+    await microtasksFinished();
+    assertTrue(app.hasAttribute('controls-appear-inactive'));
+    assertEquals('rgb(4, 5, 6)', getFillColor());
+    assertEquals('rgb(4, 5, 6)', getComputedStyle(appMenuChip).color);
+
+    state.controlsAppearInactive = false;
+    browserProxy.fireToolbarStateListener([], {...state});
+    await microtasksFinished();
+    assertFalse(app.hasAttribute('controls-appear-inactive'));
+    assertEquals('rgb(1, 2, 3)', getFillColor());
+    assertEquals('rgb(1, 2, 3)', getComputedStyle(appMenuChip).color);
+
+    rootStyle.removeProperty('--color-toolbar-button-icon');
+    rootStyle.removeProperty('--color-toolbar-button-icon-inactive');
+  });
+
+  test('ControlsAppearInactiveLabels', async () => {
+    loadTimeData.overrideValues({
+      enableAvatarButton: true,
+      enableAppMenuButton: true,
+    });
+    const disabledLabelColor = 'rgb(7, 8, 9)';
+    const rootStyle = document.documentElement.style;
+    rootStyle.setProperty(
+        '--color-label-foreground-disabled', disabledLabelColor);
+
+    app = document.createElement('toolbar-app');
+    document.body.appendChild(app);
+    const state = createMockToolbarState();
+    state.avatarControlState.text = 'Paused';
+    state.appMenuControlState.labelText = 'Update';
+    browserProxy.fireToolbarStateListener([], state);
+    await microtasksFinished();
+
+    const avatarText =
+        app.shadowRoot.querySelector('avatar-button')!.shadowRoot.querySelector(
+            '#text')!;
+    const appMenuText =
+        app.shadowRoot.querySelector(
+                          'app-menu-button')!.shadowRoot.querySelector('#text')!
+        ;
+    const avatarTextColor = getComputedStyle(avatarText).color;
+    const appMenuTextColor = getComputedStyle(appMenuText).color;
+    assertTrue(avatarTextColor !== disabledLabelColor);
+    assertTrue(appMenuTextColor !== disabledLabelColor);
+
+    // Labels use the disabled label color while the window is inactive.
+    state.controlsAppearInactive = true;
+    browserProxy.fireToolbarStateListener([], {...state});
+    await microtasksFinished();
+    assertEquals(disabledLabelColor, getComputedStyle(avatarText).color);
+    assertEquals(disabledLabelColor, getComputedStyle(appMenuText).color);
+
+    state.controlsAppearInactive = false;
+    browserProxy.fireToolbarStateListener([], {...state});
+    await microtasksFinished();
+    assertEquals(avatarTextColor, getComputedStyle(avatarText).color);
+    assertEquals(appMenuTextColor, getComputedStyle(appMenuText).color);
+
+    rootStyle.removeProperty('--color-label-foreground-disabled');
   });
 });

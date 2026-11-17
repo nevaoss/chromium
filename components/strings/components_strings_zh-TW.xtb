@@ -118,6 +118,7 @@
 <translation id="1195558154361252544">除了你允許的網站之外，自動封鎖所有網站的通知</translation>
 <translation id="1197088940767939838">橘色</translation>
 <translation id="1198412233443148072"><ph name="MEMBER_FIRST_NAME" />已移除「<ph name="WEBSITE_TITLE" />」分頁</translation>
+<translation id="119944043368869598">全部清除</translation>
 <translation id="1201402288615127009">繼續</translation>
 <translation id="1201895884277373915">這個網站的更多內容</translation>
 <translation id="1204184165594298176">{0,plural, =1{禁止複製這個檔案}other{禁止複製這 <ph name="FILE_COUNT" /> 個檔案}}</translation>
@@ -617,7 +618,6 @@
 <translation id="2059166748188874810">縣/市</translation>
 <translation id="2059202684901022309">22 x 34 吋</translation>
 <translation id="2063929825539050431">按住網址列，即可將這個頁面快速傳送到其他裝置</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{1 個建議項目}other{# 個建議項目}}</translation>
 <translation id="2066969741541525119">貴機構封鎖了你要瀏覽的網站</translation>
 <translation id="2071156619270205202">這張卡片不能建立虛擬卡號。</translation>
 <translation id="2071852865256799872">你的瀏覽器是由貴機構管理，設定檔則是由 <ph name="PROFILE_DOMAIN" /> 管理</translation>
@@ -664,6 +664,7 @@
 <translation id="2126374524350484896">PDF 轉換工具：</translation>
 <translation id="2127090458081644412">已將密碼儲存到這部裝置</translation>
 <translation id="2127747486437921899">斜體</translation>
+<translation id="2129163794581571479">採用 Gemini 個人化智慧服務。你的要求、網頁標題和網址可能會送交人工審查，以改進強化版自動填入功能。<ph name="BEGIN_LINK" />管理設定<ph name="END_LINK" /></translation>
 <translation id="2130448033692577677">你並未設定 DnsOverHttpsMode 政策，因此系統無法套用你指定的範本。</translation>
 <translation id="2130699163006053678">A3 x 7</translation>
 <translation id="2131006834960167560">「啟用付款資訊自動填入功能」已完全展開。</translation>
@@ -709,7 +710,6 @@
 <translation id="2188375229972301266">多孔 (底部)</translation>
 <translation id="218940509700321686">逗號分隔值</translation>
 <translation id="2190094353033916816">這項政策在電腦和使用者層級套用了不同的值。政策運作正常。</translation>
-<translation id="219061769324072544">信用卡,卡片,簽帳金融卡</translation>
 <translation id="2191980191135734720">在下一個步驟中解鎖螢幕 (通常是使用指紋)。你也可以<ph name="LINK_TEXT" />。</translation>
 <translation id="2194856509914051091">注意事項</translation>
 <translation id="2195729137168608510">電子郵件保護</translation>
@@ -1080,6 +1080,7 @@
 <translation id="2807052079800581569">圖片 Y 位置</translation>
 <translation id="2808278141522721006">你可以前往「<ph name="SETTINGS" />」開啟或關閉 Windows Hello</translation>
 <translation id="2820957248982571256">掃描中...</translation>
+<translation id="282457273878278063">管理聯絡資訊</translation>
 <translation id="2824775600643448204">網址與搜尋列</translation>
 <translation id="2826760142808435982">連線採用 <ph name="CIPHER" /> 加密，並設有 <ph name="KX" /> 金鑰交換機制。</translation>
 <translation id="2828797285817981634">目前允許使用動作感應器</translation>
@@ -1573,6 +1574,7 @@
 <translation id="3655670868607891010">如果你經常看到這個頁面，請參考這些說明：<ph name="HELP_LINK" />。</translation>
 <translation id="3658742229777143148">修訂版本</translation>
 <translation id="3659521826520353662">造訪過哪些管理員定義的網站和造訪時間：<ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3663760610864720538">採用 Gemini 個人化智慧服務。<ph name="BEGIN_LINK" />管理設定<ph name="END_LINK" /></translation>
 <translation id="3664479564786885722">搜尋其他販售這項產品的商店，查看更多購買選項。</translation>
 <translation id="3664782872746246217">關鍵字：</translation>
 <translation id="3670030362669914947">號碼</translation>
@@ -1593,6 +1595,7 @@
 <translation id="3693516565203081475">選擇付款方式</translation>
 <translation id="3698353241727597930">系統管理員已將<ph name="FILES" />的儲存位置設為由貴公司管理的 <ph name="CLOUD_STORAGE" />。即使你刪除這些檔案，貴公司仍可能會監控、稽核及保留這些檔案。</translation>
 <translation id="3698629142018988477">「建立網站」按鈕，啟動後即可在 Google 協作平台中快速建立新網站</translation>
+<translation id="3698708128812719147">在網頁上任何位置連按兩下 Ctrl 鍵，即可尋找並填入更多資訊</translation>
 <translation id="3700094625653511150">如要隱藏「先買後付」選項，請前往<ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /></translation>
 <translation id="3700966190175650601">你正在使用指紋填入密碼</translation>
 <translation id="3701427423622901115">已確認重設。</translation>
@@ -1860,7 +1863,6 @@
 <translation id="4121428309786185360">到期日</translation>
 <translation id="4123572138124678573">三孔 (底部)</translation>
 <translation id="412601465078863288">上傳作業逾時</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{以及另外 1 項表單資料}other{以及另外 # 項表單資料}}</translation>
 <translation id="4129810348470013900">發生錯誤，請檢查網路連線，然後再試一次。</translation>
 <translation id="4130226655945681476">檢查網路線、數據機和路由器</translation>
 <translation id="4132448310531350254">應用程式「<ph name="POLICY_IDS_LIST" />」參照的 file_extension「<ph name="FILE_EXTENSION" />」被指派給多個處理常式。</translation>
@@ -1896,6 +1898,7 @@
 <translation id="4185037616931963178">安全地更新救濟號碼</translation>
 <translation id="4186035307311647330">取消追蹤價格</translation>
 <translation id="4191334393248735295">長度</translation>
+<translation id="4192770747482479191">在網頁上任何位置連按兩下 ⌘ 鍵，即可尋找並填入更多資訊</translation>
 <translation id="4195459680867822611">「查看 Chrome 提示」按鈕，啟動後即可瞭解各項 Chrome 功能</translation>
 <translation id="4195643157523330669">在新分頁中開啟</translation>
 <translation id="4196861286325780578">重做移動(&amp;R)</translation>
@@ -2213,7 +2216,6 @@
 <translation id="4725766358270333890">正在將 <ph name="COUNT" /> 個檔案上傳至 Microsoft OneDrive</translation>
 <translation id="4726672564094551039">重新載入政策</translation>
 <translation id="4728558894243024398">平台</translation>
-<translation id="4730773064303503917">透過 Google 錢包用 Pix 付款給親友和商家</translation>
 <translation id="4730977633786878901">查看評論</translation>
 <translation id="4731638775147756694">系統管理員已封鎖這個應用程式</translation>
 <translation id="4732860731866514038">正在下載<ph name="LANGUAGE" />語言套件... <ph name="PERCENT" />%</translation>
@@ -2844,6 +2846,7 @@
 <translation id="573974402615125334">如要分享、加入分頁群組並在其中協作，請同步處理歷史記錄和分頁</translation>
 <translation id="5740911612628596808">Envelope C9</translation>
 <translation id="574392208103952083">中</translation>
+<translation id="5744350700955456407">強化版自動填入功能現在可以從 Gmail 和 Google 相簿等應用程式中，尋找訂單編號和航班確認碼等資訊，並自動填入表單</translation>
 <translation id="5745586894920491759">Chrome 會在雲端處理網頁標題和網址</translation>
 <translation id="5745733273847572235">可以要求你提供位置資訊</translation>
 <translation id="5750869797196646528">手勢追蹤</translation>
@@ -3225,7 +3228,6 @@
 <translation id="638289054711715023">收縮膜</translation>
 <translation id="6383221683286411806">你要造訪的網站可能會誘導使用者支付額外額外費用。</translation>
 <translation id="6384448607821972818">已顯示備援密碼</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{以及另外 1 個建議項目}other{以及另外 # 個建議項目}}</translation>
 <translation id="6386565501269869892">Envelope You 4</translation>
 <translation id="6387645831795005740">攻擊者有時會在網址中加入難以辨識的細微變更來仿冒網站。</translation>
 <translation id="6389470377220713856">持卡人姓名</translation>
@@ -4833,7 +4835,6 @@
 <translation id="9168814207360376865">允許網站檢查是否有已儲存的付款方式</translation>
 <translation id="9169931577761441333">將 <ph name="APP_NAME" /> 新增至主畫面</translation>
 <translation id="9170848237812810038">取消(&amp;U)</translation>
-<translation id="9170906125144697215">透過 Pix 付款，不必切換應用程式</translation>
 <translation id="9171296965991013597">要離開應用程式嗎？</translation>
 <translation id="9173282814238175921">單一文件/新工作表</translation>
 <translation id="9173995187295789444">正在掃描藍牙裝置…</translation>

@@ -40,7 +40,7 @@ public class BottomBarConfigUtils {
      * Returns whether the bottom bar is eligible on this device, i.e. the feature flag is enabled
      * and the form factor supports it. This does not take the user's Settings choice into account.
      */
-    private static boolean isBottomBarEligible(Context context) {
+    public static boolean isBottomBarEligible(Context context) {
         return !DeviceFormFactor.isNonMultiDisplayContextOnTablet(context)
                 && !DeviceInfo.isAutomotive()
                 && ChromeFeatureList.sAndroidBottomBar.isEnabled();
@@ -54,6 +54,18 @@ public class BottomBarConfigUtils {
     public static boolean shouldShowSettingsToggle(Context context) {
         return isBottomBarEligible(context)
                 && ChromeFeatureList.sAndroidBottomBarShowSettingsToggle.getValue();
+    }
+
+    /**
+     * Returns whether the activity should observe the user's bottom bar choice and recreate itself
+     * when it changes: the Settings switch or the education opt-in dialog can flip it. The bottom
+     * bar must be eligible on this device, because the observer only compares the user's choice and
+     * would otherwise keep recreating the activity on tablets, unfolded foldables and automotive
+     * devices.
+     */
+    public static boolean shouldObserveBottomBarEnabledChanges(Context context) {
+        return shouldShowSettingsToggle(context)
+                || (isEducationEnabled() && isBottomBarEligible(context));
     }
 
     /**
@@ -81,6 +93,14 @@ public class BottomBarConfigUtils {
                 .readBoolean(
                         ChromePreferenceKeys.BOTTOM_BAR_ENABLED,
                         ChromeFeatureList.sAndroidBottomBarDefaultUserEnabled.getValue());
+    }
+
+    /**
+     * Returns whether the user has explicitly set the bottom bar enabled preference in Settings.
+     */
+    public static boolean hasUserSetBottomBarEnabled() {
+        return ChromeSharedPreferences.getInstance()
+                .contains(ChromePreferenceKeys.BOTTOM_BAR_ENABLED);
     }
 
     /**
@@ -117,6 +137,11 @@ public class BottomBarConfigUtils {
     /** Whether to show the bottom bar on GTS if the flag is enabled. */
     public static boolean shouldShowOnGts() {
         return ChromeFeatureList.sAndroidBottomBarShowBottomBarOnGts.getValue();
+    }
+
+    /** Whether to remove top padding in the bottom bar when the bottom omnibox is present. */
+    public static boolean shouldRemoveTopPaddingForBottomOmnibox() {
+        return ChromeFeatureList.sAndroidBottomBarRemoveTopPaddingForBottomOmnibox.getValue();
     }
 
     /**
@@ -180,5 +205,15 @@ public class BottomBarConfigUtils {
     public static void setGlicButtonEnabled(boolean enabled) {
         ChromeSharedPreferences.getInstance()
                 .writeBoolean(ChromePreferenceKeys.BOTTOM_BAR_GLIC_BUTTON_ENABLED, enabled);
+    }
+
+    /** Whether the bottom bar user education flow is enabled. */
+    public static boolean isEducationEnabled() {
+        return ChromeFeatureList.sAndroidBottomBarEducationEnabled.getValue();
+    }
+
+    /** Whether the bottom bar user education flow should use the Gemini-focused variant. */
+    public static boolean isEducationGeminiFocused() {
+        return ChromeFeatureList.sAndroidBottomBarEducationGeminiFocused.getValue();
     }
 }

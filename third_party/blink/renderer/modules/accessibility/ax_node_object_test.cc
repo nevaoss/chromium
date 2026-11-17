@@ -810,6 +810,74 @@ TEST_F(AccessibilityTest, ScrollMarkerGroupModeChangeUpdatesRoles) {
                ax::mojom::Role::kTabPanel);
 }
 
+TEST_F(AccessibilityTest, ScrollMarkerGroupScrollContainerChangeUpdatesRoles) {
+  SetBodyInnerHTML(R"HTML(
+    <style>
+    #outer {
+      scroll-marker-group: before tabs;
+    }
+    #inner {
+      scroll-marker-group: before links;
+    }
+    #item::scroll-marker {
+      content: '';
+    }
+    </style>
+    <div id=outer><div id=inner><div id=item>One</div></div></div>)HTML");
+
+  auto expect_no_markers = [&]() {
+    EXPECT_EQ(nullptr, GetAXObjectByElementId(
+                           "outer", kPseudoIdScrollMarkerGroupBefore));
+    EXPECT_EQ(nullptr, GetAXObjectByElementId("item", kPseudoIdScrollMarker));
+    const AXObject* item = GetAXObjectByElementId("item");
+    ASSERT_NE(nullptr, item);
+    EXPECT_EQ(ax::mojom::Role::kGenericContainer, item->RoleValue());
+  };
+  auto expect_marker_in = [&](const char* group_id, ax::mojom::Role group_role,
+                              ax::mojom::Role marker_role,
+                              ax::mojom::Role item_role) {
+    const AXObject* group =
+        GetAXObjectByElementId(group_id, kPseudoIdScrollMarkerGroupBefore);
+    const AXObject* marker =
+        GetAXObjectByElementId("item", kPseudoIdScrollMarker);
+    const AXObject* item = GetAXObjectByElementId("item");
+    ASSERT_NE(nullptr, group);
+    ASSERT_NE(nullptr, marker);
+    ASSERT_NE(nullptr, item);
+    EXPECT_EQ(group, marker->ParentObject());
+    EXPECT_EQ(group_role, group->RoleValue());
+    EXPECT_EQ(marker_role, marker->RoleValue());
+    EXPECT_EQ(item_role, item->RoleValue());
+  };
+
+  Element* outer = GetElementById("outer");
+  Element* inner = GetElementById("inner");
+  expect_no_markers();
+
+  // Make #outer a scroll container.
+  outer->SetInlineStyleProperty(CSSPropertyID::kOverflow, CSSValueID::kAuto);
+  UpdateAllLifecyclePhasesForTest();
+  expect_marker_in("outer", ax::mojom::Role::kTabList, ax::mojom::Role::kTab,
+                   ax::mojom::Role::kTabPanel);
+
+  // Make #inner a scroll container. #item's marker moves to #inner's group.
+  inner->SetInlineStyleProperty(CSSPropertyID::kOverflow, CSSValueID::kAuto);
+  UpdateAllLifecyclePhasesForTest();
+  expect_marker_in("inner", ax::mojom::Role::kNavigation,
+                   ax::mojom::Role::kLink, ax::mojom::Role::kGenericContainer);
+
+  // Make #inner no longer a scroll container. #item's marker moves back.
+  inner->SetInlineStyleProperty(CSSPropertyID::kOverflow, CSSValueID::kVisible);
+  UpdateAllLifecyclePhasesForTest();
+  expect_marker_in("outer", ax::mojom::Role::kTabList, ax::mojom::Role::kTab,
+                   ax::mojom::Role::kTabPanel);
+
+  // Make #outer no longer a scroll container.
+  outer->SetInlineStyleProperty(CSSPropertyID::kOverflow, CSSValueID::kVisible);
+  UpdateAllLifecyclePhasesForTest();
+  expect_no_markers();
+}
+
 TEST_F(AccessibilityTest,
        TreeItemWithAriaCheckedShouldNotHaveImplicitAriaSelected) {
   SetBodyInnerHTML(R"HTML(
@@ -953,7 +1021,7 @@ TEST_F(AccessibilityTest, RadioButtonsInGroupInTableRows) {
   // kRadioGroupIds.
   EXPECT_EQ(0, node_data.GetIntAttribute(ax::mojom::IntAttribute::kSetSize));
 
-  std::vector<int32_t> radio_group_ids = node_data.GetIntListAttribute(
+  base::span<const int32_t> radio_group_ids = node_data.GetIntListAttribute(
       ax::mojom::IntListAttribute::kRadioGroupIds);
   EXPECT_EQ(6u, radio_group_ids.size());
 }

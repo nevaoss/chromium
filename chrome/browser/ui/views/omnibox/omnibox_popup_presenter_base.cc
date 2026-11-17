@@ -524,11 +524,6 @@ void OmniboxPopupPresenterBase::EnsureWidgetCreated() {
       views::Widget::InitParams::CLIENT_OWNS_WIDGET,
       ShouldReceiveFocus() ? views::Widget::InitParams::TYPE_WINDOW_FRAMELESS
                            : views::Widget::InitParams::TYPE_POPUP);
-#if BUILDFLAG(IS_WIN)
-  // On Windows use the software compositor to ensure that we don't block
-  // the UI thread during command buffer creation. See http://crbug.com/40198772
-  params.force_software_compositing = true;
-#endif
   params.opacity = views::Widget::InitParams::WindowOpacity::kTranslucent;
   params.parent = parent_widget->GetNativeView();
   params.context = parent_widget->GetNativeWindow();
@@ -734,7 +729,7 @@ void OmniboxPopupPresenterBase::RegisterBlocker() {
 void OmniboxPopupPresenterBase::UnregisterBlocker() {
   deactivation_blockers_count_--;
 
-  DCHECK_GE(deactivation_blockers_count_, 0);
+  CHECK_GE(deactivation_blockers_count_, 0, base::NotFatalUntil::M162);
   if (deactivation_blockers_count_ < 0) {
     deactivation_blockers_count_ = 0;
   }

@@ -158,6 +158,13 @@ bool PinnedTabContainerView::ShouldSnapToTarget(
   return views::IsViewClass<SplitTabView>(&child_view);
 }
 
+bool PinnedTabContainerView::IsAnimationAllowed() {
+  if (!collection_node_) {
+    return false;
+  }
+  return collection_node_->GetController()->IsAnimationAllowed();
+}
+
 std::optional<BrowserRootView::DropIndex>
 PinnedTabContainerView::GetLinkDropIndex(const gfx::Point& loc_in_container) {
   if (!collection_node_ || collection_node_->children().size() == 0) {
@@ -304,6 +311,9 @@ void PinnedTabContainerView::OnCollapseStateChanged(
 }
 
 views::ScrollView* PinnedTabContainerView::GetScrollViewForContainer() const {
+  if (!collection_node_) {
+    return nullptr;
+  }
   return views::ScrollView::GetScrollViewForContents(
       const_cast<PinnedTabContainerView*>(this));
 }

@@ -96,9 +96,7 @@ suite('Scrim', function() {
   });
 
   test('MagicCursorDisabled', async function() {
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
     assertEquals('', magicCursor.style.opacity);
     assertEquals('', magicCursor.style.transform);
 
@@ -246,9 +244,7 @@ suite('MagicCursor', function() {
   async function moveCursorAndWait(x: number, y: number): Promise<void> {
     const movePromise = testRemote.moveCursorTo({x, y});
     await flushTasks();
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
     magicCursor.dispatchEvent(new Event('transitionend'));
     await movePromise;
   }
@@ -261,9 +257,7 @@ suite('MagicCursor', function() {
       value: 1.0,
     });
 
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
     assertEquals('', magicCursor.style.opacity);
     assertEquals('', magicCursor.style.transform);
 
@@ -282,9 +276,7 @@ suite('MagicCursor', function() {
       value: 1.5,
     });
 
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
     assertEquals('', magicCursor.style.opacity);
     assertEquals('', magicCursor.style.transform);
 
@@ -302,9 +294,7 @@ suite('MagicCursor', function() {
       value: 0.5,
     });
 
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
     assertEquals('', magicCursor.style.opacity);
     assertEquals('', magicCursor.style.transform);
 
@@ -315,9 +305,7 @@ suite('MagicCursor', function() {
   });
 
   test('MoveCursorTwiceAndVerifyLocation', async function() {
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
     assertEquals('', magicCursor.style.opacity);
     assertEquals('', magicCursor.style.transform);
 
@@ -331,35 +319,40 @@ suite('MagicCursor', function() {
   });
 
   test('VerifyStyleProperties', async function() {
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
 
     // Verify default style
-    const style = window.getComputedStyle(magicCursor);
+    const style = magicCursor.computedStyleMap();
     assertEquals(
-        style.transitionTimingFunction, 'cubic-bezier(0.6, 0, 0.4, 1)');
-    assertEquals(style.transitionProperty, 'transform');
-    assertEquals(magicCursor.style.transitionDuration, '');
+        'cubic-bezier(0.6, 0, 0.4, 1)',
+        (style.get('transition-timing-function') as CSSStyleValue).toString());
+    assertEquals(
+        'transform',
+        (style.get('transition-property') as CSSKeywordValue).value);
+    assertEquals('', magicCursor.style.transitionDuration);
 
     /* Verify that cursor movements don't modify the transition animation
      * properties. */
     await moveCursorAndWait(100, 100);
     assertEquals(
-        style.transitionTimingFunction, 'cubic-bezier(0.6, 0, 0.4, 1)');
-    assertEquals(style.transitionProperty, 'transform');
+        'cubic-bezier(0.6, 0, 0.4, 1)',
+        (style.get('transition-timing-function') as CSSStyleValue).toString());
+    assertEquals(
+        'transform',
+        (style.get('transition-property') as CSSKeywordValue).value);
 
     await moveCursorAndWait(400, 100);
-    assertEquals(magicCursor.style.transitionDuration, '450ms');
+    assertEquals('450ms', magicCursor.style.transitionDuration);
     assertEquals(
-        style.transitionTimingFunction, 'cubic-bezier(0.6, 0, 0.4, 1)');
-    assertEquals(style.transitionProperty, 'transform');
+        'cubic-bezier(0.6, 0, 0.4, 1)',
+        (style.get('transition-timing-function') as CSSStyleValue).toString());
+    assertEquals(
+        'transform',
+        (style.get('transition-property') as CSSKeywordValue).value);
   });
 
   test('DynamicDurationCalculation', async function() {
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
     assertEquals('', magicCursor.style.opacity);
     assertEquals('', magicCursor.style.transform);
 
@@ -444,9 +437,7 @@ suite('MagicCursor', function() {
   });
 
   test('TriggerClickAnimation', async function() {
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
 
     // Move the cursor first to initialize it.
     await moveCursorAndWait(100, 150);
@@ -474,9 +465,7 @@ suite('MagicCursor', function() {
   });
 
   test('TriggerClickAnimation_CancelledByMoveCursor', async function() {
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
 
     await moveCursorAndWait(100, 150);
 
@@ -502,9 +491,7 @@ suite('MagicCursor', function() {
   });
 
   test('TriggerClickAnimation_RestartedBySecondClick', async function() {
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
 
     await moveCursorAndWait(100, 150);
 
@@ -534,9 +521,7 @@ suite('MagicCursor', function() {
   });
 
   test('TriggerClickAnimation_IgnoredIfUninitialized', async function() {
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
 
     // Ensure cursor is not initialized (opacity is 0).
     assertEquals('', magicCursor.style.opacity);
@@ -553,37 +538,92 @@ suite('MagicCursor', function() {
   });
 
   test('ClickAnimationTimingMatchesCSS', function() {
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
 
     magicCursor.classList.add('clicking');
-    const style = window.getComputedStyle(magicCursor);
+    const style = magicCursor.computedStyleMap();
 
-    assertEquals('0.4s', style.animationDuration);
-    assertEquals('ease-out', style.animationTimingFunction);
-    assertTrue(style.animationName.includes('cursor-click'));
+    assertEquals(0.4, (style.get('animation-duration') as CSSUnitValue).value);
+    assertEquals(
+        'ease-out',
+        (style.get('animation-timing-function') as CSSKeywordValue).value);
+    assertTrue((style.get('animation-name') as CSSKeywordValue)
+                   .value.includes('cursor-click'));
   });
 
   test('CursorImageStructure', function() {
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
 
     const cursorImage = magicCursor.querySelector<HTMLElement>('#cursorImage');
     assertTrue(!!cursorImage);
 
-    const style = window.getComputedStyle(cursorImage);
-    assertEquals('transform', style.willChange);
-    assertTrue(style.backgroundImage.includes('magic_cursor.svg'));
+    const style = cursorImage.computedStyleMap();
+    assertEquals('transform', style.get('will-change')?.toString());
+    assertTrue(
+        style.get('background-image')
+            ?.toString()
+            .includes('magic_cursor.svg') ??
+        false);
+  });
+
+  test('SetCursorChipShowsPlainText', async function() {
+    assertFalse(!!page.shadowRoot.querySelector('#cursorChip'));
+
+    testRemote.setCursorChip('<b>Searching</b>');
+    await microtasksFinished();
+    const cursorChip =
+        page.shadowRoot.querySelector<HTMLElement>('#cursorChip');
+    assertTrue(!!cursorChip);
+    assertEquals('<b>Searching</b>', cursorChip.textContent);
+  });
+
+  test('SetCursorChipWithEmptyTextHidesChip', async function() {
+    testRemote.setCursorChip('Searching');
+    await microtasksFinished();
+    assertTrue(!!page.shadowRoot.querySelector('#cursorChip'));
+
+    testRemote.setCursorChip('');
+    await microtasksFinished();
+    assertFalse(!!page.shadowRoot.querySelector('#cursorChip'));
+  });
+
+  test('CursorChipHasNoTransition', async function() {
+    // A transitionend from the chip would end a cursor move early.
+    testRemote.setCursorChip('Searching');
+    await microtasksFinished();
+    const cursorChip =
+        page.shadowRoot.querySelector<HTMLElement>('#cursorChip');
+    assertTrue(!!cursorChip);
+    assertEquals(
+        0,
+        (cursorChip.computedStyleMap().get('transition-duration') as
+         CSSUnitValue)
+            .value);
+  });
+
+  test('ResizeHidesCursorChip', async function() {
+    await moveCursorAndWait(100, 100);
+    testRemote.setCursorChip('Searching');
+    await microtasksFinished();
+    const cursorChip =
+        page.shadowRoot.querySelector<HTMLElement>('#cursorChip');
+    assertTrue(!!cursorChip);
+    assertEquals(
+        'visible',
+        (cursorChip.computedStyleMap().get('visibility') as CSSKeywordValue)
+            .value);
+
+    window.dispatchEvent(new Event('resize'));
+    assertEquals(
+        'hidden',
+        (cursorChip.computedStyleMap().get('visibility') as CSSKeywordValue)
+            .value);
   });
 
   test('LoadingState_TriggersAfterMoveAndDelay', async function() {
     const mockTimer = new MockTimer();
     mockTimer.install();
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
 
     // Initialize the cursor with the first movement.
     await moveCursorAndWait(100, 100);
@@ -607,9 +647,7 @@ suite('MagicCursor', function() {
   test('LoadingState_RemovedImmediatelyOnNewMove', async function() {
     const mockTimer = new MockTimer();
     mockTimer.install();
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
 
     // Initialize the cursor with the first movement.
     await moveCursorAndWait(100, 100);
@@ -628,9 +666,7 @@ suite('MagicCursor', function() {
   test('LoadingState_DelayCancelledByInterruption', async function() {
     const mockTimer = new MockTimer();
     mockTimer.install();
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
 
     // Initialize the cursor with the first movement.
     await moveCursorAndWait(100, 100);
@@ -684,9 +720,7 @@ suite('MagicCursor', function() {
     const mockTimer = new MockTimer();
     mockTimer.install();
     setReducedMotion(true);
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
 
     // Initialize cursor.
     await moveCursorAndWait(100, 100);
@@ -725,9 +759,7 @@ suite('MagicCursor', function() {
     const mockTimer = new MockTimer();
     mockTimer.install();
     setReducedMotion(true);
-    const magicCursor =
-        page.shadowRoot.querySelector<HTMLElement>('#magicCursor');
-    assertTrue(!!magicCursor);
+    const magicCursor = page.$.magicCursor;
 
     // Initialize cursor.
     await moveCursorAndWait(100, 100);

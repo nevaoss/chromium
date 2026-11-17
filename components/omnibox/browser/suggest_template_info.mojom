@@ -4,14 +4,9 @@
 
 module suggest_template_info.mojom;
 
+import "components/omnibox/browser/fusebox_action.mojom";
 import "mojo/public/mojom/base/string16.mojom";
 import "url/mojom/url.mojom";
-
-// See components/omnibox/browser/autocomplete_match.h.
-struct ACMatchClassification {
-  uint32 offset;
-  int32 style;
-};
 
 // The color of a FormattedString fragment. Maps to FormattedString.ColorType in
 // //third_party/omnibox_proto/formatted_string.proto. The values must match, so
@@ -70,6 +65,34 @@ enum SuggestStyle {
 };
 // LINT.ThenChange(//third_party/omnibox_proto/suggest_template_info.proto:StandardSuggestStyle)
 
+// The icon of a suggestion. Maps to SuggestTemplateInfo.IconType in
+// //third_party/omnibox_proto/suggest_template_info.proto. The values must
+// match, so that the proto values can be cast directly. They are also recorded
+// by the NTP action chips histograms.
+// LINT.IfChange(IconType)
+enum IconType {
+  kIconTypeUnspecified = 0,
+  kHistory = 1,
+  kSearchLoop = 2,
+  kSearchLoopWithSparkle = 3,
+  kTrending = 4,
+  kSubArrowRight = 5,
+  kGlobeWithSearchLoop = 6,
+  kBanana = 7,
+  kFavicon = 8,
+  kNotesSpark = 9,
+  kDraftSpark = 10,
+  kLightbulb = 11,
+  kAttachFile = 12,
+  kSchool = 13,
+  kInkPen = 14,
+  kTab = 15,
+  kPhotoSpark = 16,
+  kBolt = 17,
+  kImageCreate = 18,
+};
+// LINT.ThenChange(//tools/metrics/histograms/metadata/new_tab_page/enums.xml:ActionChipIconType)
+
 // Where to display the secondary text relative to the primary text.
 // Maps to SuggestTemplateInfo.SecondaryTextPlacement in
 // //third_party/omnibox_proto/suggest_template_info.proto.
@@ -105,14 +128,8 @@ struct Image {
 struct SuggestTemplateInfo {
   // The primary text of the suggestion and its styling.
   FormattedString primary_text;
-  // TODO(crbug.com/571949791): Remove once the WebUI renders the styling from
-  // `primary_text.fragments`.
-  array<ACMatchClassification> primary_text_class;
   // The secondary text of the suggestion (e.g. a subtitle) and its styling.
   FormattedString secondary_text;
-  // TODO(crbug.com/571949791): Remove once the WebUI renders the styling from
-  // `secondary_text.fragments`.
-  array<ACMatchClassification> secondary_text_class;
   // Where to display the secondary text relative to the primary text.
   SecondaryTextPlacement secondary_text_placement =
       SecondaryTextPlacement.kUnspecified;
@@ -120,4 +137,10 @@ struct SuggestTemplateInfo {
   Image? image;
   // The style of the suggestion, as provided by the server.
   SuggestStyle style = SuggestStyle.kUnspecified;
+  // The icon to display in front of the primary text.
+  // TODO(crbug.com/573635047): Use this in the searchbox WebUI too.
+  IconType type_icon = IconType.kIconTypeUnspecified;
+  // FuseboxAction carries client behavior and configuration to apply when the
+  // user accepts a suggestion.
+  fusebox_action.mojom.FuseboxAction? fusebox_action;
 };

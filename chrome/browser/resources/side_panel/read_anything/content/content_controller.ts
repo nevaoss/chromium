@@ -324,8 +324,12 @@ export class ContentController {
         contentFragment.appendChild(titleElement);
       }
 
+      // Parse into a <template> so custom elements defined in the Reading Mode
+      // WebUI are not upgraded before they can be unwrapped below.
+      const template = document.createElement('template');
+      template.setHTML(contentHtml, READABILITY_SET_HTML_OPTIONS);
       const contentContainer = document.createElement('div');
-      contentContainer.setHTML(contentHtml, READABILITY_SET_HTML_OPTIONS);
+      contentContainer.appendChild(template.content);
 
       // Strip single newlines from text nodes to prevent unexpected sentence
       // breaks, as Readability preserves raw HTML newlines which are visually
@@ -535,6 +539,8 @@ export class ContentController {
         if (contextNode) {
           // Don't initialize until after drawing otherwise, the DOM nodes might
           // not yet exist in the tree.
+          // TODO(crbug.com/575459750): Don't let Read Aloud setup block
+          // distillation or other Reading mode work.
           getReadAloudModel().init(contextNode);
         }
       }

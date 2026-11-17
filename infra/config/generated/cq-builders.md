@@ -813,6 +813,11 @@ builder.
   Location filters:
   * [`//third_party/weston/.+`](https://cs.chromium.org/chromium/src/third_party/weston/)
 
+* [linux-webdriver-bidi-rel](https://ci.chromium.org/p/chromium/builders/try/linux-webdriver-bidi-rel) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""linux-webdriver-bidi-rel""))
+
+  Location filters:
+  * [`//third_party/chromium-bidi/.+`](https://cs.chromium.org/chromium/src/third_party/chromium-bidi/)
+
 * [linux-x64-centipede-asan-rel-tests](https://ci.chromium.org/p/chromium/builders/try/linux-x64-centipede-asan-rel-tests) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""linux-x64-centipede-asan-rel-tests""))
 
   Location filters:
@@ -940,6 +945,11 @@ builder.
   Location filters:
   * [`//chrome/updater/.+`](https://cs.chromium.org/chromium/src/chrome/updater/)
   * [`//chrome/enterprise_companion/.+`](https://cs.chromium.org/chromium/src/chrome/enterprise_companion/)
+
+* [mac-webdriver-bidi-rel](https://ci.chromium.org/p/chromium/builders/try/mac-webdriver-bidi-rel) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""mac-webdriver-bidi-rel""))
+
+  Location filters:
+  * [`//third_party/chromium-bidi/.+`](https://cs.chromium.org/chromium/src/third_party/chromium-bidi/)
 
 * [mac_optional_gpu_tests_rel](https://ci.chromium.org/p/chromium/builders/try/mac_optional_gpu_tests_rel) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""mac_optional_gpu_tests_rel""))
 

@@ -182,6 +182,12 @@ constexpr auto kFontDefaults = std::to_array<FontDefault>({
     {prefs::kWebKitSerifFontFamilyDevanagari, IDS_SERIF_FONT_FAMILY_DEVANAGARI},
     {prefs::kWebKitSansSerifFontFamilyDevanagari,
      IDS_SANS_SERIF_FONT_FAMILY_DEVANAGARI},
+    {prefs::kWebKitStandardFontFamilyArabicNastaliq,
+     IDS_STANDARD_FONT_FAMILY_ARABIC_NASTALIQ},
+    {prefs::kWebKitSerifFontFamilyArabicNastaliq,
+     IDS_SERIF_FONT_FAMILY_ARABIC_NASTALIQ},
+    {prefs::kWebKitSansSerifFontFamilyArabicNastaliq,
+     IDS_SANS_SERIF_FONT_FAMILY_ARABIC_NASTALIQ},
 #endif
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     {prefs::kWebKitCursiveFontFamilySimplifiedHan,
@@ -307,7 +313,7 @@ void RegisterLocalizedFontPref(user_prefs::PrefRegistrySyncable* registry,
   int val = 0;
   bool success =
       base::StringToInt(l10n_util::GetStringUTF8(default_message_id), &val);
-  DCHECK(success);
+  CHECK(success, base::NotFatalUntil::M162);
   registry->RegisterIntegerPref(path, val);
 }
 #endif

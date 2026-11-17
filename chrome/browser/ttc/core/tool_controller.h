@@ -13,6 +13,7 @@
 #include "base/functional/function_ref.h"
 #include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
+#include "base/types/expected.h"
 #include "base/values.h"
 #include "build/build_config.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
@@ -25,6 +26,16 @@ class Profile;
 namespace actor {
 class ToolRequest;
 }  // namespace actor
+
+namespace content {
+class Page;
+}  // namespace content
+
+namespace page_content_annotations {
+class PageContextFetcher;
+struct FetchPageContextResult;
+struct FetchPageContextErrorDetails;
+}  // namespace page_content_annotations
 
 namespace ttc {
 
@@ -66,18 +77,32 @@ class ToolController {
   void SetText(const base::DictValue& arguments, ToolResponseCallback callback);
   void SelectOption(const base::DictValue& arguments,
                     ToolResponseCallback callback);
-
-  // TODO(crbug.com/470475787): The actor tools backing these haven't been
-  // ported to Android yet (see `skip_android_unmigrated_actor_files` in
-  // //chrome/browser/actor/BUILD.gn), so they're neither declared to the model
-  // nor dispatched there. Drop the guard once they are.
-#if !BUILDFLAG(IS_ANDROID)
+  void ScrollPage(const base::DictValue& arguments,
+                  ToolResponseCallback callback);
+  void GetScreenshot(ToolResponseCallback callback);
+  void OnGetScreenshotUrlChecked(base::WeakPtr<content::Page> page,
+                                 ToolResponseCallback callback,
+                                 bool is_url_supported);
+  void OnGetScreenshotFetched(
+      ToolResponseCallback callback,
+      base::expected<
+          std::unique_ptr<page_content_annotations::FetchPageContextResult>,
+          page_content_annotations::FetchPageContextErrorDetails> result);
+  void PromptGeminiPanel(const base::DictValue& arguments,
+                         ToolResponseCallback callback);
+  void CloseGeminiPanel(ToolResponseCallback callback);
   void CloseCurrentTab(ToolResponseCallback callback);
   void SwitchTab(const base::DictValue& arguments,
                  ToolResponseCallback callback);
+  void SetFullscreen(bool fullscreen, ToolResponseCallback callback);
+
+  // TODO(crbug.com/470475787): The actor tool backing this hasn't been
+  // ported to Android yet (see `skip_android_unmigrated_actor_files` in
+  // //chrome/browser/actor/BUILD.gn), so it's neither declared to the model
+  // nor dispatched there. Drop the guard once it is.
+#if !BUILDFLAG(IS_ANDROID)
   void OpenKnownPage(const base::DictValue& arguments,
                      ToolResponseCallback callback);
-  void SetFullscreen(bool fullscreen, ToolResponseCallback callback);
 #endif
 
   // Runs the tool request returned by `create_action` against the contents
@@ -102,6 +127,10 @@ class ToolController {
 
   // Owns this object.
   const raw_ref<SessionControllerImpl> session_controller_;
+
+  bool is_capturing_screenshot_ = false;
+  std::unique_ptr<page_content_annotations::PageContextFetcher>
+      screenshot_fetcher_;
 
   base::WeakPtrFactory<ToolController> weak_factory_{this};
 };

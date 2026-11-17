@@ -105,6 +105,17 @@ inline constexpr char kAppBarAssistantCustomizationDescription[] =
     "When enabled, long pressing the AppBar assistant button shows a menu to "
     "choose which entry point the button shows.";
 
+inline constexpr char kAppBarDisableLongPressName[] =
+    "Disable App Bar long press";
+inline constexpr char kAppBarDisableLongPressDescription[] =
+    "When enabled, disables long-press context menus on the App Bar buttons.";
+
+inline constexpr char kAppBarStaticSymbolWhenHiddenName[] =
+    "App Bar static symbol when hidden";
+inline constexpr char kAppBarStaticSymbolWhenHiddenDescription[] =
+    "When enabled, the App Bar tab grid button swaps its symbol without an "
+    "animated content transition while the App Bar is not visible.";
+
 inline constexpr char kAppSwitcherAISummarizationName[] =
     "App Switcher AI summarization";
 inline constexpr char kAppSwitcherAISummarizationDescription[] =
@@ -1028,11 +1039,6 @@ inline constexpr char kHandleMdmErrorsForDasherAccountsName[] =
 inline constexpr char kHandleMdmErrorsForDasherAccountsDescription[] =
     "Enables the mdm error handling feature for dasher accounts";
 
-inline constexpr char kHideFuseboxVoiceLensActionsName[] =
-    "Hide Voice and Lens in Fusebox";
-inline constexpr char kHideFuseboxVoiceLensActionsDescription[] =
-    "Hides voice and lens shortcuts in fusebox.";
-
 inline constexpr char kHideToolbarName[] = "Hide Toolbar";
 inline constexpr char kHideToolbarDescription[] =
     "When enabled, adds a button in the long press omnibox menu that forces "
@@ -1229,6 +1235,12 @@ inline constexpr char kIOSTrustedVaultNotificationDescription[] =
     "When enabled and when the trusted vault key is missing, the provisional "
     "notification will be delivered.";
 
+inline constexpr char kIOSUnifiedManualFallbackSheetName[] =
+    "Unified Manual Fallback Sheet";
+inline constexpr char kIOSUnifiedManualFallbackSheetDescription[] =
+    "Enables the unified manual fallback bottom sheet with a single entry "
+    "point, all Autofill entity categories, and entity detail views on iOS.";
+
 inline constexpr char kIOSWebContextMenuNewTitleName[] =
     "Use the new title for the Web context menu";
 inline constexpr char kIOSWebContextMenuNewTitleDescription[] =
@@ -1346,6 +1358,12 @@ inline constexpr char kLensTripleCameraEnabledName[] =
 inline constexpr char kLensTripleCameraEnabledDescription[] =
     "When enabled, Lens LVF uses virtual triple camera.";
 
+inline constexpr char kLensUseSeparateRequestIdForViewportImagesName[] =
+    "Lens Use Separate Request ID for Viewport Images";
+inline constexpr char kLensUseSeparateRequestIdForViewportImagesDescription[] =
+    "Enables using separate request IDs for page contents vs page viewport "
+    "uploads.";
+
 inline constexpr char kLightAppBarName[] = "Light App Bar";
 inline constexpr char kLightAppBarDescription[] =
     "When enabled, the App Bar adapts its appearance to follow the user's "
@@ -1355,6 +1373,11 @@ inline constexpr char kLocationBarBadgeMigrationName[] =
     "LocationBarBadgeMigration";
 inline constexpr char kLocationBarBadgeMigrationDescription[] =
     "Enables the LocationBarBadgeMigration feature.";
+
+inline constexpr char kLocationBarPerformanceImprovementsName[] =
+    "LocationBarPerformanceImprovements";
+inline constexpr char kLocationBarPerformanceImprovementsDescription[] =
+    "Enables performance improvements for the location bar.";
 
 inline constexpr char kLockBottomToolbarName[] = "Lock bottom toolbar";
 inline constexpr char kLockBottomToolbarDescription[] =

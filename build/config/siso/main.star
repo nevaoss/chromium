@@ -45,6 +45,27 @@ def __disable_remote(ctx, step_config):
         rule["remote"] = False
     return step_config
 
+def __disable_remote_host_tools_for_msan(ctx, step_config):
+    # In MSan builds, host tools (protoc, compiled_action targets) are run
+    # with MSan-instrumented shared libraries from
+    # //third_party/instrumented_libs. Only a small set of those libraries is
+    # declared as an input of the action, so when the tool runs remotely the
+    # dynamic loader silently falls back to the worker's uninstrumented system
+    # libraries for everything else (e.g. glib for tools that depend on //base
+    # in component builds), and MSan reports false positives.
+    # Run such steps locally in MSan builds.
+    if gn.args(ctx).get("is_msan") != "true":
+        return step_config
+    for rule in step_config["rules"]:
+        if not rule.get("remote"):
+            continue
+        prefix = rule.get("command_prefix", "")
+        if "/build/gn_run_binary.py" in prefix or \
+           "/tools/protoc_wrapper/protoc_wrapper.py" in prefix or \
+           rule.get("name") in ("default", "default-python"):
+            rule["remote"] = False
+    return step_config
+
 def __unset_timeout(ctx, step_config):
     if not config.get(ctx, "no-remote-timeout"):
         return step_config
@@ -99,35 +120,8 @@ def init(ctx):
             "./android_clang_arm/obj/chrome/browser/webapps/android_impl/webapps_client_android.o": "crbug.com/572931511",
             "./obj/ash/quick_pair/repository/repository/device_address_map.o": "crbug.com/546524333",
             "./obj/ash/quick_pair/repository/repository/device_image_store.o": "crbug.com/546524333",
-            "./obj/chrome/browser/ash/app_list/app_list/app_list_syncable_service.o": "crbug.com/572931408",
-            "./obj/chrome/browser/ash/app_list/search/ranking/ranking/answer_ranker.o": "crbug.com/573753551",
-            "./obj/chrome/browser/ash/app_list/search/ranking/ranking/best_match_ranker.o": "crbug.com/573753551",
-            "./obj/chrome/browser/ash/app_list/search/ranking/ranking/continue_ranker.o": "crbug.com/573753551",
-            "./obj/chrome/browser/ash/app_list/search/ranking/ranking/filtering_ranker.o": "crbug.com/573753551",
-            "./obj/chrome/browser/ash/app_list/search/ranking/ranking/ftrl_ranker.o": "crbug.com/573753551",
-            "./obj/chrome/browser/ash/app_list/search/ranking/ranking/mrfu_ranker.o": "crbug.com/573753551",
-            "./obj/chrome/browser/ash/app_list/search/ranking/ranking/query_highlighter.o": "crbug.com/573753551",
-            "./obj/chrome/browser/ash/app_list/search/ranking/ranking/removed_results_ranker.o": "crbug.com/573753551",
-            "./obj/chrome/browser/ash/app_list/search/ranking/ranking/score_normalizing_ranker.o": "crbug.com/573753551",
-            "./obj/chrome/browser/ash/app_list/search/ranking/ranking/sorting.o": "crbug.com/573753551",
-            "./obj/chrome/browser/ash/arc/optin/optin/arc_terms_of_service_oobe_negotiator.o": "crbug.com/572931408",
-            "./obj/chrome/browser/ash/arc/pip/pip/arc_picture_in_picture_window_controller_impl.o": "crbug.com/573753551",
-            "./obj/chrome/browser/ash/borealis/borealis/borealis_app_launcher.o": "crbug.com/572931408",
-            "./obj/chrome/browser/ash/borealis/borealis/borealis_app_uninstaller.o": "crbug.com/572931408",
-            "./obj/chrome/browser/ash/borealis/borealis/borealis_disk_cleanup_manager.o": "crbug.com/572931408",
-            "./obj/chrome/browser/ash/borealis/borealis/borealis_installer_impl.o": "crbug.com/572931408",
-            "./obj/chrome/browser/ash/borealis/borealis/borealis_util.o": "crbug.com/572931408",
-            "./obj/chrome/browser/ash/borealis/borealis/borealis_window_manager.o": "crbug.com/572931408",
-            "./obj/chrome/browser/ash/drive/drive/drive_integration_service.o": "crbug.com/572931408",
             "./obj/chrome/browser/ash/guest_os/public/public/guest_os_mount_provider.o": "crbug.com/565544340",
-            "./obj/chrome/browser/ash/main_parts/main_parts/chrome_browser_main_parts_ash.o": "crbug.com/572931408",
-            "./obj/chrome/browser/ash/policy/dlp/dlp/dlp_content_manager_ash.o": "crbug.com/572931408",
-            "./obj/chrome/browser/chromeos/extensions/login_screen/login/cleanup/cleanup/pinned_apps_cleanup_handler.o": "crbug.com/572931408",
-            "./obj/chrome/browser/chromeos/policy/dlp/dialogs/dialogs/dlp_warn_dialog.o": "crbug.com/573753551",
-            "./obj/chrome/browser/chromeos/policy/dlp/dialogs/dialogs/dlp_warn_notifier.o": "crbug.com/573753551",
-            "./obj/chrome/browser/chromeos/policy/dlp/dialogs/test_support/mock_dlp_warn_notifier.o": "crbug.com/573753551",
             "./obj/chrome/browser/offline_pages/impl/offline_page_utils_android.o": "crbug.com/572931511",
-            "./obj/chrome/browser/ui/webui/help/help/version_updater_chromeos.o": "crbug.com/572931408",
             "./obj/chrome/browser/webapps/android_impl/webapps_client_android.o": "crbug.com/572931511",
             "./obj/chrome/common/apps/platform_apps/api/api_features/api_features.o": "crbug.com/570385211",
             "./obj/chrome/common/apps/platform_apps/api/permission_features/permission_features.o": "crbug.com/570385211",
@@ -164,6 +158,7 @@ def init(ctx):
 
     step_config = __setup_python(ctx, step_config)
     step_config = __disable_remote(ctx, step_config)
+    step_config = __disable_remote_host_tools_for_msan(ctx, step_config)
     step_config = __unset_timeout(ctx, step_config)
 
     filegroups = {}

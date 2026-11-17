@@ -251,6 +251,7 @@
 <translation id="1984417487208496350">संरक्षण नाही (शिफारस केली जात नाही)</translation>
 <translation id="1986685561493779662">नाव आधीपासून अस्तित्वात आहे</translation>
 <translation id="1992244793717364584">ॲप अनइंस्टॉल केले आहे</translation>
+<translation id="1999115740519098545">स्टार्टअप वर</translation>
 <translation id="200114059308480249">Google वर शोधताना आसपासच्या मजकुराचा समावेश करायचा आहे का?</translation>
 <translation id="2004096469149679223"><ph name="TAB_TITLE" />, पिन केलेला म्यूट केलेला गुप्त टॅब</translation>
 <translation id="2021896219286479412">फुल स्क्रीन साइट नियंत्रणे</translation>
@@ -265,7 +266,6 @@
 <translation id="2056878612599315956">साइट थांबवली</translation>
 <translation id="2063047797624276601">तुमच्या संस्थेने वर्धित सुरक्षित ब्राउझिंग सुरू केले आहे</translation>
 <translation id="2065944887543506430">{FILE_COUNT,plural, =1{एक डाउनलोड करता आले नाही}other{# डाउनलोड करता आले नाहीत}}</translation>
-<translation id="2066690553719545730">AI मोड नेहमी दाखवा</translation>
 <translation id="2067805253194386918">मजकूर</translation>
 <translation id="2079545284768500474">पहिल्यासारखे करा</translation>
 <translation id="2082238445998314030"><ph name="TOTAL_RESULTS" /> पैकी <ph name="RESULT_NUMBER" /> परिणाम</translation>
@@ -798,6 +798,7 @@
 <translation id="4188638484665452040">Gemini अनपिन केले आहे</translation>
 <translation id="4189344235004694858">{NUM_REVOKED_PERMISSIONS,plural, =1{स्पॅम किंवा फसवा आशय यामुळे Chrome ने या साइटला नोटिफिकेशन पाठवण्यापासून थांबवले आहे}other{स्पॅम किंवा फसवा आशय यामुळे Chrome ने या साइटना नोटिफिकेशन पाठवण्यापासून थांबवले आहे}}</translation>
 <translation id="4195643157523330669">नवीन टॅबमध्ये उघडा</translation>
+<translation id="4195814663415092787">तुम्ही सोडले होते तिथून पुढे सुरू करा</translation>
 <translation id="4197828496439691735">{NUM_TABS,plural, =1{या डिव्हाइसवर १ टॅब आहे}other{या डिव्हाइसवर # टॅब आहेत}}</translation>
 <translation id="4198268995694216131">अतिरिक्त साइट</translation>
 <translation id="4198423547019359126">कोणतीही डाउनलोड स्थाने उपलब्ध नाहीत</translation>
@@ -808,7 +809,6 @@
 <translation id="4216511743389425832">हे पेज ऐका</translation>
 <translation id="4217657297368492684"><ph name="TAB_TITLE" />, निवडलेला पिन केलेला चित्रात-चित्र गुप्त टॅब</translation>
 <translation id="4225895483398857530">टूलबार शॉर्टकट</translation>
-<translation id="4232376164796433044">पासवर्ड आणि ऑटोफिल</translation>
 <translation id="4242533952199664413">सेटिंग्ज उघडा</translation>
 <translation id="424864128008805179">Chrome मधून साइन आउट करायचे?</translation>
 <translation id="425582637250725228">तुम्ही केलेले बदल कदाचित सेव्ह केले जाणार नाहीत.</translation>
@@ -1082,7 +1082,6 @@
 <translation id="5284295735376057059">दस्तऐवज गुणधर्म</translation>
 <translation id="5286907366254680517">डिटेक्ट केली</translation>
 <translation id="5290322819358431297">तुमचे पासवर्ड ऑटोफिल करा</translation>
-<translation id="5292796745632149097">यांना पाठवा</translation>
 <translation id="5301876394151419436">तुम्ही <ph name="EMAIL" /> म्हणून साइन इन केले आहे. तुम्ही सेटिंग्जमध्ये सिंक करणे कधीही थांबवू शकता. Google तुमच्या इतिहासाच्या आधारे Search आणि इतर सेवा पर्सनलाइझ करू शकते.</translation>
 <translation id="5304593522240415983">हे फील्ड रिक्त ठेवता येणार नाही</translation>
 <translation id="5306014156308790439">संग्रहामध्ये जोडा बंद केले आहे</translation>
@@ -1148,6 +1147,7 @@
 <translation id="5568069709869097550">साइन इन करणे शक्य नाही</translation>
 <translation id="557018954714092179">नवीन फोल्डर तयार करा</translation>
 <translation id="5578795271662203820">या इमेजसाठी <ph name="SEARCH_ENGINE" /> शोधा</translation>
+<translation id="558563010977877295">एक विशिष्‍ट पेज किंवा अन्य पेजवर उघडा</translation>
 <translation id="5596627076506792578">अधिक पर्याय</translation>
 <translation id="5599455543593328020">गुप्त मोड</translation>
 <translation id="5601180634394228718">तुमच्या Chrome अनुभवामध्ये सुधारणा करण्यासाठी डेटा वापरणाऱ्या आणखी सेटिंग्जकरिता, <ph name="BEGIN_LINK" />Google सेवा<ph name="END_LINK" /> यावर जा.</translation>
@@ -1448,6 +1448,7 @@
 <translation id="671481426037969117">तुमचा <ph name="FQDN" /> टायमर झाला आहे. तो उद्या पुन्हा सुरू होईल.</translation>
 <translation id="6716434912087331834">नवीन विंडो रिस्टोअर करण्यासाठी, अ‍ॅक्टिव्ह विंडोची एकूण संख्या <ph name="MAX_WINDOW_COUNT_MINUS_ONE" /> किंवा त्याहून कमी करा. इनॅक्टिव्ह विंडो ६ महिन्यांनंतर हटवल्या जातात.</translation>
 <translation id="6723740634201835758">तुमच्या Google खात्यामध्ये</translation>
+<translation id="6725340821578440069">डिव्हाइसनुसार फिल्टर करा</translation>
 <translation id="6734310707649923383">तुम्ही भेट दिलेली पेज पाहू शकता किंवा ती तुमच्या इतिहासामधून हटवू शकता</translation>
 <translation id="6737429434215739253"><ph name="TAB_TITLE" />, पिन केलेला रेकॉर्ड करत असलेला गुप्त टॅब</translation>
 <translation id="6738867403308150051">डाउनलोड करीत आहे…</translation>
@@ -1906,6 +1907,7 @@
 <translation id="8387617938027387193">हे तुम्हीच आहात याची पडताळणी करा</translation>
 <translation id="8393700583063109961">संदेश पाठवा</translation>
 <translation id="8398389123831319859">गुप्त मोडवर स्विच करण्यासाठी दोनदा टॅप करून धरून ठेवा</translation>
+<translation id="8401904657382223224">होस्टनुसार फिल्टर करा</translation>
 <translation id="8412037385861858490">Chrome वर तुमचे काम सुरक्षित ठेवण्यासाठी, तुम्ही Chrome मध्ये साइन-इन केलेले असताना तुमची संस्था विशिष्ट माहिती पाहू किंवा व्यवस्थापित करू शकेल. <ph name="BEGIN_LINK" />अधिक जाणून घ्या<ph name="END_LINK" /></translation>
 <translation id="8413126021676339697">संपूर्ण इतिहास दर्शवा</translation>
 <translation id="8413795581997394485">धोकादायक म्हणून ओळखल्या जाणार्‍या साइट, डाउनलोड आणि एक्स्टेंशन यापासून संरक्षण करते. तुम्ही साइटला भेट देता, तेव्हा Chrome तुमचा आयपी अ‍ॅड्रेस लपवणार्‍या गोपनीयता सर्व्हरद्वारे Google ला URL चा क्लिष्ट भाग पाठवते. साइटने काहीतरी संशयास्पद केल्यास, पूर्ण URLs आणि पेज आशयाचे भागदेखील पाठवले जातात.</translation>

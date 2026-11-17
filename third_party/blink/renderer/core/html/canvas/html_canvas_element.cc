@@ -878,38 +878,52 @@ void HTMLCanvasElement::OnWidthOrHeightAssigned() {
     h = kDefaultCanvasHeight;
   }
 
-  if (IsRenderingContext2D()) {
-    context_->Reset();
-    origin_clean_ = true;
-  }
   canvas_is_clear_ = true;
-
   gfx::Size old_size = Size();
   gfx::Size new_size(w, h);
 
-  // For Canvas2D, reuse any existing backing buffer rather than dropping and
-  // recreating it. Doing this optimization for WebGL and WebGPU would require
-  // investigation to make sure that it's spec-compliant (including adding any
-  // operations as necessary to get it compliant).
-  if (IsRenderingContext2D() && old_size == new_size) {
-    return;
-  }
-
-  size_ = new_size;
-  if (RenderingContext()) {
-    RenderingContext()->SizeChanged();
-  }
-
-  DiscardResources();
-  if (IsRenderingContext2D() && context_->isContextLost()) {
-    context_->RestoreFromInvalidSizeIfNeeded();
-  }
   if (frame_dispatcher_) {
-    frame_dispatcher_->Reshape(Size());
+    frame_dispatcher_->Reshape(new_size);
   }
 
-  if ((IsWebGL() && old_size != Size()) || IsWebGPU()) {
-    context_->Reshape(width(), height());
+  if (IsRenderingContext2D()) {
+    context_->Reset();
+    origin_clean_ = true;
+
+    // For Canvas2D, reuse any existing backing buffer rather than dropping and
+    // recreating it. Doing this optimization for WebGL and WebGPU would require
+    // investigation to make sure that it's spec-compliant (including adding any
+    // operations as necessary to get it compliant).
+    if (old_size == new_size) {
+      return;
+    }
+
+    size_ = new_size;
+    RenderingContext()->SizeChanged();
+
+    ResetLayer();
+    UpdateMemoryUsage();
+    dirty_rect_ = gfx::Rect();
+    if (context_->isContextLost()) {
+      context_->RestoreFromInvalidSizeIfNeeded();
+    }
+  } else if (IsWebGL()) {
+    size_ = new_size;
+    context_->Reshape(old_size, new_size);
+  } else if (IsWebGPU()) {
+    size_ = new_size;
+    RenderingContext()->SizeChanged();
+    UpdateMemoryUsage();
+    context_->Reshape(old_size, new_size);
+  } else if (IsImageBitmapRenderingContext()) {
+    size_ = new_size;
+    RenderingContext()->SizeChanged();
+    UpdateMemoryUsage();
+  } else {
+    size_ = new_size;
+    UpdateMemoryUsage();
+
+    CHECK(!context_);
   }
 
   if (LayoutObject* layout_object = GetLayoutObject()) {

@@ -1277,7 +1277,7 @@ Par exemple, une règle configurée uniquement pour sous-domaine.site.com s'appl
 
 Pour appliquer des exceptions, <ph name="PRODUCT_NAME" /> peut placer les sites ou sous-domaines dont le paramètre diffère de celui par défaut dans des processus dédiés. Cela peut augmenter l'utilisation de mémoire, en particulier sur <ph name="ANDROID_NAME" /> ou lorsqu'un format de caractères génériques correspond à de nombreux sous-domaines, car chaque origine correspondante peut être isolée séparément. Les sous-domaines isolés ne peuvent pas non plus utiliser document.domain pour accéder à leur site parent.
 
-Remarque : Dans les versions 138 et antérieures, les exceptions aux règles n'étaient appliquées qu'au niveau des sites (eTLD+1). Une règle définie uniquement pour sous-domaine.site.com ne prenait pas effet, même pour sous-domaine.site.com. Elle devait être définie sur site.com pour s'appliquer à la fois à site.com et à sous-domaine.site.com. Cette règle s'applique frame par frame et pas uniquement en fonction de l'URL d'origine de premier niveau. Par exemple, si site-1.com est répertorié dans la règle <ph name="JAVA_SCRIPT_OPTIMIZER_ALLOWED_FOR_SITES_POLICY_NAME" />, mais que site-1.com charge un frame contenant site-2.com, les optimisations JavaScript sont activées pour site-1.com, mais site-2.com utilise la règle de <ph name="DEFAULT_JAVA_SCRIPT_OPTIMIZER_SETTING_POLICY_NAME" /> (si elle est définie) ou active les optimisations JavaScript par défaut. Les entrées de la liste de blocage ont une priorité plus élevée que celles de la liste d'autorisation, qui ont une priorité plus élevée que la valeur configurée par défaut.
+Remarque : Dans les versions 138 et antérieures, les exceptions aux règles n'étaient appliquées qu'au niveau des sites (eTLD+1). Une règle définie uniquement pour sous-domaine.site.com ne prenait pas effet, même pour sous-domaine.site.com. Elle devait être définie sur site.com pour s'appliquer à la fois à site.com et à sous-domaine.site.com. Cette règle s'applique frame par frame et pas uniquement en fonction de l'URL d'origine de premier niveau. Par exemple, si site-1.com est listé dans la règle <ph name="JAVA_SCRIPT_OPTIMIZER_ALLOWED_FOR_SITES_POLICY_NAME" />, mais que site-1.com charge un frame contenant site-2.com, les optimisations JavaScript sont activées pour site-1.com, mais site-2.com utilise la règle <ph name="DEFAULT_JAVA_SCRIPT_OPTIMIZER_SETTING_POLICY_NAME" /> (si elle est définie) ou active les optimisations JavaScript par défaut. Les entrées de la liste de blocage ont une priorité plus élevée que celles de la liste d'autorisation, qui ont une priorité plus élevée que la valeur configurée par défaut.
 
 Si cette règle n'est pas configurée pour un site, alors la règle <ph name="DEFAULT_JAVA_SCRIPT_OPTIMIZER_SETTING_POLICY_NAME" /> s'applique au site (si elle est configurée). Sinon, les optimisations JavaScript sont activées pour le site.</translation>
 <translation id="1807539058116290184">Désactiver le zoom par pincement en mode Kiosque</translation>
@@ -3714,8 +3714,6 @@ Si <ph name="NTPCARDSVISIBLE" /> est désactivé, la carte Outlook ne s'affiche 
       Si cette règle est désactivée, les appareils enregistrés ne communiquent pas ces informations.</translation>
 <translation id="3303770131697159224">Paramètre d'autorisation par défaut de la gestion des fenêtres</translation>
 <translation id="3303911765031636277">Règle de configuration du connecteur Chrome Enterprise OnFileAttached</translation>
-<translation id="3305586786770047829">Si cette règle est définie sur 0 ou n'est pas configurée, la règle <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> ne s'applique qu'au niveau de l'utilisateur à condition qu'il soit affilié.
-Si cette règle est définie sur 1, la règle <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> s'applique au niveau de l'utilisateur, même si celui-ci n'est pas affilié.</translation>
 <translation id="3307744348419745296">Ne pas autoriser la synchronisation des configurations de réseau Wi-Fi entre les appareils <ph name="PRODUCT_OS_NAME" /> et un téléphone Android connecté</translation>
 <translation id="3308724602356134956">Si vous configurez cette règle, <ph name="PRODUCT_OS_NAME" /> télécharge et utilise l'image de fond d'écran que vous avez définie pour l'arrière-plan de l'écran de connexion et le bureau des utilisateurs (lesquels ne peuvent pas modifier la configuration). Spécifiez l'URL (accessible sans authentification) à laquelle <ph name="PRODUCT_OS_NAME" /> peut télécharger l'image de fond d'écran (16 Mo maximum et au format JPEG), ainsi qu'un hachage cryptographique pour vérifier l'intégrité de l'image.
 
@@ -6571,19 +6569,6 @@ Cette règle est proposée pour une durée limitée afin de laisser le temps de 
 <translation id="5120168808610189805">Activer l'importation de la page d'accueil à la première exécution</translation>
 <translation id="5124321040285474825">Paramètres des fonctionnalités d'IA générative dans la Saisie automatique</translation>
 <translation id="5124368997194894978">Activer le démarrage au branchement de l'alimentation CA (courant alternatif)</translation>
-<translation id="5124652340668722849">Configure une liste de domaines de provisionnement (PvD) que <ph name="PRODUCT_NAME" /> utilisera pour récupérer dynamiquement les configurations de proxy.
-
-Cette règle permet de spécifier une liste de noms de domaine ou d'URI de ressources représentant des domaines de provisionnement, comme défini dans le document RFC 8801 ("Discovering Provisioning Domain Names and Data"). Pour chaque PvD, le navigateur résout la configuration JSON correspondante en envoyant une requête HTTPS au chemin d'accès du point de terminaison connu : "https://[<ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />]/.well-known/pvd".
-
-Chaque entrée de la liste spécifie :
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" /> : l'identifiant du domaine de provisionnement (un nom de domaine).
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_AUTH_CONFIG" /> : la configuration d'authentification facultative. Si elle n'est pas configurée ou est définie sur "none", aucune authentification n'est effectuée. Lorsque cette valeur est définie sur "profile_bearer_token", le navigateur récupère un jeton d'accès OAuth2 avec le niveau d'accès fourni pour le compte principal connecté et l'ajoute à l'en-tête "Authorization" en tant que jeton "Bearer".
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_EXTRA_HEADERS" /> : une liste facultative d'en-têtes HTTP personnalisés à inclure lors de l'interrogation du point de terminaison PvD. Des valeurs dynamiques peuvent être injectées, comme "profile_id" (qui représente un identifiant unique et stable du profil du navigateur sur l'appareil, permettant un ciblage par configuration de profil) ou "accept_language" (qui représente les langues préférées du navigateur).
-
-Les configurations récupérées sont analysées conformément au schéma du document RFC 8801. Seuls les règles de routage liées à la configuration du proxy et les proxys issus de la charge utile JSON du PvD sont appliqués. Si cette règle n'est pas configurée, aucun domaine de provisionnement ne sera interrogé ni utilisé pour récupérer les configurations de proxy.</translation>
 <translation id="5130213897914754028">Empêcher les sites d'utiliser SharedArrayBuffers</translation>
 <translation id="5130935469849337738">Toujours proposer une traduction</translation>
 <translation id="513314432051760916">Règle permettant de décider si le paramètre de mesure des annonces de <ph name="PRIVACY_SANDBOX_NAME" /> peut être désactivé pour vos utilisateurs.
@@ -8614,17 +8599,6 @@ Remarque : Cette règle ne s'applique qu'aux plates-formes compatibles avec les
       Si cette règle est définie sur "False", les Signed HTTP Exchanges ne peuvent pas être chargés.</translation>
 <translation id="6368011194414932347">Configurer l'URL de la page d'accueil</translation>
 <translation id="6368403635025849609">Autoriser JavaScript sur ces sites</translation>
-<translation id="6368652917086795891">Configure les paramètres de connexion pour <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> dans <ph name="PRODUCT_NAME" />.
-
-Cette règle est remplacée par la règle <ph name="GEMINI_ENTERPRISE_URL_POLICY_NAME" />. Si les deux sont définies, la règle <ph name="GEMINI_ENTERPRISE_URL_POLICY_NAME" /> prévaut.
-
-La règle configure l'URL de l'application Web <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> via <ph name="GEMINI_ENTERPRISE_SETTINGS_URL_POLICY_VALUE" />, qui doit être une URL valide utilisant le schéma https, redirige vers un domaine <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> et n'inclut pas de nom d'utilisateur ni de mot de passe. Si elle ne respecte pas ces exigences, la règle est ignorée et <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> n'est pas configuré.
-
-Si cette règle est définie, <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> sera configuré pour les utilisateurs connectés avec un compte ou navigateur géré.
-
-Si cette règle n'est pas définie, <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> ne sera pas configuré.
-
-Notez que cette règle ne gère pas l'intégration globale de <ph name="GOOGLE_GEMINI_PRODUCT_NAME" />, laquelle peut être contrôlée à l'aide de la règle <ph name="GEMINI_SETTINGS_POLICY_NAME" />.</translation>
 <translation id="6368671810229507360">WebRTC</translation>
 <translation id="6370742079247037704">Interdire l'utilisation des API d'IA intégrées.</translation>
 <translation id="6371005337713685988">Paramètres de la fonctionnalité d'ensembles de sites Web associés</translation>
@@ -9423,15 +9397,6 @@ REMARQUE : Seuls les nouveaux processus du moteur de rendu refléteront les mod
 <translation id="6833988859168635883">Démarrage, page d'accueil et page Nouvel onglet</translation>
 <translation id="6835254082476223414">Activer la sauvegarde et la restauration des machines virtuelles Linux</translation>
 <translation id="6835883744948188639">Afficher une invite récurrente indiquant qu'un redémarrage est recommandé</translation>
-<translation id="683688607121170501">Ce paramètre permet aux utilisateurs de basculer d'un compte Google à l'autre dans la zone de contenu de la fenêtre de leur navigateur et dans les applications Android une fois qu'ils sont connectés sur leur appareil <ph name="PRODUCT_OS_NAME" />.
-
-      Si cette règle est définie sur "False", ils ne sont pas autorisés à se connecter à un autre compte Google depuis une application Android ou depuis la zone de contenu d'un navigateur n'étant pas en mode navigation privée.
-
-      Si elle est définie sur "True" ou si elle n'est pas configurée, le comportement par défaut est utilisé : ils peuvent se connecter à un autre compte Google depuis une application Android ou depuis la zone de contenu du navigateur, sauf pour les comptes enfants où cela sera bloqué pour la zone de contenu hors navigation privée.
-
-      Dans le cas où la connexion à un autre compte ne devrait pas être autorisée via le mode navigation privée, pensez à bloquer ce mode à l'aide de la règle IncognitoModeAvailability.
-
-      Notez que les utilisateurs peuvent accéder aux services Google dans un état non authentifié en bloquant leurs cookies.</translation>
 <translation id="6841254611279513739">Cette règle permet de définir l'impression sur couleur seulement, monochrome seulement ou absence de restriction de couleur. Si la règle n'est pas définie, on considère qu'il n'y a aucune restriction.</translation>
 <translation id="6843008643303282259">Débit d'importation souhaité en kbit/s.</translation>
 <translation id="6843296367238757293">Cette règle est obsolète. Nous vous déconseillons de l'utiliser. Pour en savoir plus, rendez-vous sur https://support.google.com/chrome/a/answer/7643500.</translation>
@@ -10535,7 +10500,6 @@ Notez que cette règle ne gère pas l'intégration globale de <ph name="GOOGLE_G
 <translation id="7491720878670299691">Fréquence à laquelle les données du réseau sont interrogées pour vérifier la présence d'événements. La valeur minimale autorisée est de 1 minute.
 
       Si cette règle n'est pas configurée, la fréquence par défaut (1 minute) est appliquée.</translation>
-<translation id="7496284563199466390">Contrôle les utilisateurs gérés autorisés à définir la règle <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" />.</translation>
 <translation id="7498595166686106721">
       La règle display-capture permissions-policy restreint l'accès à getDisplayMedia(), conformément à cette spécification : https://www.w3.org/TR/screen-capture/#feature-policy-integration. Mais, si cette règle est désactivée, cette exigence n'est pas appliquée, et getDisplayMedia() est autorisé depuis des contextes qui seraient autrement interdits. Cette règle d'entreprise est temporaire et sera normalement supprimée après la version 100 de <ph name="PRODUCT_NAME" />. Elle permet de débloquer les utilisateurs de la version Enterprise dont l'application ne respecte pas les spécifications, mais qui a besoin de temps pour être résolue.
 
@@ -10834,7 +10798,7 @@ Si cette règle n'est pas configurée, le moteur de rendu des PDF est sélection
           Pour appliquer des exceptions, <ph name="PRODUCT_NAME" /> peut placer les sites ou sous-domaines dont le paramètre diffère de celui par défaut dans des processus dédiés. Cela peut augmenter l'utilisation de mémoire, en particulier sur <ph name="ANDROID_NAME" /> ou lorsqu'un format de caractères génériques correspond à de nombreux sous-domaines, car chaque origine correspondante peut être isolée séparément. Les sous-domaines isolés ne peuvent pas non plus utiliser document.domain pour accéder à leur site parent.
 
           Remarque : Dans les versions 155 et antérieures, les exceptions aux règles n'étaient appliquées qu'au niveau des sites (eTLD+1). Une règle définie uniquement pour sous-domaine.site.com ne prenait pas effet, même pour sous-domaine.site.com. Elle devait être définie sur site.com pour s'appliquer à la fois à site.com et à sous-domaine.site.com.
-Cette règle s'applique frame par frame et pas uniquement en fonction de l'URL d'origine de premier niveau. Par exemple, si site-1.com est répertorié dans la règle <ph name="JAVA_SCRIPT_JIT_ALLOWED_FOR_SITES_POLICY_NAME" />, mais que site-1.com charge un frame contenant site-2.com, le JIT pour JavaScript est activé pour site-1.com, mais site-2.com utilise la règle de <ph name="DEFAULT_JAVA_SCRIPT_JIT_SETTING_POLICY_NAME" /> (si elle est définie) ou active le JIT pour JavaScript par défaut. Les entrées de la liste de blocage ont une priorité plus élevée que celles de la liste d'autorisation, qui ont une priorité plus élevée que la valeur configurée par défaut.
+Cette règle s'applique frame par frame et pas uniquement en fonction de l'URL d'origine de premier niveau. Par exemple, si site-1.com est listé dans la règle <ph name="JAVA_SCRIPT_JIT_ALLOWED_FOR_SITES_POLICY_NAME" />, mais que site-1.com charge un frame contenant site-2.com, le JIT pour JavaScript est activé pour site-1.com, mais site-2.com utilise la règle <ph name="DEFAULT_JAVA_SCRIPT_JIT_SETTING_POLICY_NAME" /> (si elle est définie) ou active le JIT pour JavaScript par défaut. Les entrées de la liste de blocage ont une priorité plus élevée que celles de la liste d'autorisation, qui ont une priorité plus élevée que la valeur configurée par défaut.
 
           Si cette règle n'est pas configurée pour un site, alors la règle <ph name="DEFAULT_JAVA_SCRIPT_JIT_SETTING_POLICY_NAME" /> s'applique au site (si elle est configurée). Sinon, le JIT pour JavaScript est activé pour le site.</translation>
 <translation id="7707869387893611318">Active la fonctionnalité des sons de recharge.

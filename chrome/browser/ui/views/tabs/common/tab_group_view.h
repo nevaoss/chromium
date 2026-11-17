@@ -66,6 +66,7 @@ class TabGroupView : public TabCollectionZOrderManager,
   void ShiftGroupUp() override;
   void ShiftGroupDown() override;
   bool IsGroupFocused() const override;
+  bool IsUnfocusButtonFocused() const override;
   HorizontalTabClosingHelper* GetTabClosingHelper() const override;
 
   // TabCollectionAnimatingLayoutManager::Delegate:
@@ -75,6 +76,7 @@ class TabGroupView : public TabCollectionZOrderManager,
       const views::View& child_view) const override;
   bool ShouldSnapToTarget(const views::View& child_view) const override;
   void OnAnimationEnded() override;
+  bool IsAnimationAllowed() override;
 
   bool IsCollapsed() const;
 

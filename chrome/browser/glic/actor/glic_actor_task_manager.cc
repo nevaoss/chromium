@@ -629,9 +629,9 @@ bool GlicActorTaskManager::IsActuating() const {
   return session_ && session_->IsActuating();
 }
 
-std::vector<tabs::TabInterface*> GlicActorTaskManager::GetLastActedTabs()
-    const {
-  std::vector<tabs::TabInterface*> target_tabs;
+std::vector<raw_ptr<tabs::TabInterface>>
+GlicActorTaskManager::GetLastActedTabs() const {
+  std::vector<raw_ptr<tabs::TabInterface>> target_tabs;
   if (!session_) {
     return target_tabs;
   }
@@ -776,7 +776,6 @@ void GlicActorClientSession::CreateActorTabFinished(
   std::move(callback).Run(CreateTabData(new_tab));
 }
 
-
 void GlicActorClientSession::CancelActiveTask() {
   if (current_task_id_) {
     StopTaskImpl(current_task_id_,
@@ -920,6 +919,10 @@ base::WeakPtr<GlicActorTaskManager> GlicActorTaskManager::GetWeakPtr() {
 GlicActorClientSessionInterface*
 GlicActorTaskManager::GetClientSessionForTesting() {
   return session_.get();
+}
+
+void GlicActorTaskManager::NotifyActuatingChangedForTesting(bool is_actuating) {
+  actuating_changed_callbacks_.Notify(is_actuating);
 }
 
 base::WeakPtr<GlicActorClientSession> GlicActorClientSession::GetWeakPtr() {
@@ -1146,7 +1149,8 @@ void GlicActorClientSession::GetContextForActorFromTab(
     int32_t tab_id,
     mojom::TabContextOptionsPtr options,
     GetContextForActorFromTabCallback callback) {
-  LogApiRequestCount(GlicHostApiRequestId::kGetContextForActorFromTab);
+  callback = WrapCallbackToLogApiRequestWithLatency(
+      GlicHostApiRequestId::kGetContextForActorFromTab, std::move(callback));
   GlicKeyedService* glic_service =
       GlicKeyedServiceFactory::GetGlicKeyedService(manager_->profile());
   manager_->sharing_manager_->GetContextForActorFromTab(

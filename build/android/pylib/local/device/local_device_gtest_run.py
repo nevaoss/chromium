@@ -39,6 +39,7 @@ from pylib.symbols import stack_symbolizer
 from pylib.utils import code_coverage_utils
 from pylib.utils import device_dependencies
 from pylib.utils import logdog_helper
+from pylib.utils import test_data_sync
 from py_trace_event import trace_event
 from py_utils import contextlib_ext
 from py_utils import tempfile_ext
@@ -74,6 +75,12 @@ _EXTRA_TEST_LIST = (
 _GTEST_PRETEST_PREFIX = 'PRE_'
 
 _SECONDS_TO_NANOS = int(1e9)
+
+_ANIMATION_SCALE_SETTINGS = (
+    'window_animation_scale',
+    'transition_animation_scale',
+    'animator_duration_scale',
+)
 
 
 # No-op context manager. If we used Python 3, we could change this to
@@ -545,6 +552,7 @@ class LocalDeviceGtestRun(local_device_test_run.LocalDeviceTestRun):
             self._test_perf_output_filenames = itertools.repeat(None)
         self._crashes = set()
         self._test_locations = {}
+        self._saved_animation_scales = {}
 
     # override
     def TestPackage(self):
@@ -558,6 +566,33 @@ class LocalDeviceGtestRun(local_device_test_run.LocalDeviceTestRun):
         @measures.timed_func('device_setup')
         @trace_event.traced
         def individual_device_set_up(device, host_device_tuples):
+
+            @measures.timed_func('device_setup', 'disable_system_animations')
+            @trace_event.traced
+            def disable_system_animations(dev):
+                get_cmds = [
+                    f'settings get global {s}'
+                    for s in _ANIMATION_SCALE_SETTINGS
+                ]
+                put_cmds = [
+                    f'settings put global {s} 0'
+                    for s in _ANIMATION_SCALE_SETTINGS
+                ]
+                cmd = ' && '.join(get_cmds + put_cmds)
+                output = dev.RunShellCommand(cmd, shell=True, check_return=True)
+                if dev.serial not in self._saved_animation_scales:
+                    scales = []
+                    for i in range(len(_ANIMATION_SCALE_SETTINGS)):
+                        val = output[i].strip() if i < len(output) else ''
+                        if not val or val == 'null':
+                            val = '1.0'
+                        else:
+                            try:
+                                float(val)
+                            except ValueError:
+                                val = '1.0'
+                        scales.append(val)
+                    self._saved_animation_scales[dev.serial] = scales
 
             @measures.timed_func('device_setup', 'install_apk')
             def install_apk(dev):
@@ -582,6 +617,16 @@ class LocalDeviceGtestRun(local_device_test_run.LocalDeviceTestRun):
                         host_device_tuples, device_root
                     )
                 )
+                commit_sync = test_data_sync.PreparePush(
+                    dev,
+                    device_root,
+                    resolved_host_device_tuples,
+                    enabled=self._env.enable_test_data_cache,
+                    as_root=self._env.force_main_user,
+                )
+                # Cache up to date.
+                if not commit_sync:
+                    return
                 dev.PlaceNomediaFile(device_root)
                 dev.PushChangedFiles(
                     resolved_host_device_tuples,
@@ -605,11 +650,24 @@ class LocalDeviceGtestRun(local_device_test_run.LocalDeviceTestRun):
                         check_return=True,
                         as_root=self._env.force_main_user,
                     )
+                if self._env.force_main_user:
+                    # Pushing directly to /data/media/<user> bypasses the
+                    # /storage/emulated/<user> FUSE mount, leaving stale
+                    # dentries, inode sizes, and page-cache pages in the kernel
+                    # VFS cache when tests read via /sdcard.
+                    dev.RunShellCommand(
+                        'sync && echo 3 > /proc/sys/vm/drop_caches',
+                        shell=True,
+                        check_return=True,
+                        as_root=True,
+                    )
+                # Commit the new stamp.
+                commit_sync()
 
             def bind_crash_handler(step, dev):
                 return lambda: crash_handler.RetryOnSystemCrash(step, dev)
 
-            steps = [install_apk]
+            steps = [install_apk, disable_system_animations]
             if not self._test_instance.use_existing_test_data:
                 steps.append(push_test_data)
 
@@ -866,7 +924,7 @@ class LocalDeviceGtestRun(local_device_test_run.LocalDeviceTestRun):
         if self._test_instance.run_pre_tests:
             all_tests = pre_tests + other_tests
 
-        return self._SortTests(all_tests)
+        return all_tests
 
     def _UploadTestArtifacts(self, device, test_artifacts_device_dir):
         # TODO(jbudorick): Reconcile this with the output manager once
@@ -1267,4 +1325,33 @@ class LocalDeviceGtestRun(local_device_test_run.LocalDeviceTestRun):
 
     # override
     def TearDown(self):
-        pass
+        # By default, teardown will invoke ADB. When receiving SIGTERM due to a
+        # timeout, there's a high probability that ADB is non-responsive. In
+        # these cases, sending an ADB command will potentially take a long time
+        # to time out. Before this happens, the process will be hard-killed for
+        # not responding to SIGTERM fast enough.
+        if self._received_sigterm or not self._saved_animation_scales:
+            return
+
+        @local_device_environment.handle_shard_failures_with(
+            on_failure=self._env.DenylistDevice
+        )
+        @measures.timed_func('device_teardown')
+        @trace_event.traced
+        def individual_device_tear_down(dev):
+            scales = self._saved_animation_scales.get(dev.serial)
+            if not scales or all(float(v) == 0.0 for v in scales):
+                return
+
+            @measures.timed_func('device_teardown', 'restore_system_animations')
+            @trace_event.traced
+            def restore_system_animations(d):
+                cmd = ' && '.join(
+                    f'settings put global {s} {v}'
+                    for s, v in zip(_ANIMATION_SCALE_SETTINGS, scales)
+                )
+                d.RunShellCommand(cmd, shell=True, check_return=True)
+
+            crash_handler.RetryOnSystemCrash(restore_system_animations, dev)
+
+        self._env.parallel_devices.pMap(individual_device_tear_down)

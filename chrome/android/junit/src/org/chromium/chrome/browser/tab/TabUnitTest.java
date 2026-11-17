@@ -47,6 +47,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
@@ -62,6 +63,7 @@ import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.chrome.browser.content.WebContentsFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.pdf.PdfUtils;
 import org.chromium.chrome.browser.profiles.Profile;
@@ -90,6 +92,7 @@ import org.chromium.content_public.browser.NavigationController;
 import org.chromium.content_public.browser.NavigationResult;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.WebContentsObserver;
+import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.url.GURL;
 import org.chromium.url.JUnitTestOrigins;
@@ -792,6 +795,57 @@ public class TabUnitTest {
         assertTrue(mTab.getNativePage().isFrozen());
         verify(mNativePage).destroy();
         verify(mDelegateFactory, never()).createNativePage(any(), any(), any(), any());
+    }
+
+    @Test
+    public void testUpdateTitle_keepsNavigationEntryTitleInSyncWithNativePage() {
+        TabImplJni.setInstanceForTesting(mNativeMock);
+
+        String pdfUrl = "chrome-native://pdf/link?url=https%3A%2F%2Fwww.foo.com%2Ftest.pdf";
+        doReturn(mTabWebContentsDelegateAndroid)
+                .when(mDelegateFactory)
+                .createWebContentsDelegate(any(Tab.class));
+        doReturn(true).when(mNativePage).isPdf();
+        doReturn(false).when(mNativePage).isFrozen();
+        doReturn(pdfUrl).when(mNativePage).getUrl();
+        doReturn("Loading PDF").when(mNativePage).getTitle();
+        doReturn(new View(ContextUtils.getApplicationContext())).when(mNativePage).getView();
+        doReturn(mWindowAndroid).when(mWebContents).getTopLevelNativeWindow();
+
+        mTab =
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
+                    @Override
+                    public WebContents getWebContents() {
+                        return mWebContents;
+                    }
+                };
+        mTab.setNativePtrForTesting(1);
+        mTab.updateAttachment(mWindowAndroid, mDelegateFactory);
+        mTab.showNativePage(mNativePage);
+        doReturn("Loading PDF").when(mWebContents).getTitle();
+        mTab.updateTitle();
+        assertEquals("Loading PDF", mTab.getTitle());
+        clearInvocations(mNativeMock);
+
+        // The navigation entry title already matches the native page title.
+        mTab.updateTitle();
+        verify(mNativeMock, never()).setActiveNavigationEntryTitleForUrl(anyLong(), any(), any());
+
+        // A changed native page title, e.g. once a PDF download completes, is pushed to the
+        // navigation entry.
+        doReturn("test.pdf").when(mNativePage).getTitle();
+        mTab.updateTitle();
+        assertEquals("test.pdf", mTab.getTitle());
+        verify(mNativeMock).setActiveNavigationEntryTitleForUrl(1L, pdfUrl, "test.pdf");
+        doReturn("test.pdf").when(mWebContents).getTitle();
+        clearInvocations(mNativeMock);
+
+        // The native page title is pushed again if the navigation entry title was reset, e.g. by
+        // the renderer for the placeholder document, even though the tab title is unchanged.
+        doReturn("www.foo.com/test.pdf").when(mWebContents).getTitle();
+        mTab.updateTitle();
+        assertEquals("test.pdf", mTab.getTitle());
+        verify(mNativeMock).setActiveNavigationEntryTitleForUrl(1L, pdfUrl, "test.pdf");
     }
 
     @Test
@@ -1790,5 +1844,49 @@ public class TabUnitTest {
         assertTrue(secondParams.getIsPdf());
         verify(mNavigationController)
                 .loadUrl(argThat(params -> pdfUrl.equals(params.getUrl()) && params.getIsPdf()));
+    }
+
+    @Test
+    public void testUnfreezeContents_RestoreFailed_SetsRendererInitiatedAndOpaqueOrigin() {
+        WebContentsFactory.setWebContentsForTesting(mWebContents);
+        when(mWebContents.getNavigationController()).thenReturn(mNavigationController);
+        when(mWebContents.getTopLevelNativeWindow()).thenReturn(mWindowAndroid);
+        String fallbackUrl = "https://example.com/";
+        WebContentsState mockState = mock(WebContentsState.class);
+        when(mockState.restoreWebContents(any(), anyBoolean(), anyBoolean())).thenReturn(null);
+        when(mockState.getVirtualUrlFromState()).thenReturn(fallbackUrl);
+        when(mockState.getDisplayTitleFromState()).thenReturn("");
+        TabState tabState = new TabState();
+        tabState.contentsState = mockState;
+
+        TabImpl tab =
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_RESTORE) {
+                    @Override
+                    public boolean isInitialized() {
+                        return true;
+                    }
+
+                    @Override
+                    void initWebContents(WebContents webContents) {
+                        setWebContentsForTesting(webContents);
+                    }
+                };
+        tab.setNativePtrForTesting(1);
+        tab.updateAttachment(mWindowAndroid, mDelegateFactory);
+        tab.restoreFieldsFromState(tabState);
+        tab.addObserver(mObserver);
+
+        tab.loadIfNeeded(/* forceBackingSize= */ false);
+
+        verify(mObserver).onRestoreFailed(tab);
+        verify(mockState).destroy();
+        ArgumentCaptor<LoadUrlParams> paramsCaptor = ArgumentCaptor.forClass(LoadUrlParams.class);
+        verify(mNavigationController).loadUrl(paramsCaptor.capture());
+        LoadUrlParams params = paramsCaptor.getValue();
+        assertEquals(fallbackUrl, params.getUrl());
+        assertEquals(PageTransition.GENERATED, params.getTransitionType());
+        assertTrue(params.getIsRendererInitiated());
+        assertNotNull(params.getInitiatorOrigin());
+        assertTrue(params.getInitiatorOrigin().isOpaque());
     }
 }

@@ -66,6 +66,10 @@ BASE_FEATURE(kContextualTasksDriveOAuthScope, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableContextualTasksPinButtonInToolbar,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables the pin button in the side panel header when viewing the SRP.
+BASE_FEATURE(kEnableContextualTasksPinButtonOnSrp,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Keeps the ephemeral contextual tasks button visible even when the permanent
 // button is pinned in the toolbar.
 BASE_FEATURE(kEphemeralPinningVisibleWhenPermanentlyPinned,
@@ -75,6 +79,42 @@ BASE_FEATURE(kEphemeralPinningVisibleWhenPermanentlyPinned,
 // remove it from the toolbar.
 BASE_FEATURE(kContextualTasksEphemeralButtonContextMenu,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+const base::FeatureParam<bool>
+    kContextualTasksEphemeralButtonContextMenuCloseSidePanel(
+        &kContextualTasksEphemeralButtonContextMenu,
+        "ContextualTasksEphemeralButtonContextMenuCloseSidePanel",
+        false);
+
+bool ShouldUseCloseSidePanelForEphemeralButtonContextMenu() {
+  return base::FeatureList::IsEnabled(
+             kContextualTasksEphemeralButtonContextMenu) &&
+         kContextualTasksEphemeralButtonContextMenuCloseSidePanel.Get();
+}
+
+// Automatically dismisses the ephemeral contextual tasks toolbar button and
+// disassociates its task after a configurable period of inactivity (in
+// minutes). Defaults to 120 minutes (2 hours).
+BASE_FEATURE(kContextualTasksEphemeralButtonAutoDismiss,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+const base::FeatureParam<int>
+    kContextualTasksEphemeralButtonAutoDismissTimeMinutes(
+        &kContextualTasksEphemeralButtonAutoDismiss,
+        "ContextualTasksEphemeralButtonAutoDismissTimeMinutes",
+        120);
+
+bool IsContextualTasksEphemeralButtonAutoDismissEnabled() {
+  return base::FeatureList::IsEnabled(
+      kContextualTasksEphemeralButtonAutoDismiss);
+}
+
+int GetContextualTasksEphemeralButtonAutoDismissTimeMinutes() {
+  if (!IsContextualTasksEphemeralButtonAutoDismissEnabled()) {
+    return 0;
+  }
+  return kContextualTasksEphemeralButtonAutoDismissTimeMinutes.Get();
+}
 
 // Enables relevant context determination for contextual tasks.
 BASE_FEATURE(kContextualTasksContext, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -271,6 +311,19 @@ bool ShouldOpenNewTabOnSidePanelLinkClick() {
   return base::FeatureList::IsEnabled(kContextualTasksSidePanelTabState) &&
          kOpenNewTabOnSidePanelLinkClick.Get();
 }
+
+const base::FeatureParam<bool> kScopeSidePanelStateToTab(
+    &kContextualTasksSidePanelTabState,
+    "scope_side_panel_state_to_tab",
+    true);
+
+bool ShouldScopeSidePanelStateToTab() {
+  return base::FeatureList::IsEnabled(kContextualTasksSidePanelTabState) &&
+         kScopeSidePanelStateToTab.Get();
+}
+
+BASE_FEATURE(kContextualTasksTabBasedSuggestions,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kContextualTasksNonBlockingUrlNavigation,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -758,6 +811,10 @@ bool IsContextualTasksPinButtonInToolbarEnabled() {
   return base::FeatureList::IsEnabled(kEnableContextualTasksPinButtonInToolbar);
 }
 
+bool IsContextualTasksPinButtonOnSrpEnabled() {
+  return base::FeatureList::IsEnabled(kEnableContextualTasksPinButtonOnSrp);
+}
+
 int GetContextualTasksNumSessionsBeforeRequestPinPromo() {
   return kContextualTasksNumSessionsBeforeRequestPinPromo.Get();
 }
@@ -983,6 +1040,10 @@ bool IsContextualTasksClobberActiveTabEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksClobberActiveTab);
 }
 
+bool IsContextualTasksTabBasedSuggestionsEnabled() {
+  return base::FeatureList::IsEnabled(kContextualTasksTabBasedSuggestions);
+}
+
 const base::FeatureParam<std::string> kContextualTasksSearchCapabilitiesVersion{
     &kContextualTasksRearchitecture,
     "contextual-tasks-search-capabilities-version",
@@ -1075,6 +1136,12 @@ const char kEnableContextualTasksPinButtonInToolbarName[] =
 const char kEnableContextualTasksPinButtonInToolbarDescription[] =
     "Enables the pin button in the toolbar for contextual tasks.";
 
+const char kEnableContextualTasksPinButtonOnSrpName[] =
+    "Contextual Tasks Pin Button On SRP";
+const char kEnableContextualTasksPinButtonOnSrpDescription[] =
+    "Enables the option to pin the contextual tasks shortcut from the side "
+    "panel header when viewing the search results page (SRP).";
+
 const char kContextualTasksHideMenuOnAiPageName[] =
     "Contextual Tasks Hide Menu On AI Page";
 const char kContextualTasksHideMenuOnAiPageDescription[] =
@@ -1111,6 +1178,12 @@ const char kContextualTasksClobberActiveTabDescription[] =
     "Enables clicking links in the contextual tasks side panel to clobber the "
     "active tab instead of opening in a new tab.";
 
+const char kContextualTasksTabBasedSuggestionsName[] =
+    "Contextual Tasks Tab-Based Suggestions";
+const char kContextualTasksTabBasedSuggestionsDescription[] =
+    "Enables sending attached tab context tokens to Search for tab-based "
+    "query suggestions.";
+
 const char kContextualTasksBypassDismissedCapName[] =
     "Contextual Tasks Bypass Dismissed Cap";
 const char kContextualTasksBypassDismissedCapDescription[] =
@@ -1129,6 +1202,12 @@ const char kContextualTasksEphemeralButtonContextMenuName[] =
 const char kContextualTasksEphemeralButtonContextMenuDescription[] =
     "Enables a context menu on the ephemeral contextual tasks toolbar button "
     "to remove it from the toolbar.";
+
+const char kContextualTasksEphemeralButtonAutoDismissName[] =
+    "Contextual Tasks Ephemeral Button Auto Dismiss";
+const char kContextualTasksEphemeralButtonAutoDismissDescription[] =
+    "Automatically dismisses the ephemeral contextual tasks toolbar button "
+    "after a period of inactivity.";
 
 const char kABASearchJourneysName[] = "ABA Search Journeys";
 const char kABASearchJourneysDescription[] =

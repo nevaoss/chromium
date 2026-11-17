@@ -37,6 +37,7 @@
 #include "ui/base/window_open_disposition_utils.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_provider.h"
+#include "ui/compositor/layer_tree_owner.h"
 #include "ui/strings/grit/ax_strings.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/border.h"
@@ -56,12 +57,24 @@ namespace {
 bool ShouldRoundBottomCorners(size_t index,
                               const actions::ActionListVector& items) {
   // An item rounds its bottom corners if it is the last non-divider item in
-  // its list, if it is a notification item, OR if it is or precedes the zoom
-  // submenu.
+  // its list, if it is the last notification item in a contiguous notification
+  // group, OR if it is or precedes the zoom submenu.
   actions::BaseAction* const base_item = items[index].get();
-  if (base_item->GetActionItem()->GetActionId() == kActionZoomSubmenu ||
-      base_item->GetProperty(AppMenuActionItem::kDisplayTypeKey) ==
-          AppMenuActionItem::DisplayType::kNotification) {
+  if (base_item->GetActionItem()->GetActionId() == kActionZoomSubmenu) {
+    return true;
+  }
+  if (base_item->GetProperty(AppMenuActionItem::kDisplayTypeKey) ==
+      AppMenuActionItem::DisplayType::kNotification) {
+    // Adjacent notification items without a spacing separator between them
+    // (such as "Relaunch to update" and "Relaunch later...") share a single
+    // rounded container, so only the last visible item in the contiguous group
+    // rounds its bottom corners.
+    for (size_t i = index + 1; i < items.size(); ++i) {
+      if (items[i]->GetActionItem()->GetVisible()) {
+        return items[i]->GetProperty(AppMenuActionItem::kDisplayTypeKey) !=
+               AppMenuActionItem::DisplayType::kNotification;
+      }
+    }
     return true;
   }
   for (size_t i = index + 1; i < items.size(); ++i) {
@@ -190,7 +203,6 @@ ActionAppMenu::ActionAppMenu(BrowserWindowInterface* browser_window_interface,
 }
 
 ActionAppMenu::~ActionAppMenu() {
-  search_text_changed_subscription_ = {};
   search_bar_ = nullptr;
   command_to_action_map_.clear();
   search_controller_.reset();
@@ -198,6 +210,23 @@ ActionAppMenu::~ActionAppMenu() {
 }
 
 void ActionAppMenu::RunMenu(views::MenuButtonController* host, int run_types) {
+  RunMenu(host->button()->GetWidget(), host,
+          host->button()->GetAnchorBoundsInScreen(), run_types,
+          ui::mojom::MenuSourceType::kNone);
+}
+
+void ActionAppMenu::RunMenu(views::Widget* parent,
+                            const gfx::Rect& anchor_screen_bounds,
+                            int run_types,
+                            ui::mojom::MenuSourceType source_type) {
+  RunMenu(parent, nullptr, anchor_screen_bounds, run_types, source_type);
+}
+
+void ActionAppMenu::RunMenu(views::Widget* parent,
+                            views::MenuButtonController* host,
+                            const gfx::Rect& anchor_screen_bounds,
+                            int run_types,
+                            ui::mojom::MenuSourceType source_type) {
   auto root = std::make_unique<views::MenuItemView>(/*delegate=*/this);
   // Stash the raw pointer before transferring the unique_ptr ownership to
   // `menu_runner_`. This allows us to reference the root menu item view later.
@@ -231,10 +260,8 @@ void ActionAppMenu::RunMenu(views::MenuButtonController* host, int run_types) {
 
   metrics_.OnMenuOpened();
 
-  menu_runner_->RunMenuAt(host->button()->GetWidget(), host,
-                          host->button()->GetAnchorBoundsInScreen(),
-                          views::MenuAnchorPosition::kTopRight,
-                          ui::mojom::MenuSourceType::kNone,
+  menu_runner_->RunMenuAt(parent, host, anchor_screen_bounds,
+                          views::MenuAnchorPosition::kTopRight, source_type,
                           /*native_view_for_gestures=*/gfx::NativeView(),
                           /*corners=*/std::nullopt,
                           "Chrome.AppMenu.MenuHostInitToNextFramePresented");
@@ -357,10 +384,8 @@ void ActionAppMenu::OnMenuClosed(views::MenuItemView* menu) {
     action_context = std::move(action_to_execute_on_close_->context);
   }
 
-  search_text_changed_subscription_ = {};
   search_bar_ = nullptr;
   has_notification_header_ = false;
-  is_showing_search_results_ = false;
   action_to_execute_on_close_.reset();
   command_to_action_map_.clear();
   section_header_count_ = 0;
@@ -537,6 +562,22 @@ bool ActionAppMenu::ShouldCloseOnDragDropCompleted() {
   return false;
 }
 
+void ActionAppMenu::ShowSearchResults(actions::ActionItem* results) {
+  ClearItemsBelowSearchBar();
+  PopulateMenu(root_, results);
+  root_->ChildrenChanged();
+}
+
+void ActionAppMenu::RestoreMenu() {
+  ClearItemsBelowSearchBar();
+  PopulateItemsBelowSearchBar();
+  root_->ChildrenChanged();
+}
+
+bool ActionAppMenu::ShouldDragActivateChildButtons() const {
+  return true;
+}
+
 void ActionAppMenu::SetTimerForTesting(base::ElapsedTimer timer) {
   menu_manager_->SetTimerForTesting(timer);       // IN-TEST
   metrics_.SetTimerForTesting(std::move(timer));  // IN-TEST
@@ -623,33 +664,6 @@ void ActionAppMenu::ClearItemsBelowSearchBar() {
     return !root_->GetMenuItemByID(entry.first);
   });
   section_header_count_ = 0;
-}
-
-void ActionAppMenu::OnSearchQueryChanged() {
-  actions::ActionItem* results = nullptr;
-  if (is_showing_search_results_) {
-    // Search() frees the results tree shown in the menu, so remove its rows
-    // and command mappings first.
-    ClearItemsBelowSearchBar();
-    results = search_controller_->Search(search_bar_->GetText());
-  } else {
-    results = search_controller_->Search(search_bar_->GetText());
-    if (!results) {
-      return;
-    }
-    ClearItemsBelowSearchBar();
-  }
-
-  is_showing_search_results_ = results != nullptr;
-  if (results) {
-    PopulateMenu(root_, results);
-  } else {
-    PopulateItemsBelowSearchBar();
-  }
-  search_bar_->SetLeadingIcon(results
-                                  ? AppMenuSearchBarView::LeadingIcon::kBack
-                                  : AppMenuSearchBarView::LeadingIcon::kSearch);
-  root_->ChildrenChanged();
 }
 
 void ActionAppMenu::PopulateMenu(views::MenuItemView* view_parent,
@@ -849,8 +863,9 @@ void ActionAppMenu::PopulateSearchBar(views::MenuItemView* view_parent,
   search_item->set_vertical_margin(0);
 
   const auto* provider = ChromeLayoutProvider::Get();
-  gfx::Insets margins =
-      provider->GetInsetsMetric(INSETS_ACTION_APP_MENU_SEARCH_BAR_MARGIN);
+  // The search bar applies its own insets, so only the gap below a
+  // notification is set here.
+  gfx::Insets margins;
   if (has_notification_header_) {
     margins.set_top(margins.top() +
                     provider->GetDistanceMetric(
@@ -862,11 +877,8 @@ void ActionAppMenu::PopulateSearchBar(views::MenuItemView* view_parent,
   search_bar_ = search_item->AddChildView(std::move(search_bar));
 
   search_controller_ = std::make_unique<AppMenuSearchController>(
-      menu_manager_->GetAppMenuRoot());
+      menu_manager_->GetAppMenuRoot(), search_bar_, /*delegate=*/this);
   search_controller_->InitializeSearchIndex();
-  search_text_changed_subscription_ =
-      search_bar_->AddTextChangedCallback(base::BindRepeating(
-          &ActionAppMenu::OnSearchQueryChanged, base::Unretained(this)));
 }
 
 void ActionAppMenu::PopulateFooter(views::MenuItemView* view_parent,
@@ -955,6 +967,7 @@ void ActionAppMenu::PopulateCustomRow(views::MenuItemView* view_parent,
                                       actions::BaseAction* custom_action_item) {
   switch (custom_action_item->GetActionItem()->GetActionId().value()) {
     case kActionZoomSubmenu:
+      view_parent->set_children_use_full_width(true);
       view_parent->AddChildView(std::make_unique<AppMenuZoomView>(
           browser_window_interface_, &action_view_controller_,
           command_to_action_map_, custom_action_item, metrics_));

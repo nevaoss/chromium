@@ -214,12 +214,14 @@ class CORE_EXPORT ModelContext : public EventTarget,
 
   bool CancelTool(base::UnguessableToken invocation_id);
 
-  void RegisterDeclarativeTool(DeclarativeWebMCPTool* tool);
-  // Unregisters the declarative tool identified by `tool_id`, if it is still
-  // registered. Keying on the ID rather than the name means this can't
-  // unregister a *different* tool that holds the same name, e.g., when this
-  // tool's registration was rejected because its name was already taken.
-  void UnregisterDeclarativeTool(const base::UnguessableToken& tool_id);
+  // Returns whether `tool` was registered. Registration is rejected if, e.g.,
+  // the `tools` permissions policy is disabled, or `tool`'s name is invalid or
+  // already taken. The caller must not unregister a rejected tool.
+  [[nodiscard]] bool RegisterDeclarativeTool(DeclarativeWebMCPTool* tool);
+  // Unregisters the tool identified by `tool_id`, which must be registered.
+  // Used for both imperative tools (when their `AbortSignal` aborts) and
+  // declarative tools (when their form stops being a tool).
+  void UnregisterTool(const base::UnguessableToken& tool_id);
   void PauseExecution();
 
   // mojom::blink::ModelContext implementation:
@@ -254,18 +256,13 @@ class CORE_EXPORT ModelContext : public EventTarget,
       ScriptPromiseResolver<IDLNullable<IDLString>>* resolver,
       std::unique_ptr<ScopedAbortState> abort_state,
       const String& result,
-      bool success);
+      std::optional<mojom::blink::ExecuteRemoteScriptToolError> error);
 
   void Trace(Visitor*) const override;
 
  private:
   class ToolFunctionFinishedCallback;
   class ToolUnregisterAbortAlgorithm;
-
-  // Unregisters the imperative tool identified by `tool_id`. Only called by
-  // the tool's `ToolUnregisterAbortAlgorithm`, which guarantees that the tool
-  // is still registered.
-  void UnregisterImperativeTool(const base::UnguessableToken& tool_id);
 
   void ExecuteDeclarativeTool(DeclarativeWebMCPTool* tool,
                               base::UnguessableToken invocation_id,

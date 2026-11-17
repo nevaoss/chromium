@@ -159,10 +159,6 @@ class CastDialogView;
 class MediaRemotingDialogView;
 }  // namespace media_router
 
-namespace send_tab_to_self {
-class SendTabToSelfToolbarBubbleView;
-}
-
 namespace toasts {
 class ToastView;
 }
@@ -769,7 +765,7 @@ class VIEWS_EXPORT BubbleDialogDelegate : public DialogDelegate {
   mutable std::optional<gfx::Rect> anchor_rect_;
 
   bool accept_events_ = true;
-  bool accept_drag_drop_ = false;
+  bool accept_drag_drop_ = true;
   gfx::NativeView parent_window_ = gfx::NativeView();
 
   // By default, all BubbleDialogDelegates have parent windows.
@@ -969,7 +965,6 @@ class VIEWS_EXPORT BubbleDialogDelegateView : public View,
   friend class ::lens::LensRegionSearchInstructionsView;
   friend class ::media_router::CastDialogView;
   friend class ::media_router::MediaRemotingDialogView;
-  friend class ::send_tab_to_self::SendTabToSelfToolbarBubbleView;
   friend class ::toasts::ToastView;
   friend class ::ui::ime::AnnouncementView;
   friend class ::ui::ime::CandidateWindowView;

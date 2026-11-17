@@ -106,10 +106,18 @@ class LocalDeviceEnvironment(environment.Environment):
         self._devices = None
         self._concurrent_adb = args.enable_concurrent_adb
         self._enable_device_cache = args.enable_device_cache
+        self._enable_test_data_cache = getattr(
+            args, 'enable_test_data_cache', False
+        )
         self._logcat_monitors = []
         self._logcat_output_dir = args.logcat_output_dir
         self._logcat_output_file = args.logcat_output_file
         self._max_tries = 1 + args.num_retries
+        # Must use getattr because this class is used by
+        # //third_party/catapult's browser_options.py
+        self._device_retries = getattr(args, 'device_retries', None)
+        if self._device_retries is None:
+            self._device_retries = args.num_retries
         self._preferred_abis = None
         self._recover_devices = args.recover_devices
         self._skip_clear_data = args.skip_clear_data
@@ -118,6 +126,9 @@ class LocalDeviceEnvironment(environment.Environment):
         # //third_party/catapult's browser_options.py
         if hasattr(args, 'trace_output'):
             self._trace_output = args.trace_output
+        self._sharding_strategy = getattr(
+            args, 'sharding_strategy', 'bounded-load'
+        )
         self._trace_all = None
         if hasattr(args, 'trace_all'):
             self._trace_all = args.trace_all
@@ -188,7 +199,7 @@ class LocalDeviceEnvironment(environment.Environment):
             retries=5,
             enable_usb_resets=True,
             enable_device_files_cache=self._enable_device_cache,
-            default_retries=self._max_tries - 1,
+            default_retries=self._device_retries,
             device_arg=device_arg,
             abis=self._preferred_abis,
             persistent_shell=self._use_persistent_shell,
@@ -296,6 +307,10 @@ class LocalDeviceEnvironment(environment.Environment):
         return self._concurrent_adb
 
     @property
+    def enable_test_data_cache(self):
+        return self._enable_test_data_cache
+
+    @property
     def devices(self):
         # Initialize lazily so that host-only tests do not fail when no devices are
         # attached.
@@ -322,6 +337,10 @@ class LocalDeviceEnvironment(environment.Environment):
     @property
     def trace_output(self):
         return self._trace_output
+
+    @property
+    def sharding_strategy(self):
+        return self._sharding_strategy
 
     @property
     def force_main_user(self):

@@ -13,59 +13,55 @@ namespace actor {
 
 // LINT.IfChange(ToolRequestVariant)
 // Type safe union of ToolRequest types.
-using ToolRequestVariant = std::variant<
+using ToolRequestVariant = std::variant<ActivateTabToolRequest,
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
-    ActivateTabToolRequest,
-    ActivateWindowToolRequest,
+                                        ActivateWindowToolRequest,
 #endif
-    AddBookmarkToolRequest,
-    AttemptLoginToolRequest,
-    AttemptFormFillingToolRequest,
-    AttemptOtpFillingToolRequest,
-    ChangePasswordToolRequest,
-    ClickToolRequest,
-    CloseGeminiPanelToolRequest,
+                                        AddBookmarkToolRequest,
+                                        AttemptLoginToolRequest,
+                                        AttemptFormFillingToolRequest,
+                                        AttemptOtpFillingToolRequest,
+                                        ChangePasswordToolRequest,
+                                        ClickToolRequest,
+                                        CloseGeminiPanelToolRequest,
+                                        CloseTabToolRequest,
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
-    CloseTabToolRequest,
-    CloseWindowToolRequest,
-    CreateTabToolRequest,
-    CreateWindowToolRequest,
+                                        CloseWindowToolRequest,
 #endif
-    DragAndReleaseToolRequest,
+                                        CreateTabToolRequest,
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
-    EnterFullscreenToolRequest,
-    ExitFullscreenToolRequest,
+                                        CreateWindowToolRequest,
 #endif
-    FileUploadToolRequest,
-    FindAndHighlightToolRequest,
-    HistoryBackToolRequest,
-    HistoryForwardToolRequest,
+                                        DragAndReleaseToolRequest,
+                                        EnterFullscreenToolRequest,
+                                        ExitFullscreenToolRequest,
+                                        FileUploadToolRequest,
+                                        FindAndHighlightToolRequest,
+                                        HistoryBackToolRequest,
+                                        HistoryForwardToolRequest,
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
-    LoadAndExtractContentToolRequest,
+                                        LoadAndExtractContentToolRequest,
 #endif
-    MoveMouseToolRequest,
-    NavigateToolRequest,
-#if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
-    OpenKnownPageToolRequest,
-#endif
-    PauseMediaToolRequest,
-    PerformSearchToolRequest,
-    PlayMediaToolRequest,
-    PromptGeminiPanelToolRequest,
-    ReloadPageToolRequest,
-    RemoveBookmarkToolRequest,
-    ScriptToolRequest,
-    ScrollToolRequest,
-    ScrollToToolRequest,
-    SeekMediaToolRequest,
-    SelectToolRequest,
-    SiteBasedSearchToolRequest,
-#if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
-    SwitchTabToolRequest,
-#endif
-    TranslatePageToolRequest,
-    TypeToolRequest,
-    WaitToolRequest>;
+                                        MoveMouseToolRequest,
+                                        NavigateToolRequest,
+                                        OpenKnownPageToolRequest,
+                                        PauseMediaToolRequest,
+                                        PerformSearchToolRequest,
+                                        PlayMediaToolRequest,
+                                        PromptGeminiPanelToolRequest,
+                                        ReloadPageToolRequest,
+                                        RemoveBookmarkToolRequest,
+                                        ScriptToolRequest,
+                                        ScrollPageToolRequest,
+                                        ScrollToolRequest,
+                                        ScrollToToolRequest,
+                                        SeekMediaToolRequest,
+                                        SelectToolRequest,
+                                        SiteBasedSearchToolRequest,
+                                        SwitchTabToolRequest,
+                                        TranslatePageToolRequest,
+                                        TypeToolRequest,
+                                        WaitToolRequest>;
 // LINT.ThenChange(//tools/metrics/histograms/metadata/actor/histograms.xml:ToolRequest)
 
 // Converts a polymorphic ToolRequest object to the proper ToolRequestVariant

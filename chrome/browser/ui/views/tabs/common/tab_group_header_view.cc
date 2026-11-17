@@ -426,6 +426,9 @@ void TabGroupHeaderView::OnMouseExited(const ui::MouseEvent& event) {
 #else
   UpdateEditorBubbleButtonVisibility();
 #endif
+  if (delegate_->IsGroupFocused()) {
+    delegate_->HideHoverCard(TabSlotController::HoverCardUpdateType::kHover);
+  }
 }
 
 void TabGroupHeaderView::OnFocus() {
@@ -435,7 +438,7 @@ void TabGroupHeaderView::OnFocus() {
 
 void TabGroupHeaderView::OnBlur() {
   UpdateEditorBubbleButtonVisibility();
-  if (!delegate_->IsFocusInTabStrip()) {
+  if (!delegate_->IsFocusInTabStrip() || delegate_->IsUnfocusButtonFocused()) {
     delegate_->HideHoverCard(TabSlotController::HoverCardUpdateType::kFocus);
   }
 }
@@ -764,7 +767,9 @@ void TabGroupHeaderView::ShowEditorBubble() {
 }
 
 int TabGroupHeaderView::GetCornerRadius() const {
-  return TabGroupStyle::GetChipCornerRadius(orientation_);
+  return delegate_->IsGroupFocused()
+             ? TabGroupStyle::GetFocusedChipCornerRadius(orientation_)
+             : TabGroupStyle::GetChipCornerRadius(orientation_);
 }
 
 gfx::RoundedCornersF TabGroupHeaderView::GetCornerRadii() const {

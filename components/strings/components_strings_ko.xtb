@@ -118,6 +118,7 @@
 <translation id="1195558154361252544">허용한 사이트를 제외한 모든 사이트의 알림이 자동으로 차단됩니다.</translation>
 <translation id="1197088940767939838">주황색</translation>
 <translation id="1198412233443148072"><ph name="MEMBER_FIRST_NAME" />님이 “<ph name="WEBSITE_TITLE" />” 탭을 삭제했습니다.</translation>
+<translation id="119944043368869598">모두 삭제</translation>
 <translation id="1201402288615127009">다음</translation>
 <translation id="1201895884277373915">이 사이트에서 더보기</translation>
 <translation id="1204184165594298176">{0,plural, =1{파일 복사 차단됨}other{파일 <ph name="FILE_COUNT" />개 복사 차단됨}}</translation>
@@ -618,7 +619,6 @@
 <translation id="2059166748188874810">지방 자치제</translation>
 <translation id="2059202684901022309">22x34인치</translation>
 <translation id="2063929825539050431">이 페이지를 다른 기기로 빠르게 보내려면 주소 표시줄을 길게 터치하세요.</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{제안 1개}other{제안 #개}}</translation>
 <translation id="2066969741541525119">조직에서 차단한 사이트입니다</translation>
 <translation id="2071156619270205202">이 카드로는 가상 카드 번호를 사용할 수 없습니다.</translation>
 <translation id="2071852865256799872">조직에서 브라우저를 관리하고 <ph name="PROFILE_DOMAIN" />에서 프로필을 관리합니다</translation>
@@ -665,6 +665,7 @@
 <translation id="2126374524350484896">PDF 변환 프로그램:</translation>
 <translation id="2127090458081644412">비밀번호가 이 기기에 저장됨</translation>
 <translation id="2127747486437921899">기울임꼴</translation>
+<translation id="2129163794581571479">개인 인텔리전스가 적용된 Gemini에 기반합니다. 향상된 자동 완성을 개선하기 위해 요청, 페이지 제목, URL이 검토될 수 있습니다. <ph name="BEGIN_LINK" />설정 관리<ph name="END_LINK" /></translation>
 <translation id="2130448033692577677">DnsOverHttpsMode 정책이 설정되지 않았기 때문에 지정한 템플릿이 적용되지 않을 수 있습니다.</translation>
 <translation id="2130699163006053678">A3x7</translation>
 <translation id="2131006834960167560">결제 자동 완성 사용 설정 창이 전체 높이로 열렸습니다.</translation>
@@ -710,7 +711,6 @@
 <translation id="2188375229972301266">하단 다공 펀칭</translation>
 <translation id="218940509700321686">쉼표로 구분된 값</translation>
 <translation id="2190094353033916816">이 정책은 머신 및 사용자 수준에서 서로 다른 값을 적용합니다. 정책이 의도한 대로 작동하고 있습니다.</translation>
-<translation id="219061769324072544">신용,카드,체크</translation>
 <translation id="2191980191135734720">다음 단계에서는 일반적으로 지문을 사용하여 화면을 잠금 해제합니다. <ph name="LINK_TEXT" />도 가능합니다.</translation>
 <translation id="2194856509914051091">고려사항</translation>
 <translation id="2195729137168608510">이메일 보호</translation>
@@ -1081,6 +1081,7 @@
 <translation id="2807052079800581569">이미지 Y 위치</translation>
 <translation id="2808278141522721006"><ph name="SETTINGS" />에서 Windows Hello를 사용 또는 사용 중지할 수 있습니다.</translation>
 <translation id="2820957248982571256">검색 중...</translation>
+<translation id="282457273878278063">연락처 정보 관리</translation>
 <translation id="2824775600643448204">주소창 및 검색창</translation>
 <translation id="2826760142808435982">이 연결은 <ph name="CIPHER" />을(를) 사용하여 암호화되고 인증되며 <ph name="KX" />을(를) 키 교환 매커니즘으로 사용합니다.</translation>
 <translation id="2828797285817981634">현재 움직임 감지 센서가 허용되어 있습니다</translation>
@@ -1575,6 +1576,7 @@
 <translation id="3655670868607891010">이 메시지가 자주 표시된다면 다음을 시도해 보세요. <ph name="HELP_LINK" /></translation>
 <translation id="3658742229777143148">개정</translation>
 <translation id="3659521826520353662">방문한 관리자 정의 웹사이트 및 방문 시기: <ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3663760610864720538">개인 인텔리전스가 적용된 Gemini에 기반합니다. <ph name="BEGIN_LINK" />설정 관리<ph name="END_LINK" /></translation>
 <translation id="3664479564786885722">이 제품을 판매하는 다른 매장에서 더 많은 구매 옵션을 검색하세요.</translation>
 <translation id="3664782872746246217">키워드:</translation>
 <translation id="3670030362669914947">번호</translation>
@@ -1595,6 +1597,7 @@
 <translation id="3693516565203081475">결제 수단 선택</translation>
 <translation id="3698353241727597930">관리자가 엔터프라이즈 관리 <ph name="CLOUD_STORAGE" /> 스토리지에 <ph name="FILES" />을(를) 저장하도록 구성했습니다. 이러한 파일은 삭제 시 모니터링, 감사, 보관될 수 있습니다.</translation>
 <translation id="3698629142018988477">사이트 만들기 버튼, Google Sites에서 빠르게 새 사이트를 만들려면 활성화하세요.</translation>
+<translation id="3698708128812719147">더 많은 정보를 찾아서 입력하려면 웹 어디서나 Ctrl 키를 두 번 누르세요</translation>
 <translation id="3700094625653511150">후불 결제 옵션을 숨기려면 <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /> 페이지로 이동하세요.</translation>
 <translation id="3700966190175650601">비밀번호 입력 시 지문 사용 중</translation>
 <translation id="3701427423622901115">재설정이 확인되었습니다.</translation>
@@ -1862,7 +1865,6 @@
 <translation id="4121428309786185360">만료일:</translation>
 <translation id="4123572138124678573">하단 3공 펀칭</translation>
 <translation id="412601465078863288">업로드 시간 초과</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{외 1개}other{외 #개}}</translation>
 <translation id="4129810348470013900">문제가 발생했습니다. 인터넷 연결을 확인하고 다시 시도해 보세요</translation>
 <translation id="4130226655945681476">네트워크 케이블, 모뎀, 라우터 확인</translation>
 <translation id="4132448310531350254">앱 "<ph name="POLICY_IDS_LIST" />"에서 참조하는 파일 확장자(file_extension) "<ph name="FILE_EXTENSION" />"의 핸들러가 중복됩니다.</translation>
@@ -1898,6 +1900,7 @@
 <translation id="4185037616931963178">안전하게 리드레스 번호 업데이트하기</translation>
 <translation id="4186035307311647330">가격 추적 취소</translation>
 <translation id="4191334393248735295">길이</translation>
+<translation id="4192770747482479191">더 많은 정보를 찾아서 입력하려면 웹 어디서나 ⌘를 두 번 누르세요</translation>
 <translation id="4195459680867822611">Chrome 도움말 보기 버튼, Chrome 기능에 관해 자세히 알아보려면 활성화하세요.</translation>
 <translation id="4195643157523330669">새 탭에서 열기</translation>
 <translation id="4196861286325780578">이동 다시 실행(&amp;R)</translation>
@@ -2215,7 +2218,6 @@
 <translation id="4725766358270333890">Microsoft OneDrive에 파일 <ph name="COUNT" />개 업로드 중</translation>
 <translation id="4726672564094551039">정책 새로고침</translation>
 <translation id="4728558894243024398">플랫폼</translation>
-<translation id="4730773064303503917">월렛을 사용하여 친구 및 비즈니스에 Pix 송금</translation>
 <translation id="4730977633786878901">리뷰</translation>
 <translation id="4731638775147756694">관리자가 애플리케이션을 차단했습니다.</translation>
 <translation id="4732860731866514038"><ph name="LANGUAGE" /> 언어 팩 다운로드 중…<ph name="PERCENT" />%</translation>
@@ -2846,6 +2848,7 @@
 <translation id="573974402615125334">탭 그룹을 공유하고, 탭 그룹에 참여하고, 탭 그룹에서 공동작업하려면 방문 기록과 탭을 동기화하세요.</translation>
 <translation id="5740911612628596808">봉투 C9</translation>
 <translation id="574392208103952083">보통</translation>
+<translation id="5744350700955456407">향상된 자동 완성 기능으로 이제 Gmail, 포토 등의 앱에서 주문 번호, 항공편 예약 확인 코드 등의 정보를 찾아서 입력할 수 있습니다</translation>
 <translation id="5745586894920491759">Chrome은 페이지 제목과 URL을 클라우드에서 처리합니다.</translation>
 <translation id="5745733273847572235">위치를 요청할 수 있음</translation>
 <translation id="5750869797196646528">손 추적</translation>
@@ -3227,7 +3230,6 @@
 <translation id="638289054711715023">수축 호일</translation>
 <translation id="6383221683286411806">해당 사이트에서 비용이 청구될 수 있음</translation>
 <translation id="6384448607821972818">비밀번호 재설정 표시</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{그 외 제안 1건}other{그 외 제안 #건}}</translation>
 <translation id="6386565501269869892">봉투 You 4</translation>
 <translation id="6387645831795005740">일부 공격자는 사이트의 URL을 알아채기 어려울 정도로 약간만 변경하여 다른 사이트를 모방합니다.</translation>
 <translation id="6389470377220713856">카드 소유자 이름</translation>
@@ -4834,7 +4836,6 @@
 <translation id="9168814207360376865">사이트에서 저장된 결제 수단이 있는지 확인하도록 허용</translation>
 <translation id="9169931577761441333">홈 화면에 <ph name="APP_NAME" /> 추가</translation>
 <translation id="9170848237812810038">실행 취소(&amp;U)</translation>
-<translation id="9170906125144697215">앱을 전환하지 않고 Pix로 결제</translation>
 <translation id="9171296965991013597">앱을 종료하시겠습니까?</translation>
 <translation id="9173282814238175921">단일 문서/새 시트</translation>
 <translation id="9173995187295789444">블루투스 기기 검색 중...</translation>

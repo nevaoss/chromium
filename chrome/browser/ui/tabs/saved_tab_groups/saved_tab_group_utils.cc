@@ -169,7 +169,7 @@ void SavedTabGroupUtils::RemoveGroupFromTabstrip(
   BrowserWindowInterface* const browser_with_local_group_id =
       browser ? browser
               : SavedTabGroupUtils::GetBrowserWithTabGroupId(local_group);
-  DCHECK(browser_with_local_group_id);
+  CHECK(browser_with_local_group_id, base::NotFatalUntil::M162);
   if (!browser_with_local_group_id) {
     return;
   }
@@ -855,6 +855,11 @@ void SavedTabGroupUtils::PerformTabGroupMenuAction(
     BrowserWindowInterface* browser,
     TabGroupSyncService* tab_group_service) {
   auto type = action.type;
+  if (type != TabGroupMenuAction::Type::DEFAULT) {
+    saved_tab_groups::metrics::RecordTabGroupContextMenuAction(
+        GetSavedTabGroupSubmenuOpenedMetric(context), type);
+  }
+
   if (type == TabGroupMenuAction::Type::OPEN_URL) {
     SavedTabGroupUtils::OpenUrlInNewUngroupedTab(
         browser, std::get<GURL>(action.element));

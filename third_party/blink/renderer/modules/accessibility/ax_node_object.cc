@@ -6650,7 +6650,17 @@ void AXNodeObject::InsertChild(AXObject* child,
   // Set the parent:
   // - For a new object it will have already been set.
   // - For a reused, older object, it may need to be changed to a new parent.
-  child->SetParent(this);
+  if (child->ParentObjectIfPresent() != this) {
+    child->SetParent(this);
+  } else if (AXObject* ax_included_parent =
+                 CachedIsIncludedInTree() ? this
+                                          : ParentObjectIncludedInTree()) {
+    if (AXObjectCache().IsUpdatingTree()) {
+      ax_included_parent->SetHasDirtyDescendants(true);
+    } else if (!ax_included_parent->HasDirtyDescendants()) {
+      child->SetAncestorsHaveDirtyDescendants();
+    }
+  }
 
   if (ChildrenNeedToUpdateCachedValues()) {
     child->InvalidateCachedValues(TreeUpdateReason::kChildInserted);
@@ -7135,9 +7145,8 @@ String AXNodeObject::TextAlternativeFromTooltip(
     return String();
   }
   name_from = ax::mojom::blink::NameFrom::kTitle;
-  const AtomicString& title = GetElement()->FastGetAttribute(kTitleAttr);
-  String title_text = TextAlternativeFromTitleAttribute(
-      title, name_from, name_sources, found_text_alternative);
+  String title_text = TextAlternativeFromTitleAttribute(name_from, name_sources,
+                                                        found_text_alternative);
   // Do not use if empty or if redundant with inner text.
   if (!title_text.empty()) {
     *text_alternative = title_text;
@@ -7212,7 +7221,6 @@ String AXNodeObject::TextAlternativeFromTooltip(
 }
 
 String AXNodeObject::TextAlternativeFromTitleAttribute(
-    AtomicString title,
     ax::mojom::blink::NameFrom& name_from,
     NameSources* name_sources,
     bool* found_text_alternative) const {
@@ -7223,13 +7231,14 @@ String AXNodeObject::TextAlternativeFromTitleAttribute(
     name_sources->back().type = name_from;
   }
   name_from = ax::mojom::blink::NameFrom::kTitle;
+  // Copy title as computing inner text can modify the attribute storage.
+  const AtomicString title = GetElement()->FastGetAttribute(kTitleAttr);
   if (!title.IsNull() &&
       String(title).StripWhiteSpace() !=
           GetElement()->GetInnerTextWithoutUpdate().StripWhiteSpace()) {
     text_alternative = title;
     if (name_sources) {
       NameSource& source = name_sources->back();
-      source.attribute_value = title;
       source.attribute_value = title;
       source.text = text_alternative;
       *found_text_alternative = true;

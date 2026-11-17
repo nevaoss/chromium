@@ -36,6 +36,8 @@ BASE_FEATURE(kComputeRasterTranslateForExternalScale,
 BASE_FEATURE(kSizeOopifEffectSurfacesAtExternalScale,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kOptimizeRemoveRenderPasses, base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kDeferImplInvalidation, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // TODO(crbug.com/446920991): Reduce back to 1 frame delay once we have a
@@ -66,7 +68,7 @@ BASE_FEATURE(kReclaimOldPrepaintTiles, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE_PARAM(int,
                    kReclaimDelayInSeconds,
-                   &kSmallerInterestArea,
+                   &kReclaimOldPrepaintTiles,
                    "reclaim_delay_s",
                    30);
 
@@ -289,7 +291,7 @@ BASE_FEATURE_PARAM(double,
                    0.2);
 
 BASE_FEATURE(kScrollJankV4MetricFastScrollContinuityRequiresSameDirection,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kScrollJankV4MetricReportAndroidAppJankStats,

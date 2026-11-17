@@ -291,7 +291,6 @@
 #import "ios/public/provider/chrome/browser/voice_search/voice_search_controller.h"
 #import "ios/web/public/web_state.h"
 #import "ios/web/public/web_state_id.h"
-#import "ui/base/device_form_factor.h"
 #import "ui/base/l10n/l10n_util.h"
 
 #if BUILDFLAG(ENABLE_SWIFT_CXX_INTEROP)
@@ -1525,8 +1524,12 @@ constexpr CGFloat kSnackbarFloatingBottomMargin = 10.0;
 // Resets the composebox state provider and coordinator. The
 // composeboxCoordinator should have been stopped before calling this method.
 - (void)resetComposebox {
+  BOOL hadComposebox = _composeboxCoordinator != nil;
   _browserOmniboxStateProvider.composeboxStateProvider = nil;
   _composeboxCoordinator = nil;
+  if (hadComposebox) {
+    self.viewController.visibilityState = BrowserViewVisibilityState::kVisible;
+  }
 }
 
 // Hides the compose box. If `immediately` is NO, the operation stops on the
@@ -1757,14 +1760,15 @@ constexpr CGFloat kSnackbarFloatingBottomMargin = 10.0;
   const TabGroup* group = webStateList->GetGroupOfWebStateAt(active_index);
   if (groupService && groupService->ShouldDisplayLastTabCloseAlert(group)) {
     web::WebState* webState = webStateList->GetWebStateAt(active_index);
-    BOOL isTablet = ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET;
+    BOOL isRegularXRegular = IsRegularXRegularSizeClass(self.viewController);
     SharedTabGroupLastTabAlertCommand* command =
         [[SharedTabGroupLastTabAlertCommand alloc]
                  initWithTabID:webState->GetUniqueIdentifier()
                        browser:self.browser
                          group:group
             baseViewController:self.viewController
-                    sourceView:isTablet ? nil : self.viewController.view
+                    sourceView:isRegularXRegular ? nil
+                                                 : self.viewController.view
                        closing:YES];
 
     id<SharedTabGroupLastTabAlertCommands> lastTabAlertHandler =
@@ -2017,6 +2021,8 @@ constexpr CGFloat kSnackbarFloatingBottomMargin = 10.0;
          composeboxAnimationBase:_toolbarCoordinator];
   [_composeboxCoordinator start];
   _browserOmniboxStateProvider.composeboxStateProvider = _composeboxCoordinator;
+  self.viewController.visibilityState =
+      BrowserViewVisibilityState::kCoveredByOmniboxPopup;
 }
 
 - (void)hideComposebox {

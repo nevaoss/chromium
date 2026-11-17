@@ -4,7 +4,6 @@
 
 #include "third_party/blink/renderer/platform/fonts/shaping/glyph_data_range.h"
 
-#include "base/types/to_address.h"
 #include "third_party/blink/renderer/platform/fonts/shaping/shape_result_run.h"
 #include "third_party/blink/renderer/platform/wtf/wtf_size_t.h"
 
@@ -13,16 +12,14 @@ namespace blink {
 GlyphDataRange::GlyphDataRange(const ShapeResultRun& run)
     : run_(&run), size_(run.glyph_data_.size()) {}
 
-GlyphDataRange::NonCompactGlyphPointerRange
-GlyphDataRange::NonCompactGlyphPointers() const {
+base::span<const HarfBuzzRunGlyphData> GlyphDataRange::NonCompactGlyphs()
+    const {
   if (!run_) {
     return {};
   }
-  const base::span<const HarfBuzzRunGlyphData> glyphs =
-      base::span<const HarfBuzzRunGlyphData>(
-          run_->glyph_data_.NonCompactGlyphs())
-          .subspan(index_, size_);
-  return {glyphs.data(), base::to_address(glyphs.end())};
+  return base::span<const HarfBuzzRunGlyphData>(
+             run_->glyph_data_.NonCompactGlyphs())
+      .subspan(index_, size_);
 }
 
 bool GlyphDataRange::HasOffsets() const {
@@ -35,6 +32,15 @@ bool GlyphDataRange::IsCompactSource() const {
 
 TextRunLayoutUnit GlyphDataRange::CompactSourceAdvance() const {
   return run_->glyph_data_.CompactAdvance();
+}
+
+unsigned GlyphDataRange::CompactStartCharacterIndex() const {
+  CHECK(IsCompactSource());
+  CHECK_LE(index_, run_->glyph_data_.size());
+  CHECK_LE(size_, run_->glyph_data_.size() - index_);
+  return run_->glyph_data_.IsCompactRtl()
+             ? run_->glyph_data_.size() - index_ - size_
+             : index_;
 }
 
 base::span<const uint16_t> GlyphDataRange::CompactGlyphs() const {
@@ -59,18 +65,15 @@ void GlyphDataRange::ExpandInto(base::span<HarfBuzzRunGlyphData> dest) const {
 GlyphDataRange GlyphDataRange::FindCompactGlyphDataRange(
     unsigned start_character_index,
     unsigned end_character_index) const {
-  // Identity character indices map the character range directly to glyphs.
-  const unsigned base = index_;
+  const wtf_size_t logical_begin = CompactStartCharacterIndex();
+  const wtf_size_t logical_end = logical_begin + size_;
   const wtf_size_t start =
-      start_character_index > base
-          ? std::min<wtf_size_t>(start_character_index - base, size_)
-          : 0;
+      std::clamp<wtf_size_t>(start_character_index, logical_begin, logical_end);
   const wtf_size_t end =
-      end_character_index > base
-          ? std::min<wtf_size_t>(end_character_index - base, size_)
-          : start;
-  return GlyphDataRange(run_.Get(), index_ + start,
-                        std::max(start, end) - start);
+      std::clamp<wtf_size_t>(end_character_index, start, logical_end);
+  const wtf_size_t physical_start =
+      run_->glyph_data_.IsCompactRtl() ? run_->glyph_data_.size() - end : start;
+  return GlyphDataRange(run_.Get(), physical_start, end - start);
 }
 
 GlyphDataRange GlyphDataRange::FindGlyphDataRange(
@@ -85,7 +88,7 @@ GlyphDataRange GlyphDataRange::FindGlyphDataRange(
   }
 
   if (run_->glyph_data_.IsCompact()) [[unlikely]] {
-    CHECK(!is_rtl);
+    CHECK_EQ(is_rtl, run_->glyph_data_.IsCompactRtl());
     return FindCompactGlyphDataRange(start_character_index,
                                      end_character_index);
   }
@@ -94,7 +97,9 @@ GlyphDataRange GlyphDataRange::FindGlyphDataRange(
                            wtf_size_t index) {
     return glyph_data.character_index < index;
   };
-  const auto [range_begin, range_end] = NonCompactGlyphPointers();
+  const base::span<const HarfBuzzRunGlyphData> glyphs = NonCompactGlyphs();
+  const auto range_begin = glyphs.begin();
+  const auto range_end = glyphs.end();
   if (!is_rtl) {
     const auto start_glyph = std::lower_bound(range_begin, range_end,
                                               start_character_index, comparer);

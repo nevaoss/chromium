@@ -64,9 +64,6 @@ public final class ProductionSupportedFlagList {
      * updating the "LoginCustomFlags" field in tools/metrics/histograms/enums.xml.
      */
     public static final Flag[] sFlagList = {
-        Flag.baseFeature(
-                "webviewprewarmdictionaryonpreconnect",
-                "Auto-generated flag for webviewprewarmdictionaryonpreconnect."),
         Flag.commandLine(
                 AwSwitches.HIGHLIGHT_ALL_WEBVIEWS,
                 "Highlight the contents (including web contents) of all WebViews with a yellow "
@@ -155,6 +152,8 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 "DefaultPassthroughCommandDecoder", "Use the passthrough GLES2 command decoder."),
         Flag.baseFeature(
+                "DefaultANGLEVulkan", "Use the Vulkan backend of ANGLE."),
+        Flag.baseFeature(
                 GpuFeatures.GPU_PERSISTENT_CACHE,
                 "Use GpuPersistentCache for GPU blob caching in memory and on disk (if "
                         + "enabled separately by enabling GpuShaderDiskCache)"),
@@ -199,6 +198,9 @@ public final class ProductionSupportedFlagList {
                         + " is an active scroll or a touch interaction). This effectively removes"
                         + " back-pressure in this case. This can result in wasted work and "
                         + " contention, but should regularize the timing of client rendering."),
+        Flag.baseFeature(
+                VizFeatures.SKIP_DISABLED_GL_CONTEXT_ON_DR_DC,
+                "Skip GL context on render thread when using vulkan"),
         Flag.baseFeature(NetFeatures.TRY_QUIC_BY_DEFAULT, "Allow sending QUIC connection options."),
         Flag.baseFeature(
                 NetFeatures.USE_NEW_ALPS_CODEPOINT_QUIC,
@@ -431,7 +433,6 @@ public final class ProductionSupportedFlagList {
                 BlinkFeatures.THREADED_BODY_LOADER,
                 "If enabled, reads and decodes navigation body data off the main thread."),
         Flag.baseFeature(BlinkFeatures.EXPAND_COMPOSITED_CULL_RECT),
-        Flag.baseFeature(BlinkFeatures.MERGE_STICKY_LAYERS),
         Flag.baseFeature(CcFeatures.NEW_CONTENT_FOR_CHECKERBOARDED_SCROLLS),
         Flag.baseFeature(CcFeatures.PRESERVE_DISCARDABLE_IMAGE_MAP_QUALITY),
         Flag.baseFeature(BlinkFeatures.SCROLLBAR_COLOR),
@@ -618,9 +619,6 @@ public final class ProductionSupportedFlagList {
                 BaseFeatures.PARTITION_ALLOC_TIGHTER_ALIGNED_ALLOC_BOUND,
                 "Allocates less memory for aligned allocations."),
         Flag.baseFeature(
-                "PartitionAllocUseSmallSingleSlotSpans",
-                "Uses a more nuanced heuristic to classify small single-slot spans."),
-        Flag.baseFeature(
                 "MemoryCoordinatorLastResortGC",
                 "Clears strong references in the MemoryCache in last resort GC."),
         Flag.baseFeature(
@@ -689,6 +687,9 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature("V8Flag_enforce_global_heap_limit"),
         Flag.baseFeature("V8Flag_turbolev"),
         Flag.baseFeature("V8Flag_sqrt_allocation_limits"),
+        Flag.baseFeature("V8Flag_freeze_forces_marking_finalization"),
+        Flag.baseFeature("V8Flag_memory_reducer_limit_based"),
+        Flag.baseFeature(ContentFeatures.FORWARD_MEMORY_PRESSURE_TO_BLINK_ISOLATES),
         Flag.baseFeature("V8FlushBaselineCode"),
         Flag.baseFeature("V8FlushCodeBasedOnTabVisibility"),
         Flag.baseFeature("V8FlushCodeBasedOnTime"),
@@ -1191,10 +1192,6 @@ public final class ProductionSupportedFlagList {
                 "When enabled, forces pushing active text input state update calculation "
                         + "whenever focus is gained on an editable text field."),
         Flag.baseFeature(
-                ContentFeatures.ANDROID_BLOCK_MISSPELLING_SUGGESTION_SPAN_IN_COMPOSITION_MODE,
-                "When enabled, misspelling suggestion span will be blocked from showing in"
-                        + " composition mode."),
-        Flag.baseFeature(
                 "LevelDBCacheSize",
                 "Reduces the size of the LevelDB cache to reduce memory usage at no expected speed"
                         + " cost"),
@@ -1530,12 +1527,18 @@ public final class ProductionSupportedFlagList {
                 AwFeatures.WEBVIEW_RELAX_DATA_DIR_LOCKING,
                 "Allow WebView initialization to continue in the case where an old instance of"
                         + " the same app process is stuck holding the lock."),
-        Flag.baseFeature("useicu4xnormalizer", "Auto-generated flag for useicu4xnormalizer."),
-        Flag.baseFeature("AwMetricsLogTrimming", "Auto-generated flag for AwMetricsLogTrimming."),
+        Flag.baseFeature(
+                "UseIcu4xNormalizer", "Enables using the ICU4X normalizer instead of ICU4C."),
+        Flag.baseFeature(
+                "AwMetricsLogTrimming",
+                "Controls WebView-specific trimming thresholds for metrics logs."),
         Flag.baseFeature(
                 AccessibilityFeatures.ACCESSIBILITY_ANDROID_MATH,
                 "Enables exposing additional MathML information in"
                         + " AccessibilityNodeInfoCompat.MathInfoCompat to screen readers."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_PREWARM_DICTIONARY_ON_PRECONNECT,
+                "When enabled, preconnect requests trigger compression dictionary prewarming."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

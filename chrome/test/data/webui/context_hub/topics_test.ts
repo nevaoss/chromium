@@ -16,7 +16,7 @@ import type {TopicFeedbackControlsElement} from 'chrome://context-hub/topics/top
 import {COVERAGE_TOPICS_STORAGE_KEY, getExportFileName, pickCoverageTopicIds, setFileDownloaderForTesting} from 'chrome://context-hub/topics/topic_feedback_export_dialog.js';
 import type {TopicFeedbackExportDialogElement} from 'chrome://context-hub/topics/topic_feedback_export_dialog.js';
 import type {TopicSitesDialogElement} from 'chrome://context-hub/topics/topic_sites_dialog.js';
-import {BADGE_BACKGROUND_COLORS, createEmptyTopicFeedback, createTopicSnapshot, DEFAULT_ICON, formatTopicFeedbackComment, getBackgroundColorForTopic, getBadgePath, getBadgeShapeForTopic, getDisplayDomain, getOpenableUrls, getTopicSites, isTopicFeedbackEmpty, isTopicFeedbackValid, MAX_TOPIC_SITES, normalizeTopicFeedbackComment, parseTopicFeedbackComment, TOPIC_DEFECT_CATEGORIES, toTopicItem} from 'chrome://context-hub/topics/topic_utils.js';
+import {BADGE_BACKGROUND_COLORS, createEmptyCollectionFeedback, createEmptyTopicFeedback, createTopicSnapshot, DEFAULT_ICON, formatTopicFeedbackComment, getBackgroundColorForTopic, getBadgePath, getBadgeShapeForTopic, getDisplayDomain, getOpenableUrls, getTopicSites, isCollectionFeedbackEmpty, isTopicFeedbackEmpty, isTopicFeedbackValid, MAX_TOPIC_SITES, normalizeTopicFeedbackComment, parseTopicFeedbackComment, setCollectionFeedback, TOPIC_DEFECT_CATEGORIES, toTopicItem} from 'chrome://context-hub/topics/topic_utils.js';
 import type {BadgeShape, Collection} from 'chrome://context-hub/topics/topic_utils.js';
 import type {TopicsViewElement} from 'chrome://context-hub/topics/topics_view.js';
 import type {CrCheckboxElement} from 'chrome://resources/cr_elements/cr_checkbox/cr_checkbox.js';
@@ -69,11 +69,13 @@ function createCollection(overrides: Partial<TopicCollection> = {}):
         title: 'Item 1',
         url: 'https://example.com/item-1',
         siteName: 'Site name',
+        visitTime: {internalValue: 11n},
       },
       {
         title: 'Item 2',
         url: 'https://www.example.org/item-2',
         siteName: null,
+        visitTime: {internalValue: 12n},
       },
     ],
     ...overrides,
@@ -186,11 +188,13 @@ suite('TopicUtils', () => {
               title: 'Item 1',
               url: 'https://example.com/item-1',
               siteName: 'Site name',
+              visitTime: {internalValue: 11n},
             },
             {
               title: 'Item 2',
               url: 'https://www.example.org/item-2',
               siteName: 'example.org',
+              visitTime: {internalValue: 12n},
             },
           ],
         }],
@@ -202,21 +206,95 @@ suite('TopicUtils', () => {
       collections: [
         createCollection({
           items: [
-            {title: 'Settings', url: 'chrome://settings', siteName: null},
-            {title: ' ', url: 'https://a.com/', siteName: null},
-            {title: 'B', url: 'https://b.com/', siteName: ' '},
+            {
+              title: 'Settings',
+              url: 'chrome://settings',
+              siteName: null,
+              visitTime: {internalValue: 1n},
+            },
+            {
+              title: ' ',
+              url: 'https://a.com/',
+              siteName: null,
+              visitTime: {internalValue: 2n},
+            },
+            {
+              title: 'B',
+              url: 'https://b.com/',
+              siteName: ' ',
+              visitTime: {internalValue: 3n},
+            },
           ],
         }),
         createCollection({title: ' '}),
         createCollection({
-          items: [{title: 'History', url: 'chrome://history', siteName: null}],
+          items: [{
+            title: 'History',
+            url: 'chrome://history',
+            siteName: null,
+            visitTime: {internalValue: 4n},
+          }],
         }),
       ],
     }));
     assertEquals(1, item.collections.length);
     assertDeepEquals(
-        [{title: 'B', url: 'https://b.com/', siteName: 'b.com'}],
+        [{
+          title: 'B',
+          url: 'https://b.com/',
+          siteName: 'b.com',
+          visitTime: {internalValue: 3n},
+        }],
         item.collections[0]!.items);
+  });
+
+  test('toTopicItem keeps collection titles verbatim', () => {
+    const item = toTopicItem(
+        createTopic({collections: [createCollection({title: ' Spaced '})]}));
+    assertEquals(' Spaced ', item.collections[0]!.title);
+  });
+
+  test('isCollectionFeedbackEmpty needs no rating and no flagged page', () => {
+    const empty = createEmptyCollectionFeedback('Collection');
+    assertDeepEquals(
+        {
+          title: 'Collection',
+          rating: TopicRating.kUnrated,
+          rejectedItemVisits: [],
+        },
+        empty);
+    assertTrue(isCollectionFeedbackEmpty(empty));
+    assertFalse(
+        isCollectionFeedbackEmpty({...empty, rating: TopicRating.kDisliked}));
+    assertFalse(isCollectionFeedbackEmpty(
+        {...empty, rejectedItemVisits: [{internalValue: 1n}]}));
+  });
+
+  test('setCollectionFeedback replaces, appends and drops by title', () => {
+    const a = {
+      ...createEmptyCollectionFeedback('A'),
+      rating: TopicRating.kLiked,
+    };
+    const b = {
+      ...createEmptyCollectionFeedback('B'),
+      rating: TopicRating.kLiked,
+    };
+    const newA = {...a, rating: TopicRating.kDisliked};
+    const c = {
+      ...createEmptyCollectionFeedback('C'),
+      rating: TopicRating.kLiked,
+    };
+
+    // Replaces in place, keeping the order.
+    assertDeepEquals([newA, b], setCollectionFeedback([a, b], newA));
+    // Appends feedback on a collection not rated yet.
+    assertDeepEquals([a, b, c], setCollectionFeedback([a, b], c));
+    // Drops the collection's feedback once it's empty.
+    assertDeepEquals(
+        [b], setCollectionFeedback([a, b], createEmptyCollectionFeedback('A')));
+    assertDeepEquals(
+        [a, b],
+        setCollectionFeedback([a, b], createEmptyCollectionFeedback('C')));
   });
 
   test('getSuggestedPrompts prefers titles, drops empties and caps', () => {
@@ -1083,6 +1161,8 @@ suite('TopicDetails', () => {
         'openUrlsInTabGroup', Promise.resolve({success: true}));
     handler.setResultFor(
         'getTopicPageImageUrl', Promise.resolve({imageUrl: null}));
+    handler.setResultFor(
+        'getTopicPageFaviconColor', Promise.resolve({color: null}));
     openWindowProxy = new TestOpenWindowProxy();
     OpenWindowProxyImpl.setInstance(openWindowProxy);
   });
@@ -1334,6 +1414,8 @@ suite('TopicDetailsFeedback', () => {
         'getTopics', Promise.resolve({topics: [topic, otherTopic]}));
     handler.setResultFor(
         'getTopicPageImageUrl', Promise.resolve({imageUrl: null}));
+    handler.setResultFor(
+        'getTopicPageFaviconColor', Promise.resolve({color: null}));
   });
 
   teardown(() => {
@@ -1560,38 +1642,82 @@ suite('TopicDetailsFeedback', () => {
         row.getBoundingClientRect().right);
   });
 
-  test(
-      'rates collections and flags their pages, in the page only', async () => {
-        handler.setResultFor('getTopic', Promise.resolve({
-          topic: {...topic, collections: [createCollection()]},
-        }));
-        await createDetails();
-        const summary = query('topic-summary-panel')!;
-        const carousel = queryIn(summary, 'topic-collection-carousel')[0] as
-            TopicCollectionCarouselElement;
-        const like = queryIn(carousel, '.collection-like')[0]!;
+  test('rates collections and flags their pages', async () => {
+    handler.setResultFor('getTopic', Promise.resolve({
+      topic: {...topic, collections: [createCollection()]},
+    }));
+    await createDetails();
+    const summary = query('topic-summary-panel')!;
+    const carousel = queryIn(summary, 'topic-collection-carousel')[0] as
+        TopicCollectionCarouselElement;
+    const like = queryIn(carousel, '.collection-like')[0]!;
 
-        await click(like);
-        assertEquals('true', like.getAttribute('aria-pressed'));
-        assertEquals(true, carousel.feedback!.liked);
+    await click(like);
+    assertEquals('true', like.getAttribute('aria-pressed'));
+    assertDeepEquals(
+        [{
+          title: 'Collection 1',
+          rating: TopicRating.kLiked,
+          rejectedItemVisits: [],
+        }],
+        getLastSavedFeedback().collectionFeedbacks);
 
-        const cards = queryIn(carousel, '#cards li');
-        assertEquals(2, queryIn(carousel, '.reject').length);
-        await click(cards[1]!.querySelector<HTMLElement>('.reject')!);
-        assertTrue(cards[1]!.hasAttribute('rejected'));
-        assertTrue(!!cards[1]!.querySelector('.rejected-label'));
-        assertDeepEquals(
-            ['https://www.example.org/item-2'],
-            carousel.feedback!.rejectedItemUrls);
+    const cards = queryIn(carousel, '#cards li');
+    assertEquals(2, queryIn(carousel, '.reject').length);
+    await click(cards[1]!.querySelector<HTMLElement>('.reject')!);
+    assertTrue(cards[1]!.hasAttribute('rejected'));
+    assertTrue(!!cards[1]!.querySelector('.rejected-label'));
+    // Pages are identified by the visit they were resolved to.
+    assertDeepEquals(
+        [{
+          title: 'Collection 1',
+          rating: TopicRating.kLiked,
+          rejectedItemVisits: [{internalValue: 12n}],
+        }],
+        getLastSavedFeedback().collectionFeedbacks);
 
-        // Clicking again undoes both.
-        await click(like);
-        await click(cards[1]!.querySelector<HTMLElement>('.reject')!);
-        assertEquals('false', like.getAttribute('aria-pressed'));
-        assertFalse(cards[1]!.hasAttribute('rejected'));
-        // Not stored until the mojom has fields for it.
-        assertEquals(0, handler.getCallCount('setTopicFeedback'));
-      });
+    // Clicking again undoes both, and empty feedback is deleted.
+    await click(like);
+    await click(cards[1]!.querySelector<HTMLElement>('.reject')!);
+    assertEquals('false', like.getAttribute('aria-pressed'));
+    assertFalse(cards[1]!.hasAttribute('rejected'));
+    assertEquals('topic-1', await handler.whenCalled('deleteTopicFeedback'));
+  });
+
+  test('shows stored collection feedback', async () => {
+    handler.setResultFor('getTopic', Promise.resolve({
+      topic: {...topic, collections: [createCollection()]},
+    }));
+    await createDetails([createStoredFeedback({
+      rating: TopicRating.kLiked,
+      collectionFeedbacks: [{
+        title: 'Collection 1',
+        rating: TopicRating.kDisliked,
+        rejectedItemVisits: [{internalValue: 11n}],
+      }],
+    })]);
+    const summary = query('topic-summary-panel')!;
+    const carousel = queryIn(summary, 'topic-collection-carousel')[0]!;
+    assertEquals(
+        'true',
+        queryIn(
+            carousel, '.collection-dislike')[0]!.getAttribute('aria-pressed'));
+    const cards = queryIn(carousel, '#cards li');
+    assertTrue(cards[0]!.hasAttribute('rejected'));
+    assertFalse(cards[1]!.hasAttribute('rejected'));
+
+    // Editing it keeps the rest of the feedback.
+    await click(cards[1]!.querySelector<HTMLElement>('.reject')!);
+    const feedback = getLastSavedFeedback();
+    assertEquals(TopicRating.kLiked, feedback.rating);
+    assertDeepEquals(
+        [{
+          title: 'Collection 1',
+          rating: TopicRating.kDisliked,
+          rejectedItemVisits: [{internalValue: 11n}, {internalValue: 12n}],
+        }],
+        feedback.collectionFeedbacks);
+  });
 });
 
 suite('TopicCollectionCarousel', () => {
@@ -1611,6 +1737,8 @@ suite('TopicCollectionCarousel', () => {
     browserProxyFactory.setInstance(instance);
     handler.setResultFor(
         'getTopicPageImageUrl', Promise.resolve({imageUrl: null}));
+    handler.setResultFor(
+        'getTopicPageFaviconColor', Promise.resolve({color: null}));
     openWindowProxy = new TestOpenWindowProxy();
     OpenWindowProxyImpl.setInstance(openWindowProxy);
   });
@@ -1630,6 +1758,7 @@ suite('TopicCollectionCarousel', () => {
         title: `Page ${i}`,
         url: `https://site${i}.com/`,
         siteName: `Site ${i}`,
+        visitTime: {internalValue: BigInt(i)},
       });
     }
     return items;
@@ -1674,6 +1803,41 @@ suite('TopicCollectionCarousel', () => {
     assertFalse(!!withImage!.querySelector('.card-favicon'));
     assertFalse(!!withoutImage!.querySelector('.card-page-image'));
     assertTrue(!!withoutImage!.querySelector('.card-favicon'));
+  });
+
+  test('tints the image area with the favicon color', async () => {
+    handler.setResultMapperFor(
+        'getTopicPageFaviconColor', (url: string) => Promise.resolve({
+          color: url === 'https://site0.com/' ? {value: 0xff102030} : null,
+        }));
+    await createCarousel({title: 'Collection title', items: createItems(2)});
+    await microtasksFinished();
+
+    assertDeepEquals(
+        ['https://site0.com/', 'https://site1.com/'],
+        handler.getArgs('getTopicPageFaviconColor'));
+    const [withColor, withoutColor] = getCardImages();
+    assertEquals(
+        'rgba(16, 32, 48, 1.00)',
+        withColor!.style.getPropertyValue('--card-favicon-color'));
+    assertEquals(
+        '', withoutColor!.style.getPropertyValue('--card-favicon-color'));
+  });
+
+  test('ignores favicon colors for a replaced collection', async () => {
+    const resolver = new PromiseResolver<{color: {value: number} | null}>();
+    handler.setResultFor('getTopicPageFaviconColor', resolver.promise);
+    await createCarousel({title: 'Collection 1', items: createItems(1)});
+
+    handler.setResultFor(
+        'getTopicPageFaviconColor', Promise.resolve({color: null}));
+    carousel.collection = {title: 'Collection 2', items: createItems(1)};
+    await microtasksFinished();
+    resolver.resolve({color: {value: 0xff102030}});
+    await microtasksFinished();
+    assertEquals(2, handler.getCallCount('getTopicPageFaviconColor'));
+    assertEquals(
+        '', getCardImages()[0]!.style.getPropertyValue('--card-favicon-color'));
   });
 
   test('falls back to the favicon when the image fails', async () => {

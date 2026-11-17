@@ -141,8 +141,7 @@ class CONTENT_EXPORT WebContentsAccessibilityBase
                         bool is_known_screen_reader_enabled,
                         bool is_complex_accessibility_service_enabled,
                         bool is_form_controls_candidate,
-                        bool is_on_screen_mode_candidate,
-                        bool is_any_accessibility_service_enabled);
+                        bool is_on_screen_mode_candidate);
 
   base::android::ScopedJavaLocalRef<jstring> GetSupportedHtmlElementTypes(
       JNIEnv* env);
@@ -396,8 +395,6 @@ class CONTENT_EXPORT WebContentsAccessibilityBase
   // Call the BrowserAccessibilityManager to trigger an kEndOfTest event.
   void SignalEndOfTestForTesting(JNIEnv* env);
 
-  bool HasScopedAXModeForTesting(JNIEnv* env);
-
   // Helper methods to wrap strings with a JNI-friendly cache.
   // Note: This cache is only meant for common strings that might be shared
   //       across many nodes (e.g. role or role description), which have a
@@ -417,7 +414,9 @@ class CONTENT_EXPORT WebContentsAccessibilityBase
     if (!slot) {
       // Otherwise, convert the string and add it to the cache, then return.
       slot = base::android::ConvertUTF16ToJavaString(env, str);
-      CHECK(common_string_cache_.size() < 500, base::NotFatalUntil::M159);
+      // TODO(crbug.com/574734481): CHECK-exclusion: Convert to a CHECK once we
+      // are confident it won't be triggered.
+      DCHECK(common_string_cache_.size() < 500);
     }
 
     return slot;

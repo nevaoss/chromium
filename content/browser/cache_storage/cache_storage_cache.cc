@@ -47,6 +47,7 @@
 #include "content/common/background_fetch/background_fetch_types.h"
 #include "content/common/features.h"
 #include "crypto/hmac.h"
+#include "mojo/public/cpp/bindings/callback_helpers.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
@@ -799,7 +800,8 @@ void CacheStorageCache::DropHandleRef() {
   // `this` pointer in this method after the following code.
   if (handle_ref_count_ == 0 && cache_storage_) {
     CacheStorageHandle handle = std::move(cache_storage_handle_);
-    cache_storage_->CacheUnreferenced(this);
+    cache_storage_->CacheUnreferenced(this, PaddedCacheSize());
+    // `this` may be deleted!
   }
 }
 
@@ -813,7 +815,7 @@ void CacheStorageCache::Match(blink::mojom::FetchAPIRequestPtr request,
                               CacheStorageSchedulerPriority priority,
                               int64_t trace_id,
                               ResponseCallback callback) {
-  if (IsClosingOrClosed()) {
+  if (backend_state_ == BACKEND_CLOSED) {
     std::move(callback).Run(
         MakeErrorStorage(ErrorStorageType::kMatchBackendClosed), nullptr);
     return;
@@ -834,10 +836,9 @@ void CacheStorageCache::MatchAll(
     blink::mojom::CacheQueryOptionsPtr match_options,
     int64_t trace_id,
     ResponsesCallback callback) {
-  if (IsClosingOrClosed()) {
+  if (backend_state_ == BACKEND_CLOSED) {
     std::move(callback).Run(
-        MakeErrorStorage(ErrorStorageType::kMatchAllBackendClosed),
-        std::vector<blink::mojom::FetchAPIResponsePtr>());
+        MakeErrorStorage(ErrorStorageType::kMatchAllBackendClosed), {});
     return;
   }
 
@@ -860,7 +861,7 @@ void CacheStorageCache::WriteSideData(CacheStorageCacheHandle cache_handle,
                                       mojo_base::BigBuffer data) {
   InvalidateSideDataWriters(url);
 
-  if (IsClosingOrClosed()) {
+  if (backend_state_ == BACKEND_CLOSED) {
     return;
   }
 
@@ -887,10 +888,9 @@ void CacheStorageCache::BatchOperation(
   // and success paths.
   std::optional<std::string> message;
 
-  if (IsClosingOrClosed()) {
+  if (backend_state_ == BACKEND_CLOSED) {
     std::move(callback).Run(CacheStorageVerboseError::New(
-        MakeErrorStorage(ErrorStorageType::kBatchBackendClosed),
-        std::move(message)));
+        MakeErrorStorage(ErrorStorageType::kBatchBackendClosed), std::nullopt));
     return;
   }
 
@@ -978,13 +978,6 @@ void CacheStorageCache::BatchDidGetBucketSpaceRemaining(
               perfetto::Flow::Global(trace_id), "operations",
               CacheStorageTracedValue(operations));
 
-  if (IsClosingOrClosed()) {
-    std::move(callback).Run(CacheStorageVerboseError::New(
-        MakeErrorStorage(ErrorStorageType::kBatchBackendClosed),
-        std::move(message)));
-    return;
-  }
-
   base::CheckedNumeric<uint64_t> safe_space_required = space_required;
   base::CheckedNumeric<uint64_t> safe_space_required_with_side_data;
   safe_space_required_with_side_data = safe_space_required + side_data_size;
@@ -1066,7 +1059,7 @@ void CacheStorageCache::Keys(blink::mojom::FetchAPIRequestPtr request,
                              blink::mojom::CacheQueryOptionsPtr options,
                              int64_t trace_id,
                              RequestsCallback callback) {
-  if (IsClosingOrClosed()) {
+  if (backend_state_ == BACKEND_CLOSED) {
     std::move(callback).Run(
         MakeErrorStorage(ErrorStorageType::kKeysBackendClosed), nullptr);
     return;
@@ -1083,10 +1076,10 @@ void CacheStorageCache::Keys(blink::mojom::FetchAPIRequestPtr request,
 }
 
 void CacheStorageCache::Size(SizeCallback callback) {
-  if (IsClosingOrClosed()) {
+  callback = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+      std::move(callback), CacheStorage::kSizeUnknown);
+  if (backend_state_ == BACKEND_CLOSED) {
     // TODO(jkarlin): Delete caches that can't be initialized.
-    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback), 0));
     return;
   }
 
@@ -1094,31 +1087,10 @@ void CacheStorageCache::Size(SizeCallback callback) {
   scheduler_->ScheduleOperation(
       id, CacheStorageSchedulerMode::kShared, CacheStorageSchedulerOp::kSize,
       CacheStorageSchedulerPriority::kNormal,
-      base::BindOnce(
-          &CacheStorageCache::SizeImpl, weak_ptr_factory_.GetWeakPtr(),
-          scheduler_->WrapCallbackToRunNext(id, std::move(callback))));
-}
-
-void CacheStorageCache::GetSizeThenClose(SizeCallback callback) {
-  if (IsClosingOrClosed()) {
-    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback), 0));
-    return;
-  }
-
-  close_requested_ = true;
-
-  auto id = scheduler_->CreateId();
-  scheduler_->ScheduleOperation(
-      id, CacheStorageSchedulerMode::kExclusive,
-      CacheStorageSchedulerOp::kSizeThenClose,
-      CacheStorageSchedulerPriority::kNormal,
-      base::BindOnce(
-          &CacheStorageCache::SizeImpl, weak_ptr_factory_.GetWeakPtr(),
-          base::BindOnce(
-              &CacheStorageCache::GetSizeThenCloseDidGetSize,
-              weak_ptr_factory_.GetWeakPtr(),
-              scheduler_->WrapCallbackToRunNext(id, std::move(callback)))));
+      // Unretained is safe because `this` owns `scheduler_`.
+      base::BindOnce(&CacheStorageCache::PaddedCacheSize,
+                     base::Unretained(this))
+          .Then(scheduler_->WrapCallbackToRunNext(id, std::move(callback))));
 }
 
 void CacheStorageCache::SetObserver(CacheStorageCacheObserver* observer) {
@@ -1175,7 +1147,8 @@ CacheStorageCache::CacheStorageCache(
           CacheStorageCacheEntryHandler::CreateCacheEntryHandler(
               owner,
               std::move(blob_storage_context))),
-      memory_only_(path.empty()) {
+      memory_only_(path.empty()),
+      post_backend_closed_callback_(base::DoNothing()) {
   CHECK(!bucket_locator_.storage_key.origin().opaque(),
         base::NotFatalUntil::M158);
   CHECK(quota_manager_proxy_.get(), base::NotFatalUntil::M158);
@@ -1665,10 +1638,6 @@ void CacheStorageCache::WriteSideDataDidGetBucketSpaceRemaining(
               "CacheStorageCache::WriteSideDataDidGetBucketSpaceRemaining",
               perfetto::Flow::Global(trace_id));
 
-  if (IsClosingOrClosed()) {
-    return;
-  }
-
   if (!space_remaining.has_value() ||
       !base::IsValueInRangeForNumericType<int64_t>(data.size()) ||
       space_remaining.value() < static_cast<int64_t>(data.size())) {
@@ -1873,15 +1842,6 @@ void CacheStorageCache::Put(blink::mojom::FetchAPIRequestPtr request,
                             blink::mojom::FetchAPIResponsePtr response,
                             int64_t trace_id,
                             ErrorCallback callback) {
-  if (IsClosingOrClosed()) {
-    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE,
-        base::BindOnce(
-            std::move(callback),
-            MakeErrorStorage(ErrorStorageType::kPutImplBackendClosed)));
-    return;
-  }
-
   auto put_context = cache_entry_handler_->CreatePutContext(
       std::move(request), std::move(response), trace_id);
   auto id = scheduler_->CreateId();
@@ -2347,8 +2307,9 @@ void CacheStorageCache::CalculateCacheSize(
 
 void CacheStorageCache::UpdateCacheSize(base::OnceClosure callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (backend_state_ != BACKEND_OPEN)
+  if (backend_state_ != BACKEND_OPEN) {
     return;
+  }
 
   // Note that the callback holds a cache handle to keep the cache alive during
   // the operation since this UpdateCacheSize is often run after an operation
@@ -2394,7 +2355,7 @@ void CacheStorageCache::GetAllMatchedEntries(
     blink::mojom::CacheQueryOptionsPtr options,
     int64_t trace_id,
     CacheEntriesCallback callback) {
-  if (IsClosingOrClosed()) {
+  if (backend_state_ == BACKEND_CLOSED) {
     std::move(callback).Run(
         MakeErrorStorage(ErrorStorageType::kKeysBackendClosed), {});
     return;
@@ -2597,35 +2558,29 @@ void CacheStorageCache::KeysDidQueryCache(
 }
 
 void CacheStorageCache::DeleteBackendCompletedIO() {
-  if (!post_backend_closed_callback_.is_null()) {
-    // TODO(crbug.com/555074520): CHECK-exclusion: Convert to a CHECK once we
-    // are confident it won't be triggered.
-    DCHECK_NE(BACKEND_CLOSED, backend_state_);
-    backend_state_ = BACKEND_CLOSED;
-    std::move(post_backend_closed_callback_).Run();
-  }
+  std::move(post_backend_closed_callback_).Run();
 }
 
-void CacheStorageCache::SizeImpl(SizeCallback callback) {
-  CHECK_NE(BACKEND_UNINITIALIZED, backend_state_, base::NotFatalUntil::M158);
-
-  // TODO(cmumford): Can CacheStorage::kSizeUnknown be returned instead of zero?
-  std::move(callback).Run(backend_state_ == BACKEND_OPEN ? PaddedCacheSize()
-                                                         : 0);
-}
-
-void CacheStorageCache::GetSizeThenCloseDidGetSize(SizeCallback callback,
-                                                   int64_t cache_size) {
+void CacheStorageCache::ForceClose(base::OnceClosure callback) {
+  // The backend guarantees that it will call `DeleteBackendCompletedIO` when
+  // it's closed or when initialization fails. If that's already happened, we
+  // need to invoke `callback` directly, otherwise we close the backend and wait
+  // for that to happen. In the case where the backend is still initializing,
+  // invalidating the weak pointers leads to the backend being
+  // dropped/destroyed, which still leads to the callback being invoked.
+  bool backend_already_closed = post_backend_closed_callback_.is_null();
+  post_backend_closed_callback_ = WrapCallbackWithHandle(std::move(callback));
   cache_entry_handler_->InvalidateDiskCacheBlobEntrys();
   InvalidateSideDataWriters();
-
-  if (backend_state_ != BACKEND_OPEN) {
-    std::move(callback).Run(cache_size);
-    return;
-  }
+  weak_ptr_factory_.InvalidateWeakPtrs();
+  backend_state_ = BACKEND_CLOSED;
+  active_blob_to_disk_cache_writers_.Clear();
   backend_.reset();
-  post_backend_closed_callback_ =
-      base::BindOnce(std::move(callback), cache_size);
+  scheduler_.reset();
+
+  if (backend_already_closed) {
+    std::move(post_backend_closed_callback_).Run();
+  }
 }
 
 void CacheStorageCache::CreateBackend(ErrorCallback callback) {
@@ -2649,7 +2604,7 @@ void CacheStorageCache::CreateBackend(ErrorCallback callback) {
       max_bytes, disk_cache::ResetHandling::kNeverReset, /*net_log=*/nullptr,
       /*cache_encryption_delegate=*/nullptr,
       base::BindOnce(&CacheStorageCache::DeleteBackendCompletedIO,
-                     weak_ptr_factory_.GetWeakPtr()),
+                     backend_shutdown_weak_ptr_factory_.GetWeakPtr()),
       std::move(split_callback.first));
   if (result.net_error != net::ERR_IO_PENDING)
     std::move(split_callback.second).Run(std::move(result));
@@ -2681,10 +2636,10 @@ void CacheStorageCache::InitBackend() {
       CacheStorageSchedulerPriority::kNormal,
       base::BindOnce(
           &CacheStorageCache::CreateBackend, weak_ptr_factory_.GetWeakPtr(),
-          base::BindOnce(
-              &CacheStorageCache::InitDidCreateBackend,
-              weak_ptr_factory_.GetWeakPtr(),
-              scheduler_->WrapCallbackToRunNext(id, base::BindOnce([] {})))));
+          base::BindOnce(&CacheStorageCache::InitDidCreateBackend,
+                         weak_ptr_factory_.GetWeakPtr(),
+                         scheduler_->WrapCallbackToRunNext(
+                             id, base::OnceClosure(base::DoNothing())))));
 }
 
 void CacheStorageCache::InitDidCreateBackend(
@@ -2769,7 +2724,6 @@ void CacheStorageCache::InitGotCacheSizeAndPadding(
 }
 
 int64_t CacheStorageCache::PaddedCacheSize() const {
-  CHECK_NE(BACKEND_UNINITIALIZED, backend_state_, base::NotFatalUntil::M158);
   if (cache_size_ == CacheStorage::kSizeUnknown ||
       cache_padding_ == CacheStorage::kSizeUnknown) {
     return CacheStorage::kSizeUnknown;

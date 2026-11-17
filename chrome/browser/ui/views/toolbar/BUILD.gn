@@ -436,6 +436,7 @@ if (!is_android) {
       "//ui/views",
       "//ui/views:test_support",
       "//ui/views/interaction:test_support",
+      "//ui/webui/tracked_element:test_support",
     ]
   }
 
@@ -640,6 +641,7 @@ if (!is_android && !is_chromeos_device) {
       "//chrome/browser/ui/tabs:tab_menu",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/translate:test_support",
+      "//chrome/browser/ui/views/extensions:extension_popup",
       "//chrome/browser/ui/views/extensions:extensions_menu_coordinator",
       "//chrome/browser/ui/views/extensions:extensions_toolbar_button",
       "//chrome/browser/ui/views/extensions:test_support",
@@ -684,6 +686,9 @@ if (!is_android && !is_chromeos_device) {
     }
     if (use_aura) {
       deps += [ "//ui/aura:test_support" ]
+    }
+    if (use_ozone) {
+      deps += [ "//ui/ozone" ]
     }
   }
 }

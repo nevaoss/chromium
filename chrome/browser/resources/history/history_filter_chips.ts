@@ -6,6 +6,7 @@
 import './internal/icons.html.js';
 // </if>
 
+import 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import 'chrome://resources/cr_elements/cr_chip/cr_chip.js';
 import 'chrome://resources/cr_elements/cr_icon/cr_icon.js';
 import 'chrome://resources/cr_elements/icons.html.js';
@@ -38,6 +39,7 @@ export class HistoryFilterChipsElement extends CrLitElement {
       showActorFilter: {type: Boolean},
       userVisits: {type: Boolean},
       actorVisits: {type: Boolean},
+      clientIds: {type: Array},
     };
   }
 
@@ -46,8 +48,9 @@ export class HistoryFilterChipsElement extends CrLitElement {
   accessor showActorFilter: boolean = false;
   // These values are used to filter the history query; true indicates that
   // results for the respective value should be included.
-  private accessor userVisits: boolean = true;
-  private accessor actorVisits: boolean = true;
+  accessor userVisits: boolean = true;
+  accessor actorVisits: boolean = true;
+  accessor clientIds: string[] = [];
 
   protected isUserSelected(): boolean {
     return this.userVisits && !this.actorVisits;
@@ -55,6 +58,19 @@ export class HistoryFilterChipsElement extends CrLitElement {
 
   protected isActorSelected(): boolean {
     return this.actorVisits && !this.userVisits;
+  }
+
+  protected isDeviceSelected_(device: Device): boolean {
+    return this.clientIds.length > 0 &&
+        this.clientIds.length === device.ids.length &&
+        this.clientIds.every((id, index) => id === device.ids[index]);
+  }
+
+  protected hasActiveFilter_(): boolean {
+    const hasActiveActorDropdownFilter =
+        this.showActorFilterDropDownVersion_() &&
+        (this.isUserSelected() || this.isActorSelected());
+    return hasActiveActorDropdownFilter || this.clientIds.length > 0;
   }
 
   protected onActorSelectChange_(e: Event) {
@@ -71,6 +87,22 @@ export class HistoryFilterChipsElement extends CrLitElement {
     }
 
     this.recordMetrics_(this.userVisits, this.actorVisits);
+    this.fireChange_(this.userVisits, this.actorVisits);
+  }
+
+  protected onDeviceSelectChange_(e: Event) {
+    const select = e.target as HTMLSelectElement;
+    const index = Number(select.value);
+    const device = index >= 0 ? this.devices[index] : undefined;
+    this.clientIds = device ? device.ids : [];
+    this.fireChange_(this.userVisits, this.actorVisits);
+  }
+
+  protected onClearAllClick_() {
+    this.userVisits = true;
+    this.actorVisits = true;
+    this.clientIds = [];
+
     this.fireChange_(this.userVisits, this.actorVisits);
   }
 
@@ -136,7 +168,11 @@ export class HistoryFilterChipsElement extends CrLitElement {
   }
 
   private fireChange_(userVisits: boolean, actorVisits: boolean) {
-    this.fire('filter-changed', {userVisits, actorVisits});
+    this.fire('filter-changed', {
+      userVisits,
+      actorVisits,
+      clientIds: this.clientIds,
+    });
   }
 }
 

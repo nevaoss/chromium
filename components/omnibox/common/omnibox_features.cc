@@ -216,9 +216,8 @@ BASE_FEATURE(kOmniboxFuseboxUserEdGuidedTour, DISABLED);
 // attached.
 BASE_FEATURE(kOmniboxDisableTabsForCanvas, ENABLED);
 
-// Enables the AIM entrypoint for third party search engines. Held dark on
-// Android until the Android entrypoint UI is implemented.
-BASE_FEATURE(kAim3pEntrypoint, enable_if(!IS_ANDROID));
+// Enables the AIM entrypoint for third party search engines.
+BASE_FEATURE(kAim3pEntrypoint, ENABLED);
 const base::FeatureParam<bool> kAim3pEntrypointDebug{
     &kAim3pEntrypoint, "Aim3pEntrypointDebug", false};
 
@@ -240,6 +239,11 @@ BASE_FEATURE(kOmniboxAimDeferShowUntilVisualStateReadyWithFullWebUI, DISABLED);
 // shown or another caller needs the AIM WebContents. See
 // `OmniboxPopupAimPresenter`.
 BASE_FEATURE(kOmniboxAimPopupDeferCreation, DISABLED);
+// When enabled, the WebUI omnibox popup that shows suggestions does not create
+// its WebUI content (and so its WebContents and renderer) while the browser
+// window is built. It creates it after the browser window's first
+// presentation, or earlier if the popup is shown. See `OmniboxPopupPresenter`.
+BASE_FEATURE(kOmniboxWebUIPopupDeferCreation, DISABLED);
 // When enabled, the Omnibox WebUI popup will defer showing until the WebUI has
 // painted a clean frame, avoiding the issue of the popup being shown with a
 // stale frame.

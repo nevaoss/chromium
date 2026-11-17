@@ -16,6 +16,9 @@ enum class ActuationWorklogItemStyle {
   // Card style with an icon in a circle, and the title/subtitle inside a card
   // container. Optionally contains an `ActuationWorklogAccessoryItem`.
   kCard,
+  // Freeform text-only style (e.g. a question or clarification) spanning the
+  // full width, without any timeline decoration (no dot, icon or connector).
+  kFreeform,
 };
 
 // View data object describing a nested accessory card inside an actuation
@@ -112,6 +115,10 @@ enum class ActuationWorklogItemStyle {
                            active:(BOOL)active
                     accessoryItem:(ActuationWorklogAccessoryItem*)accessoryItem;
 
+// Creates a freeform text-only item without timeline decoration. `text` is
+// exposed through `title`.
++ (instancetype)freeformItemWithText:(NSString*)text;
+
 #pragma mark - Helpers
 
 // Returns a copy of the item with the active state updated.
@@ -152,6 +159,8 @@ enum class ActuationInterventionType {
   kCard,
   // Row of one or two action buttons, without `title` or `subtitle`.
   kRow,
+  // Column of one to three action buttons, without `title` or `subtitle`.
+  kColumn,
 };
 
 // View data object describing an action of an `ActuationInterventionData`.
@@ -185,7 +194,7 @@ enum class ActuationInterventionType {
 // Optional subtitle text (used if `type == kCard`).
 @property(nonatomic, copy, readonly) NSString* subtitle;
 
-// Actions of the intervention (leading to trailing). Never empty.
+// Actions of the intervention, in display order. Never empty.
 @property(nonatomic, copy, readonly)
     NSArray<ActuationInterventionAction*>* actions;
 
@@ -202,7 +211,11 @@ enum class ActuationInterventionType {
 + (instancetype)rowItemWithActions:
     (NSArray<ActuationInterventionAction*>*)actions;
 
-// TODO(crbug.com/573145076): Implement `columnItem`.
+// Creates an intervention with a column of one to three `actions`, in display
+// order.
++ (instancetype)columnItemWithActions:
+    (NSArray<ActuationInterventionAction*>*)actions;
+
 @end
 
 // View data object describing the text displayed in the actuation header.

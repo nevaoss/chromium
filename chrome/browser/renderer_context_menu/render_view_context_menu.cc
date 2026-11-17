@@ -138,7 +138,6 @@
 #include "chrome/browser/ui/qrcode_generator/qrcode_generator_bubble_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_entry_point_controller.h"
-#include "chrome/browser/ui/read_anything/read_anything_side_panel_controller_utils.h"
 #include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_bubble.h"
 #include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_sub_menu_model.h"
 #include "chrome/browser/ui/tab_contents/core_tab_helper.h"
@@ -1629,7 +1628,8 @@ void RenderViewContextMenu::InitMenu() {
       features::GetReadAnythingMenuShuffleExperimentGroup() ==
           features::ReadAnythingMenuShuffleExperimentGroup::kPlaceAtBottom &&
       content_type_->SupportsGroup(ContextMenuContentType::ITEM_GROUP_PAGE)) {
-    if (!use_simplified_menu_for_text_selection) {
+    if (!use_simplified_menu_for_text_selection &&
+        !took_simplified_page_items_path) {
       AppendReadAnythingItem();
     }
   }
@@ -2910,6 +2910,19 @@ void RenderViewContextMenu::AppendTranslateItem() {
                                      ui::kColorMenuIcon, kTabMenuIconSize));
 }
 
+void RenderViewContextMenu::AppendTranslateOrPartialTranslateItem() {
+#if !BUILDFLAG(IS_CHROMEOS)
+  if (search::DefaultSearchProviderIsGoogle(GetProfile()) &&
+      CanTranslate(/*menu_logging=*/false)) {
+    if (CanPartiallyTranslateTargetLanguage()) {
+      AppendPartialTranslateItem();
+    } else {
+      AppendTranslateItem();
+    }
+  }
+#endif  // !BUILDFLAG(IS_CHROMEOS)
+}
+
 void RenderViewContextMenu::AppendMediaRouterItem() {
   if (media_router::MediaRouterEnabled(browser_context_)) {
     AddItemWithOptionalIcon(IDC_ROUTE_MEDIA, IDS_MEDIA_ROUTER_MENU_ITEM_TITLE,
@@ -2920,14 +2933,21 @@ void RenderViewContextMenu::AppendMediaRouterItem() {
 }
 
 void RenderViewContextMenu::AppendReadAnythingItem() {
+  if (menu_model_.GetIndexOfCommandId(IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE)
+          .has_value()) {
+    return;
+  }
+
   const bool is_menu_simplification_enabled =
       features::IsMenuSimplificationEnabled();
   if (is_menu_simplification_enabled && params_.is_editable) {
     return;
   }
 
-  // Show Read Anything option if it's not already open in the side panel.
-  if (IsNormalBrowser() && !IsReadAnythingEntryShowing(GetBrowser())) {
+  // Show Read Anything option if it's not already open.
+  if (IsNormalBrowser() &&
+      !read_anything::ReadAnythingEntryPointController::IsUIShowing(
+          GetBrowser())) {
     menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE,
                                     IDS_CONTENT_CONTEXT_READING_MODE);
 
@@ -3215,11 +3235,7 @@ void RenderViewContextMenu::AppendOtherEditableItems() {
       MaybeAppendOpenGlicItem(/*add_separator=*/false);
     }
     AppendPrintItem();
-    if (CanPartiallyTranslateTargetLanguage()) {
-      AppendPartialTranslateItem();
-    } else if (CanTranslate(/*menu_logging=*/false)) {
-      AppendTranslateItem();
-    }
+    AppendTranslateOrPartialTranslateItem();
   }
 
   if (!menu_model_.GetIndexOfCommandId(IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE)
@@ -6323,11 +6339,7 @@ void RenderViewContextMenu::AppendRevisedTextSelectionSection() {
     AppendSaveToMemoryBanksItem();
     AppendPrintItem();
 
-    if (CanPartiallyTranslateTargetLanguage()) {
-      AppendPartialTranslateItem();
-    } else if (CanTranslate(/*menu_logging=*/false)) {
-      AppendTranslateItem();
-    }
+    AppendTranslateOrPartialTranslateItem();
   } else {
     // Pure Selection case
     AppendCopyItem();
@@ -6346,11 +6358,7 @@ void RenderViewContextMenu::AppendRevisedTextSelectionSection() {
     AppendReadAnythingItem();
     AppendSaveToMemoryBanksItem();
 
-    if (CanPartiallyTranslateTargetLanguage()) {
-      AppendPartialTranslateItem();
-    } else if (CanTranslate(/*menu_logging=*/false)) {
-      AppendTranslateItem();
-    }
+    AppendTranslateOrPartialTranslateItem();
   }
 }
 

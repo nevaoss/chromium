@@ -61,6 +61,7 @@ import org.chromium.chrome.browser.sync.settings.ManageSyncSettings;
 import org.chromium.chrome.browser.sync.settings.SignInPreference;
 import org.chromium.chrome.browser.toolbar.settings.AddressBarPreference;
 import org.chromium.chrome.browser.tracing.settings.DeveloperSettings;
+import org.chromium.chrome.browser.ui.bottombar.BottomBarConfigUtils;
 import org.chromium.chrome.browser.ui.default_browser_promo.DefaultBrowserPromoUtils;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.settings_promo_card.SettingsPromoCardPreference;
@@ -362,6 +363,7 @@ public class MainSettings extends ChromeBaseSettingsFragment
 
         // Ensure the preference disabled state is reflected when device is folded or unfolded.
         updateAddressBarPreference();
+        updateHomepagePreference();
     }
 
     @Override
@@ -775,7 +777,8 @@ public class MainSettings extends ChromeBaseSettingsFragment
         // Similar to ToolbarPositionController#isToolbarPositionCustomizationEnabled(), except
         // - no CCT checks (settings are not accessible from CCTs),
         // - showing on Foldables in unfolded (open) state.
-        return !DeviceInfo.isAutomotive()
+        return !BottomBarConfigUtils.shouldMoveToolbarSettingsToAppearance(context)
+                && !DeviceInfo.isAutomotive()
                 && (DeviceInfo.isFoldable()
                         || !DeviceFormFactor.isNonMultiDisplayContextOnTablet(context));
     }
@@ -786,12 +789,17 @@ public class MainSettings extends ChromeBaseSettingsFragment
     }
 
     private void updateHomepagePreference() {
-        if (!HomepageManager.shouldShowHomepageSettings()) {
+        if (!shouldShowHomepagePref(getContext())) {
             removePreferenceIfPresent(PREF_HOMEPAGE);
         } else {
             Preference homepagePref = addPreferenceIfAbsent(PREF_HOMEPAGE);
             setOnOffSummary(homepagePref, HomepageManager.getInstance().isHomepageEnabled());
         }
+    }
+
+    private static boolean shouldShowHomepagePref(Context context) {
+        return !BottomBarConfigUtils.shouldMoveToolbarSettingsToAppearance(context)
+                && HomepageManager.shouldShowHomepageSettings();
     }
 
     private void setOnOffSummary(Preference pref, boolean isOn) {
@@ -960,7 +968,7 @@ public class MainSettings extends ChromeBaseSettingsFragment
                     if (!MultiWindowUtils.isOnStartupSettingsUiEnabled()) {
                         indexData.removeEntry(getUniqueId(PREF_ON_STARTUP));
                     }
-                    if (!HomepageManager.shouldShowHomepageSettings()) {
+                    if (!shouldShowHomepagePref(context)) {
                         indexData.removeEntry(getUniqueId(PREF_HOMEPAGE));
                     }
                 }

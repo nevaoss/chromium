@@ -148,8 +148,8 @@ void GetDeviceNameAndType(const syncer::DeviceInfoTracker* tracker,
                           std::string* type) {
   // DeviceInfoTracker must be syncing in order for remote history entries to
   // be available.
-  DCHECK(tracker);
-  DCHECK(tracker->IsSyncing());
+  CHECK(tracker, base::NotFatalUntil::M162);
+  CHECK(tracker->IsSyncing(), base::NotFatalUntil::M162);
 
   const syncer::DeviceInfo* device_info =
       tracker->GetChromeDeviceInfo(client_id);
@@ -547,12 +547,14 @@ void BrowsingHistoryHandler::ShowSidePanelUI() {
 #endif
 }
 
-void BrowsingHistoryHandler::QueryHistory(const std::string& query,
-                                          int max_count,
-                                          std::optional<double> begin_timestamp,
-                                          bool include_user_visits,
-                                          bool include_actor_visits,
-                                          QueryHistoryCallback callback) {
+void BrowsingHistoryHandler::QueryHistory(
+    const std::string& query,
+    int max_count,
+    std::optional<double> begin_timestamp,
+    bool include_user_visits,
+    bool include_actor_visits,
+    const std::vector<std::string>& client_ids,
+    QueryHistoryCallback callback) {
   // Reset the query history continuation callback. Since it is repopulated in
   // OnQueryComplete(), it cannot be reset earlier, as the early return above
   // prevents the QueryHistory() call to the browsing history service.
@@ -566,7 +568,7 @@ void BrowsingHistoryHandler::QueryHistory(const std::string& query,
   query_history_callback_ = std::move(callback);
 
   SendHistoryQuery(max_count, query, begin_timestamp, include_user_visits,
-                   include_actor_visits);
+                   include_actor_visits, client_ids);
 }
 
 void BrowsingHistoryHandler::SendHistoryQuery(
@@ -574,7 +576,8 @@ void BrowsingHistoryHandler::SendHistoryQuery(
     const std::string& query,
     std::optional<double> begin_timestamp,
     bool include_user_visits,
-    bool include_actor_visits) {
+    bool include_actor_visits,
+    const std::vector<std::string>& client_ids) {
   query_timer_ = base::ElapsedTimer();
   history::QueryOptions options;
   options.max_count = max_count;
@@ -617,6 +620,8 @@ void BrowsingHistoryHandler::SendHistoryQuery(
         base::Time::FromMillisecondsSinceUnixEpoch(begin_timestamp.value());
   }
 
+  options.client_ids = client_ids;
+
   browsing_history_service_->QueryHistory(base::UTF8ToUTF16(text_query),
                                           options);
 }
@@ -648,7 +653,7 @@ void BrowsingHistoryHandler::RemoveVisits(
       NOTREACHED() << "Unable to extract arguments";
     }
 
-    DCHECK_GT(timestamps.size(), 0U);
+    CHECK_GT(timestamps.size(), 0U, base::NotFatalUntil::M162);
     BrowsingHistoryService::HistoryEntry entry;
     entry.url = GURL(url);
 
@@ -947,7 +952,7 @@ void BrowsingHistoryHandler::HandleQueryResults(
       DeviceInfoSyncServiceFactory::GetForProfile(profile_)
           ->GetDeviceInfoTracker();
 
-  DCHECK(tracker);
+  CHECK(tracker, base::NotFatalUntil::M162);
 
   // Deduplicate actions belonging to the same task and visit.
   // 5 seconds is chosen as a safe heuristic upper bound to accommodate

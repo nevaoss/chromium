@@ -7,18 +7,21 @@
 #include <stddef.h>
 
 #include <memory>
+#include <numeric>
 #include <set>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
+#include "base/barrier_callback.h"
 #include "base/barrier_closure.h"
 #include "base/containers/span.h"
 #include "base/files/file_util.h"
 #include "base/files/memory_mapped_file.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
+#include "base/functional/concurrent_closures.h"
 #include "base/hash/sha1.h"
 #include "base/location.h"
 #include "base/memory/ptr_util.h"
@@ -48,6 +51,7 @@
 #include "content/browser/cache_storage/cache_storage_scheduler.h"
 #include "content/browser/cache_storage/cache_storage_trace_utils.h"
 #include "content/common/background_fetch/background_fetch_types.h"
+#include "mojo/public/cpp/bindings/callback_helpers.h"
 #include "net/base/directory_lister.h"
 #include "net/base/net_errors.h"
 #include "storage/browser/blob/blob_storage_context.h"
@@ -65,12 +69,6 @@ namespace {
 std::string HexedHash(const std::string& value) {
   std::string value_hash = base::SHA1HashString(value);
   return base::HexEncodeLower(value_hash);
-}
-
-void SizeRetrievedFromAllCaches(std::unique_ptr<int64_t> accumulator,
-                                CacheStorage::SizeCallback callback) {
-  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, base::BindOnce(std::move(callback), *accumulator));
 }
 
 }  // namespace
@@ -855,31 +853,14 @@ void CacheStorage::MatchAllCaches(
           scheduler_->WrapCallbackToRunNext(id, std::move(callback))));
 }
 
-void CacheStorage::GetSizeThenCloseAllCaches(SizeCallback callback) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  if (!initialized_)
-    LazyInit();
-
-  // Note, this is a shared operation since it only reads CacheStorage data.
-  // The CacheStorageCache is responsible for making its close operation
-  // exclusive.
-  auto id = scheduler_->CreateId();
-  scheduler_->ScheduleOperation(
-      id, CacheStorageSchedulerMode::kShared,
-      CacheStorageSchedulerOp::kSizeThenClose,
-      CacheStorageSchedulerPriority::kNormal,
-      base::BindOnce(
-          &CacheStorage::GetSizeThenCloseAllCachesImpl,
-          weak_factory_.GetWeakPtr(),
-          scheduler_->WrapCallbackToRunNext(id, std::move(callback))));
-}
-
 void CacheStorage::Size(CacheStorage::SizeCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (!initialized_)
     LazyInit();
+
+  callback =
+      mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), 0);
 
   auto id = scheduler_->CreateId();
   scheduler_->ScheduleOperation(
@@ -901,6 +882,11 @@ void CacheStorage::NotifyCacheContentChanged(const std::u16string& cache_name) {
 }
 
 void CacheStorage::ScheduleWriteIndex() {
+  // No-op when force closing.
+  if (!scheduler_) {
+    return;
+  }
+
   // These values are chosen to be equal or greater than the simple disk_cache
   // index write delays.  We want the cache_storage index to be written last.
   static const int64_t kWriteIndexDelayMilliseconds = 20050;
@@ -966,13 +952,24 @@ void CacheStorage::ReleaseUnreferencedCaches() {
   }
 }
 
-void CacheStorage::CacheUnreferenced(CacheStorageCache* cache) {
+void CacheStorage::CacheUnreferenced(CacheStorageCache* cache,
+                                     int64_t size_bytes) {
   CHECK(cache, base::NotFatalUntil::M158);
   CHECK(cache->IsUnreferenced(), base::NotFatalUntil::M158);
+
   auto doomed_caches_it = doomed_caches_.find(cache);
   if (doomed_caches_it != doomed_caches_.end()) {
+    if (size_bytes > 0) {
+      quota_manager_proxy_->NotifyBucketModified(
+          CacheStorageQuotaClient::GetClientTypeFromOwner(owner_),
+          bucket_locator_, -size_bytes, base::Time::Now(),
+          base::SequencedTaskRunner::GetCurrentDefault(), base::DoNothing());
+    }
+
     // The last reference to a doomed cache is gone, perform clean up.
-    DeleteCacheFinalize(cache);
+    // TODO(crbug.com/571407510): this will often fail.
+    cache_loader_->CleanUpDeletedCache(cache);
+    doomed_caches_.erase(doomed_caches_it);
     return;
   }
 
@@ -1196,27 +1193,6 @@ void CacheStorage::DeleteCacheDidWriteIndex(
   std::move(callback).Run(CacheStorageError::kSuccess);
 }
 
-// Call this once the last handle to a doomed cache is gone. It's okay if this
-// doesn't get to complete before shutdown, the cache will be removed from disk
-// on next startup in that case.
-void CacheStorage::DeleteCacheFinalize(CacheStorageCache* doomed_cache) {
-  doomed_cache->Size(base::BindOnce(&CacheStorage::DeleteCacheDidGetSize,
-                                    weak_factory_.GetWeakPtr(), doomed_cache));
-}
-
-void CacheStorage::DeleteCacheDidGetSize(CacheStorageCache* doomed_cache,
-                                         int64_t cache_size) {
-  quota_manager_proxy_->NotifyBucketModified(
-      CacheStorageQuotaClient::GetClientTypeFromOwner(owner_), bucket_locator_,
-      -cache_size, base::Time::Now(),
-      base::SequencedTaskRunner::GetCurrentDefault(), base::DoNothing());
-
-  cache_loader_->CleanUpDeletedCache(doomed_cache);
-  auto doomed_caches_iter = doomed_caches_.find(doomed_cache);
-  CHECK(doomed_caches_iter != doomed_caches_.end());
-  doomed_caches_.erase(doomed_caches_iter);
-}
-
 void CacheStorage::EnumerateCachesImpl(int64_t trace_id,
                                        EnumerateCachesCallback callback) {
   TRACE_EVENT("CacheStorage", "CacheStorage::EnumerateCachesImpl",
@@ -1365,45 +1341,44 @@ CacheStorageCacheHandle CacheStorage::GetLoadedCache(
   return cache->CreateHandle();
 }
 
-void CacheStorage::SizeRetrievedFromCache(CacheStorageCacheHandle cache_handle,
-                                          base::OnceClosure closure,
-                                          int64_t* accumulator,
-                                          int64_t size) {
-  auto* impl = CacheStorageCache::From(cache_handle);
+void CacheStorage::SizeRetrievedFromCache(
+    CacheStorageCacheHandle cache_handle) {
+  CacheStorageCache* impl = CacheStorageCache::From(cache_handle);
   if (doomed_caches_.find(impl) == doomed_caches_.end()) {
     cache_index_->SetCacheSize(impl->cache_name(), impl->cache_size());
     cache_index_->SetCachePadding(impl->cache_name(), impl->cache_padding());
   }
-  *accumulator += (impl->cache_size() + impl->cache_padding());
-  std::move(closure).Run();
 }
 
-void CacheStorage::GetSizeThenCloseAllCachesImpl(SizeCallback callback) {
+void CacheStorage::ForceClose(base::OnceClosure callback,
+                              std::unique_ptr<CacheStorage> owned_this) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CHECK(initialized_, base::NotFatalUntil::M158);
+  CHECK_EQ(this, owned_this.get());
 
-  std::unique_ptr<int64_t> accumulator(new int64_t(0));
-  int64_t* accumulator_ptr = accumulator.get();
-
-  base::RepeatingClosure barrier_closure = base::BarrierClosure(
-      cache_index_->num_entries() + doomed_caches_.size(),
-      base::BindOnce(&SizeRetrievedFromAllCaches, std::move(accumulator),
-                     std::move(callback)));
-
-  for (const auto& cache_metadata : cache_index_->ordered_cache_metadata()) {
-    auto cache_handle = GetLoadedCache(cache_metadata.name);
-    CacheStorageCache* cache = CacheStorageCache::From(cache_handle);
-    cache->GetSizeThenClose(base::BindOnce(
-        &CacheStorage::SizeRetrievedFromCache, weak_factory_.GetWeakPtr(),
-        std::move(cache_handle), barrier_closure, accumulator_ptr));
+  if (!initialized_) {
+    std::move(callback).Run();
+    return;
   }
 
-  for (const auto& cache_it : doomed_caches_) {
-    CacheStorageCache* cache = cache_it.first;
-    cache->GetSizeThenClose(base::BindOnce(
-        &CacheStorage::SizeRetrievedFromCache, weak_factory_.GetWeakPtr(),
-        cache->CreateHandle(), barrier_closure, accumulator_ptr));
+  weak_factory_.InvalidateWeakPtrs();
+  scheduler_.reset();
+  index_write_task_.Cancel();
+  base::ConcurrentClosures barrier;
+
+  // Only close already-open Caches.
+  for (auto& [_, cache] : cache_map_) {
+    if (cache) {
+      cache->ForceClose(barrier.CreateClosure());
+    }
   }
+
+  for (auto& [cache, _] : doomed_caches_) {
+    cache->ForceClose(barrier.CreateClosure());
+  }
+
+  std::move(barrier).Done(
+      base::OnceClosure(base::DoNothingWithBoundArgs(std::move(owned_this)))
+          .Then(std::move(callback)));
 }
 
 void CacheStorage::SizeImpl(SizeCallback callback) {
@@ -1411,32 +1386,39 @@ void CacheStorage::SizeImpl(SizeCallback callback) {
   CHECK(initialized_, base::NotFatalUntil::M158);
 
   if (cache_index_->GetPaddedStorageSize() != kSizeUnknown) {
-    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback),
-                                  cache_index_->GetPaddedStorageSize()));
+    std::move(callback).Run(cache_index_->GetPaddedStorageSize());
     return;
   }
 
-  std::unique_ptr<int64_t> accumulator(new int64_t(0));
-  int64_t* accumulator_ptr = accumulator.get();
-
-  base::RepeatingClosure barrier_closure = base::BarrierClosure(
+  auto barrier_callback = base::BarrierCallback<int64_t>(
       cache_index_->num_entries(),
-      base::BindOnce(&SizeRetrievedFromAllCaches, std::move(accumulator),
-                     std::move(callback)));
+      base::BindOnce([](std::vector<int64_t> sizes) {
+        return std::accumulate(
+            sizes.begin(), sizes.end(), int64_t{0},
+            [](int64_t sum, int64_t cache_size) {
+              return sum + (cache_size == CacheStorage::kSizeUnknown
+                                ? 0
+                                : cache_size);
+            });
+      }).Then(std::move(callback)));
 
   for (const auto& cache_metadata : cache_index_->ordered_cache_metadata()) {
     if (cache_metadata.size != CacheStorage::kSizeUnknown &&
         cache_metadata.padding != CacheStorage::kSizeUnknown) {
-      *accumulator_ptr += (cache_metadata.size + cache_metadata.padding);
-      barrier_closure.Run();
+      barrier_callback.Run(cache_metadata.size + cache_metadata.padding);
       continue;
     }
     CacheStorageCacheHandle cache_handle = GetLoadedCache(cache_metadata.name);
     CacheStorageCache* cache = CacheStorageCache::From(cache_handle);
-    cache->Size(base::BindOnce(
-        &CacheStorage::SizeRetrievedFromCache, weak_factory_.GetWeakPtr(),
-        std::move(cache_handle), barrier_closure, accumulator_ptr));
+    cache->Size(
+        base::BindOnce(
+            [](base::OnceClosure remember_size, int64_t size) {
+              std::move(remember_size).Run();
+              return size;
+            },
+            base::BindOnce(&CacheStorage::SizeRetrievedFromCache,
+                           weak_factory_.GetWeakPtr(), std::move(cache_handle)))
+            .Then(base::BindOnce(barrier_callback)));
   }
 }
 

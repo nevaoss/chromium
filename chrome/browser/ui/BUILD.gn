@@ -1853,6 +1853,7 @@ if (!is_android) {
       "//chrome/browser/resource_coordinator:utils",
       "//chrome/browser/search:test_support",
       "//chrome/browser/tab_group_sync:factories",
+      "//chrome/browser/ui/actions:actions_util",
       "//chrome/browser/ui/browser_active_state_manager",
       "//chrome/browser/ui/browser_ui_controller",
       "//chrome/browser/ui/browser_web_contents_delegate",
@@ -2012,9 +2013,14 @@ static_library("test_support") {
 
   if (toolkit_views) {
     deps += [
+      "//base/test:test_support",
+      "//chrome/browser/ui:ui_features",
+      "//chrome/browser/ui/extensions",
       "//chrome/browser/ui/extensions:test_support",
+      "//chrome/browser/ui/toolbar",
       "//chrome/browser/ui/views/controls",
       "//chrome/browser/ui/views/extensions:extension_popup",
+      "//chrome/browser/ui/views/extensions:extensions_container_views",
       "//chrome/browser/ui/views/extensions:extensions_menu_button",
       "//chrome/browser/ui/views/extensions:extensions_menu_coordinator",
       "//chrome/browser/ui/views/extensions:extensions_menu_delegate_desktop",
@@ -2026,6 +2032,7 @@ static_library("test_support") {
       "//chrome/browser/ui/views/extensions:extensions_toolbar_coordinator",
       "//chrome/browser/ui/views/extensions:extensions_toolbar_desktop",
       "//chrome/browser/ui/views/web_apps/isolated_web_apps:installer_base",
+      "//chrome/browser/ui/webui/webui_toolbar:impl",
       "//components/constrained_window",
       "//components/webauthn/content/browser",
       "//ui/views:test_support",

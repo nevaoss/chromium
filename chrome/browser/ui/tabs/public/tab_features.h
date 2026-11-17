@@ -129,6 +129,7 @@ class BackToOpenerController;
 }  // namespace back_to_opener
 
 namespace blocked_content {
+class PopupBlockerTabHelper;
 class PopupOpenerTabHelper;
 }  // namespace blocked_content
 
@@ -325,6 +326,7 @@ class RecordReplayClient;
 #endif
 
 namespace lens {
+class LensSuggestionTool;
 class TabContextualizationController;
 }  // namespace lens
 
@@ -722,10 +724,10 @@ class TabFeatures {
   std::unique_ptr<glic::GlicSidePanelCoordinator> glic_side_panel_coordinator_;
   std::unique_ptr<glic::GlicSelectionObserver> glic_selection_observer_;
   std::unique_ptr<glic::GlicWebDragObserver> glic_web_drag_observer_;
-  std::unique_ptr<selection::SuggestionService>
-      selection_suggestion_service_;
+  std::unique_ptr<selection::SuggestionService> selection_suggestion_service_;
   std::unique_ptr<glic::SelectionSuggestionTool>
       glic_selection_suggestion_tool_;
+  std::unique_ptr<lens::LensSuggestionTool> lens_suggestion_tool_;
   std::unique_ptr<glic::SelectionOverlayController>
       glic_selection_overlay_controller_;
 
@@ -1064,6 +1066,8 @@ class TabFeatures {
   std::unique_ptr<metrics::MetricsServicesWebContentsObserver>
       metrics_services_web_contents_observer_;
 
+  std::unique_ptr<blocked_content::PopupBlockerTabHelper>
+      popup_blocker_tab_helper_;
   std::unique_ptr<blocked_content::PopupOpenerTabHelper>
       popup_opener_tab_helper_;
 

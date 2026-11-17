@@ -23,6 +23,7 @@
 #import "ios/public/provider/chrome/browser/voice_search/voice_search_controller.h"
 #import "ios/web/public/web_state_id.h"
 
+@class AssistantAIMMetricsRecorder;
 @protocol BrowserCoordinatorCommands;
 @class ComposeboxAttachmentSelection;
 @class ComposeboxFocusParams;
@@ -34,6 +35,7 @@ class CobrowseBrowserAgent;
 @protocol SceneCommands;
 enum class FuseboxAttachmentButtonType;
 class AimEligibilityService;
+struct ComposeboxTabSelection;
 class FaviconLoader;
 class PersistTabContextBrowserAgent;
 class PrefService;
@@ -83,7 +85,10 @@ class ContextualSearchSessionHandle;
 // The delegate for this mediator.
 @property(nonatomic, weak) id<ComposeboxInputPlateMediatorDelegate> delegate;
 // The metrics recorder of the composebox.
-@property(nonatomic, weak) ComposeboxMetricsRecorder* metricsRecorder;
+@property(nonatomic, strong) ComposeboxMetricsRecorder* metricsRecorder;
+// The metrics recorder for the Assistant AIM bottom sheet session.
+@property(nonatomic, strong)
+    AssistantAIMMetricsRecorder* assistantMetricsRecorder;
 // Delegate for logging events.
 @property(nonatomic, weak) id<ComposeboxDebuggerLogger> debugLogger;
 
@@ -163,11 +168,8 @@ class ContextualSearchSessionHandle;
 // Returns the maximum number of tab attachments allowed.
 - (NSUInteger)maxTabAttachmentCount;
 
-// Attaches the selected tabs.
-- (void)attachSelectedTabsWithWebStateIDs:
-            (std::set<web::WebStateID>)selectedWebStateIDs
-                        cachedWebStateIDs:
-                            (std::set<web::WebStateID>)cachedWebStateIDs;
+// Attaches the tabs from the given `selection`.
+- (void)attachTabSelection:(const ComposeboxTabSelection&)selection;
 
 // Processes a webpage context from a context library signal. Called on the
 // cobrowse context only.

@@ -10,7 +10,6 @@
 #include <set>
 #include <utility>
 
-#include "base/callback_list.h"
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
 #include "base/functional/callback.h"
@@ -19,14 +18,15 @@
 #include "base/timer/elapsed_timer.h"
 #include "chrome/browser/ui/views/app_menu/action_app_menu_metrics.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_drag_and_drop_delegate.h"
+#include "chrome/browser/ui/views/app_menu/app_menu_search_controller.h"
 #include "ui/actions/action_id.h"
 #include "ui/base/command_id_constants.h"
+#include "ui/base/mojom/menu_source_type.mojom.h"
 #include "ui/views/actions/action_view_controller.h"
 #include "ui/views/controls/menu/menu_delegate.h"
 
 class ActionAppMenuManager;
 class AppMenuSearchBarView;
-class AppMenuSearchController;
 class BrowserWindowInterface;
 
 namespace actions {
@@ -34,15 +34,21 @@ class ActionItem;
 class BaseAction;
 }  // namespace actions
 
+namespace gfx {
+class Rect;
+}  // namespace gfx
+
 namespace views {
 class MenuButtonController;
 class MenuItemView;
 class MenuRunner;
+class Widget;
 }  // namespace views
 
 // Coordinator class for the Block Style ChroMenu.
 class ActionAppMenu : public views::MenuDelegate,
-                      public AppMenuDragAndDropDelegate::Host {
+                      public AppMenuDragAndDropDelegate::Host,
+                      public AppMenuSearchController::Delegate {
  public:
   ActionAppMenu(BrowserWindowInterface* browser_window_interface,
                 base::RepeatingClosure on_menu_closed_callback);
@@ -51,6 +57,11 @@ class ActionAppMenu : public views::MenuDelegate,
   ~ActionAppMenu() override;
 
   void RunMenu(views::MenuButtonController* host, int run_types);
+  void RunMenu(
+      views::Widget* parent,
+      const gfx::Rect& anchor_screen_bounds,
+      int run_types,
+      ui::mojom::MenuSourceType source_type = ui::mojom::MenuSourceType::kNone);
   bool IsShowing() const;
 
   // AppMenuDragAndDropDelegate::Host:
@@ -85,16 +96,34 @@ class ActionAppMenu : public views::MenuDelegate,
                      ui::OSExchangeData* data) override;
   int GetDragOperations(views::MenuItemView* sender) override;
   bool ShouldCloseOnDragDropCompleted() override;
+  bool ShouldDragActivateChildButtons() const override;
+
+  // AppMenuSearchController::Delegate:
+  void ShowSearchResults(actions::ActionItem* results) override;
+  void RestoreMenu() override;
 
   views::MenuItemView* root_menu_item_for_testing() { return root_; }
   AppMenuSearchBarView* search_bar_for_testing() { return search_bar_; }
   AppMenuSearchController* search_controller_for_testing() {
     return search_controller_.get();
   }
+  const base::flat_map<int, raw_ptr<actions::BaseAction>>&
+  command_to_action_map_for_testing() const {
+    return command_to_action_map_;
+  }
+  actions::BaseAction* GetActionForMenuItemForTesting(
+      views::MenuItemView* menu) const {
+    return GetActionForMenuItem(menu);
+  }
   void SetTimerForTesting(base::ElapsedTimer timer);
   void ClearItemsBelowSearchBarForTesting();
 
  private:
+  void RunMenu(views::Widget* parent,
+               views::MenuButtonController* host,
+               const gfx::Rect& anchor_screen_bounds,
+               int run_types,
+               ui::mojom::MenuSourceType source_type);
   actions::BaseAction* GetActionForMenuItem(views::MenuItemView* menu) const;
   views::MenuItemView* GetMenuItemForAction(actions::BaseAction* action) const;
   AppMenuDragAndDropDelegate* GetDragAndDropDelegate(
@@ -104,10 +133,6 @@ class ActionAppMenu : public views::MenuDelegate,
   void CancelAndEvaluate(actions::ActionId action_id, int mouse_event_flags);
 
   void ClearItemsBelowSearchBar();
-
-  // Shows the search results for the search bar's text, or the normal menu
-  // when the text is too short to search.
-  void OnSearchQueryChanged();
 
   // Recursively populates the menu item with the `base_action_item`'s
   // children, starting from the child at `starting_index`.
@@ -172,11 +197,9 @@ class ActionAppMenu : public views::MenuDelegate,
 
   // Runs the searches for search_bar_. Created along with the search bar.
   std::unique_ptr<AppMenuSearchController> search_controller_;
-  base::CallbackListSubscription search_text_changed_subscription_;
 
   // The states associated with the populated app menu.
   bool has_notification_header_ = false;
-  bool is_showing_search_results_ = false;
   size_t section_header_count_ = 0;
 
   struct ActionExecutionParams {

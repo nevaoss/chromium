@@ -87,6 +87,10 @@ using segmentation_platform::TipIdentifier;
   // The preset background themes and their thumbnail images displayed in the
   // actionable NTP theme tip.
   std::vector<NtpCustomBackgroundWithImage> _presetBackgrounds;
+
+  // The current actionable module configuration when an actionable tip is
+  // active.
+  NTPThemeActionableTipConfig* _actionableConfig;
 }
 
 - (instancetype)initWithIdentifier:(TipIdentifier)identifier
@@ -124,6 +128,8 @@ using segmentation_platform::TipIdentifier;
           &_profilePrefChangeRegistrar);
       _prefObserverBridge->ObserveChangesForPreference(
           prefs::kIosRecentlyUsedBackgrounds, &_profilePrefChangeRegistrar);
+      _prefObserverBridge->ObserveChangesForPreference(
+          prefs::kIosUserUploadedBackground, &_profilePrefChangeRegistrar);
     }
   }
 
@@ -187,6 +193,15 @@ using segmentation_platform::TipIdentifier;
   } else if (preferenceName == prefs::kIosRecentlyUsedBackgrounds) {
     if (_actionableConfig && _presetBackgrounds.empty()) {
       [self fetchPresetBackgroundImages];
+    }
+  } else if (preferenceName == prefs::kIosUserUploadedBackground) {
+    if (_actionableConfig &&
+        !_profilePrefService->GetDict(prefs::kIosUserUploadedBackground)
+             .empty()) {
+      __weak TipsMagicStackMediator* weakSelf = self;
+      [self.delegate removeTipsModuleWithCompletion:^{
+        [weakSelf.presentationAudience didSaveNTPThemeBackgroundPhoto];
+      }];
     }
   }
 }

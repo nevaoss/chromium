@@ -118,6 +118,7 @@
 <translation id="1195558154361252544">შეტყობინებები ავტომატურად დაბლოკილია ყველა საიტისთვის, გარდა თქვენ მიერ დაშვებულისა</translation>
 <translation id="1197088940767939838">ნარინჯისფერი</translation>
 <translation id="1198412233443148072"><ph name="MEMBER_FIRST_NAME" />-მა ამოშალა ჩანართი „<ph name="WEBSITE_TITLE" />“</translation>
+<translation id="119944043368869598">ყველაფრის გასუფთავება</translation>
 <translation id="1201402288615127009">შემდეგი</translation>
 <translation id="1201895884277373915">მეტი ამ საიტიდან</translation>
 <translation id="1204184165594298176">{0,plural, =1{ფაილის კოპირების შესაძლებლობა დაიბლოკა}other{<ph name="FILE_COUNT" /> ფაილის კოპირების შესაძლებლობა დაიბლოკა}}</translation>
@@ -618,7 +619,6 @@
 <translation id="2059166748188874810">მუნიციპალიტეტი</translation>
 <translation id="2059202684901022309">22 x 34 დუიმი</translation>
 <translation id="2063929825539050431">ხანგრძლივად შეეხეთ მისამართთა ზოლს, რომ ეს გვერდი სწრაფად გაგზავნოთ სხვა მოწყობილობაზე</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{1 შეთავაზება}other{# შეთავაზება}}</translation>
 <translation id="2066969741541525119">ეს საიტი დაბლოკილია თქვენი ორგანიზაციის მიერ</translation>
 <translation id="2071156619270205202">ეს ბარათი არ აკმაყოფილებს ვირტუალური ბარათის ნომრის მიღების კრიტერიუმებს.</translation>
 <translation id="2071852865256799872">თქვენს ბრაუზერს მართავს თქვენი ორგანიზაცია, თქვენს პროფილს კი — <ph name="PROFILE_DOMAIN" /></translation>
@@ -665,6 +665,7 @@
 <translation id="2126374524350484896">PDF მწარმოებელი:</translation>
 <translation id="2127090458081644412">პაროლი შენახულია ამ მოწყობილობაში</translation>
 <translation id="2127747486437921899">დახრილი</translation>
+<translation id="2129163794581571479">უზრუნველყოფს Gemini-ს პერსონალური ინტელექტი. თქვენი მოთხოვნები, გვერდის სათაურები და URL-ები შეიძლება გადამოწმდეს გაუმჯობესებული ავტომატური შევსების ფუნქციის დასახვეწად. <ph name="BEGIN_LINK" />პარამეტრების მართვა<ph name="END_LINK" /></translation>
 <translation id="2130448033692577677">თქვენ მიერ მითითებული შაბლონების მისადაგება შეიძლება ვერ მოხერხდეს „DnsOverHttpsMode“ წესების განუსაზღვრელობის გამო.</translation>
 <translation id="2130699163006053678">A3x7</translation>
 <translation id="2131006834960167560">გადახდების ავტომატური შევსების ჩართვა გახსნილია სრულ სიმაღლეზე.</translation>
@@ -710,7 +711,6 @@
 <translation id="2188375229972301266">მრავალად გახვრეტა ქვემოთ</translation>
 <translation id="218940509700321686">Comma-Separated Values (CSV)</translation>
 <translation id="2190094353033916816">ამ წესებს განსხვავებული მნიშვნელობები აქვს გამოყენებული მოწყობილობისა და მომხმარებლის დონეებზე. წესი დანიშნულებისამებრ მუშაობს.</translation>
-<translation id="219061769324072544">საკრედიტო,ბარათი,სადებეტო</translation>
 <translation id="2191980191135734720">განბლოკეთ ეკრანი მომდევნო ეტაპზე თქვენი თითის ანაბეჭდის გამოყენებით. ასევე, შეგიძლიათ <ph name="LINK_TEXT" /></translation>
 <translation id="2194856509914051091">გასათვალისწინებელი საკითხები</translation>
 <translation id="2195729137168608510">ელფოსტის დაცვა</translation>
@@ -1081,6 +1081,7 @@
 <translation id="2807052079800581569">სურათის Y პოზიცია</translation>
 <translation id="2808278141522721006">Windows Hello-ს ჩართვა/გამორთვა შეგიძლიათ აქ: <ph name="SETTINGS" /></translation>
 <translation id="2820957248982571256">მიმდინარეობს სკანირება...</translation>
+<translation id="282457273878278063">საკონტაქტო ინფორმაციის მართვა</translation>
 <translation id="2824775600643448204">მისამართი და ძიების ზოლი</translation>
 <translation id="2826760142808435982">კავშირი დაშიფრულია და ავთენტიფიცირებულია <ph name="CIPHER" />-ის გამოყენებით, იგი იყენებს <ph name="KX" />-ს, როგორც კოდის გაცვლის მექანიზმს.</translation>
 <translation id="2828797285817981634">მოძრაობის სენსორები ამჟამად დაშვებულია</translation>
@@ -1575,6 +1576,7 @@
 <translation id="3655670868607891010">თუ ამას ხშირად ხედავთ, სცადეთ ეს <ph name="HELP_LINK" />.</translation>
 <translation id="3658742229777143148">რედაქცია</translation>
 <translation id="3659521826520353662">ადმინისტრატორის მიერ განსაზღვრული რომელი ვებსაიტები არის მონახულებული და როდის: <ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3663760610864720538">უზრუნველყოფს Gemini-ს პერსონალური ინტელექტი. <ph name="BEGIN_LINK" />პარამეტრების მართვა<ph name="END_LINK" /></translation>
 <translation id="3664479564786885722">მოიძიეთ შეძენის სხვა ვარიანტები სხვა მაღაზიებიდან, რომლებიც ამ პროდუქტს ყიდის.</translation>
 <translation id="3664782872746246217">საკვანძო სიტყვები:</translation>
 <translation id="3670030362669914947">ნომერი</translation>
@@ -1595,6 +1597,7 @@
 <translation id="3693516565203081475">აირჩიეთ გადახდის მეთოდი</translation>
 <translation id="3698353241727597930">თქვენმა ადმინისტრატორმა დააყენა პარამეტრები, რომ შეინახოს <ph name="FILES" /> თქვენი კომპანიის მიერ მართულ <ph name="CLOUD_STORAGE" /> მეხსიერებაში. ამ ფაილებმა შეიძლება გაიაროს მონიტორინგი, აუდიტი და შეიძლება ისინი შენახული იყოს, როცა მათ წაშლით.</translation>
 <translation id="3698629142018988477">საიტის შექმნის ღილაკი, Google Sites-ში ახალი საიტის სწრაფად შესაქმნელად გაააქტიურეთ ის</translation>
+<translation id="3698708128812719147">ორჯერ დააჭირეთ Ctrl-ს ნებისმიერ ადგილას ვებში, რათა იპოვოთ და შეავსოთ მეტი ინფორმაცია</translation>
 <translation id="3700094625653511150">მოგვიანებით გადახდის ვარიანტების დასამალად გახსენით <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /></translation>
 <translation id="3700966190175650601">პაროლების შევსებისთვის თითის ანაბეჭდს იყენებთ</translation>
 <translation id="3701427423622901115">გადაყენება გაცნობიერებულია.</translation>
@@ -1862,7 +1865,6 @@
 <translation id="4121428309786185360">ვადა გასდის</translation>
 <translation id="4123572138124678573">სამმაგად გახვრეტა ქვემოთ</translation>
 <translation id="412601465078863288">ატვირთვის დრო ამოიწურა</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{1 სხვა}other{# სხვა}}</translation>
 <translation id="4129810348470013900">წარმოიქმნა შეფერხება. შეამოწმეთ ინტერნეტ-კავშირი და ცადეთ ხელახლა.</translation>
 <translation id="4130226655945681476">ქსელის კაბელების, მოდემის და როუტერის შემოწმება</translation>
 <translation id="4132448310531350254">ფუნქციას file_extension „<ph name="FILE_EXTENSION" />“, რომელსაც მიმართავენ აპები „<ph name="POLICY_IDS_LIST" />“, დუბლიკატი დამმუშავებლები აქვს.</translation>
@@ -1898,6 +1900,7 @@
 <translation id="4185037616931963178">Redress Number-ის უსაფრთხოდ განახლება</translation>
 <translation id="4186035307311647330">ფასისთვის თვალის მიდევნების გაუქმება</translation>
 <translation id="4191334393248735295">სიგრძე</translation>
+<translation id="4192770747482479191">დააჭირეთ ⌘-ს ორჯერ ვებში ნებისმიერ ადგილას, რათა იპოვოთ და შეავსოთ მეტი ინფორმაცია</translation>
 <translation id="4195459680867822611">Chrome-ის მინიშნებების ნახვის ღილაკი, Chrome-ის ფუნქციების შესახებ ინფორმაციისთვის გაააქტიურეთ ის</translation>
 <translation id="4195643157523330669">ახალ ჩანართში გახსნა</translation>
 <translation id="4196861286325780578">გადატანის &amp;გამეორება</translation>
@@ -2215,7 +2218,6 @@
 <translation id="4725766358270333890"><ph name="COUNT" /> ფაილი იტვირთება Microsoft OneDrive-ზე</translation>
 <translation id="4726672564094551039">წესების ხელახლა ჩატვირთვა</translation>
 <translation id="4728558894243024398">პლატფორმა</translation>
-<translation id="4730773064303503917">გაუგზავნეთ Pix მეგობრებს და ბიზნესებს საფულის გამოყენებით</translation>
 <translation id="4730977633786878901">მიმოხილვები</translation>
 <translation id="4731638775147756694">ეს აპლიკაცია დაბლოკილია თქვენი ადმინისტრატორის მიერ</translation>
 <translation id="4732860731866514038">მიმდინარეობს <ph name="LANGUAGE" /> ენის პაკეტის ჩამოტვირთვა... <ph name="PERCENT" />%</translation>
@@ -2846,6 +2848,7 @@
 <translation id="573974402615125334">ჩანართების ჯგუფების გაზიარების, მათში შეერთებისა და თანამშრომლობისთვის საჭიროა თქვენი ისტორიისა და ჩანართების დასინქრონება</translation>
 <translation id="5740911612628596808">კონვერტი C9</translation>
 <translation id="574392208103952083">საშუალო</translation>
+<translation id="5744350700955456407">გაუმჯობესებულ ავტომატურ შევსებას ამიერიდან შეუძლია ისეთი ინფორმაციის მოძიება და შევსება, როგორებიცაა შეკვეთის ნომრები და ფრენის დადასტურების კოდები, სხვადასხვა აპიდან (მაგალითად, Gmail-იდან და Photos-იდან)</translation>
 <translation id="5745586894920491759">Chrome ამუშავებს გვერდის სათაურებსა და URL-ებს ღრუბელში</translation>
 <translation id="5745733273847572235">შეუძლია თქვენი მდებარეობის გარკვევის თხოვნა</translation>
 <translation id="5750869797196646528">ხელების მოძრაობაზე თვალის დევნება</translation>
@@ -3227,7 +3230,6 @@
 <translation id="638289054711715023">თერმოჩაჯდომის აფსკი</translation>
 <translation id="6383221683286411806">მოერიდეთ პოტენციურ ხარჯებს.</translation>
 <translation id="6384448607821972818">ნაჩვენები პაროლის აღდგენა</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{1 სხვა შეთავაზება}other{# სხვა შეთავაზება}}</translation>
 <translation id="6386565501269869892">კონვერტი You 4</translation>
 <translation id="6387645831795005740">თავდამსხმელები, ზოგჯერ, ახდენენ საიტების იმიტირებას URL-ში მცირე, რთულად შესამჩნევი ცვლილებების შეტანით.</translation>
 <translation id="6389470377220713856">სახელი ბარათზე</translation>
@@ -4835,7 +4837,6 @@
 <translation id="9168814207360376865">საიტებისთვის შენახული გადახდის მეთოდების ხელმისაწვდომობის შემოწმების დაშვება</translation>
 <translation id="9169931577761441333"><ph name="APP_NAME" />-ის დამატება მთავარ ეკრანზე</translation>
 <translation id="9170848237812810038">მოქმედების დაბრ&amp;უნება</translation>
-<translation id="9170906125144697215">გადაიხადეთ Pix-ით, აპების გადართვის გარეშე</translation>
 <translation id="9171296965991013597">გსურთ აპიდან გასვლა?</translation>
 <translation id="9173282814238175921">ერთი დოკუმენტი/ახალი ფურცელი</translation>
 <translation id="9173995187295789444">მიმდინარეობს Bluetooth მოწყობილობების სკანირება...</translation>

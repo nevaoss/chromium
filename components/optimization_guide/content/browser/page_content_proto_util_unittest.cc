@@ -108,7 +108,7 @@ content::GlobalRenderFrameHostToken CreateFrameToken() {
   return frame_token;
 }
 
-base::expected<void, ProtoConversionError>
+base::expected<void, AIPageContentError>
 ConvertAIPageContentToProtoWithOptions(
     blink::mojom::AIPageContentPtr& root_content,
     AIPageContentResult& page_content,
@@ -143,7 +143,7 @@ ConvertAIPageContentToProtoWithOptions(
                                      frame_token_set, page_content);
 }
 
-base::expected<void, ProtoConversionError> ConvertAIPageContentToProto(
+base::expected<void, AIPageContentError> ConvertAIPageContentToProto(
     blink::mojom::AIPageContentPtr& root_content,
     AIPageContentResult& page_content,
     const std::optional<GURL>& main_frame_url = {},
@@ -252,7 +252,7 @@ TEST_F(PageContentProtoUtilTest, IframeNodeWithNoData) {
                   blink::mojom::AIPageContentOptions::New(), main_frame_token,
                   page_content_map, get_render_frame_info, frame_token_set,
                   page_content),
-              base::test::ErrorIs(ProtoConversionError{
+              base::test::ErrorIs(AIPageContentError{
                   AIPageContentExtractionStatus::kMissingIframeData,
                   "iframe missing iframe_data"}));
 }
@@ -311,7 +311,7 @@ TEST_P(PageContentProtoUtilTestIframeSilentFail, IframeDestroyed) {
 
   AIPageContentResult page_content;
   FrameTokenSet frame_token_set;
-  base::expected<void, ProtoConversionError> returned =
+  base::expected<void, AIPageContentError> returned =
       ConvertAIPageContentToProto(blink::mojom::AIPageContentOptions::New(),
                                   main_frame_token, page_content_map,
                                   get_render_frame_info, frame_token_set,
@@ -320,7 +320,7 @@ TEST_P(PageContentProtoUtilTestIframeSilentFail, IframeDestroyed) {
     EXPECT_TRUE(returned.has_value());
   } else {
     EXPECT_THAT(returned,
-                base::test::ErrorIs(ProtoConversionError{
+                base::test::ErrorIs(AIPageContentError{
                     AIPageContentExtractionStatus::kSubframeTornDown,
                     "could not find render_frame_info for iframe"}));
   }
@@ -410,7 +410,7 @@ TEST_F(PageContentProtoUtilTest, AttributeTypeDoesNotMatchData_Text) {
 
   AIPageContentResult page_content;
   EXPECT_THAT(ConvertAIPageContentToProto(root_content, page_content),
-              base::test::ErrorIs(ProtoConversionError{
+              base::test::ErrorIs(AIPageContentError{
                   AIPageContentExtractionStatus::kAttributeTypeMismatch,
                   "image_info present, but node isn't kImage"}));
 }
@@ -465,7 +465,7 @@ TEST_F(PageContentProtoUtilTest, AttributeTypeDoesNotMatchData_Image) {
 
   AIPageContentResult page_content;
   EXPECT_THAT(ConvertAIPageContentToProto(root_content, page_content),
-              base::test::ErrorIs(ProtoConversionError{
+              base::test::ErrorIs(AIPageContentError{
                   AIPageContentExtractionStatus::kAttributeTypeMismatch,
                   "text_info present, but node isn't kText"}));
 }
@@ -513,7 +513,7 @@ TEST_F(PageContentProtoUtilTest, AttributeTypeDoesNotMatchData_Video) {
 
   AIPageContentResult page_content;
   EXPECT_THAT(ConvertAIPageContentToProto(root_content, page_content),
-              base::test::ErrorIs(ProtoConversionError{
+              base::test::ErrorIs(AIPageContentError{
                   AIPageContentExtractionStatus::kAttributeTypeMismatch,
                   "text_info present, but node isn't kText"}));
 }
@@ -580,7 +580,7 @@ TEST_F(PageContentProtoUtilTest, AttributeTypeDoesNotMatchData_Anchor) {
 
   AIPageContentResult page_content;
   EXPECT_THAT(ConvertAIPageContentToProto(root_content, page_content),
-              base::test::ErrorIs(ProtoConversionError{
+              base::test::ErrorIs(AIPageContentError{
                   AIPageContentExtractionStatus::kAttributeTypeMismatch,
                   "table_data present, but node isn't kTable"}));
 }
@@ -696,7 +696,7 @@ TEST_F(PageContentProtoUtilTest, AttributeTypeDoesNotMatchData_Table) {
 
   AIPageContentResult page_content;
   EXPECT_THAT(ConvertAIPageContentToProto(root_content, page_content),
-              base::test::ErrorIs(ProtoConversionError{
+              base::test::ErrorIs(AIPageContentError{
                   AIPageContentExtractionStatus::kAttributeTypeMismatch,
                   "anchor_data present, but node isn't kAnchor"}));
 }
@@ -766,7 +766,7 @@ TEST_F(PageContentProtoUtilTest, AttributeTypeDoesNotMatchData_TableRow) {
 
   AIPageContentResult page_content;
   EXPECT_THAT(ConvertAIPageContentToProto(root_content, page_content),
-              base::test::ErrorIs(ProtoConversionError{
+              base::test::ErrorIs(AIPageContentError{
                   AIPageContentExtractionStatus::kAttributeTypeMismatch,
                   "form_data present, but node isn't kForm"}));
 }
@@ -920,7 +920,7 @@ TEST_F(PageContentProtoUtilTest, AttributeTypeDoesNotMatchData_Form) {
 
   AIPageContentResult page_content;
   EXPECT_THAT(ConvertAIPageContentToProto(root_content, page_content),
-              base::test::ErrorIs(ProtoConversionError{
+              base::test::ErrorIs(AIPageContentError{
                   AIPageContentExtractionStatus::kAttributeTypeMismatch,
                   "table_row_data present, but node isn't kTableRow"}));
 }
@@ -1463,7 +1463,7 @@ TEST_F(PageContentProtoUtilTest, AttributeTypeDoesNotMatchData_MathNode) {
 
   AIPageContentResult page_content;
   EXPECT_THAT(ConvertAIPageContentToProto(root_content, page_content),
-              base::test::ErrorIs(ProtoConversionError{
+              base::test::ErrorIs(AIPageContentError{
                   AIPageContentExtractionStatus::kAttributeTypeMismatch,
                   "text_info present, but node isn't kText"}));
 }
@@ -1479,7 +1479,7 @@ TEST_F(PageContentProtoUtilTest, AttributeTypeDoesNotMatchData_MathData) {
 
   AIPageContentResult page_content;
   EXPECT_THAT(ConvertAIPageContentToProto(root_content, page_content),
-              base::test::ErrorIs(ProtoConversionError{
+              base::test::ErrorIs(AIPageContentError{
                   AIPageContentExtractionStatus::kAttributeTypeMismatch,
                   "math_data present, but node isn't kMath"}));
 }
@@ -2940,7 +2940,7 @@ TEST_F(PageContentProtoUtilTestWithWebContents,
                                   main_frame_token_, page_content_map,
                                   get_render_frame_info, frame_token_set,
                                   page_content),
-      base::test::ErrorIs(ProtoConversionError{
+      base::test::ErrorIs(AIPageContentError{
           AIPageContentExtractionStatus::kIframeNotChildOfCurrentFrame,
           "compromised renderer: iframe is not a child of the current frame"}));
 }

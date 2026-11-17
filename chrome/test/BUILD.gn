@@ -789,8 +789,6 @@ source_set("platform_browser_tests") {
 
 if (is_android) {
   test("android_browsertests") {
-    configs += [ "//build/config:precompiled_headers" ]
-    defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
     use_default_launcher = false
     product_config_java_packages = [ "org.chromium.chrome.browser" ]
     android_manifest =
@@ -803,11 +801,6 @@ if (is_android) {
       proguard_enabled = true
       proguard_configs = [ "//chrome/android/proguard/main.flags" ]
     }
-
-    sources = [
-      "android/browsertests_apk/android_browsertests_jni_onload.cc",
-      "base/android/android_browser_test_browsertest_android.cc",
-    ]
 
     deps = [
       ":android_browsertests_assets",
@@ -922,6 +915,8 @@ if (is_android) {
       "//chrome/browser/webid",
       "//chrome/browser/webid:android_browsertests",
       "//chrome/renderer:android_browsertests",
+      "//chrome/test/android:android_browsertests_jni_onload",
+      "//chrome/test/base:android_browsertests",
       "//chrome/test/base:android_ui_test_utils",
       "//chrome/test/base:browser_test_waiters",
       "//chrome/test/base:browser_tests_runner",
@@ -1176,9 +1171,9 @@ if (is_android) {
       ]
     }
 
-    # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-    # enable the diagnostic by removing this line.
-    configs += [ "//build/config/compiler:no_exit_time_destructors" ]
+    # All android_browsertests sources have been migrated into per-feature
+    # targets. Do not add new sources to //chrome/test:android_browsertests.
+    sources = []
   }
 
   test("android_sync_integration_tests") {
@@ -1285,7 +1280,6 @@ if (!is_android) {
   test("browser_tests") {
     use_xvfb = use_xvfb_in_this_config
 
-    configs += [ "//build/config:precompiled_headers" ]
     configs += [ ":disable_thinlto_cache_flags" ]
     defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
 
@@ -1632,14 +1626,6 @@ if (!is_android) {
       "//ui/resources",
       "//ui/webui:buildflags",
     ]
-
-    allow_circular_includes_from = []
-
-    # password_generation_popup_view_views_browsertest.cc includes
-    # ../browser/ui/views/autofill/popup/popup_pixel_test.h, which is compiled
-    # directly into this target's own sources rather than a separate one.
-    allow_circular_includes_from +=
-        [ "//chrome/browser/ui/views/passwords:browser_tests" ]
 
     # Runtime dependencies
     data_deps = [
@@ -2060,21 +2046,6 @@ if (!is_android) {
         "//chrome/browser/ui/webui_browser:browser_tests",
         "//chrome/browser/ui/zoom:browser_tests",
       ]
-      allow_circular_includes_from +=
-          [ "//chrome/browser/ui/lens:browser_tests" ]
-    }
-
-    # TODO(crbug.com/353332589): Move this browsertest into
-    # //chrome/browser/ui/views/payments:browser_tests. It is left here for now
-    # because its "!is_android || enable_vr" guard interacts with the
-    # browser_tests target's conditional structure, and moving it risks
-    # regressions unrelated to the rest of the payments modularization.
-    if (!is_android || enable_vr) {
-      sources += [ "../browser/ui/views/payments/payment_handler_header_view_ui_browsertest.cc" ]
-      deps += [
-        "//chrome/browser/ui/views/payments:test_support",
-        "//components/payments/content/icon",
-      ]
     }
 
     if ((is_linux || is_chromeos) && !is_component_build) {
@@ -2090,11 +2061,6 @@ if (!is_android) {
 
     # NOTE: This is the main "browser_tests" section for |is_chromeos|.
     if (is_chromeos) {
-      sources += [
-        "base/ash/web_ui_browser_test_browsertest.cc",
-        "data/webui/chromeos/async_gen.cc",
-        "data/webui/chromeos/async_gen.h",
-      ]
       data += [
         "//ash/webui/common/resources/cr.js",
         "//chrome/browser/resources/chromeos/arc_support/i18n_template_no_process.js",
@@ -2239,9 +2205,9 @@ if (!is_android) {
       deps += [ "//ui/webui/resources:code_cache_resources" ]
     }
 
-    # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-    # enable the diagnostic by removing this line.
-    configs += [ "//build/config/compiler:no_exit_time_destructors" ]
+    # All browser_tests sources have been migrated into per-feature
+    # source_sets. Do not add new sources to //chrome/test:browser_tests.
+    sources = []
   }
 }
 
@@ -2585,8 +2551,6 @@ test("unit_tests") {
     "../browser/flag-never-expire-list.json",
   ]
 
-  sources = []
-
   # Support v8_unwinder_unittest on Android.
   if (is_android && enable_arm_cfi_table) {
     configs -= [ "//build/config/compiler:default_symbols" ]
@@ -2598,7 +2562,6 @@ test("unit_tests") {
     add_unwind_tables_in_apk = true
   }
 
-  configs += [ "//build/config:precompiled_headers" ]
   configs += [ ":disable_thinlto_cache_flags" ]
 
   data_deps = [
@@ -2624,9 +2587,7 @@ test("unit_tests") {
   if (is_android) {
     # Trim data specifically to what is used by unit tests on Android.
     data += [
-      "$root_gen_dir/chrome/android/chrome_apk_paks/chrome_100_percent.pak",
       "$root_gen_dir/chrome/android/chrome_apk_paks/locales/en-US.pak",
-      "$root_gen_dir/chrome/android/chrome_apk_paks/resources.pak",
       "data/android/google.png",
       "data/file_select_helper/",
       "data/offline_pages/",
@@ -2713,7 +2674,6 @@ test("unit_tests") {
     "//chrome/browser/data_sharing:unit_tests",
     "//chrome/browser/device_reauth:unit_tests",
     "//chrome/browser/devtools:unit_tests",
-    "//chrome/browser/diagnostics:unit_tests",
     "//chrome/browser/digital_credentials:unit_tests",
     "//chrome/browser/downgrade:unit_tests",
     "//chrome/browser/download:unit_tests",
@@ -3082,7 +3042,7 @@ test("unit_tests") {
     deps += [
       ":test_support_java",
       ":test_support_jni_headers",
-      "//chrome/android:chrome_apk_paks",
+      "//chrome/android:chrome_apk_pak_assets",
       "//chrome/android:chrome_java",
       "//chrome/android:chrome_jni_headers",
       "//chrome/android:delegate_public_impl_java",
@@ -3199,6 +3159,7 @@ test("unit_tests") {
       "//chrome/browser/device_api:unit_tests",
       "//chrome/browser/device_identity:unit_tests",
       "//chrome/browser/device_notifications:unit_tests",
+      "//chrome/browser/diagnostics:unit_tests",
       "//chrome/browser/dictation:unit_tests",
       "//chrome/browser/feedback/report_unsafe_site:unit_tests",
       "//chrome/browser/first_run:unit_tests",
@@ -3390,6 +3351,7 @@ test("unit_tests") {
       "//chrome/browser/ui/webui/cr_components/composebox:unit_tests",
       "//chrome/browser/ui/webui/cr_components/customize_color_scheme_mode:unit_tests",
       "//chrome/browser/ui/webui/cr_components/history_embeddings:unit_tests",
+      "//chrome/browser/ui/webui/cr_components/searchbox:unit_tests",
       "//chrome/browser/ui/webui/cr_components/theme_color_picker:unit_tests",
       "//chrome/browser/ui/webui/discards:unit_tests",
       "//chrome/browser/ui/webui/downloads:unit_tests",
@@ -3457,11 +3419,6 @@ test("unit_tests") {
   }
 
   if (is_chromeos) {
-    sources += [
-      "../test/base/ash/v8_unit_test.cc",
-      "../test/base/ash/v8_unit_test.h",
-    ]
-
     deps += [
       "//chrome/browser/apps/app_service/app_install:unit_tests",
       "//chrome/browser/ash/attestation",
@@ -3482,6 +3439,7 @@ test("unit_tests") {
       "//chrome/browser/ui/webui/about:unit_tests",
       "//chrome/browser/ui/webui/help:unit_tests",
       "//chrome/test:test_support",
+      "//chrome/test/base:v8_unit_test",
       "//chromeos/ash/components/assistant:buildflags",
       "//chromeos/ash/components/dbus/attestation",
       "//chromeos/components/magic_boost/test:fake_magic_boost_state",
@@ -3570,11 +3528,6 @@ test("unit_tests") {
     if (enterprise_local_content_analysis) {
       deps += [ "../browser/enterprise/connectors/test:test_support" ]
     }
-
-    allow_circular_includes_from = [
-      "//chrome/browser/web_applications:web_applications_unit_tests",
-      "//chrome/browser/web_applications/extensions:unit_tests",
-    ]
 
     deps += [
       "//apps:unit_tests",
@@ -3784,14 +3737,16 @@ test("unit_tests") {
     deps += [ "//chrome/browser/chrome_for_testing:unit_tests" ]
   }
 
-  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-  # enable the diagnostic by removing this line.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
-
   fuzztests = [
     "ActorProtoConversionFuzzTest.CanConvertAnyProto",
     "SearchBoxUtilFuzzTest.ParseFrameTokenAndRestrictedIdDoesNotCrash",
   ]
+
+  # This target intentionally has no sources of its own; it only aggregates
+  # test dependencies. Do NOT add sources here -- new tests belong in a
+  # dedicated, properly-scoped target. Kept last so an accidental
+  # `sources += [...]` above is reset to empty and is easy to catch in review.
+  sources = []
 }
 
 static_library("test_support_unit") {
@@ -3836,29 +3791,12 @@ static_library("test_support_unit") {
 }
 
 if (!is_android) {
-  static_library("test_support_ui") {
-    defines = []
+  # This target no longer has any sources of its own; it only aggregates
+  # dependencies. It must be a source_set (not a static_library) because an
+  # empty static_library produces an empty archive, which the Windows librarian
+  # (lld-link /lib) rejects with "lib failed".
+  source_set("test_support_ui") {
     testonly = true
-
-    sources = [
-      "../browser/ui/views/autofill/payments/card_unmask_prompt_view_tester_views.cc",
-      "../browser/ui/views/autofill/payments/card_unmask_prompt_view_tester_views.h",
-      "../browser/ui/views/autofill/payments/offer_notification_bubble_views_test_base.cc",
-      "../browser/ui/views/autofill/payments/offer_notification_bubble_views_test_base.h",
-      "../browser/ui/views/autofill/popup/popup_view_views_test_api.h",
-      "../browser/ui/views/page_action/test_support/page_action_interactive_test_mixin.cc",
-      "../browser/ui/views/page_action/test_support/page_action_interactive_test_mixin.h",
-    ]
-
-    configs += [ "//build/config:precompiled_headers" ]
-
-    allow_circular_includes_from = [
-      # TODO(crbug.com/353332589): Remove these circular dependencies when
-      # remaining blocked headers are fully componentized.
-      "//chrome/browser/privacy_sandbox:attestations_mixin",
-      "//chrome/browser/ui/test:dialog",
-      "//chrome/test/interaction",
-    ]
 
     public_deps = [
       "//chrome/browser:test_support_ui",
@@ -3873,11 +3811,14 @@ if (!is_android) {
       "//chrome/browser/ui/views:create_application_shortcut_view_test_support",
       "//chrome/browser/ui/views:intent_picker_bubble_view",
       "//chrome/browser/ui/views/autofill/payments:offer_notification_bubble_views",
+      "//chrome/browser/ui/views/autofill/payments:test_support_ui",
       "//chrome/browser/ui/views/autofill/popup:popup_notice_view",
       "//chrome/browser/ui/views/autofill/popup:popup_view_views",
+      "//chrome/browser/ui/views/autofill/popup:popup_view_views_test_api",
       "//chrome/browser/ui/views/frame:toolbar_button_provider",
       "//chrome/browser/ui/views/interaction",
       "//chrome/browser/ui/views/location_bar:test_support",
+      "//chrome/browser/ui/views/page_action:interactive_test_support",
       "//chrome/browser/ui/views/page_action:page_action_test_support",
       "//chrome/browser/ui/views/side_panel",
       "//chrome/browser/ui/views/toolbar:test_support",
@@ -3949,21 +3890,12 @@ if (!is_android) {
       public_deps += [ "//chrome/browser/first_run:test_support" ]
     }
     if (enable_dice_support) {
-      sources += [
-        "../browser/ui/views/profiles/profile_picker_test_base.cc",
-        "../browser/ui/views/profiles/profile_picker_test_base.h",
-      ]
       public_deps += [ "//chrome/browser/ui/profiles" ]
-      deps += [
-        "//chrome/browser/ui/profiles:test_support",
-        "//chrome/browser/ui/views/profiles:profile_picker_sign_in_provider",
-        "//chrome/browser/ui/views/profiles:profile_picker_view",
-      ]
     }
 
-    # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-    # enable the diagnostic by removing this line.
-    configs += [ "//build/config/compiler:no_exit_time_destructors" ]
+    # All test_support_ui sources have been migrated into per-feature
+    # targets. Do not add new sources to //chrome/test:test_support_ui.
+    sources = []
   }
 
   if (is_chromeos) {
@@ -4408,11 +4340,11 @@ if (!is_android && !is_chromeos_device) {
 }
 
 test("chrome_app_unittests") {
-  sources = [ "../app/resources/resources_unittest.cc" ]
   deps = [
     ":test_support",
     "//base/test:run_all_unittests",
     "//base/test:test_support",
+    "//chrome/app/resources:unit_tests",
     "//chrome/browser",
     "//chrome/child",
     "//chrome/common/profiler",
@@ -4425,6 +4357,7 @@ test("chrome_app_unittests") {
   if (is_linux || is_chromeos || is_win) {
     data_deps = [ "//chrome:packed_resources" ]
   }
+  sources = []
 }
 
 if (!is_android) {
@@ -4515,8 +4448,6 @@ if (!is_android) {
 
   # Executable to measure time to load libraries.
   test("load_library_perf_tests") {
-    sources = [ "../browser/load_library_perf_test.cc" ]
-
     # This test deliberately does not depend in chrome's test support targets.
     # This is a small test and Chrome's test support targets bring in the
     # world, causing link time to explode. Please don't add more dependencies
@@ -4525,6 +4456,7 @@ if (!is_android) {
     deps = [
       "//base",
       "//base/test:test_support_perf",
+      "//chrome/browser:load_library_perf_tests",
       "//media:media_buildflags",
       "//media/cdm:clear_key_cdm_common",
       "//testing/gtest",
@@ -4545,6 +4477,7 @@ if (!is_android) {
 
     # This target should not require the Chrome executable to run.
     assert_no_deps = [ "//chrome" ]
+    sources = []
   }
 
   # Tests autofill on captured websites

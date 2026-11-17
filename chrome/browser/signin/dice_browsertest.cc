@@ -1842,12 +1842,24 @@ IN_PROC_BROWSER_TEST_F(DiceBrowserTest, BrowserSignInFromAddAccountTab) {
       signin_metrics::AccessPoint::kAddressBubble,
       /*email_hint=*/std::string());
 
+  DiceTabHelper* tab_helper = DiceTabHelper::FromWebContents(
+      browser()->tab_strip_model()->GetActiveWebContents());
+  ASSERT_TRUE(tab_helper);
+  EXPECT_EQ(signin_metrics::Reason::kSigninPrimaryAccount,
+            tab_helper->signin_reason());
+  EXPECT_TRUE(tab_helper->IsChromeSigninInProgress());
+
   // Receive token.
   EXPECT_FALSE(
       GetIdentityManager()->HasAccountWithRefreshToken(GetMainAccountID()));
   SendRefreshTokenResponse();
   EXPECT_TRUE(
       GetIdentityManager()->HasAccountWithRefreshToken(GetMainAccountID()));
+
+  // Interception is aborted because this is a Chrome sign-in tab.
+  histogram_tester.ExpectBucketCount(
+      "Signin.Intercept.HeuristicOutcome",
+      SigninInterceptionHeuristicOutcome::kAbortChromeSignin, 1);
 
   // Receive ENABLE_SYNC.
   SendEnableSyncResponse();
@@ -2030,6 +2042,55 @@ IN_PROC_BROWSER_TEST_F(DiceBrowserTestWithSyncOptinScreen,
       syncer::UserSelectableType::kTabs));
   EXPECT_TRUE(sync_service->GetUserSettings()->GetSelectedTypes().Has(
       syncer::UserSelectableType::kSavedTabGroups));
+}
+
+// Regression test for crbug.com/454293971.
+// Tests that when a signed-out user without any account turns on history sync
+// from the "Tabs from other devices" page, the sign-in is handled as a Chrome
+// sign-in: it is not intercepted as a web sign-in, and history sync is enabled
+// once the user is signed in.
+IN_PROC_BROWSER_TEST_F(DiceBrowserTestWithSyncOptinScreen,
+                       SignInAndEnableHistorySyncWhenSignedOut) {
+  base::HistogramTester histogram_tester;
+  ASSERT_TRUE(GetIdentityManager()->GetAccountsWithRefreshTokens().empty());
+
+  signin_ui_util::SignInAndEnableHistorySync(
+      browser(), browser()->GetProfile(),
+      signin_metrics::AccessPoint::kRecentTabs);
+
+  // Receive token. The web sign-in interceptor aborts, as this is a Chrome
+  // sign-in.
+  SendRefreshTokenResponse();
+  ASSERT_TRUE(base::test::RunUntil([&] {
+    return histogram_tester.GetBucketCount(
+               "Signin.Intercept.HeuristicOutcome",
+               static_cast<base::HistogramBase::Sample32>(
+                   SigninInterceptionHeuristicOutcome::kAbortChromeSignin)) ==
+           1;
+  }));
+
+  // Receive ENABLE_SYNC.
+  SendEnableSyncResponse();
+  WaitForSigninSucceeded();
+  EXPECT_EQ(GetMainAccountID(), GetIdentityManager()->GetPrimaryAccountId(
+                                    signin::ConsentLevel::kSignin));
+  histogram_tester.ExpectUniqueSample(
+      "Signin.Intercept.HeuristicOutcome",
+      SigninInterceptionHeuristicOutcome::kAbortChromeSignin, 1);
+
+  // History sync is enabled, without showing the history sync optin screen.
+  auto* sync_service =
+      SyncServiceFactory::GetForProfile(browser()->GetProfile());
+  EXPECT_TRUE(sync_service->GetUserSettings()->GetSelectedTypes().Has(
+      syncer::UserSelectableType::kHistory));
+  EXPECT_TRUE(sync_service->GetUserSettings()->GetSelectedTypes().Has(
+      syncer::UserSelectableType::kTabs));
+  EXPECT_TRUE(sync_service->GetUserSettings()->GetSelectedTypes().Has(
+      syncer::UserSelectableType::kSavedTabGroups));
+  EXPECT_EQ(nullptr, HistorySyncOptinServiceFactory::GetForProfile(
+                         browser()->GetProfile())
+                         ->GetHistorySyncOptinHelperForTesting());
+  EXPECT_FALSE(SigninViewController::From(browser())->ShowsModalDialog());
 }
 
 class DiceBrowserTestWithExplicitSignin : public DiceBrowserTest {

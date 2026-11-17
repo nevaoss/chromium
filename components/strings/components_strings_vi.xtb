@@ -118,6 +118,7 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="1195558154361252544">Đã tự động chặn thông báo đối với mọi trang web, ngoại trừ những trang web bạn cho phép</translation>
 <translation id="1197088940767939838">Cam</translation>
 <translation id="1198412233443148072"><ph name="MEMBER_FIRST_NAME" /> đã xoá thẻ "<ph name="WEBSITE_TITLE" />"</translation>
+<translation id="119944043368869598">Xoá tất cả</translation>
 <translation id="1201402288615127009">Tiếp theo</translation>
 <translation id="1201895884277373915">Thêm từ trang web này</translation>
 <translation id="1204184165594298176">{0,plural, =1{Tệp đã bị chặn không cho sao chép}other{<ph name="FILE_COUNT" /> tệp đã bị chặn không cho sao chép}}</translation>
@@ -618,7 +619,6 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="2059166748188874810">Thành phố tự trị</translation>
 <translation id="2059202684901022309">22 x 34 inch</translation>
 <translation id="2063929825539050431">Để gửi nhanh trang này đến một thiết bị khác, hãy chạm và giữ thanh địa chỉ</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{1 đề xuất}other{# đề xuất}}</translation>
 <translation id="2066969741541525119">Tổ chức của bạn đã chặn trang web bạn sắp truy cập</translation>
 <translation id="2071156619270205202">Thẻ này không đáp ứng điều kiện để tạo số thẻ ảo.</translation>
 <translation id="2071852865256799872">Trình duyệt của bạn do tổ chức bạn quản lý, còn hồ sơ của bạn do <ph name="PROFILE_DOMAIN" /> quản lý</translation>
@@ -665,6 +665,7 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="2126374524350484896">Trình tạo tệp PDF:</translation>
 <translation id="2127090458081644412">Đã lưu mật khẩu vào thiết bị này</translation>
 <translation id="2127747486437921899">In nghiêng</translation>
+<translation id="2129163794581571479">Sử dụng Gemini với Trí thông minh cá nhân. Các yêu cầu, tiêu đề trang và URL của bạn có thể được xem xét để cải thiện tính năng tự động điền nâng cao. <ph name="BEGIN_LINK" />Quản lý chế độ cài đặt<ph name="END_LINK" /></translation>
 <translation id="2130448033692577677">Các mẫu bạn đã chỉ định có thể không được áp dụng do chưa đặt chính sách DnsOverHttpsMode.</translation>
 <translation id="2130699163006053678">A3x7</translation>
 <translation id="2131006834960167560">Đã mở bảng Bật tính năng tự động điền thông tin thanh toán trên toàn màn hình.</translation>
@@ -710,7 +711,6 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="2188375229972301266">Đục nhiều lỗ dưới cùng</translation>
 <translation id="218940509700321686">Giá trị được phân tách bằng dấu phẩy</translation>
 <translation id="2190094353033916816">Với chính sách này, các giá trị khác nhau sẽ được áp dụng ở cấp thiết bị và cấp người dùng. Chính sách này đang hoạt động như dự kiến.</translation>
-<translation id="219061769324072544">Tín dụng, Thẻ, Ghi nợ</translation>
 <translation id="2191980191135734720">Mở khoá màn hình ở bước tiếp theo, thường là bằng vân tay. Bạn cũng có thể <ph name="LINK_TEXT" />.</translation>
 <translation id="2194856509914051091">Những yếu tố cần xem xét</translation>
 <translation id="2195729137168608510">Bảo vệ Email</translation>
@@ -1081,6 +1081,7 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="2807052079800581569">Vị trí Y của hình ảnh</translation>
 <translation id="2808278141522721006">Bạn có thể bật hoặc tắt Windows Hello trong <ph name="SETTINGS" /></translation>
 <translation id="2820957248982571256">Đang quét...</translation>
+<translation id="282457273878278063">Quản lý thông tin liên hệ</translation>
 <translation id="2824775600643448204">Thanh địa chỉ và tìm kiếm</translation>
 <translation id="2826760142808435982">Kết nối được mã hóa và xác thực bằng <ph name="CIPHER" /> đồng thời sử dụng <ph name="KX" /> làm cơ chế trao đổi chính.</translation>
 <translation id="2828797285817981634">Đã cho phép sử dụng cảm biến chuyển động vào lần này</translation>
@@ -1575,6 +1576,7 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="3655670868607891010">Nếu bạn thường xuyên thấy thông báo này, hãy thử các <ph name="HELP_LINK" /> sau.</translation>
 <translation id="3658742229777143148">Bản sửa đổi</translation>
 <translation id="3659521826520353662">Những trang web do quản trị viên xác định được truy cập và thời điểm truy cập: <ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3663760610864720538">Sử dụng Gemini với Trí thông minh cá nhân. <ph name="BEGIN_LINK" />Quản lý chế độ cài đặt<ph name="END_LINK" /></translation>
 <translation id="3664479564786885722">Tìm kiếm thêm lựa chọn mua hàng ở những cửa hàng khác có bán sản phẩm này.</translation>
 <translation id="3664782872746246217">Từ khóa:</translation>
 <translation id="3670030362669914947">Số</translation>
@@ -1595,6 +1597,7 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="3693516565203081475">Chọn phương thức thanh toán</translation>
 <translation id="3698353241727597930">Quản trị viên đã định cấu hình để <ph name="FILES" /> được lưu vào bộ nhớ <ph name="CLOUD_STORAGE" /> do doanh nghiệp của bạn quản lý. Các tệp này có thể được theo dõi, kiểm tra và giữ lại khi bạn xoá tệp.</translation>
 <translation id="3698629142018988477">Nút Tạo trang web, hãy nhấn nút này để tạo nhanh một trang mới trong Google Sites</translation>
+<translation id="3698708128812719147">Nhấn phím Ctrl hai lần ở vị trí bất kỳ trên web để tìm và điền thêm thông tin</translation>
 <translation id="3700094625653511150">Để ẩn các lựa chọn trả sau, hãy chuyển đến <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /></translation>
 <translation id="3700966190175650601">Bạn đang sử dụng vân tay của mình để điền mật khẩu</translation>
 <translation id="3701427423622901115">Đã xác nhận thao tác đặt lại.</translation>
@@ -1862,7 +1865,6 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="4121428309786185360">Hết hạn Vào</translation>
 <translation id="4123572138124678573">Đục 3 lỗ dưới cùng</translation>
 <translation id="412601465078863288">Đã hết thời gian tải lên</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{1 mục khác}other{# mục khác}}</translation>
 <translation id="4129810348470013900">Đã xảy ra lỗi. Hãy kiểm tra kết nối Internet rồi thử lại.</translation>
 <translation id="4130226655945681476">Kiểm tra cáp mạng, modem và bộ định tuyến</translation>
 <translation id="4132448310531350254">Trình xử lý trùng lặp cho file_extension "<ph name="FILE_EXTENSION" />" được các ứng dụng "<ph name="POLICY_IDS_LIST" />" tham chiếu.</translation>
@@ -1898,6 +1900,7 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="4185037616931963178">Cập nhật mã số Redress Number một cách an toàn</translation>
 <translation id="4186035307311647330">Bỏ theo dõi giá</translation>
 <translation id="4191334393248735295">Độ dài</translation>
+<translation id="4192770747482479191">Nhấn phím ⌘ hai lần ở vị trí bất kỳ trên web để tìm và điền thêm thông tin</translation>
 <translation id="4195459680867822611">Nút Xem các mẹo khi dùng Chrome, hãy nhấn nút này để tìm hiểu về các tính năng của Chrome</translation>
 <translation id="4195643157523330669">Mở trong thẻ mới</translation>
 <translation id="4196861286325780578">&amp;Làm lại di chuyển</translation>
@@ -2215,7 +2218,6 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="4725766358270333890">Đang tải <ph name="COUNT" /> tệp lên Microsoft OneDrive</translation>
 <translation id="4726672564094551039">Tải lại chính sách</translation>
 <translation id="4728558894243024398">Nền tảng</translation>
-<translation id="4730773064303503917">Chuyển tiền qua Pix cho bạn bè và doanh nghiệp bằng Wallet</translation>
 <translation id="4730977633786878901">Bài đánh giá</translation>
 <translation id="4731638775147756694">Quản trị viên đã chặn ứng dụng này</translation>
 <translation id="4732860731866514038">Đang tải gói ngôn ngữ <ph name="LANGUAGE" /> xuống... <ph name="PERCENT" />%</translation>
@@ -2846,6 +2848,7 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="573974402615125334">Để chia sẻ, tham gia và cộng tác trong nhóm thẻ, hãy đồng bộ hoá nhật ký và các thẻ của bạn</translation>
 <translation id="5740911612628596808">Phong bì C9</translation>
 <translation id="574392208103952083">Trung bình</translation>
+<translation id="5744350700955456407">Tính năng tự động điền nâng cao hiện có thể tìm và điền các thông tin như số đơn đặt hàng và mã xác nhận chuyến bay từ các ứng dụng như Gmail và Photos</translation>
 <translation id="5745586894920491759">Chrome xử lý các tiêu đề trang và URL trên đám mây</translation>
 <translation id="5745733273847572235">Trang web có thể hỏi vị trí của bạn</translation>
 <translation id="5750869797196646528">Theo dõi cử chỉ tay</translation>
@@ -3227,7 +3230,6 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="638289054711715023">Nhũ co nhiệt</translation>
 <translation id="6383221683286411806">Nếu tiếp tục, bạn có thể bị tính phí.</translation>
 <translation id="6384448607821972818">Đã hiển thị mật khẩu khôi phục</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{1 đề xuất khác}other{# đề xuất khác}}</translation>
 <translation id="6386565501269869892">Phong bì You 4</translation>
 <translation id="6387645831795005740">Kẻ tấn công đôi khi tạo trang web giả mạo bằng cách thực hiện các thay đổi nhỏ, khó phát hiện đối với URL.</translation>
 <translation id="6389470377220713856">Tên trên thẻ</translation>
@@ -4837,7 +4839,6 @@ Thông tin chi tiết bổ sung:
 <translation id="9168814207360376865">Cho phép các trang web kiểm tra xem bạn đã lưu phương thức thanh toán hay chưa</translation>
 <translation id="9169931577761441333">Thêm <ph name="APP_NAME" /> vào Màn hình chính</translation>
 <translation id="9170848237812810038">H&amp;oàn tác</translation>
-<translation id="9170906125144697215">Thanh toán bằng Pix mà không cần chuyển đổi ứng dụng</translation>
 <translation id="9171296965991013597">Thoát khỏi ứng dụng?</translation>
 <translation id="9173282814238175921">Một tài liệu/Tờ mới</translation>
 <translation id="9173995187295789444">Đang quét tìm thiết bị Bluetooth...</translation>

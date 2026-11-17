@@ -24,6 +24,8 @@
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
+#include "base/memory/ref_counted_memory.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/metrics/field_trial.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/notreached.h"
@@ -31,6 +33,7 @@
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
 #include "base/time/time.h"
 #include "base/uuid.h"
@@ -41,13 +44,18 @@
 #include "chrome/browser/context_hub/context_hub_service.h"
 #include "chrome/browser/context_hub/context_hub_service_factory.h"
 #include "chrome/browser/context_hub/features.h"
+#include "chrome/browser/context_hub/memory_bank/memory_bank_chat_types.h"
 #include "chrome/browser/context_hub/memory_bank/memory_bank_entry.h"
 #include "chrome/browser/context_hub/topics/topics_feedback_exporter.h"
+#include "chrome/browser/favicon/favicon_service_factory.h"
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/page_image_service/image_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/webui/context_hub/context_hub.mojom-features.h"
 #include "chrome/common/channel_info.h"
+#include "components/favicon/core/favicon_service.h"
+#include "components/favicon_base/fallback_icon_style.h"
+#include "components/favicon_base/favicon_types.h"
 #include "components/history/core/browser/history_service.h"
 #include "components/history/core/browser/history_types.h"
 #include "components/history/core/browser/journeys/journey.h"
@@ -58,6 +66,7 @@
 #include "components/sessions/core/session_id.h"
 #include "content/public/browser/web_contents.h"
 #include "mojo/public/cpp/bindings/message.h"
+#include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/clipboard/file_info.h"
 #include "ui/base/clipboard/scoped_clipboard_writer.h"
 #include "url/gurl.h"
@@ -249,7 +258,8 @@ bool GetStagingRootDir(base::FilePath* root_dir) {
 // content remains on disk while preserving recent clipboard operations. Must
 // run on the sequence returned by GetClipboardFileTaskRunner().
 void PruneStaleBatchesIn(const base::FilePath& root_dir) {
-  DCHECK(GetClipboardFileTaskRunner()->RunsTasksInCurrentSequence());
+  CHECK(GetClipboardFileTaskRunner()->RunsTasksInCurrentSequence(),
+        base::NotFatalUntil::M162);
   const base::Time cutoff_time = base::Time::Now() - base::Hours(1);
   base::FileEnumerator enumerator(root_dir, /*recursive=*/false,
                                   base::FileEnumerator::DIRECTORIES);
@@ -763,20 +773,6 @@ std::vector<browser::context_hub::mojom::TabInfoPtr> ToMojoTabs(
   return mojo_tabs;
 }
 
-std::vector<browser::context_hub::mojom::ChatReferencePtr> ToMojoChatReferences(
-    base::span<const context_hub::ContextHubService::MemoryBankChatCitation>
-        citations) {
-  std::vector<browser::context_hub::mojom::ChatReferencePtr> references;
-  references.reserve(citations.size());
-  for (const auto& citation : citations) {
-    auto ref = browser::context_hub::mojom::ChatReference::New();
-    ref->title = citation.title;
-    ref->url = citation.url;
-    references.push_back(std::move(ref));
-  }
-  return references;
-}
-
 std::vector<browser::context_hub::mojom::ChatMessagePtr> ToMojoChatHistory(
     const std::vector<optimization_guide::proto::ChatHistoryTurn>& history) {
   std::vector<browser::context_hub::mojom::ChatMessagePtr> mojo_history;
@@ -1011,10 +1007,11 @@ void ContextHubPageHandler::AskGeminiWithContext(
   context_hub::ContextHubService* service =
       ContextHubServiceFactory::GetForProfile(profile_);
   if (!service) {
-    auto response = browser::context_hub::mojom::ChatMessage::New();
-    response->role = browser::context_hub::mojom::ChatRole::kAssistant;
-    response->content = "Service unavailable.";
-    std::move(callback).Run(std::move(response), {});
+    context_hub::MemoryBankChatHistoryTurn response;
+    response.turn.set_role(
+        optimization_guide::proto::ChatHistoryTurn::ROLE_ASSISTANT);
+    response.turn.set_message_content("Service unavailable.");
+    std::move(callback).Run(std::move(response));
     return;
   }
 
@@ -1023,14 +1020,15 @@ void ContextHubPageHandler::AskGeminiWithContext(
       base::BindOnce(
           [](AskGeminiWithContextCallback callback,
              std::optional<std::string> response_text,
-             std::vector<context_hub::ContextHubService::MemoryBankChatCitation>
-                 citations) {
-            auto response = browser::context_hub::mojom::ChatMessage::New();
-            response->role = browser::context_hub::mojom::ChatRole::kAssistant;
-            response->content =
-                response_text.value_or("Failed to generate response.");
-            std::move(callback).Run(std::move(response),
-                                    ToMojoChatReferences(citations));
+             std::vector<context_hub::MemoryBankChatCitation> citations) {
+            context_hub::MemoryBankChatHistoryTurn response;
+            response.turn.set_role(
+                optimization_guide::proto::ChatHistoryTurn::ROLE_ASSISTANT);
+            response.turn.set_message_content(
+                std::move(response_text)
+                    .value_or("Failed to generate response."));
+            response.citations = std::move(citations);
+            std::move(callback).Run(std::move(response));
           },
           std::move(callback)));
 }
@@ -1044,8 +1042,7 @@ void ContextHubPageHandler::GetMemoryBankChatHistory(
     return;
   }
 
-  std::move(callback).Run(
-      ToMojoChatHistory(service->GetMemoryBankChatHistory()));
+  std::move(callback).Run(service->GetMemoryBankChatHistory());
 }
 
 void ContextHubPageHandler::ClearMemoryBankChatHistory(
@@ -1186,12 +1183,13 @@ void ContextHubPageHandler::OpenUrlsInTabGroup(
     const std::string& group_label,
     const std::vector<GURL>& urls,
     OpenUrlsInTabGroupCallback callback) {
-  if (!base::FeatureList::IsEnabled(browser::context_hub::mojom::kTopics) &&
+  if (!base::FeatureList::IsEnabled(browser::context_hub::mojom::kAutoTodos) &&
+      !base::FeatureList::IsEnabled(browser::context_hub::mojom::kTopics) &&
       !base::FeatureList::IsEnabled(
           browser::context_hub::mojom::kSmartSearch)) {
     receiver_.ReportBadMessage(
-        "OpenUrlsInTabGroup cannot be called without Topics or SmartSearch "
-        "enabled.");
+        "OpenUrlsInTabGroup cannot be called without AutoTodos, Topics, or "
+        "SmartSearch enabled.");
     return;
   }
 
@@ -1254,7 +1252,7 @@ browser::context_hub::mojom::TopicPtr ToMojoTopic(Journey journey) {
                 base::ToVector(collection.visits, [](JourneyVisit& visit) {
                   return browser::context_hub::mojom::TopicCollectionItem::New(
                       base::UTF16ToUTF8(visit.title), std::move(visit.url),
-                      /*site_name=*/std::nullopt);
+                      /*site_name=*/std::nullopt, visit.visit_time);
                 }));
           });
 
@@ -1340,6 +1338,65 @@ void ContextHubPageHandler::GetTopicPageImageUrl(
                                         : std::nullopt);
           },
           std::move(callback)));
+}
+
+namespace {
+
+// Size, in pixels, of the favicon whose dominant color is computed. Matches
+// the size of the favicon drawn in a topic collection card.
+constexpr int kTopicPageFaviconColorSourceSize = 32;
+
+// Returns the dominant color of the PNG-encoded favicon `png_bytes`, with its
+// lightness clamped like the background of fallback icons. Decodes the image,
+// so it runs off the UI thread. Returns an optional to match the reply of
+// `GetTopicPageFaviconColor()`.
+std::optional<SkColor> ComputeFaviconDominantColor(
+    scoped_refptr<base::RefCountedMemory> png_bytes) {
+  favicon_base::FallbackIconStyle style;
+  favicon_base::SetDominantColorAsBackground(*png_bytes, &style);
+  return style.background_color;
+}
+
+}  // namespace
+
+void ContextHubPageHandler::GetTopicPageFaviconColor(
+    const GURL& page_url,
+    GetTopicPageFaviconColorCallback callback) {
+  favicon::FaviconService* favicon_service =
+      FaviconServiceFactory::GetForProfile(profile_,
+                                           ServiceAccessType::EXPLICIT_ACCESS);
+  if (!favicon_service || !page_url.is_valid() ||
+      !page_url.SchemeIsHTTPOrHTTPS()) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
+  // Looks the favicon up from local storage only, falling back to the host's
+  // favicon, the same way chrome://favicon2 does for the card's favicon.
+  favicon_service->GetRawFaviconForPageURL(
+      page_url, {favicon_base::IconType::kFavicon},
+      kTopicPageFaviconColorSourceSize, /*fallback_to_host=*/true,
+      base::BindOnce(&ContextHubPageHandler::OnTopicPageFaviconLoaded,
+                     weak_factory_.GetWeakPtr(), std::move(callback)),
+      &favicon_task_tracker_);
+}
+
+void ContextHubPageHandler::OnTopicPageFaviconLoaded(
+    GetTopicPageFaviconColorCallback callback,
+    const favicon_base::FaviconRawBitmapResult& result) {
+  if (!result.is_valid()) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
+  // The reply only runs `callback`, so there is nothing to cancel if the
+  // handler goes away first.
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE,
+      {base::TaskPriority::USER_VISIBLE,
+       base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN},
+      base::BindOnce(&ComputeFaviconDominantColor, result.bitmap_data),
+      std::move(callback));
 }
 
 void ContextHubPageHandler::OpenTopic(

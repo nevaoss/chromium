@@ -34,6 +34,7 @@
 
 #include "base/auto_reset.h"
 #include "base/containers/span.h"
+#include "base/containers/to_vector.h"
 #include "base/debug/crash_logging.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/strings/string_util.h"
@@ -525,11 +526,12 @@ void AXObject::SetAncestorsHaveDirtyDescendants() {
     if (!ancestor->CachedIsIncludedInTree()) {
       continue;
     }
-    if (!ancestor->has_dirty_descendants_) {
-      ancestor->SetHasDirtyDescendants(true);
+    if (ancestor->has_dirty_descendants_) {
+      break;
     }
+    ancestor->SetHasDirtyDescendants(true);
   }
-#if AX_FAIL_FAST_BUILD()
+#if DCHECK_IS_ON()
   // Walk up the tree looking for dirty bits that failed to be set. If any
   // are found, this is a bug.
   for (auto* obj = ParentObjectIfPresent(); obj;
@@ -539,7 +541,7 @@ void AXObject::SetAncestorsHaveDirtyDescendants() {
                    << ParentChainToStringHelper(this);
     }
   }
-#endif  // AX_FAIL_FAST_BUILD()
+#endif  // DCHECK_IS_ON()
 }
 
 void AXObject::Init(AXObject* parent) {
@@ -1516,8 +1518,8 @@ void AXObject::SerializeChooserPopupAttributes(ui::AXNodeData* node_data) const 
     return;
 
   int32_t chooser_popup_id = chooser_popup->AXObjectID();
-  auto controls_ids = node_data->GetIntListAttribute(
-      ax::mojom::blink::IntListAttribute::kControlsIds);
+  auto controls_ids = base::ToVector(node_data->GetIntListAttribute(
+      ax::mojom::blink::IntListAttribute::kControlsIds));
   controls_ids.push_back(chooser_popup_id);
   node_data->AddIntListAttribute(
       ax::mojom::blink::IntListAttribute::kControlsIds, controls_ids);
@@ -1552,8 +1554,8 @@ void AXObject::SerializeImplicitActions(ui::AXNodeData* node_data) const {
   const AXObjectVector& potential_actions =
       hasContainer ? children[0]->ChildrenIncludingIgnored() : children;
 
-  auto actions_ids = node_data->GetIntListAttribute(
-      ax::mojom::blink::IntListAttribute::kActionsIds);
+  auto actions_ids = base::ToVector(node_data->GetIntListAttribute(
+      ax::mojom::blink::IntListAttribute::kActionsIds));
   for (const auto& child : potential_actions) {
     if ((child->RoleValue() == ax::mojom::blink::Role::kButton ||
          child->RoleValue() == ax::mojom::blink::Role::kLink) &&
@@ -3849,8 +3851,10 @@ void AXObject::UpdateCachedAttributeValuesIfNeeded(
       // This is being inserted in the hierarchy as an included node: if the
       // parent has dirty descendants copy that bit to this as well, so as not
       // to interrupt the chain of descendant updates.
-      if (AXObject* unignored_parent = ParentObjectUnignored()) {
-        if (unignored_parent->HasDirtyDescendants()) {
+      if (AXObjectCache().EntireDocumentIsDirty()) {
+        has_dirty_descendants_ = true;
+      } else if (AXObject* included_parent = ParentObjectIncludedInTree()) {
+        if (included_parent->HasDirtyDescendants()) {
           has_dirty_descendants_ = true;
         }
       }
@@ -8292,13 +8296,13 @@ bool AXObject::RequestReplaceRangesAction(const ui::AXActionData& action_data) {
     return false;
   }
 
-  std::vector<int32_t> start_anchor_ids = action_data.GetIntListAttribute(
+  base::span<const int32_t> start_anchor_ids = action_data.GetIntListAttribute(
       ax::mojom::blink::IntListAttribute::kTextOperationStartAnchorIds);
-  std::vector<int32_t> start_offsets = action_data.GetIntListAttribute(
+  base::span<const int32_t> start_offsets = action_data.GetIntListAttribute(
       ax::mojom::blink::IntListAttribute::kTextOperationStartOffsets);
-  std::vector<int32_t> end_anchor_ids = action_data.GetIntListAttribute(
+  base::span<const int32_t> end_anchor_ids = action_data.GetIntListAttribute(
       ax::mojom::blink::IntListAttribute::kTextOperationEndAnchorIds);
-  std::vector<int32_t> end_offsets = action_data.GetIntListAttribute(
+  base::span<const int32_t> end_offsets = action_data.GetIntListAttribute(
       ax::mojom::blink::IntListAttribute::kTextOperationEndOffsets);
   base::span<const std::string> replacement_strings =
       action_data.GetStringListAttribute(ax::mojom::blink::StringListAttribute::

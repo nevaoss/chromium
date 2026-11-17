@@ -840,6 +840,12 @@ bool ContentBrowserClient::IsUnboundedElementAllowed(
   return false;
 }
 
+bool ContentBrowserClient::IsUnboundedElementEscapingAllowed(
+    RenderFrameHost* subframe,
+    RenderFrameHost* outermost_main_frame) {
+  return false;
+}
+
 bool ContentBrowserClient::IsUnboundedElementAllowedForSubframesOf(
     const url::Origin& origin) {
   // TODO(crbug.com/571879162): Remove this temporary allowlist.
@@ -1331,6 +1337,7 @@ SmartCardDelegate* ContentBrowserClient::GetSmartCardDelegate() {
 bool ContentBrowserClient::ShowPaymentHandlerWindow(
     content::BrowserContext* browser_context,
     const GURL& url,
+    const std::optional<gfx::Size>& preferred_web_contents_size,
     base::OnceCallback<void(bool, int, int)> callback) {
   DCHECK(browser_context);
   return false;

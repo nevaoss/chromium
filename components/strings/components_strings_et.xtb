@@ -118,6 +118,7 @@ Vastasel korral blokeeritakse see teie privaatsusseadetes. See võimaldab teie k
 <translation id="1195558154361252544">Märguanded blokeeritakse automaatselt kõigi saitide, välja arvatud lubatud saitide puhul.</translation>
 <translation id="1197088940767939838">Oranž</translation>
 <translation id="1198412233443148072"><ph name="MEMBER_FIRST_NAME" /> eemaldas vahelehe „<ph name="WEBSITE_TITLE" />”</translation>
+<translation id="119944043368869598">Tühjenda kõik</translation>
 <translation id="1201402288615127009">Järgmine</translation>
 <translation id="1201895884277373915">Veel sellelt saidilt</translation>
 <translation id="1204184165594298176">{0,plural, =1{Faili kopeerimine on blokeeritud}other{<ph name="FILE_COUNT" /> faili kopeerimine on blokeeritud}}</translation>
@@ -618,7 +619,6 @@ Vastasel korral blokeeritakse see teie privaatsusseadetes. See võimaldab teie k
 <translation id="2059166748188874810">Vald</translation>
 <translation id="2059202684901022309">22 × 34 tolli</translation>
 <translation id="2063929825539050431">Selle lehe kiireks saatmiseks teise seadmesse puudutage pikalt aadressiriba</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{1 soovitus}other{# soovitust}}</translation>
 <translation id="2066969741541525119">Teie organisatsioon on selle saidi blokeerinud</translation>
 <translation id="2071156619270205202">Seda kaarti ei saa virtuaalkaardi numbrina kasutada.</translation>
 <translation id="2071852865256799872">Teie brauserit haldab teie organisatsioon ja teie profiili haldab <ph name="PROFILE_DOMAIN" /></translation>
@@ -665,6 +665,7 @@ Vastasel korral blokeeritakse see teie privaatsusseadetes. See võimaldab teie k
 <translation id="2126374524350484896">PDF-i looja:</translation>
 <translation id="2127090458081644412">Parool salvestati sellesse seadmesse</translation>
 <translation id="2127747486437921899">Kursiiv</translation>
+<translation id="2129163794581571479">Toimib Gemini Personal Intelligence'i abil. Teie taotlused, lehtede pealkirjad ja URL-id võidakse täiustatud automaattäite parendamiseks üle vaadata. <ph name="BEGIN_LINK" />Seadete haldamine<ph name="END_LINK" /></translation>
 <translation id="2130448033692577677">Teie määratud malle ei pruugita rakendada, kuna reeglit DnsOverHttpsMode pole määratud.</translation>
 <translation id="2130699163006053678">A3 × 7</translation>
 <translation id="2131006834960167560">Maksete automaattäite lubamise leht on avatud täiskõrgusel.</translation>
@@ -710,7 +711,6 @@ Vastasel korral blokeeritakse see teie privaatsusseadetes. See võimaldab teie k
 <translation id="2188375229972301266">Mitu auku all</translation>
 <translation id="218940509700321686">Komaeraldusega väärtused</translation>
 <translation id="2190094353033916816">Sellel reeglil on seadme ja kasutaja tasemel erinevad väärtused. Reegel toimib eelduspäraselt.</translation>
-<translation id="219061769324072544">Krediit,kaart,deebet</translation>
 <translation id="2191980191135734720">Järgmises etapis avage ekraani lukust (tavaliselt sõrmejälje abil). Võite ka <ph name="LINK_TEXT" />.</translation>
 <translation id="2194856509914051091">Olulised aspektid</translation>
 <translation id="2195729137168608510">Meilikaitse</translation>
@@ -1081,6 +1081,7 @@ Vastasel korral blokeeritakse see teie privaatsusseadetes. See võimaldab teie k
 <translation id="2807052079800581569">Pildi asend Y-teljel</translation>
 <translation id="2808278141522721006">Jaotises <ph name="SETTINGS" /> saate Windows Hello sisse ja välja lülitada</translation>
 <translation id="2820957248982571256">Skannimine …</translation>
+<translation id="282457273878278063">Kontaktteabe haldamine</translation>
 <translation id="2824775600643448204">Aadressi- ja otsinguriba</translation>
 <translation id="2826760142808435982">Ühendus on krüptitud ja autenditud üksusega <ph name="CIPHER" /> ning kasutab peamise vahetusmehhanismina üksust <ph name="KX" />.</translation>
 <translation id="2828797285817981634">Liikumisandurid on praegu lubatud</translation>
@@ -1575,6 +1576,7 @@ Hiljem maksmise valikute peitmiseks avage <ph name="BEGIN_LINK" />makseseaded<ph
 <translation id="3655670868607891010">Kui näete seda sageli, proovige järgmist: <ph name="HELP_LINK" />.</translation>
 <translation id="3658742229777143148">Redaktsioon</translation>
 <translation id="3659521826520353662">Milliseid administraatori määratud veebisaite külastatakse ja millal: <ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3663760610864720538">Toimib Gemini Personal Intelligence'i abil. <ph name="BEGIN_LINK" />Seadete haldamine<ph name="END_LINK" /></translation>
 <translation id="3664479564786885722">Rohkemate ostuvalikute otsimine teistest seda toodet müüvatest poodidest.</translation>
 <translation id="3664782872746246217">Märksõnad:</translation>
 <translation id="3670030362669914947">Number</translation>
@@ -1595,6 +1597,7 @@ Hiljem maksmise valikute peitmiseks avage <ph name="BEGIN_LINK" />makseseaded<ph
 <translation id="3693516565203081475">Makseviisi valimine</translation>
 <translation id="3698353241727597930">Teie administraatori seadistuse kohaselt salvestatakse <ph name="FILES" /> teie ettevõtte hallatavasse salvestusruumi <ph name="CLOUD_STORAGE" />. Neid faile võidakse jälgida, auditeerida ja säilitada, kui need kustutate.</translation>
 <translation id="3698629142018988477">Nupp Loo sait, aktiveerige nupp, et luua teenuses Google Sites kiiresti uus sait</translation>
+<translation id="3698708128812719147">Vajutage veebis kus tahes kaks korda klahvi Ctrl, et leida ja sisestada rohkem teavet</translation>
 <translation id="3700094625653511150">Järelmaksuvalikute peitmiseks avage <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /></translation>
 <translation id="3700966190175650601">Kasutate paroolide täitmiseks oma sõrmejälge</translation>
 <translation id="3701427423622901115">Lähtestamine kinnitati.</translation>
@@ -1862,7 +1865,6 @@ Hiljem maksmise valikute peitmiseks avage <ph name="BEGIN_LINK" />makseseaded<ph
 <translation id="4121428309786185360">Aegumiskuupäev</translation>
 <translation id="4123572138124678573">Kolm auku all</translation>
 <translation id="412601465078863288">Üleslaadimine aegus</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{veel 1}other{veel #}}</translation>
 <translation id="4129810348470013900">Midagi läks valesti. Kontrollige internetiühendust ja proovige uuesti.</translation>
 <translation id="4130226655945681476">Kontrollige võrgukaableid, modemit ja ruuterit</translation>
 <translation id="4132448310531350254">Failinimelaienduse „<ph name="FILE_EXTENSION" />“ töötlejaks on määratud mitu rakendust: „<ph name="POLICY_IDS_LIST" />“.</translation>
@@ -1898,6 +1900,7 @@ Hiljem maksmise valikute peitmiseks avage <ph name="BEGIN_LINK" />makseseaded<ph
 <translation id="4185037616931963178">Hüvitisnumbri turvaliselt värskendamine</translation>
 <translation id="4186035307311647330">Peata hinna jälgimine</translation>
 <translation id="4191334393248735295">Pikkus</translation>
+<translation id="4192770747482479191">Vajutage mis tahes veebilehel kaks korda klahvi ⌘, et leida ja sisestada rohkem teavet</translation>
 <translation id="4195459680867822611">Nupp Kuva Chrome'i nõuanded, aktiveerige nupp Chrome'i funktsioonide kohta lisateabe saamiseks</translation>
 <translation id="4195643157523330669">Ava uuel vahelehel</translation>
 <translation id="4196861286325780578">&amp;Teisalda uuesti</translation>
@@ -2215,7 +2218,6 @@ Hiljem maksmise valikute peitmiseks avage <ph name="BEGIN_LINK" />makseseaded<ph
 <translation id="4725766358270333890"><ph name="COUNT" /> faili üleslaadimine Microsoft OneDrive'i</translation>
 <translation id="4726672564094551039">Laadi reeglid uuesti</translation>
 <translation id="4728558894243024398">Platvorm</translation>
-<translation id="4730773064303503917">Sõpradele ja ettevõtetele Walleti abil maksmiseks kasutage Pixi</translation>
 <translation id="4730977633786878901">Arvustused</translation>
 <translation id="4731638775147756694">Administraator blokeeris selle rakenduse</translation>
 <translation id="4732860731866514038"><ph name="LANGUAGE" /> keele paketi allalaadimine... <ph name="PERCENT" />%</translation>
@@ -2846,6 +2848,7 @@ Hiljem maksmise valikute peitmiseks avage <ph name="BEGIN_LINK" />makseseaded<ph
 <translation id="573974402615125334">Vahelehegruppide jagamiseks, nendega liitumiseks ning nendes koos töötamiseks sünkroonige oma ajalugu ja vahelehed</translation>
 <translation id="5740911612628596808">Ümbrik C9</translation>
 <translation id="574392208103952083">Keskmine</translation>
+<translation id="5744350700955456407">Täiustatud automaattäide saab nüüd leida ja täita teavet (nt tellimuse numbreid ja lennu kinnituskoode) sellistest rakendustest nagu Gmail ja Photos.</translation>
 <translation id="5745586894920491759">Chrome töötleb lehtede pealkirju ja URL-e pilves.</translation>
 <translation id="5745733273847572235">Saab küsida teie asukohta</translation>
 <translation id="5750869797196646528">Käeliigutuste jälgimine</translation>
@@ -3227,7 +3230,6 @@ Hiljem maksmise valikute peitmiseks avage <ph name="BEGIN_LINK" />makseseaded<ph
 <translation id="638289054711715023">Termokahanev kile</translation>
 <translation id="6383221683286411806">Jätkamisega võivad kaasneda tasud.</translation>
 <translation id="6384448607821972818">Kuvati taastamise parool.</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{veel 1 soovitus}other{veel # soovitust}}</translation>
 <translation id="6386565501269869892">Ümbrik You 4</translation>
 <translation id="6387645831795005740">Ründajad imiteerivad mõnikord saite, tehes URL-is väikeseid raskestimärgatavaid muudatusi.</translation>
 <translation id="6389470377220713856">Nimi kaardil</translation>
@@ -4836,7 +4838,6 @@ Lisateave:
 <translation id="9168814207360376865">Luba saitidel kontrollida, kas olete makseviisid salvestanud</translation>
 <translation id="9169931577761441333">Lisa <ph name="APP_NAME" /> avaekraanile</translation>
 <translation id="9170848237812810038">&amp;Võta tagasi</translation>
-<translation id="9170906125144697215">Makske Pixiga ilma rakendust vahetamata</translation>
 <translation id="9171296965991013597">Kas soovite rakendusest väljuda?</translation>
 <translation id="9173282814238175921">Üks dokument / uus leht</translation>
 <translation id="9173995187295789444">Bluetoothi seadmete otsimine …</translation>

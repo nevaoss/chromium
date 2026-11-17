@@ -42,6 +42,7 @@ import org.chromium.chrome.browser.autofill.settings.options.AutofillOptionsFrag
 import org.chromium.chrome.browser.autofill.settings.options.AutofillOptionsReferrer;
 import org.chromium.chrome.browser.customtabs.CustomTabActivity;
 import org.chromium.chrome.browser.device_reauth.BiometricStatus;
+import org.chromium.chrome.browser.device_reauth.DeviceAuthAvailabilityCheckerBridge;
 import org.chromium.chrome.browser.device_reauth.DeviceAuthSource;
 import org.chromium.chrome.browser.device_reauth.ReauthenticatorBridge;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -263,6 +264,8 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
 
         // The ReauthenticatorBridge is always needed for reauthentication to view/edit
         // payment methods.
+        // TODO(crbug.com/574399005): Instantiate the reauthenticator bridge only if biometric
+        // authentication is available/required.
         createReauthenticatorBridge();
 
         // TODO(crbug.com/40261690): Confirm with Product on the order of the toggles.
@@ -486,10 +489,15 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
         // party mode.
         // `getBiometricAvailabilityStatus` also checks if screen lock is available and returns
         // `ONLY_LSKF_AVAILABLE` if it is.
+        boolean isDeviceLockSetUp =
+                ChromeFeatureList.isEnabled(ChromeFeatureList.DEVICE_REAUTH_REFACTOR)
+                        ? DeviceAuthAvailabilityCheckerBridge.getBiometricAvailabilityStatus()
+                                != BiometricStatus.UNAVAILABLE
+                        : assumeNonNull(mReauthenticatorBridge).getBiometricAvailabilityStatus()
+                                != BiometricStatus.UNAVAILABLE;
         boolean enableReauthSwitch =
                 personalDataManager.isAutofillPaymentMethodsEnabled()
-                        && (assumeNonNull(mReauthenticatorBridge).getBiometricAvailabilityStatus()
-                                != BiometricStatus.UNAVAILABLE)
+                        && isDeviceLockSetUp
                         && !isPlatformAutofillEnabledForProfile(getProfile());
         mandatoryReauthSwitch.setEnabled(enableReauthSwitch);
         mandatoryReauthSwitch.setOnPreferenceChangeListener(this::onMandatoryReauthSwitchToggled);
@@ -573,8 +581,8 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
                 histogramName,
                 MandatoryReauthAuthenticationFlowEvent.FLOW_STARTED,
                 MandatoryReauthAuthenticationFlowEvent.MAX_VALUE + 1);
-        // We require user authentication every time user tries to change this
-        // preference. Set useLastValidAuth=false to skip the grace period.
+        // We require user authentication every time user tries to change this preference. Set
+        // useLastValidAuth=false to skip the grace period.
         assertNonNull(mReauthenticatorBridge);
         mReauthenticatorBridge.reauthenticate(
                 success -> {
@@ -584,8 +592,7 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
                         PersonalDataManagerFactory.getForProfile(getProfile())
                                 .setAutofillPaymentMethodsMandatoryReauth((boolean) newValue);
 
-                        // When the preference is updated, the page is expected to refresh
-                        // and show
+                        // When the preference is updated, the page is expected to refresh and show
                         // the updated preference. Fallback if the page does not load.
                         mandatoryReauthSwitch.setChecked(userIntendedState);
                         RecordHistogram.recordEnumeratedHistogram(
@@ -599,10 +606,10 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
                                 MandatoryReauthAuthenticationFlowEvent.MAX_VALUE + 1);
                     }
                 });
-        // Returning false here holds the toggle to still display the old value while
-        // waiting for biometric auth. Once biometric is completed (either succeed or
-        // fail), OnResume will reload the page with the pref value, which will switch
-        // to the new value if biometric auth succeeded.
+        // Returning false here holds the toggle to still display the old value while waiting
+        // for biometric auth. Once biometric is completed (either succeed or fail), OnResume
+        // will reload the page with the pref value, which will switch to the new value if
+        // biometric auth succeeded.
         return false;
     }
 
@@ -790,12 +797,6 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
     @Override
     public @SettingsFragment.AnimationType int getAnimationType() {
         return SettingsFragment.AnimationType.PROPERTY;
-    }
-
-    // TODO(crbug.com/513493349): Remove this override after full launch of Autofill and Passwords.
-    @Override
-    public @Nullable String getMainMenuKey() {
-        return "autofill_payment_methods";
     }
 
     static boolean shouldShowManagePix(PersonalDataManager manager, Profile profile) {

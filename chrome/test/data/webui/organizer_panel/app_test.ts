@@ -30,15 +30,18 @@ suite('OrganizerPanelAppTest', () => {
       clearSearch: 'Clear search',
       closeTab: 'Close tab',
       closeTabSearch: isMac ? 'Close Tab Search' : 'Close tab search',
+      collapse: 'Collapse',
       collapseAll: isMac ? 'Collapse All' : 'Collapse all',
       createTabGroup: 'Create tab group',
       currentlyPlaying: 'Currently playing',
+      expand: 'Expand',
       expandAll: isMac ? 'Expand All' : 'Expand all',
       foreignTabsEnabled: false,
       goBackToOpenTabs: isMac ? 'Go Back to Open Tabs' : 'Go back to open tabs',
       isIncognitoMode: false,
       noRecentlyClosedTabs: 'No recently closed tabs',
       noResults: 'No results',
+      options: 'Options',
       recentlyClosed: 'Recently Closed',
       recentlyVisited: 'Recently visited',
       searchTabs: 'Search Tabs',
@@ -180,18 +183,22 @@ suite('OrganizerPanelAppTest', () => {
         assertEquals('hidden', listStyle.overflowX);
         assertEquals('none', listStyle.overscrollBehavior);
         assertEquals('8px', listStyle.paddingLeft);
-        assertEquals('8px', listStyle.paddingRight);
+        assertEquals('0px', listStyle.paddingRight);
+        assertEquals('stable', listStyle.scrollbarGutter);
 
         const dragRegionStyle = window.getComputedStyle(app.$.dragRegion);
         assertEquals('1', dragRegionStyle.flexGrow);
 
         app.style.height = '100px';
+        app.style.width = '300px';
+        const clientWidthBefore = app.$.list.clientWidth;
         const dummy = document.createElement('div');
         dummy.style.height = '500px';
         app.$.list.shadowRoot.appendChild(dummy);
         await microtasksFinished();
 
         assertTrue(app.$.list.scrollHeight > app.$.list.clientHeight);
+        assertEquals(clientWidthBefore, app.$.list.clientWidth);
 
         const searchFieldRectBefore = app.$.searchField.getBoundingClientRect();
         app.$.list.scrollTop = 50;
@@ -411,5 +418,38 @@ suite('OrganizerPanelAppTest', () => {
     await microtasksFinished();
 
     assertFalse(app.$.menu.open);
+  });
+
+  test('resets search query and scroll position on hidden', async () => {
+    app.style.height = '100px';
+    app.style.width = '300px';
+    const dummy = document.createElement('div');
+    dummy.style.height = '500px';
+    app.$.list.shadowRoot.appendChild(dummy);
+    app.$.searchField.setValue('test search');
+    await microtasksFinished();
+
+    app.$.list.scrollTop = 50;
+    assertEquals('test search', app.$.searchField.getValue());
+    assertEquals('test search', app.$.list.searchQuery);
+    assertEquals(50, app.$.list.scrollTop);
+
+    Object.defineProperty(
+        document, 'visibilityState', {value: 'hidden', writable: true});
+    document.dispatchEvent(new Event('visibilitychange'));
+    await microtasksFinished();
+
+    assertEquals('', app.$.searchField.getValue());
+    assertEquals('', app.$.list.searchQuery);
+    assertEquals(0, app.$.list.scrollTop);
+
+    Object.defineProperty(
+        document, 'visibilityState', {value: 'visible', writable: true});
+    document.dispatchEvent(new Event('visibilitychange'));
+    await microtasksFinished();
+
+    assertEquals('', app.$.searchField.getValue());
+    assertEquals('', app.$.list.searchQuery);
+    assertEquals(0, app.$.list.scrollTop);
   });
 });

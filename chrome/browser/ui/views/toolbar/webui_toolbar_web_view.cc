@@ -6,7 +6,10 @@
 
 #include <limits>
 #include <memory>
+#include <optional>
+#include <utility>
 
+#include "base/auto_reset.h"
 #include "base/feature_list.h"
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
@@ -113,8 +116,10 @@
 #include "ui/views/layout/flex_layout.h"
 #include "ui/views/layout/flex_layout_types.h"
 #include "ui/views/layout/layout_manager_base.h"
+#include "ui/views/style/platform_style.h"
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
+#include "ui/views/widget/widget.h"
 
 #if BUILDFLAG(IS_MAC)
 #include "chrome/browser/ui/views/toolbar/webui_toolbar_web_view_util_mac.h"
@@ -153,6 +158,15 @@ WebUIToolbarUI* GetWebUIToolbarUIFromWebContents(
   }
   auto* controller = web_ui->GetController();
   return controller ? controller->GetAs<WebUIToolbarUI>() : nullptr;
+}
+
+// Mirrors LabelButton::GetVisualState(): on platforms where inactive widgets
+// make controls appear disabled (Mac), native toolbar buttons use
+// kColorToolbarButtonIconInactive while the window isn't painted as active.
+bool ShouldToolbarControlsAppearInactive(const views::Widget* widget) {
+  return views::PlatformStyle::kInactiveWidgetControlsAppearDisabled &&
+         widget && widget->ShouldViewsStyleFollowWidgetActivation() &&
+         !widget->ShouldPaintAsActive();
 }
 
 }  // namespace
@@ -271,6 +285,11 @@ class WebUIToolbarInternalWebView : public views::WebView {
                                                       params);
     // We handled this.
     return true;
+  }
+
+  void OnFocus() override {
+    views::WebView::OnFocus();
+    webui_toolbar_web_view_->OnInternalWebViewFocused();
   }
 
   void OnBlur() override {
@@ -508,6 +527,11 @@ int WebUIToolbarWebView::GetLocationBarWidthForTesting() const {
 void WebUIToolbarWebView::AddedToWidget() {
   CHECK(web_view_);
 
+  focus_manager_observation_.Reset();
+  if (views::FocusManager* focus_manager = GetFocusManager()) {
+    focus_manager_observation_.Observe(focus_manager);
+  }
+
   if (initialization_state_ == InitializationState::kUninitialized) {
     // If the WebUI is in uninitialized state, it must be from the non-preloaded
     // path, we move to the pending state and then load the initial URL.
@@ -564,6 +588,32 @@ void WebUIToolbarWebView::AddedToWidget() {
     // preloading.
     MaybeInitializePageDependentControls();
   }
+
+  if constexpr (views::PlatformStyle::kInactiveWidgetControlsAppearDisabled) {
+    paint_as_active_subscription_ =
+        GetWidget()->RegisterPaintAsActiveChangedCallback(
+            base::BindRepeating(&WebUIToolbarWebView::OnPaintAsActiveChanged,
+                                base::Unretained(this)));
+    OnPaintAsActiveChanged();
+  }
+}
+
+void WebUIToolbarWebView::OnPaintAsActiveChanged() {
+  const bool inactive = ShouldToolbarControlsAppearInactive(GetWidget());
+  if (last_queued_state_.controls_appear_inactive != inactive) {
+    last_queued_state_.controls_appear_inactive = inactive;
+    // These icons are rendered by the browser, so they need updating.
+    if (features::IsWebUIPinnedToolbarActionsEnabled()) {
+      pinned_toolbar_actions_.OnControlsAppearInactiveChanged();
+    }
+    avatar_control_.OnControlsAppearInactiveChanged();
+    PostPushToolbarState();
+  }
+}
+
+void WebUIToolbarWebView::RemovedFromWidget() {
+  focus_manager_observation_.Reset();
+  paint_as_active_subscription_ = {};
 }
 
 void WebUIToolbarWebView::OnThemeChanged() {
@@ -603,8 +653,38 @@ void WebUIToolbarWebView::PreferredSizeChanged() {
 
 void WebUIToolbarWebView::OnBlur() {
   View::OnBlur();
+  // Note: a pending focus request is deliberately not touched here. Blur is
+  // often transient while the page is still initializing (focus cleared and
+  // restored around widget activation, or around native focus changes on
+  // Mac), so whether the request is stale is decided in `OnWillChangeFocus()`
+  // and `MaybeFlushPendingFocusRequest()`.
   if (location_bar_) {
     location_bar_->OnBlur();
+  }
+}
+
+void WebUIToolbarWebView::OnWillChangeFocus(views::View* focused_before,
+                                            views::View* focused_now) {
+  // Ignore `ClearFocus()` / `StoreFocusedView()` (`focused_now == nullptr`)
+  // and the focus change initiated by `OnFocusRequested()` itself. Otherwise:
+  // - If some other view is gaining focus (`focused_now != web_view_`), a
+  //   pending request for `web_view_` has been superseded.
+  // - If `web_view_` is gaining focus (`focused_now == web_view_`), it is only
+  //   fulfilling a pending request if `web_view_` was waiting as the stored
+  //   focus view. `OnWillChangeFocus()` runs before
+  //   `FocusManager::SetFocusedViewWithReason()` overwrites the stored focus
+  //   view with `focused_now`, so if `GetStoredFocusView() != web_view_` here,
+  //   something else replaced or cleared the stored focus view while
+  //   `web_view_` was unfocused (e.g. another view called `RequestFocus()` on
+  //   an inactive widget) and this is an unrelated later focus (such as a user
+  //   click). Drop the stale request before `OnInternalWebViewFocused()` runs.
+  if (!pending_focus_request_ || in_focus_request_ || !focused_now) {
+    return;
+  }
+  views::FocusManager* focus_manager = GetFocusManager();
+  if (focused_now != web_view_ || !focus_manager ||
+      focus_manager->GetStoredFocusView() != web_view_) {
+    pending_focus_request_.reset();
   }
 }
 
@@ -795,12 +875,7 @@ void WebUIToolbarWebView::OnPageInitialized() {
   SetInitializationState(InitializationState::kInitialized);
   MaybeInitializePageDependentControls();
 
-  if (pending_focus_request_) {
-    if (WebUIToolbarUI* web_ui = GetWebUIToolbarUI()) {
-      web_ui->OnFocusRequested(*pending_focus_request_);
-    }
-    pending_focus_request_.reset();
-  }
+  MaybeFlushPendingFocusRequest();
 
   if (auto* manager = InitialWebUIManager::From(browser_)) {
     manager->OnWebUIToolbarLoaded();
@@ -1701,14 +1776,71 @@ void WebUIToolbarWebView::OnGlicButtonStateChanged(
 }
 void WebUIToolbarWebView::OnFocusRequested(
     toolbar_ui_api::mojom::FocusRequestTarget target) {
-  // We need to focus the WebView as well, besides the JS focus.
-  web_view_->RequestFocus();
-  if (initialization_state_ == InitializationState::kInitialized) {
+  // Record the request before focusing the WebView: if `RequestFocus()` grants
+  // focus synchronously it re-enters `OnInternalWebViewFocused()`, which
+  // delivers the request right away (if the page is ready).
+  pending_focus_request_ = target;
+  {
+    base::AutoReset<bool> in_focus_request(&in_focus_request_, true);
+    // We need to focus the WebView as well, besides the JS focus.
+    web_view_->RequestFocus();
+  }
+  // Covers the case where the WebView already had focus, so that
+  // `RequestFocus()` was a no-op and `OnInternalWebViewFocused()` did not run.
+  // Otherwise this is a no-op too and the request stays pending until the
+  // page initializes and/or the WebView gains focus.
+  MaybeFlushPendingFocusRequest();
+}
+
+void WebUIToolbarWebView::OnInternalWebViewFocused() {
+  MaybeFlushPendingFocusRequest();
+}
+
+void WebUIToolbarWebView::MaybeFlushPendingFocusRequest() {
+  if (!pending_focus_request_ ||
+      initialization_state_ != InitializationState::kInitialized) {
+    // Nothing to do, or the page can't take the request yet. Keep it pending:
+    // focus may still be in flux while the page initializes (widget activation
+    // clears and restores focus; on Mac, native first responder changes such
+    // as `WebView::SetUpNewMainFrame()` re-focusing the native view when the
+    // WebUI page's frame is swapped in can briefly clear views focus too), so
+    // don't try to judge the request before the page is ready.
+    return;
+  }
+
+  // Only hand the request to the WebUI once the WebView actually holds views
+  // focus. `RequestFocus()` does not grant focus synchronously when the widget
+  // is inactive: the view is merely stored and focused once the widget gets
+  // activated (see `FocusManager::SetFocusedViewWithReason()`). If we told the
+  // WebUI to focus regardless, it would report back that the omnibox has focus
+  // even though views never focused the WebView; and since focus requests on
+  // an inactive widget just replace the stored view, no `Blur()` would ever
+  // arrive to undo that, leaving the edit model stuck in a focused state.
+  // Mirroring Views (where `OmniboxViewViews` only learns about focus via
+  // `OnFocus()`), wait for `OnInternalWebViewFocused()` instead.
+  if (web_view_->HasFocus()) {
+    const toolbar_ui_api::mojom::FocusRequestTarget target =
+        *std::exchange(pending_focus_request_, std::nullopt);
     if (WebUIToolbarUI* web_ui = GetWebUIToolbarUI()) {
       web_ui->OnFocusRequested(target);
     }
-  } else {
-    pending_focus_request_ = target;
+    return;
+  }
+
+  // The page is ready but the WebView doesn't hold views focus. Keep waiting
+  // only if focus is set to come back to the WebView on its own, i.e. it is
+  // the FocusManager's stored focus view: that's the case when the widget is
+  // inactive and focus is restored on activation, or when focus was merely
+  // cleared (`FocusManager::ClearFocus()` keeps the stored view). Otherwise
+  // focus has moved to some other view since the request was made (or the
+  // request never got focus to begin with, e.g. because the WebView wasn't
+  // focusable), so the request is stale: drop it rather than letting it fire
+  // on some unrelated later focus of the WebView. This mirrors
+  // `LocationBarView::FocusLocation()`, which gives up when `RequestFocus()`
+  // on the omnibox doesn't take.
+  views::FocusManager* focus_manager = GetFocusManager();
+  if (!focus_manager || focus_manager->GetStoredFocusView() != web_view_) {
+    pending_focus_request_.reset();
   }
 }
 

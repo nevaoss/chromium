@@ -12,6 +12,7 @@ watch_logs() uses, with the macOS dialog and `log stream` process mocked out.
 
 from __future__ import annotations
 
+from dataclasses import replace
 import io
 import json
 import math
@@ -24,6 +25,8 @@ from unittest.mock import MagicMock, patch
 from bug_tracker import get_bug_url
 from log_events import SandboxDenial
 from sandbox_denial_watcher import (
+    _CHROME_APP_NAMES,
+    _CHROME_PRODUCT_DIRS,
     _DIALOG_GIVE_UP_SECONDS,
     _DIALOG_SCRIPT,
     _DISMISS_BUTTON_TITLE,
@@ -31,8 +34,10 @@ from sandbox_denial_watcher import (
     _HOME_DIR,
     _INTERESTING_PROCS,
     _OSASCRIPT_PATH,
+    _PS_PATH,
     DenialFilter,
     SandboxDenialWatcher,
+    _get_process_command_line,
     _validate_process_name,
     main,
     prompt_to_file_bug,
@@ -93,6 +98,12 @@ class WatcherTestCase(unittest.TestCase):
         timer_patcher = patch("sandbox_denial_watcher.threading.Timer")
         self.mock_timer = timer_patcher.start()
         self.addCleanup(timer_patcher.stop)
+        cmdline_patcher = patch(
+            "sandbox_denial_watcher._get_process_command_line",
+            return_value=None,
+        )
+        self.mock_get_cmdline = cmdline_patcher.start()
+        self.addCleanup(cmdline_patcher.stop)
         self.denial_filter = self.make_filter()
         self.watcher = SandboxDenialWatcher(denial_filter=self.denial_filter)
 
@@ -163,7 +174,7 @@ class FilteringTest(WatcherTestCase):
         mock_report.assert_not_called()
 
     @patch.object(SandboxDenialWatcher, "_report_denial")
-    def test_known_denials_exact_and_subpath_matching(self, mock_report):
+    def test_known_denials_target_and_subpath_matching(self, mock_report):
         self.feed(
             _denial_line(
                 "mach-lookup com.apple.diagnosticd", process="Google Chrome"
@@ -178,7 +189,7 @@ class FilteringTest(WatcherTestCase):
         )
         mock_report.assert_not_called()
 
-        # Subpaths of exact rules and sibling directories of subpath
+        # Subpaths of target rules and sibling directories of subpath
         # rules are still reported.
         self.feed(_denial_line("file-read-data /unexpected/path/to/file"))
         self.feed(
@@ -263,6 +274,50 @@ class FilteringTest(WatcherTestCase):
         )
         mock_prompt.assert_called_once_with([d1, d2])
 
+    @patch("sandbox_denial_watcher.prompt_to_file_bug")
+    def test_report_denial_attaches_command_line_once_per_batch(
+        self, mock_prompt
+    ):
+        cmd = "Chromium Helper --type=utility --service-sandbox-type=service"
+        self.mock_get_cmdline.return_value = cmd
+        denial1 = _denial("file-write-times /path/to/crl-set", pid=42)
+        denial2 = _denial("file-write-times /path/to/manifest.json", pid=42)
+        self.watcher._report_denial(denial1)
+        self.watcher._report_denial(denial2)
+        self.watcher._flush_batch((denial1.process_name, denial1.action))
+
+        self.mock_get_cmdline.assert_called_once_with(42)
+        mock_prompt.assert_called_once_with(
+            [replace(denial1, command_line=cmd), denial2]
+        )
+
+
+class ProcessCommandLineTest(unittest.TestCase):
+    """Verifies querying process command lines with `/bin/ps`."""
+
+    @patch("sandbox_denial_watcher.subprocess.run")
+    def test_returns_stripped_command_line_on_success(self, mock_run):
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="  Chromium Helper --type=renderer  \n",
+        )
+        self.assertEqual(
+            _get_process_command_line(123),
+            "Chromium Helper --type=renderer",
+        )
+        args, _ = mock_run.call_args
+        self.assertEqual(args[0], [_PS_PATH, "-p", "123", "-o", "command="])
+
+    @patch("sandbox_denial_watcher.subprocess.run")
+    def test_returns_none_on_nonzero_exit(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=1, stdout="")
+        self.assertIsNone(_get_process_command_line(123))
+
+    @patch("sandbox_denial_watcher.subprocess.run")
+    def test_returns_none_on_subprocess_error(self, mock_run):
+        mock_run.side_effect = subprocess.TimeoutExpired(cmd="ps", timeout=2)
+        self.assertIsNone(_get_process_command_line(123))
+
 
 class DenialFilterTest(WatcherTestCase):
     """Verifies DenialFilter's known-denial and suppression bookkeeping."""
@@ -280,7 +335,7 @@ class DenialFilterTest(WatcherTestCase):
             "\n".join(cm.output),
         )
 
-    def test_exact_match(self):
+    def test_target_match(self):
         self.assertTrue(
             self.denial_filter.should_ignore(
                 _denial("mach-lookup com.apple.diagnosticd")
@@ -292,7 +347,7 @@ class DenialFilterTest(WatcherTestCase):
             )
         )
 
-    def test_exact_match_root_path(self):
+    def test_target_match_root_path(self):
         self.assertTrue(
             self.denial_filter.should_ignore(_denial("file-read-data /"))
         )
@@ -300,7 +355,7 @@ class DenialFilterTest(WatcherTestCase):
             self.denial_filter.should_ignore(_denial("file-read-data /tmp"))
         )
 
-    def test_exact_match_directory_with_trailing_slash(self):
+    def test_target_match_directory_with_trailing_slash(self):
         self.assertTrue(
             self.denial_filter.should_ignore(
                 _denial(f"file-read-data {_HOME_DIR}/Desktop/")
@@ -337,7 +392,7 @@ class DenialFilterTest(WatcherTestCase):
 
     @patch.dict(
         "sandbox_denial_watcher._KNOWN_SUBPATH_DENIALS",
-        {"file-read-data": ("/Library/Managed Preferences",)},
+        {"file-read-data": frozenset(("/Library/Managed Preferences",))},
         clear=True,
     )
     def test_subpaths_matching_without_trailing_slash_in_rule(self):
@@ -362,6 +417,141 @@ class DenialFilterTest(WatcherTestCase):
                 )
             )
         )
+
+    def test_chrome_app_support_subpath_matching_across_flavors(self):
+        app_support = f"{_HOME_DIR}/Library/Application Support"
+        for product in _CHROME_PRODUCT_DIRS:
+            store = f"{app_support}/{product}/optimization_guide_model_store"
+            with self.subTest(product=product):
+                self.assertTrue(
+                    self.denial_filter.should_ignore(
+                        _denial(f"file-write-times {store}")
+                    )
+                )
+                self.assertTrue(
+                    self.denial_filter.should_ignore(
+                        _denial(f"file-write-times {store}/")
+                    )
+                )
+                self.assertTrue(
+                    self.denial_filter.should_ignore(
+                        _denial(f"file-write-times {store}/model-info.pb")
+                    )
+                )
+                self.assertFalse(
+                    self.denial_filter.should_ignore(
+                        _denial(f"file-write-times {store}_other/model-info.pb")
+                    )
+                )
+                self.assertFalse(
+                    self.denial_filter.should_ignore(
+                        _denial(
+                            f"file-write-times {app_support}/{product}Backup/"
+                            "optimization_guide_model_store/model-info.pb"
+                        )
+                    )
+                )
+
+    def test_chrome_bundle_subpath_matching_across_flavors(self):
+        for app_name in _CHROME_APP_NAMES:
+            bundle = f"/Applications/{app_name}"
+            with self.subTest(app_name=app_name):
+                self.assertTrue(
+                    self.denial_filter.should_ignore(
+                        _denial(
+                            f"file-issue-extension target:{bundle}/Contents/"
+                            "Resources"
+                        )
+                    )
+                )
+                self.assertFalse(
+                    self.denial_filter.should_ignore(
+                        _denial(
+                            f"file-issue-extension target:{bundle}.bak/"
+                            "Contents/Resources"
+                        )
+                    )
+                )
+
+    def test_suppression_applies_across_chrome_flavors(self):
+        canary_denial = _denial(
+            f"file-read-data {_HOME_DIR}/Library/Application Support/"
+            "Google/Chrome Canary/Default/Cookies"
+        )
+        chromium_denial = _denial(
+            f"file-read-data {_HOME_DIR}/Library/Application Support/"
+            "Chromium/Default/Cookies"
+        )
+        self.denial_filter.suppress(canary_denial, 100)
+        self.assertTrue(self.denial_filter.should_ignore(chromium_denial))
+
+    def test_darwin_user_dir_target_wildcard_matching(self):
+        user1_tmp = "/private/var/folders/tr/6v8rtgkn5399hj49myh4zh3m00czwq/T"
+        user2_tmp = "/private/var/folders/lf/6xnpwtqx06xg8dcxbrdlpwqw005_lc/T"
+        self.assertTrue(
+            self.denial_filter.should_ignore(
+                _denial(f"file-write-create {user1_tmp}/tmp.Tq7AOs")
+            )
+        )
+        self.assertTrue(
+            self.denial_filter.should_ignore(
+                _denial(f"file-write-create {user2_tmp}/tmp.12345")
+            )
+        )
+        self.assertFalse(
+            self.denial_filter.should_ignore(
+                _denial(f"file-write-create {user1_tmp}/tmp.Tq7AOs/nested")
+            )
+        )
+        self.assertFalse(
+            self.denial_filter.should_ignore(
+                _denial(f"file-write-create {user1_tmp}/other.Tq7AOs")
+            )
+        )
+
+    def test_darwin_user_dir_subpath_wildcard_matching(self):
+        user_root = "/private/var/folders/lf/6xnpwtqx06xg8dcxbrdlpwqw005_lc"
+        crx_dir = f"{user_root}/T/scoped_dirgy10KM/CRX_INSTALL"
+        self.assertTrue(
+            self.denial_filter.should_ignore(
+                _denial(f"file-write-mode {crx_dir}")
+            )
+        )
+        self.assertTrue(
+            self.denial_filter.should_ignore(
+                _denial(f"file-write-mode {crx_dir}/")
+            )
+        )
+        self.assertTrue(
+            self.denial_filter.should_ignore(
+                _denial(f"file-write-mode {crx_dir}/manifest.json")
+            )
+        )
+        self.assertFalse(
+            self.denial_filter.should_ignore(
+                _denial(f"file-write-mode {crx_dir}_OTHER/manifest.json")
+            )
+        )
+        self.assertFalse(
+            self.denial_filter.should_ignore(
+                _denial(
+                    f"file-write-mode {user_root}/T/scoped_dirgy10KM/nested/"
+                    "CRX_INSTALL/manifest.json"
+                )
+            )
+        )
+
+    def test_suppression_applies_across_darwin_user_dirs(self):
+        user1_denial = _denial(
+            "file-read-data /private/var/folders/tr/"
+            "6v8rtgkn5399hj49myh4zh3m00czwq/0/unexpected"
+        )
+        user2_denial = _denial(
+            "file-read-data /private/var/folders/lf/"
+            "6xnpwtqx06xg8dcxbrdlpwqw005_lc/0/unexpected"
+        )
+        self.denial_filter.suppress(user1_denial, 100)
+        self.assertTrue(self.denial_filter.should_ignore(user2_denial))
 
     def test_non_positive_duration_does_not_suppress(self):
         denial = _denial("mach-lookup com.apple.unknown")

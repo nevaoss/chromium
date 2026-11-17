@@ -111,6 +111,10 @@ class MockAutofillClient : public TestAutofillClient {
               GetMqlsUploadService,
               (),
               (override));
+  MOCK_METHOD(EntitySuppressionManager*,
+              GetEntitySuppressionManager,
+              (),
+              (override));
 };
 
 class BaseAutofillAiTest : public testing::Test {
@@ -907,7 +911,22 @@ TEST_F(BaseAutofillAiTest, KeyMetrics_PerRecordType) {
 class AutofillAiPersonalContextSuppressionTest : public BaseAutofillAiTest {
  public:
   AutofillAiPersonalContextSuppressionTest() {
-    autofill_client().set_entity_suppression_manager(&suppression_manager_);
+    ON_CALL(autofill_client(), GetEntitySuppressionManager)
+        .WillByDefault(Return(&suppression_manager_));
+
+    // Recreate `AutofillAiManager` instance because its `AutofillAiLogger`
+    // member caches the current `EntitySuppressionManager` of `AutofillClient`
+    // upon construction.
+    RecreateManager();
+  }
+
+  ~AutofillAiPersonalContextSuppressionTest() override {
+    // `suppression_manager_` is a member of this fixture and would be destroyed
+    // before `manager_` of the base fixture without this explicit reset.
+    // `AutofillAiLogger` caches a pointer to `suppression_manager_` and may
+    // dereference it in its destructor. In production, the
+    // `EntitySuppressionManager` is a keyed service that outlives the logger.
+    manager_ptr().reset();
   }
 
   // Shows two personal context passports and one personal context driver's
@@ -973,6 +992,10 @@ TEST_F(AutofillAiPersonalContextSuppressionTest, Abandoned) {
       ShowPersonalContextEntitiesAndSuppressOne();
 
   base::HistogramTester histogram_tester;
+  // Regression test for crbug.com/574445214: the logger is destroyed while the
+  // client is being destroyed, at which point the client must not be queried
+  // for keyed services anymore (enforced by `CHECK`).
+  EXPECT_CALL(autofill_client(), GetEntitySuppressionManager).Times(0);
   manager_ptr().reset();
   EXPECT_THAT(histogram_tester.GetAllSamples(
                   "Autofill.Ai.Suppression.Passport.PersonalContext"),

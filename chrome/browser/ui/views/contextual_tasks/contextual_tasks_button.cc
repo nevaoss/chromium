@@ -215,7 +215,10 @@ std::unique_ptr<ui::SimpleMenuModel> CreateContextualTasksButtonMenuModel(
   auto menu_model = std::make_unique<ui::SimpleMenuModel>(delegate);
   menu_model->AddItemWithStringId(
       kCommandRemoveForCurrentTask,
-      IDS_CONTEXTUAL_TASKS_EPHEMERAL_BUTTON_CONTEXT_MENU_REMOVE);
+      contextual_tasks::
+              ShouldUseCloseSidePanelForEphemeralButtonContextMenu()
+          ? IDS_CONTEXTUAL_TASKS_EPHEMERAL_BUTTON_CONTEXT_MENU_CLOSE
+          : IDS_CONTEXTUAL_TASKS_EPHEMERAL_BUTTON_CONTEXT_MENU_REMOVE);
   menu_model->SetElementIdentifierAt(
       0,
       ContextualTasksButton::
@@ -336,6 +339,13 @@ void ContextualTasksButton::ExecuteCommand(int command_id, int event_flags) {
   }
   switch (command_id) {
     case kCommandRemoveForCurrentTask:
+      base::RecordAction(base::UserMetricsAction(
+          "ContextualTasks.EphemeralToolbarButton.UserAction."
+          "RemoveByContextMenu"));
+      base::UmaHistogramBoolean(
+          "ContextualTasks.EphemeralToolbarButton.UserAction."
+          "RemoveByContextMenu",
+          true);
       controller->RemoveEphemeralButtonForCurrentTask();
       break;
     default:

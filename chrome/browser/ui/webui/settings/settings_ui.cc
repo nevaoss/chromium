@@ -457,9 +457,6 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
       "safetyHubExtensionsReviewLabel",
       IDS_SETTINGS_SAFETY_CHECK_REVIEW_EXTENSIONS);
   plural_string_handler->AddLocalizedString(
-      "safetyHubNotificationPermissionReviewBlockAllToastLabel",
-      IDS_SETTINGS_SAFETY_CHECK_NOTIFICATION_PERMISSION_REVIEW_BLOCK_ALL_TOAST_LABEL);
-  plural_string_handler->AddLocalizedString(
       "safetyHubUnusedSitePermissionsPrimaryLabel",
       IDS_SETTINGS_SAFETY_CHECK_UNUSED_SITE_PERMISSIONS_PRIMARY_LABEL);
   plural_string_handler->AddLocalizedString(
@@ -471,12 +468,6 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
   plural_string_handler->AddLocalizedString(
       "safetyHubUnusedSitePermissionsToastBulkLabel",
       IDS_SETTINGS_SAFETY_CHECK_UNUSED_SITE_PERMISSIONS_TOAST_BULK_LABEL);
-  plural_string_handler->AddLocalizedString(
-      "safetyHubNotificationPermissionsPrimaryLabel",
-      IDS_SETTINGS_SAFETY_HUB_NOTIFICATION_PERMISSIONS_PRIMARY_LABEL);
-  plural_string_handler->AddLocalizedString(
-      "safetyHubNotificationPermissionsSecondaryLabel",
-      IDS_SETTINGS_SAFETY_HUB_NOTIFICATION_PERMISSIONS_SECONDARY_LABEL);
   plural_string_handler->AddLocalizedString(
       "batchUploadPromoLabel", IDS_BATCH_UPLOAD_PROMO_SUBTITLE_ITEMS_WITH_LINK);
   plural_string_handler->AddLocalizedString("cpuPerformanceCores",
@@ -667,13 +658,10 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
   }
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-  // On Device AI setting.
+  // The On Device AI setting is always shown on branded builds.
   // TODO(crbug.com/466442880): Grey out toggle based on device capability and
   // enterprise policy.
-  bool show_on_device_ai_settings =
-      base::FeatureList::IsEnabled(features::kShowOnDeviceAiSettings);
-  html_source->AddBoolean("showOnDeviceAiSettings", show_on_device_ai_settings);
-  show_ai_features_section |= show_on_device_ai_settings;
+  show_ai_features_section = true;
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
   // Within the AI subpage are separate sections for Glic, for GEIC, and for all
@@ -766,11 +754,11 @@ void SettingsUI::InitBrowserSettingsWebUIHandlers() {
     auto* account_manager =
         ash::AccountManagerFactory::Get()->GetAccountManager(
             profile->GetPath().value());
-    DCHECK(account_manager);
+    CHECK(account_manager, base::NotFatalUntil::M162);
     auto* account_manager_facade =
         ash::AccountManagerFactory::Get()->GetAccountManagerFacade(
             profile->GetPath().value());
-    DCHECK(account_manager_facade);
+    CHECK(account_manager_facade, base::NotFatalUntil::M162);
 
     web_ui()->AddMessageHandler(
         std::make_unique<ash::settings::AccountManagerUIHandler>(
@@ -841,7 +829,7 @@ void SettingsUI::BindInterface(
 
 void SettingsUI::AddSettingsPageUIHandler(
     std::unique_ptr<content::WebUIMessageHandler> handler) {
-  DCHECK(handler);
+  CHECK(handler, base::NotFatalUntil::M162);
   web_ui()->AddMessageHandler(std::move(handler));
 }
 

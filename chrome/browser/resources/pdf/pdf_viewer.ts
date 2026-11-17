@@ -13,6 +13,8 @@ import './elements/viewer_password_dialog.js';
 import './elements/ink_text_annotations.js';
 import './elements/viewer_bottom_toolbar.js';
 import './elements/viewer_side_panel.js';
+import './elements/viewer_signature_bottom_toolbar.js';
+import './elements/viewer_signature_side_panel.js';
 import './elements/viewer_text_bottom_toolbar.js';
 import './elements/viewer_text_side_panel.js';
 // </if>
@@ -692,8 +694,10 @@ export class PdfViewerElement extends PdfViewerBaseElement {
       case AnnotationMode.TEXT:
         record(UserAction.EXIT_INK2_TEXT_ANNOTATION_MODE);
         break;
-      case AnnotationMode.OFF:
       case AnnotationMode.SIGNATURE:
+        record(UserAction.EXIT_INK2_SIGNATURE_MODE);
+        break;
+      case AnnotationMode.OFF:
         break;
       default:
         assertNotReached();
@@ -707,8 +711,10 @@ export class PdfViewerElement extends PdfViewerBaseElement {
       case AnnotationMode.TEXT:
         record(UserAction.ENTER_INK2_TEXT_ANNOTATION_MODE);
         break;
-      case AnnotationMode.OFF:
       case AnnotationMode.SIGNATURE:
+        record(UserAction.ENTER_INK2_SIGNATURE_MODE);
+        break;
+      case AnnotationMode.OFF:
         break;
       default:
         assertNotReached();

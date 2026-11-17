@@ -157,6 +157,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -342,6 +343,8 @@ public class UrlOverridingTest {
         private boolean mResolveToTrustedCaller;
         private final String mNonBrowserPackageName;
         private String mHostToMatch;
+        private @Nullable String mHostPathToMatch;
+        private @Nullable String mHostTargetPackage;
         private String mSchemeToMatch;
         private IntentFilter mFilterForHostMatch;
         private IntentFilter mFilterForSchemeMatch;
@@ -372,9 +375,19 @@ public class UrlOverridingTest {
             return false;
         }
 
-        private void setIntentFilterForHost(String host, IntentFilter filter) {
+        private void setIntentFilterForHost(
+                String host,
+                @Nullable String path,
+                IntentFilter filter,
+                @Nullable String targetPackage) {
             mHostToMatch = host;
+            mHostPathToMatch = path;
             mFilterForHostMatch = filter;
+            mHostTargetPackage = targetPackage;
+        }
+
+        private void setIntentFilterForHost(String host, IntentFilter filter) {
+            setIntentFilterForHost(host, null, filter, null);
         }
 
         private void setIntentFilterForScheme(String scheme, IntentFilter filter) {
@@ -410,8 +423,14 @@ public class UrlOverridingTest {
 
                     if (mHostToMatch != null
                             && intent.getData() != null
-                            && mHostToMatch.equals(intent.getData().getHost())) {
-                        ResolveInfo info = newResolveInfo(targetPackage);
+                            && mHostToMatch.equals(intent.getData().getHost())
+                            && (mHostPathToMatch == null
+                                    || mHostPathToMatch.equals(intent.getData().getPath()))) {
+                        ResolveInfo info =
+                                newResolveInfo(
+                                        mHostTargetPackage != null
+                                                ? mHostTargetPackage
+                                                : targetPackage);
                         info.filter = mFilterForHostMatch;
                         return Arrays.asList(info);
                     }
@@ -698,7 +717,13 @@ public class UrlOverridingTest {
             ChromeTabUtils.waitForInteractable(latestTabHolder.value);
         }
 
-        if (params.shouldFailNavigation) {
+        // When an intercepted initial navigation in a new tab launches an external intent,
+        // handleShouldCloseTab() can destroy the new tab before an async HTTP throttle check
+        // reaches WillProcessResponse() to notify onPageLoadFailed (crbug.com/446837985).
+        boolean expectFailCallback =
+                params.shouldFailNavigation
+                        && !(params.createsNewTab && params.shouldLaunchExternalIntent);
+        if (expectFailCallback) {
             failCallback.waitForCallback("Navigation didn't fail.", 0, 1, 20, TimeUnit.SECONDS);
         }
 
@@ -763,7 +788,11 @@ public class UrlOverridingTest {
                     Criteria.checkThat(
                             finishCallback.getCallCount(), Matchers.is(finalFinishTarget));
                 });
-        Assert.assertEquals(params.shouldFailNavigation ? 1 : 0, failCallback.getCallCount());
+        if (expectFailCallback) {
+            Assert.assertEquals(1, failCallback.getCallCount());
+        } else if (!params.shouldFailNavigation) {
+            Assert.assertEquals(0, failCallback.getCallCount());
+        }
 
         return lastResultValue.get();
     }
@@ -1621,20 +1650,20 @@ public class UrlOverridingTest {
     @DisableFeatures({"BackForwardCacheMemoryControls"})
     public void testNoRedirectWithBFCache() throws Exception {
         final CallbackHelper finishCallback = new CallbackHelper();
-        final CallbackHelper syncHelper = new CallbackHelper();
-        AtomicReference<NavigationHandle> lastNavigationHandle = new AtomicReference<>(null);
+        final CallbackHelper pageLoadCallback = new CallbackHelper();
+        final List<NavigationHandle> navigationHandles = new CopyOnWriteArrayList<>();
         TabObserver observer =
                 new TabObserver() {
                     @Override
                     public void onDidFinishNavigationInPrimaryMainFrame(
                             Tab tab, NavigationHandle navigation) {
-                        int callCount = syncHelper.getCallCount();
-                        lastNavigationHandle.set(navigation);
+                        navigationHandles.add(navigation);
                         finishCallback.notifyCalled();
-                        try {
-                            syncHelper.waitForCallback(callCount);
-                        } catch (Exception e) {
-                        }
+                    }
+
+                    @Override
+                    public void onPageLoadFinished(Tab tab, GURL url) {
+                        pageLoadCallback.notifyCalled();
                     }
                 };
         String url = mTestServer.getURL(NAVIGATION_FROM_BFCACHE);
@@ -1656,40 +1685,42 @@ public class UrlOverridingTest {
                     RedirectHandlerTabHelper.swapHandlerForTesting(tab, spyHandler);
                 });
 
-        // Click link to go to second page.
+        // Click link to go to second page and wait for its load to settle before navigating back.
         TouchCommon.singleClickView(tab.getView());
         finishCallback.waitForCallback(0);
-        syncHelper.notifyCalled();
+        pageLoadCallback.waitForCallback(0);
 
-        AtomicInteger lastResultValue = new AtomicInteger();
+        final CallbackHelper resultCallback = new CallbackHelper();
+        AtomicInteger lastResultValue = new AtomicInteger(-1);
         InterceptNavigationDelegateImpl.setResultCallbackForTesting(
                 (Pair<GURL, OverrideUrlLoadingResult> result) -> {
                     if (result.first.getSpec().equals(url)) return;
                     lastResultValue.set(result.second.getResultType());
+                    resultCallback.notifyCalled();
                 });
 
         // Press back to go back to first page with BFCache.
         ThreadUtils.runOnUiThreadBlocking(
                 mTabbedActivityTestRule.getActivity().getOnBackPressedDispatcher()::onBackPressed);
         finishCallback.waitForCallback(1);
-        Assert.assertTrue(lastNavigationHandle.get().isPageActivation());
+        Assert.assertTrue(navigationHandles.get(1).isPageActivation());
         // Page activations should clear the RedirectHandler so future navigations aren't part of
         // the same navigation chain.
         Mockito.verify(spyHandler, Mockito.times(1)).clear();
-        syncHelper.notifyCalled();
 
         // Page redirects to intent: URL.
         finishCallback.waitForCallback(2);
+        resultCallback.waitForCallback(0);
 
         // With RedirectHandler state cleared, this should be treated as a navigation without a
         // user gesture, which will use a Message to ask the user if they would like to follow the
         // external navigation.
         Assert.assertEquals(
                 OverrideUrlLoadingResultType.OVERRIDE_WITH_ASYNC_ACTION, lastResultValue.get());
-        Assert.assertTrue(lastNavigationHandle.get().getUrl().getSpec().startsWith("intent://"));
-        syncHelper.notifyCalled();
+        Assert.assertTrue(navigationHandles.get(2).getUrl().getSpec().startsWith("intent://"));
 
-        Assert.assertNotNull(getCurrentExternalNavigationMessage());
+        CriteriaHelper.pollInstrumentationThread(
+                () -> getCurrentExternalNavigationMessage() != null);
     }
 
     @Test
@@ -2261,6 +2292,7 @@ public class UrlOverridingTest {
     @Test
     @LargeTest
     @RequiresRestart // Avoid having multiple windows mess up the other tests
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/574600173
     public void testRedirectFromLinkCreatingNewWindow() throws Exception {
         TestWebServer webServer = TestWebServer.start();
         GURL redirectTargetUrl = new GURL(mTestServer.getURL(HELLO_PAGE));
@@ -2331,7 +2363,7 @@ public class UrlOverridingTest {
 
     @Test
     @LargeTest
-    @DisabledTest(message = "https://crbug.com/487986729")
+    @EnableFeatures({ChromeFeatureList.RFH_HIDDEN_WHEN_HIDDEN_BUT_PAINTING})
     public void testWindowRenavigation() throws Exception {
         String finalUrl = mTestServer.getURL(HELLO_PAGE);
         WebPageStation ctaPage = mTabbedActivityTestRule.startOnBlankPage();
@@ -2377,7 +2409,7 @@ public class UrlOverridingTest {
 
     @Test
     @LargeTest
-    @DisabledTest(message = "https://crbug.com/487986729")
+    @EnableFeatures({ChromeFeatureList.RFH_HIDDEN_WHEN_HIDDEN_BUT_PAINTING})
     public void testWindowRenavigationServerRedirect() throws Exception {
         String finalUrl = mTestServer.getURL(HELLO_PAGE);
         WebPageStation ctaPage = mTabbedActivityTestRule.startOnBlankPage();
@@ -2626,7 +2658,6 @@ public class UrlOverridingTest {
 
     @Test
     @LargeTest
-    @DisabledTest(message = "https://crbug.com/446837985")
     public void testTopLevelNavigationShouldBeIntercepted() throws Exception {
         InterceptNavigationDelegateClientImpl.setIsDesktopWindowingModeForTesting(true);
 
@@ -2637,7 +2668,7 @@ public class UrlOverridingTest {
                                 filter,
                                 new Instrumentation.ActivityResult(Activity.RESULT_OK, null),
                                 true);
-        mTestContext.setIntentFilterForHost("127.0.0.1", filter);
+        mTestContext.setIntentFilterForHost("127.0.0.1", HELLO_PAGE, filter, null);
 
         WebPageStation ctaPage = mTabbedActivityTestRule.startOnBlankPage();
 

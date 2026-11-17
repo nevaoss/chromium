@@ -72,7 +72,6 @@ import {                      //
 import {ObservableValue as ObservableValueImpl, Subject} from '../../observable.js';
 import {convertTabContextResultFromPrivate, convertTabDataFromPrivate} from '../client/glic_api_client.js';
 import {rgbaImageToBlob} from '../client/image_utils.js';
-import type {CheckEnumCompatibility} from '../conversions.js';
 import {                        //
   bitmapN32ToRGBAImage,         //
   byteArrayFromClient,          //
@@ -85,11 +84,12 @@ import {                        //
   tabContextOptionsFromClient,  //
   tabContextToClient,           //
   urlToClient,                  //
-} from '../host/conversions.js';
+} from '../conversions.js';
+import type {CheckEnumCompatibility} from '../legacy_enum_check.js';
 import {maybeWrapWithLogging} from '../mojo_logging.js';
 import type {ResumeActorTaskResultPrivate} from '../request_types.js';
 import {ErrorWithReasonImpl} from '../request_types.js';
-import {assertNever, ResponseExtras} from '../transport/messaging.js';
+import {assertNever} from '../transport/messaging.js';
 
 // Implements actor-specific methods on GlicBrowserHost.
 export class GlicBrowserHostActor implements ActorClientInterface,
@@ -246,8 +246,7 @@ export class GlicBrowserHostActor implements ActorClientInterface,
     if (!tabContext) {
       throw new Error(`tabContext failed: ${errorReason}`);
     }
-    const tabContextResult =
-        tabContextToClient(tabContext, new ResponseExtras());
+    const tabContextResult = tabContextToClient(tabContext);
     return convertTabContextResultFromPrivate(tabContextResult);
   }
 
@@ -317,9 +316,8 @@ export class GlicBrowserHostActor implements ActorClientInterface,
       throw new Error(
           `resumeActorTask failed: ${getContextResult.errorReason}`);
     }
-    const extras = new ResponseExtras();
     const resumeActorTaskResult = resumeActorTaskResultToClient(
-        getContextResult.tabContext, actionResult, extras);
+        getContextResult.tabContext, actionResult);
     return convertTabContextResultFromPrivate(resumeActorTaskResult);
   }
 
@@ -727,10 +725,10 @@ function taskOptionsToMojo(taskOptions?: TaskOptions): TaskOptionsMojo|null {
 }
 
 function resumeActorTaskResultToClient(
-    tabContext: TabContextMojo, actionResult: number,
-    extras: ResponseExtras): ResumeActorTaskResultPrivate {
+    tabContext: TabContextMojo,
+    actionResult: number): ResumeActorTaskResultPrivate {
   return {
-    ...tabContextToClient(tabContext, extras),
+    ...tabContextToClient(tabContext),
     actionResult,
   };
 }

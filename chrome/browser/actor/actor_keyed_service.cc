@@ -63,8 +63,10 @@
 #include "components/browser_actuator/public/features.h"
 #include "components/browser_actuator/public/transport_channel.h"
 #include "components/browser_actuator/public/transport_handler_factory_registry.h"
+#include "components/optimization_guide/content/browser/page_content_proto_provider.h"
 #include "components/optimization_guide/proto/features/common_quality_data.pb.h"
 #include "components/origin_gating/core/task_policy_config_slot.h"
+#include "components/page_content_annotations/content/page_context_fetcher.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/download_item_utils.h"
@@ -601,11 +603,6 @@ TaskId ActorKeyedService::CreateTaskImpl(
 
   NotifyTaskStateChanged(*active_tasks_[task_id]);
 
-  if (source_info.type == TaskSourceInfo::Client::kExperimentalActor &&
-      source_info.id.has_value()) {
-    RemovePendingTask(*source_info.id);
-  }
-
   return task_id;
 }
 
@@ -823,9 +820,9 @@ std::optional<std::string> ActorKeyedService::ExtractErrorMessageIfFailed(
     return absl::StrFormat(
         "Fetch Error: APC[%s] screenshot[%s]",
         has_apc ? std::string("OK")
-                : fetch_result.annotated_page_content_result.error(),
+                : fetch_result.annotated_page_content_result.error().message,
         has_screenshot ? std::string("OK")
-                       : fetch_result.screenshot_result.error());
+                       : fetch_result.screenshot_result.error().message);
   }
 
   return std::nullopt;
@@ -1055,6 +1052,7 @@ void ActorKeyedService::AddPendingTask(
       triggering_context_id, PendingTask{triggering_context_id});
   if (inserted) {
     NotifyPendingTaskCountChanged();
+    pending_task_added_callback_list_.Notify(triggering_context_id);
   }
 }
 
@@ -1078,6 +1076,11 @@ base::CallbackListSubscription
 ActorKeyedService::AddPendingTaskCountChangedCallback(
     PendingTaskCountChangedCallback callback) {
   return pending_task_count_change_callback_list_.Add(std::move(callback));
+}
+
+base::CallbackListSubscription ActorKeyedService::AddPendingTaskAddedCallback(
+    PendingTaskAddedCallback callback) {
+  return pending_task_added_callback_list_.Add(std::move(callback));
 }
 
 void ActorKeyedService::NotifyPendingTaskCountChanged() {

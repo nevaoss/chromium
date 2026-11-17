@@ -9,8 +9,10 @@
 
 #include "components/omnibox/browser/autocomplete_match.h"
 #include "components/omnibox/browser/autocomplete_match_type.h"
+#include "components/omnibox/browser/fusebox_action.mojom.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/omnibox_proto/suggest_template_info.pb.h"
+#include "third_party/omnibox_proto/tool_mode.pb.h"
 #include "url/gurl.h"
 
 namespace suggest_template_info {
@@ -126,6 +128,53 @@ TEST(SuggestTemplateInfoMojoUtilsTest, PopulatesImageFromMatch) {
   }
 }
 
+TEST(SuggestTemplateInfoMojoUtilsTest, PopulatesTypeIconFromSuggestTemplate) {
+  // Matches without a SuggestTemplateInfo have no type icon.
+  {
+    AutocompleteMatch match;
+    EXPECT_EQ(CreateSuggestTemplateInfo(match)->type_icon,
+              mojom::IconType::kIconTypeUnspecified);
+  }
+  // The type icon from the server is forwarded.
+  {
+    AutocompleteMatch match;
+    omnibox::SuggestTemplateInfo suggest_template;
+    suggest_template.set_type_icon(
+        omnibox::SuggestTemplateInfo::SEARCH_LOOP_WITH_SPARKLE);
+    match.suggest_template = suggest_template;
+    EXPECT_EQ(CreateSuggestTemplateInfo(match)->type_icon,
+              mojom::IconType::kSearchLoopWithSparkle);
+  }
+}
+
+TEST(SuggestTemplateInfoMojoUtilsTest,
+     PopulatesFuseboxActionFromSuggestTemplate) {
+  // Matches without a FuseboxAction from the server have none.
+  {
+    AutocompleteMatch match;
+    EXPECT_FALSE(CreateSuggestTemplateInfo(match)->fusebox_action);
+    match.suggest_template = omnibox::SuggestTemplateInfo();
+    EXPECT_FALSE(CreateSuggestTemplateInfo(match)->fusebox_action);
+  }
+  // The FuseboxAction from the server is forwarded.
+  {
+    AutocompleteMatch match;
+    omnibox::SuggestTemplateInfo suggest_template;
+    suggest_template.mutable_fusebox_action()->set_preselected_tool(
+        omnibox::TOOL_MODE_DEEP_SEARCH);
+    suggest_template.mutable_fusebox_action()->set_query_action_override(
+        omnibox::SuggestTemplateInfo::FuseboxAction::QUERY_ACTION_PASTE);
+    match.suggest_template = suggest_template;
+    mojom::SuggestTemplateInfoPtr suggest_template_info =
+        CreateSuggestTemplateInfo(match);
+    ASSERT_TRUE(suggest_template_info->fusebox_action);
+    EXPECT_EQ(suggest_template_info->fusebox_action->preselected_tool,
+              omnibox::TOOL_MODE_DEEP_SEARCH);
+    EXPECT_EQ(suggest_template_info->fusebox_action->query_action_override,
+              fusebox_action::mojom::QueryActionOverride::kPaste);
+  }
+}
+
 TEST(SuggestTemplateInfoMojoUtilsTest, PopulatesTextFromMatch) {
   AutocompleteMatch match;
   match.contents = u"example.com";
@@ -139,13 +188,12 @@ TEST(SuggestTemplateInfoMojoUtilsTest, PopulatesTextFromMatch) {
     mojom::SuggestTemplateInfoPtr suggest_template =
         CreateSuggestTemplateInfo(match);
     EXPECT_EQ(suggest_template->primary_text->text, u"example.com");
-    ASSERT_EQ(suggest_template->primary_text_class.size(), 1u);
-    EXPECT_EQ(suggest_template->primary_text_class[0]->style,
-              ACMatchClassification::URL);
+    ASSERT_EQ(suggest_template->primary_text->fragments.size(), 1u);
+    EXPECT_EQ(suggest_template->primary_text->fragments[0]->color,
+              mojom::ColorType::kPrimary);
     EXPECT_EQ(suggest_template->secondary_text->text, u"Example Title");
-    ASSERT_EQ(suggest_template->secondary_text_class.size(), 1u);
-    EXPECT_EQ(suggest_template->secondary_text_class[0]->style,
-              ACMatchClassification::MATCH);
+    ASSERT_EQ(suggest_template->secondary_text->fragments.size(), 1u);
+    EXPECT_TRUE(suggest_template->secondary_text->fragments[0]->is_bolded);
   }
   // `swap_contents_and_description` is resolved here, and the styling travels
   // with its text.
@@ -154,15 +202,9 @@ TEST(SuggestTemplateInfoMojoUtilsTest, PopulatesTextFromMatch) {
     mojom::SuggestTemplateInfoPtr suggest_template =
         CreateSuggestTemplateInfo(match);
     EXPECT_EQ(suggest_template->primary_text->text, u"Example Title");
-    ASSERT_EQ(suggest_template->primary_text_class.size(), 1u);
-    EXPECT_EQ(suggest_template->primary_text_class[0]->style,
-              ACMatchClassification::MATCH);
     ASSERT_EQ(suggest_template->primary_text->fragments.size(), 1u);
     EXPECT_TRUE(suggest_template->primary_text->fragments[0]->is_bolded);
     EXPECT_EQ(suggest_template->secondary_text->text, u"example.com");
-    ASSERT_EQ(suggest_template->secondary_text_class.size(), 1u);
-    EXPECT_EQ(suggest_template->secondary_text_class[0]->style,
-              ACMatchClassification::URL);
     ASSERT_EQ(suggest_template->secondary_text->fragments.size(), 1u);
     EXPECT_EQ(suggest_template->secondary_text->fragments[0]->color,
               mojom::ColorType::kPrimary);

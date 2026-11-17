@@ -21,6 +21,7 @@
 #include "chrome/browser/ui/autofill/payments/credit_card_scanner_controller.h"
 #include "chrome/browser/ui/autofill/payments/iban_bubble_controller_impl.h"
 #include "chrome/browser/ui/autofill/payments/mandatory_reauth_bubble_controller_impl.h"
+#include "chrome/browser/ui/autofill/payments/offer_notification_handler.h"
 #include "chrome/browser/ui/autofill/payments/omnibox_autofill_bubble_controller.h"
 #include "chrome/browser/ui/autofill/payments/payments_view_factory.h"
 #include "chrome/browser/ui/autofill/payments/virtual_card_enroll_bubble_controller_impl.h"
@@ -155,6 +156,10 @@ ChromePaymentsAutofillClient::ChromePaymentsAutofillClient(
         std::make_unique<OmniboxAutofillDelegate>(&client_.get());
   }
 #endif
+  if (AutofillOfferManager* offer_manager = GetAutofillOfferManager()) {
+    offer_notification_handler_ =
+        std::make_unique<OfferNotificationHandler>(offer_manager);
+  }
   // Only needed to update the offer notification, which is otherwise not
   // shown.
   if (base::FeatureList::IsEnabled(
@@ -308,7 +313,7 @@ void ChromePaymentsAutofillClient::ShowSaveCreditCardLocally(
     SaveCreditCardOptions options,
     LocalSaveCardPromptCallback callback) {
 #if BUILDFLAG(IS_ANDROID)
-  DCHECK(options.show_prompt);
+  CHECK(options.show_prompt, base::NotFatalUntil::M162);
   AutofillSaveCardUiInfo ui_info =
       AutofillSaveCardUiInfo::CreateForLocalSave(options, card);
   auto save_card_delegate = std::make_unique<AutofillSaveCardDelegateAndroid>(
@@ -341,7 +346,7 @@ void ChromePaymentsAutofillClient::ShowSaveCreditCardToCloud(
     SaveCreditCardOptions options,
     UploadSaveCardPromptCallback callback) {
 #if BUILDFLAG(IS_ANDROID)
-  DCHECK(options.show_prompt);
+  CHECK(options.show_prompt, base::NotFatalUntil::M162);
   Profile* profile =
       !web_contents()
           ? nullptr
@@ -464,7 +469,7 @@ void ChromePaymentsAutofillClient::ShowVirtualCardEnrollDialog(
   VirtualCardEnrollBubbleControllerImpl::CreateForWebContents(web_contents());
   VirtualCardEnrollBubbleControllerImpl* controller =
       VirtualCardEnrollBubbleControllerImpl::FromWebContents(web_contents());
-  DCHECK(controller);
+  CHECK(controller, base::NotFatalUntil::M162);
   controller->SetupAndShowBubble(virtual_card_enrollment_fields,
                                  std::move(accept_virtual_card_callback),
                                  std::move(decline_virtual_card_callback));
@@ -632,7 +637,7 @@ void ChromePaymentsAutofillClient::ShowAutofillProgressDialog(
 void ChromePaymentsAutofillClient::CloseAutofillProgressDialog(
     bool show_confirmation_before_closing,
     base::OnceClosure no_interactive_authentication_callback) {
-  DCHECK(autofill_progress_dialog_controller_);
+  CHECK(autofill_progress_dialog_controller_, base::NotFatalUntil::M162);
   autofill_progress_dialog_controller_->DismissDialog(
       show_confirmation_before_closing,
       std::move(no_interactive_authentication_callback));
@@ -1435,9 +1440,8 @@ void ChromePaymentsAutofillClient::DidFinishNavigation(
       !navigation_handle->IsInPrimaryMainFrame()) {
     return;
   }
-  // There is no offer manager in Incognito windows.
-  if (AutofillOfferManager* offer_manager = GetAutofillOfferManager()) {
-    offer_manager->UpdateOfferNotificationVisibility(*client_);
+  if (offer_notification_handler_) {
+    offer_notification_handler_->UpdateOfferNotificationVisibility(*client_);
   }
 }
 
@@ -1445,24 +1449,20 @@ void ChromePaymentsAutofillClient::OnVisibilityChanged(
     content::Visibility visibility) {
   // Offer notifications are not set up for hidden tabs, so that they cannot
   // consume the once-per-offer automatic show. Re-evaluate the offer
-  // notification once the tab becomes visible. There is no offer manager in
-  // Incognito windows.
+  // notification once the tab becomes visible.
   if (visibility != content::Visibility::VISIBLE) {
     return;
   }
-  if (AutofillOfferManager* offer_manager = GetAutofillOfferManager()) {
-    offer_manager->UpdateOfferNotificationVisibility(client_.get());
+  if (offer_notification_handler_) {
+    offer_notification_handler_->UpdateOfferNotificationVisibility(*client_);
   }
 }
 
 void ChromePaymentsAutofillClient::OnPaymentsDataChanged() {
   // The offers are per profile, but the offer notification is per tab, so each
   // tab re-evaluates it for its current page.
-  // TODO(crbug.com/546252995): Make `OfferNotificationHandler` per tab and
-  // owned by this client, and move this observation as well as the navigation
-  // and visibility handling into it. `AutofillOfferManager` would then only
-  // keep the offer lookup and the per-profile set of already shown
-  // notifications.
+  // TODO(crbug.com/546252995): Move this observation as well as the navigation
+  // and visibility handling into `OfferNotificationHandler`.
 #if !BUILDFLAG(IS_ANDROID)
   // This is sent for any change to the payments data, e.g. to cards or to
   // offers for other sites. Leave a showing bubble alone, since re-evaluating
@@ -1474,8 +1474,8 @@ void ChromePaymentsAutofillClient::OnPaymentsDataChanged() {
     return;
   }
 #endif
-  if (AutofillOfferManager* offer_manager = GetAutofillOfferManager()) {
-    offer_manager->UpdateOfferNotificationVisibility(*client_);
+  if (offer_notification_handler_) {
+    offer_notification_handler_->UpdateOfferNotificationVisibility(*client_);
   }
 }
 

@@ -23,15 +23,12 @@
 #include "base/task/bind_post_task.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
-#include "base/trace_event/memory_allocator_dump.h"
-#include "base/trace_event/memory_dump_manager.h"
 #include "base/trace_event/process_memory_dump.h"
+#include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
 #include "cc/paint/decode_stashing_image_provider.h"
 #include "cc/paint/display_item_list.h"
 #include "cc/paint/paint_op_buffer.h"
-#include "cc/paint/skia_paint_canvas.h"
-#include "cc/tiles/software_image_decode_cache.h"
 #include "components/viz/common/gpu/context_lost_observer.h"
 #include "components/viz/common/gpu/raster_context_provider.h"
 #include "components/viz/common/resources/shared_image_format_utils.h"
@@ -46,7 +43,6 @@
 #include "gpu/config/gpu_feature_info.h"
 #include "gpu/config/gpu_feature_type.h"
 #include "skia/buildflags.h"
-#include "skia/ext/legacy_display_globals.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_graphics_shared_image_interface_provider.h"
@@ -59,12 +55,9 @@
 #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_canvas.h"
 #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
-#include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
-#include "third_party/blink/renderer/platform/instrumentation/canvas_memory_dump_provider.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
 #include "third_party/skia/include/core/SkImageInfo.h"
 #include "third_party/skia/include/core/SkRect.h"
-#include "third_party/skia/include/core/SkSurface.h"
 #include "third_party/skia/include/gpu/GpuTypes.h"
 #include "third_party/skia/include/gpu/ganesh/GrBackendSurface.h"
 #include "third_party/skia/include/gpu/ganesh/GrTypes.h"
@@ -267,13 +260,7 @@ bool Canvas2DResourceProvider::WritePixels(const SkImageInfo& orig_info,
                                            int x,
                                            int y) {
   TRACE_EVENT0("blink", "Canvas2DResourceProvider::WritePixels");
-  if (!is_accelerated_) {
-    WillDrawUnaccelerated();
-    DCHECK(IsValid());
-
-    return GetSkSurface()->getCanvas()->writePixels(orig_info, pixels,
-                                                    row_bytes, x, y);
-  }
+  CHECK(is_accelerated_);
   if (IsGpuContextLost()) {
     return false;
   }
@@ -309,9 +296,6 @@ base::ByteSize Canvas2DResourceProvider::EstimatedSizeInBytes() const {
   if (resource_) {
     result += resource_->EstimatedSizeInBytes() * num_inflight_resources_;
   }
-  if (surface_) {
-    result += base::ByteSize(GetSize());
-  }
   return result;
 }
 
@@ -322,19 +306,19 @@ void Canvas2DResourceProvider::OnContextDestroyed() {
   }
 }
 
-scoped_refptr<CanvasResource>
-Canvas2DResourceProvider::ProduceCanvasResource() {
+scoped_refptr<CanvasResource> Canvas2DResourceProvider::ProduceCanvasResource(
+    SkSurface* surface) {
   TRACE_EVENT0("blink", "Canvas2DResourceProvider::ProduceCanvasResource");
 
   if (IsSoftware()) {
-    DCHECK(GetSkSurface());
+    DCHECK(surface);
     scoped_refptr<CanvasResourceSharedImage> output_resource =
         NewOrRecycledResource();
     if (!output_resource) {
       return nullptr;
     }
 
-    output_resource->UploadSoftwareRenderingResults(GetSkSurface());
+    output_resource->UploadSoftwareRenderingResults(surface);
 
     return output_resource;
   }
@@ -346,7 +330,7 @@ Canvas2DResourceProvider::ProduceCanvasResource() {
   // We are about to give the caller read access to this resource (and its
   // backing SharedImage). Hence, we must make sure that we give up any write
   // access.
-  EndWriteAccess();
+  EndWriteAccess(surface);
 
   return resource_;
 }
@@ -355,17 +339,10 @@ bool Canvas2DResourceProvider::IsValid() const {
   if (IsSoftware()) {
     // Software compositing (which always uses software raster).
     return shared_image_interface_provider_ &&
-           shared_image_interface_provider_->SharedImageInterface() &&
-           GetSkSurface();
+           shared_image_interface_provider_->SharedImageInterface();
   }
 
-  if (is_accelerated_) {
-    // GPU compositing and GPU raster.
-    return !IsGpuContextLost();
-  }
-
-  // GPU compositing and software raster.
-  return !IsGpuContextLost() && GetSkSurface();
+  return !IsGpuContextLost();
 }
 
 gpu::SharedImageUsageSet Canvas2DResourceProvider::GetSharedImageUsageFlags()
@@ -388,7 +365,7 @@ void Canvas2DResourceProvider::EnsureWriteAccess() {
   current_resource_has_write_access_ = true;
 }
 
-void Canvas2DResourceProvider::EndWriteAccess() {
+void Canvas2DResourceProvider::EndWriteAccess(SkSurface* surface) {
   DCHECK(!resource()->is_cross_thread());
 
   if (!current_resource_has_write_access_ || IsGpuContextLost()) {
@@ -404,32 +381,24 @@ void Canvas2DResourceProvider::EndWriteAccess() {
     if (!resource() || resource()->IsLost() || !resource()->HasOneRef()) {
       resource_ = NewOrRecycledResource();
     }
-    if (!resource() || !GetSkSurface()) {
+    if (!resource() || !surface) {
       return;
     }
-    resource()->UploadSoftwareRenderingResults(GetSkSurface());
+    resource()->UploadSoftwareRenderingResults(surface);
   }
 
   current_resource_has_write_access_ = false;
 }
 
-scoped_refptr<StaticBitmapImage> Canvas2DResourceProvider::Snapshot(
-    ImageOrientation orientation) {
+scoped_refptr<StaticBitmapImage> Canvas2DResourceProvider::Snapshot() {
   TRACE_EVENT0("blink", "Canvas2DResourceProvider::Snapshot");
+  CHECK(is_accelerated_);
   if (!IsValid()) {
     return nullptr;
   }
 
-  // We don't need to EndWriteAccess here since that's required to upload the
-  // rendering results to the resource's SharedImage (e.g., for GPU compositing)
-  // while in this case we are simply returning the rendered CPU-side results to
-  // the client.
-  if (!is_accelerated_) {
-    return UnacceleratedSnapshot(orientation);
-  }
-
   if (!cached_snapshot_) {
-    EndWriteAccess();
+    EndWriteAccess(/*surface=*/nullptr);
     cached_snapshot_ = resource_->Bitmap();
 
     // We'll record its content_id to be used by the FlushForImageListener.
@@ -449,40 +418,6 @@ scoped_refptr<StaticBitmapImage> Canvas2DResourceProvider::Snapshot(
   DCHECK(cached_snapshot_);
   DCHECK(!current_resource_has_write_access_);
   return cached_snapshot_;
-}
-
-scoped_refptr<UnacceleratedStaticBitmapImage>
-Canvas2DResourceProvider::UnacceleratedSnapshot(ImageOrientation orientation) {
-  if (!IsValid()) {
-    return nullptr;
-  }
-
-  cc::PaintImage paint_image;
-
-  auto sk_image = GetSkSurface()->makeImageSnapshot();
-  if (sk_image) {
-    auto last_snapshot_sk_image_id = snapshot_sk_image_id_;
-    snapshot_sk_image_id_ = sk_image->uniqueID();
-
-    // Ensure that a new PaintImage::ContentId is used only when the underlying
-    // SkImage changes. This is necessary to ensure that the same image results
-    // in a cache hit in cc's ImageDecodeCache.
-    if (snapshot_paint_image_content_id_ == PaintImage::kInvalidContentId ||
-        last_snapshot_sk_image_id != snapshot_sk_image_id_) {
-      snapshot_paint_image_content_id_ = PaintImage::GetNextContentId();
-    }
-
-    paint_image =
-        PaintImageBuilder::WithDefault()
-            .set_id(snapshot_paint_image_id_)
-            .set_image(std::move(sk_image), snapshot_paint_image_content_id_)
-            .set_hdr_metadata(GetHdrMetadata())
-            .TakePaintImage();
-  }
-
-  DCHECK(!paint_image.IsTextureBacked());
-  return UnacceleratedStaticBitmapImage::Create(std::move(paint_image),
-                                                orientation);
 }
 
 CanvasImageProvider*
@@ -519,13 +454,8 @@ Canvas2DResourceProvider::GetOrCreateCanvasImageProvider() {
 void Canvas2DResourceProvider::RasterRecord(
     cc::PaintRecord last_recording,
     cc::PlaybackCallbacks::CustomDataRasterCallback custom_callback) {
-  if (!is_accelerated_) {
-    WillDrawUnaccelerated();
-    cc::SkiaPaintCanvas skia_canvas(GetSkSurface()->getCanvas(),
-                                    GetOrCreateSWCanvasImageProvider());
-    skia_canvas.drawPicture(std::move(last_recording),
-                            std::move(custom_callback));
-  } else if (!IsGpuContextLost()) {
+  CHECK(is_accelerated_);
+  if (!IsGpuContextLost()) {
     EnsureResourceReadyForDraw();
     EnsureWriteAccess();
 
@@ -559,50 +489,15 @@ void Canvas2DResourceProvider::OnFlushForImage(
 
 void Canvas2DResourceProvider::OnMemoryDump(
     base::trace_event::ProcessMemoryDump* pmd) {
-  if (IsSoftware()) {
-    if (surface_) {
-      std::string dump_name =
-          base::StringPrintf("canvas/ResourceProvider/SkSurface/0x%" PRIXPTR,
-                             reinterpret_cast<uintptr_t>(surface_.get()));
-      auto* dump = pmd->CreateAllocatorDump(dump_name);
-
-      dump->AddScalar(base::trace_event::MemoryAllocatorDump::kNameSize,
-                      base::trace_event::MemoryAllocatorDump::kUnitsBytes,
-                      GetSize());
-      dump->AddScalar(base::trace_event::MemoryAllocatorDump::kNameObjectCount,
-                      base::trace_event::MemoryAllocatorDump::kUnitsObjects, 1);
-
-      if (const char* system_allocator_name =
-              base::trace_event::MemoryDumpManager::GetInstance()
-                  ->system_allocator_pool_name()) {
-        pmd->AddSuballocation(dump->guid(), system_allocator_name);
-      }
-    }
-    return;
-  }
-
   std::string path = base::StringPrintf("canvas/ResourceProvider_0x%" PRIXPTR,
                                         reinterpret_cast<uintptr_t>(this));
 
-  resource()->OnMemoryDump(pmd, path);
+  if (resource()) {
+    resource()->OnMemoryDump(pmd, path);
+  }
 
   std::string cached_path = path + "/cached";
   image_pool_->OnMemoryDump(pmd, cached_path);
-}
-
-SkSurface* Canvas2DResourceProvider::GetSkSurface() const {
-  if (!surface_) {
-    surface_ = CreateSkSurface();
-  }
-  return surface_.get();
-}
-
-size_t Canvas2DResourceProvider::GetSize() const {
-  if (!surface_) {
-    return 0;
-  }
-  SkImageInfo info = surface_->imageInfo();
-  return info.computeByteSize(info.minRowBytes());
 }
 
 std::unique_ptr<Canvas2DResourceProvider>
@@ -717,7 +612,17 @@ Canvas2DResourceProvider::CreateWithClear(
     return nullptr;
   }
 
-  provider->ClearAtCreation();
+  if (is_accelerated) {
+    MemoryManagedPaintRecorder recorder(size, nullptr);
+    if (alpha_type == kOpaque_SkAlphaType) {
+      recorder.getRecordingCanvas().clear(SkColors::kBlack);
+    } else {
+      recorder.getRecordingCanvas().clear(SkColors::kTransparent);
+    }
+    provider->RasterRecord(recorder.ReleaseMainRecording(), {});
+  } else if (!provider->resource_) {
+    return nullptr;
+  }
 
   // An error might have occurred while clearing.
   return provider->IsValid() ? std::move(provider) : nullptr;
@@ -757,9 +662,6 @@ Canvas2DResourceProvider::CreateWithClearForSoftwareCompositor(
       size, format, alpha_type, color_space, hdr_metadata,
       shared_image_interface_provider, std::move(context_lost_callback)));
   if (provider->IsValid()) {
-    provider->ClearAtCreation();
-    // The ClearAtCreation() call cannot turn a SW CRPSI invalid.
-    CHECK(provider->IsValid());
     return provider;
   }
 
@@ -793,8 +695,7 @@ Canvas2DResourceProvider::Canvas2DResourceProvider(
       alpha_type_(alpha_type),
       color_space_(color_space),
       hdr_metadata_(hdr_metadata),
-      context_lost_callback_(std::move(context_lost_callback)),
-      snapshot_paint_image_id_(cc::PaintImage::GetNextId()) {
+      context_lost_callback_(std::move(context_lost_callback)) {
   if (context_provider_wrapper_) {
     context_provider_wrapper_->AddObserver(this);
     raster_context_provider_ = base::WrapRefCounted(
@@ -864,7 +765,6 @@ Canvas2DResourceProvider::Canvas2DResourceProvider(
   if (resource_) {
     EnsureWriteAccess();
   }
-  CanvasMemoryDumpProvider::Instance()->RegisterClient(this);
 
   // Single buffered mode supported only for accelerated canvas.
   CHECK(!IsSingleBuffered() || is_accelerated_);
@@ -874,36 +774,9 @@ void Canvas2DResourceProvider::RecordingCleared() {
   must_preserve_content_on_copy_on_write_ = false;
 }
 
-CanvasImageProvider*
-Canvas2DResourceProvider::GetOrCreateSWCanvasImageProvider() {
-  if (canvas_image_provider_) {
-    return canvas_image_provider_.get();
-  }
-
-  cc::ImageDecodeCache* cache_f16 = nullptr;
-  if (GetSharedImageFormat() == viz::SinglePlaneFormat::kRGBA_F16) {
-    cache_f16 = &Image::SharedCCDecodeCache(kRGBA_F16_SkColorType);
-  }
-
-  cc::ImageDecodeCache* cache_rgba8 =
-      &Image::SharedCCDecodeCache(kN32_SkColorType);
-
-  if (!context_provider_wrapper_) {
-    context_provider_wrapper_ = SharedGpuContext::ContextProviderWrapper();
-    if (context_provider_wrapper_) {
-      context_provider_wrapper_->AddObserver(this);
-    }
-  }
-  canvas_image_provider_ = std::make_unique<CanvasImageProvider>(
-      cache_rgba8, cache_f16, GetColorSpace(), GetSharedImageFormat(),
-      cc::PlaybackImageProvider::RasterMode::kSoftware,
-      context_provider_wrapper_);
-
-  return canvas_image_provider_.get();
-}
-
 void Canvas2DResourceProvider::SetAnimatedImageFrameIndexes(
     scoped_refptr<const cc::AnimatedImageFrameIndexMap> map) {
+  CHECK(is_accelerated_);
   CHECK(canvas_image_provider_);
   canvas_image_provider_->SetAnimatedImageFrameIndexes(map);
 }
@@ -927,8 +800,7 @@ Canvas2DResourceProvider::Canvas2DResourceProvider(
       alpha_type_(alpha_type),
       color_space_(color_space),
       hdr_metadata_(hdr_metadata),
-      context_lost_callback_(std::move(context_lost_callback)),
-      snapshot_paint_image_id_(cc::PaintImage::GetNextId()) {
+      context_lost_callback_(std::move(context_lost_callback)) {
   if (shared_image_interface_provider_) {
     shared_image_interface_provider_->AddGpuChannelLostObserver(this);
     if (auto* sii = shared_image_interface_provider_->SharedImageInterface()) {
@@ -941,11 +813,9 @@ Canvas2DResourceProvider::Canvas2DResourceProvider(
           kMaxRecycledCanvasResources);
     }
   }
-  CanvasMemoryDumpProvider::Instance()->RegisterClient(this);
 }
 
 Canvas2DResourceProvider::~Canvas2DResourceProvider() {
-  CanvasMemoryDumpProvider::Instance()->UnregisterClient(this);
   if (context_provider_wrapper_) {
     context_provider_wrapper_->RemoveObserver(this);
   }
@@ -997,56 +867,6 @@ bool Canvas2DResourceProvider::IsGpuContextLost() const {
   auto* raster_interface = RasterInterface();
   return !raster_interface ||
          raster_interface->GetGraphicsResetStatusKHR() != GL_NO_ERROR;
-}
-
-sk_sp<SkSurface> Canvas2DResourceProvider::CreateSkSurface() const {
-  TRACE_EVENT0("blink", "Canvas2DResourceProvider::CreateSkSurface");
-
-  CHECK(!IsAccelerated());
-
-  if (is_software_) {
-    const auto props = GetSkSurfaceProps();
-    const auto info = SkImageInfo::Make(
-        size_.width(), size_.height(), viz::ToClosestSkColorType(format_),
-        alpha_type_, color_space_.ToSkColorSpace());
-    return SkSurfaces::Raster(info, &props);
-  }
-
-  if (IsGpuContextLost() || !resource_) {
-    return nullptr;
-  }
-
-  const auto props = GetSkSurfaceProps();
-
-  // When using software raster with GPU compositing, we render into CPU memory
-  // managed internally by SkSurface and copy the rendered results to the
-  // current resource's backing SharedImage before dispatching that SharedImage
-  // to the display compositor.
-  return SkSurfaces::Raster(resource_->CreateSkImageInfo(), &props);
-}
-
-SkSurfaceProps Canvas2DResourceProvider::GetSkSurfaceProps() const {
-  const bool can_use_lcd_text = GetAlphaType() == kOpaque_SkAlphaType;
-  return skia::LegacyDisplayGlobals::ComputeSurfaceProps(can_use_lcd_text);
-}
-
-void Canvas2DResourceProvider::ClearAtCreation() {
-  DCHECK(IsValid());
-  if (!is_accelerated_) {
-    GetSkSurface()->getCanvas()->clear(GetAlphaType() == kOpaque_SkAlphaType
-                                           ? SkColors::kBlack
-                                           : SkColors::kTransparent);
-    return;
-  }
-
-  MemoryManagedPaintRecorder recorder(Size(), nullptr);
-  if (GetAlphaType() == kOpaque_SkAlphaType) {
-    recorder.getRecordingCanvas().clear(SkColors::kBlack);
-  } else {
-    recorder.getRecordingCanvas().clear(SkColors::kTransparent);
-  }
-
-  RasterRecord(recorder.ReleaseMainRecording(), {});
 }
 
 }  // namespace blink

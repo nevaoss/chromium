@@ -118,6 +118,7 @@
 <translation id="1195558154361252544">Сіз рұқсат еткеннен басқа сайттар үшін хабарландырулар автоматты түрде бөгелді.</translation>
 <translation id="1197088940767939838">Қызғылт сары</translation>
 <translation id="1198412233443148072"><ph name="MEMBER_FIRST_NAME" /> "<ph name="WEBSITE_TITLE" />" қойындысын өшірді.</translation>
+<translation id="119944043368869598">Барлығын өшіру</translation>
 <translation id="1201402288615127009">Келесі</translation>
 <translation id="1201895884277373915">Бұл сайттан толығырақ</translation>
 <translation id="1204184165594298176">{0,plural, =1{Файлды көшіруге блок қойылған}other{<ph name="FILE_COUNT" /> файлды көшіруге блок қойылған}}</translation>
@@ -618,7 +619,6 @@
 <translation id="2059166748188874810">Қала әкімшілігі</translation>
 <translation id="2059202684901022309">22 x 34 дюйм</translation>
 <translation id="2063929825539050431">Бұл бетті басқа құрылғыға жылдам жіберу үшін мекенжай жолағын басып тұрыңыз.</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{1 ұсыныс}other{# ұсыныс}}</translation>
 <translation id="2066969741541525119">Ұйымыңыз сіз ашайын деп жатқан сайтты бөгеді</translation>
 <translation id="2071156619270205202">Бұл нөмір виртуалдық карта нөмірі үшін жарамсыз.</translation>
 <translation id="2071852865256799872">Браузеріңізді ұйымыңыз басқарады және профиліңізді <ph name="PROFILE_DOMAIN" /> басқарады.</translation>
@@ -665,6 +665,7 @@
 <translation id="2126374524350484896">PDF жасаушы:</translation>
 <translation id="2127090458081644412">Құпия сөз осы құрылғыға сақталды</translation>
 <translation id="2127747486437921899">Көлбеу</translation>
+<translation id="2129163794581571479">Gemini-дағы Personal Intelligence арқылы істейді. Сұрауларыңыз, бет атаулары мен URL мекенжайлары дұрысталған автотолтыру функциясын жақсарту үшін тексерілуі мүмкін. <ph name="BEGIN_LINK" />Параметрлерді басқару<ph name="END_LINK" /></translation>
 <translation id="2130448033692577677">DnsOverHttpsMode саясаты орнатылмағандықтан, сіз көрсеткен үлгілер қолданылмауы мүмкін.</translation>
 <translation id="2130699163006053678">A3x7</translation>
 <translation id="2131006834960167560">"Төлемдерді автотолтыру функциясы қосу" беті толық ашылды.</translation>
@@ -710,7 +711,6 @@
 <translation id="2188375229972301266">Төменгі жағын бірнеше рет тесу</translation>
 <translation id="218940509700321686">Үтірмен бөлінген мәндер</translation>
 <translation id="2190094353033916816">Бұл саясаттың құрылғы және пайдаланушы деңгейлерінде қолданылатын әртүрлі мәндері бар. Саясат ойдағыдай қолданылып жатыр.</translation>
-<translation id="219061769324072544">Несиелік, карта, дебеттік</translation>
 <translation id="2191980191135734720">Келесі қадамда экран құлпын ашыңыз (әдетте саусақ ізі қолданылады). Сондай-ақ <ph name="LINK_TEXT" />.</translation>
 <translation id="2194856509914051091">Ескеретін жайттар</translation>
 <translation id="2195729137168608510">Электрондық поштаны қорғау</translation>
@@ -1081,6 +1081,7 @@
 <translation id="2807052079800581569">Кескіннің Y бойынша орналасуы</translation>
 <translation id="2808278141522721006">Windows Hello функциясын "<ph name="SETTINGS" />" бөлімінен қосуға не өшіруге болады.</translation>
 <translation id="2820957248982571256">Іздеуде...</translation>
+<translation id="282457273878278063">Байланыс ақпаратын реттеу</translation>
 <translation id="2824775600643448204">Мекенжайы және іздеу жолағы</translation>
 <translation id="2826760142808435982">Байланыс <ph name="CIPHER" /> көмегімен шифрланды және аутентификацияланды, сонымен қатар кілт ауыстыру механизмі ретінде <ph name="KX" /> пайдаланады.</translation>
 <translation id="2828797285817981634">Қозғалыс датчиктеріне әзірше рұқсат берілген</translation>
@@ -1574,6 +1575,7 @@
 <translation id="3655670868607891010">Бұны жиі көрсеңіз, <ph name="HELP_LINK" /> сілтемесін пайдаланып көріңіз.</translation>
 <translation id="3658742229777143148">Қарап шығу</translation>
 <translation id="3659521826520353662">Әкімшілер белгілейтін мына веб-сайттарға біреу кіргені және қашан кіргені: <ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3663760610864720538">Gemini-дағы Personal Intelligence арқылы істейді. <ph name="BEGIN_LINK" />Параметрлерді басқару<ph name="END_LINK" /></translation>
 <translation id="3664479564786885722">Осы тауар сатылатын басқа дүкендердегі көбірек сатып алу опциясын іздеу.</translation>
 <translation id="3664782872746246217">Кілтсөздер:</translation>
 <translation id="3670030362669914947">Нөмір</translation>
@@ -1594,6 +1596,7 @@
 <translation id="3693516565203081475">Төлеу әдісін таңдау</translation>
 <translation id="3698353241727597930">Әкімші <ph name="FILES" /> кәсіпорын басқаратын <ph name="CLOUD_STORAGE" /> жадында сақталатындай етіп конфигурациялады. Бұл файлдарды жойсаңыз, олар бақылануы, талдануы және сақталуы мүмкін.</translation>
 <translation id="3698629142018988477">"Сайт жасау" түймесі, Google Sites-та жылдам жаңа сайт жасау үшін белсендіріңіз</translation>
+<translation id="3698708128812719147">Қосымша ақпаратты тауып, толтыру үшін интернеттің кез келген жерінде Ctrl пернесін екі рет басыңыз</translation>
 <translation id="3700094625653511150">Кейін төлеу нұсқаларын жасыру үшін <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /> бөліміне өтіңіз.</translation>
 <translation id="3700966190175650601">Құпия сөздерді саусақ ізімен толтырып жатырсыз</translation>
 <translation id="3701427423622901115">Бастапқы күйге қайтару расталды.</translation>
@@ -1861,7 +1864,6 @@
 <translation id="4121428309786185360">Аяқталу күні</translation>
 <translation id="4123572138124678573">Төменгі жағын үш рет тесу</translation>
 <translation id="412601465078863288">Жүктеп салу уақыты өтіп кетті</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{тағы 1}other{тағы #}}</translation>
 <translation id="4129810348470013900">Бірдеңе дұрыс болмады. Интернет байланысын тексеріп, әрекетті қайталаңыз.</translation>
 <translation id="4130226655945681476">Желі кабельдерін, модем және роутерді тексеру</translation>
 <translation id="4132448310531350254">Қолданбаларда file_extension "<ph name="FILE_EXTENSION" />" кеңейтімін өңдейтін бірнеше құрал көрсетілген: "<ph name="POLICY_IDS_LIST" />".</translation>
@@ -1897,6 +1899,7 @@
 <translation id="4185037616931963178">Redress Control Number нөмірін қауіпсіз жаңартыңыз</translation>
 <translation id="4186035307311647330">Баға бақылауды тоқтату</translation>
 <translation id="4191334393248735295">Ұзындық</translation>
+<translation id="4192770747482479191">Қосымша ақпаратты тауып, толтыру үшін интернеттің кез келген жерінде ⌘ пернесін екі рет басыңыз</translation>
 <translation id="4195459680867822611">"Chrome кеңестерін көру" түймесі, Chrome функциялары туралы білу үшін белсендіріңіз</translation>
 <translation id="4195643157523330669">Жаңа қойындыда ашу</translation>
 <translation id="4196861286325780578">Тасымалдауды &amp;қайта орындау</translation>
@@ -2214,7 +2217,6 @@
 <translation id="4725766358270333890">Microsoft OneDrive-қа <ph name="COUNT" /> файл жүктеп салынып жатыр.</translation>
 <translation id="4726672564094551039">Саясаттарды қайта жүктеу</translation>
 <translation id="4728558894243024398">Платформа</translation>
-<translation id="4730773064303503917">Wallet арқылы достарыңызға және компанияларға Pix жіберіңіз.</translation>
 <translation id="4730977633786878901">Пікірлер</translation>
 <translation id="4731638775147756694">Бұл қолданбаны әкімші бөгеді.</translation>
 <translation id="4732860731866514038">Тіл бумасы (<ph name="LANGUAGE" />) жүктеп алынып жатыр... <ph name="PERCENT" />%</translation>
@@ -2845,6 +2847,7 @@
 <translation id="573974402615125334">Қойындылар топтарын бөлісу, оларға қосылу және бірлесіп жұмыс істеу үшін тарих пен қойындыларды синхрондаңыз.</translation>
 <translation id="5740911612628596808">C9 хатқалтасы</translation>
 <translation id="574392208103952083">Орташа</translation>
+<translation id="5744350700955456407">Дұрысталған автотолтыру функциясы енді Gmail және Photos сияқты қолданбалардағы тапсырыс нөмірлері мен рейсті растау кодтары сияқты ақпаратты тауып, толтыра алады.</translation>
 <translation id="5745586894920491759">Chrome бет атаулары мен URL мекенжайларын бұлтта өңдейді.</translation>
 <translation id="5745733273847572235">Орналасқан жеріңізді сұрай алады</translation>
 <translation id="5750869797196646528">Қолды бақылау</translation>
@@ -3226,7 +3229,6 @@
 <translation id="638289054711715023">Терможиырылатын фольга</translation>
 <translation id="6383221683286411806">Сізден ақы алынуы мүмкін.</translation>
 <translation id="6384448607821972818">Қалпына келтіру құпия сөзі көрсетілген</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{1 басқа ұсыныс}other{# басқа ұсыныс}}</translation>
 <translation id="6386565501269869892">You 4 хатқалтасы</translation>
 <translation id="6387645831795005740">Кейде хакерлер белгілі бір сайттарды көшіріп, олардың URL сілтемесіне сіз байқамайтын өзгерістер енгізіп қояды.</translation>
 <translation id="6389470377220713856">Картадағы атау</translation>
@@ -4833,7 +4835,6 @@
 <translation id="9168814207360376865">Сайттардың сізде сақталған төлеу әдістері бар-жоғын тексеруіне рұқсат ету</translation>
 <translation id="9169931577761441333">Негізі экранға <ph name="APP_NAME" /> қолданбасын енгізу</translation>
 <translation id="9170848237812810038">&amp;Болдырмау</translation>
-<translation id="9170906125144697215">Қолданбалар арасында ауыспай-ақ Pix-пен төлеңіз</translation>
 <translation id="9171296965991013597">Қолданба жабылсын ба?</translation>
 <translation id="9173282814238175921">Жалғыз құжат/жаңа парақ</translation>
 <translation id="9173995187295789444">Bluetooth құрылғыларын іздеуде...</translation>

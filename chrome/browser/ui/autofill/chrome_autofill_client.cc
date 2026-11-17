@@ -46,8 +46,8 @@
 #include "chrome/browser/autofill/cross_tab_copy_paste_tracker_factory.h"
 #include "chrome/browser/autofill/entity_suppression_manager_factory.h"
 #include "chrome/browser/autofill/gmail_otp_backend_factory.h"
-#include "chrome/browser/autofill/one_time_token_service_factory.h"
 #include "chrome/browser/autofill/personal_data_manager_factory.h"
+#include "chrome/browser/autofill/sms_otp_service_factory.h"
 #include "chrome/browser/autofill/ui/ui_util.h"
 #include "chrome/browser/autofill/valuables_data_manager_factory.h"
 #include "chrome/browser/autofill/wallet_pass_access_manager_factory.h"
@@ -154,6 +154,7 @@
 #include "components/autofill/core/common/unique_ids.h"
 #include "components/compose/buildflags.h"
 #include "components/critical_actions/core/browser/critical_action_service.h"
+#include "components/device_reauth/device_auth_availability_checker.h"
 #include "components/device_reauth/device_authenticator.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/one_time_tokens/core/common/one_time_token_features.h"
@@ -290,7 +291,7 @@ ui::ElementIdentifier GetElementId(AutofillClient::IphFeature iph_feature) {
 // static
 void ChromeAutofillClient::CreateForWebContents(
     content::WebContents* web_contents) {
-  DCHECK(web_contents);
+  CHECK(web_contents, base::NotFatalUntil::M162);
   if (!FromWebContents(web_contents)) {
     web_contents->SetUserData(
         UserDataKey(),
@@ -776,9 +777,7 @@ void ChromeAutofillClient::ShowAutofillSettings(
       return;
     case SuggestionType::kManageAutofillAi:
     case SuggestionType::kManageEnhancedAutofill:
-      ShowAutofillPersonalContextSettings(
-          web_contents(),
-          AutofillOptionsReferrer::kPersonalContextAtmemoryNotice);
+      ShowAutofillPersonalContextSettings(web_contents());
       return;
     default:
       break;
@@ -1279,6 +1278,16 @@ ChromeAutofillClient::GetDeviceAuthenticator(std::string histogram) const {
 #endif
 }
 
+std::unique_ptr<device_reauth::DeviceAuthAvailabilityChecker>
+ChromeAutofillClient::GetDeviceAuthAvailabilityChecker() const {
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || \
+    BUILDFLAG(IS_CHROMEOS)
+  return ChromeDeviceAuthenticatorFactory::CreateAvailabilityChecker();
+#else
+  return nullptr;
+#endif
+}
+
 bool ChromeAutofillClient::ShowAutofillFieldIphForFeature(
     const FormFieldData& field,
     IphFeature autofill_feature) {
@@ -1561,10 +1570,9 @@ FormPredictionsTracker* ChromeAutofillClient::GetFormPredictionsTracker() {
   return form_predictions_tracker_.get();
 }
 
-one_time_tokens::OneTimeTokenService*
-ChromeAutofillClient::GetOneTimeTokenService() const {
+one_time_tokens::SmsOtpService* ChromeAutofillClient::GetSmsOtpService() const {
   Profile* profile = GetProfile();
-  return OneTimeTokenServiceFactory::GetForProfile(profile);
+  return SmsOtpServiceFactory::GetForProfile(profile);
 }
 
 one_time_tokens::GmailOtpBackend* ChromeAutofillClient::GetGmailOtpBackend()

@@ -609,9 +609,6 @@ constexpr char kGaiaCookieLastListAccountsData[] =
 constexpr char kLensOverlayEduActionChipShownCount[] =
     "lens.edu_action_chip.shown_count";
 
-constexpr char kRendererCodeIntegrityEnabledNeedsDeletion[] =
-    "renderer_code_integrity_enabled";
-
 // Deprecated 10/2025.
 constexpr char kSessionRestoreTurnOffFromRestartInfoBarTimesShown[] =
     "browser.session_restore_turn_off_from_restart_infobar_times_shown";
@@ -1163,10 +1160,6 @@ inline constexpr char kTabSearchUsed[] = "tab_search.used";
 // Register local state used only for migration (clearing or moving to a new
 // key).
 void RegisterLocalStatePrefsForMigration(PrefRegistrySimple* registry) {
-  // Deprecated 09/2025.
-  registry->RegisterBooleanPref(kRendererCodeIntegrityEnabledNeedsDeletion,
-                                false);
-
   // Deprecated 11/2025.
   registry->RegisterStringPref(kFpfRulesetContent, std::string());
   registry->RegisterIntegerPref(kFpfRulesetFormat, 0);
@@ -2588,9 +2581,6 @@ void MigrateObsoleteLocalStatePrefs(PrefService* local_state) {
   // BEGIN_MIGRATE_OBSOLETE_LOCAL_STATE_PREFS
   // Please don't delete the preceding line. It is used by PRESUBMIT.py.
 
-  // Added 09/2025
-  local_state->ClearPref(kRendererCodeIntegrityEnabledNeedsDeletion);
-
   // Added 10/2025
 #if !BUILDFLAG(IS_ANDROID)
   local_state->ClearPref(prefs::kDefaultBrowserFirstShownTime);
@@ -2722,6 +2712,10 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   // BEGIN_MIGRATE_OBSOLETE_PROFILE_PREFS
   // Please don't delete the preceding line. It is used by PRESUBMIT.py.
 
+  // Do not remove: `SigninPrefs::MigrateObsoleteSigninPrefs()` should remain
+  // active; obsolete per-account prefs are cleaned up internally within it.
+  SigninPrefs(*profile_prefs).MigrateObsoleteSigninPrefs();
+
 #if !BUILDFLAG(IS_ANDROID)
   // Added 08/2024, but DO NOT REMOVE after the usual year.
   // TODO(crbug.com/356148174): Remove once kMoveThemePrefsToSpecifics has been
@@ -2767,8 +2761,6 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
 
   // Added 09/2025.
   profile_prefs->ClearPref(kLensOverlayEduActionChipShownCount);
-
-  SigninPrefs(*profile_prefs).MigrateObsoleteSigninPrefs();
 
 #if BUILDFLAG(ENABLE_WEBUI_NTP)
   // Added 10/2025

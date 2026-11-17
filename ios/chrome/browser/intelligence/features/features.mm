@@ -482,6 +482,17 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    base::Seconds(1));
 // LINT.ThenChange(//components/actor/core/actor_features.cc:kActorObservationDelayAutofillPredictionsTimeout)
 
+const char kActorToolsDisableInputDuringActuationParam[] =
+    "DisableInputDuringActuation";
+
+// Enabled by default since suppressing input views during actuation is a bug
+// fix; kept on a feature parameter so it can be used as a killswitch if needed.
+BASE_FEATURE_PARAM(bool,
+                   kActorDisableInputDuringActuation,
+                   &kActorTools,
+                   kActorToolsDisableInputDuringActuationParam,
+                   true);
+
 bool IsActorEnabled() {
   return base::FeatureList::IsEnabled(kActorTools);
 }
@@ -554,6 +565,10 @@ bool IsToolDisabled(optimization_guide::proto::Action::ActionCase tool) {
   }
 
   return false;
+}
+
+bool ActorDisablesInputDuringActuation() {
+  return IsActorEnabled() && kActorDisableInputDuringActuation.Get();
 }
 
 BASE_FEATURE(kActorOriginGating, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -861,7 +876,7 @@ bool IsIOSGeminiBottomSheetMigrationEnabled() {
          base::FeatureList::IsEnabled(kIOSGeminiBottomSheetMigration);
 }
 
-BASE_FEATURE(kGeminiQuizzes, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGeminiQuizzes, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiQuizzesEnabled() {
   return base::FeatureList::IsEnabled(kGeminiQuizzes);
@@ -873,7 +888,7 @@ bool ShouldOpenGeminiQuizzesInNewTab() {
              kGeminiQuizzes, kGeminiQuizzesOpenInNewTabParam, false);
 }
 
-BASE_FEATURE(kGeminiFRERefactor, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGeminiFRERefactor, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiFRERefactorEnabled() {
   return base::FeatureList::IsEnabled(kGeminiFRERefactor);
@@ -894,7 +909,7 @@ const char kGeminiFREExperimentParamLightweightPageSharing[] =
 const char kGeminiFREExperimentParamLightweightDiverse[] =
     "lightweight-diverse";
 
-BASE_FEATURE(kGeminiFREExperiment, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGeminiFREExperiment, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiFREExperimentEnabled() {
   return base::FeatureList::IsEnabled(kGeminiFREExperiment);
@@ -906,7 +921,7 @@ bool IsGeminiVisualRichFREEnabled() {
   }
   std::string variant = base::GetFieldTrialParamValueByFeature(
       kGeminiFREExperiment, kGeminiFREExperimentParam);
-  return variant.empty() || variant == kGeminiFREExperimentParamVisualRich;
+  return variant == kGeminiFREExperimentParamVisualRich;
 }
 
 bool IsGeminiLightweightFREEnabled() {
@@ -915,7 +930,8 @@ bool IsGeminiLightweightFREEnabled() {
   }
   std::string variant = base::GetFieldTrialParamValueByFeature(
       kGeminiFREExperiment, kGeminiFREExperimentParam);
-  return variant == kGeminiFREExperimentParamLightweightConvenience ||
+  return variant.empty() ||
+         variant == kGeminiFREExperimentParamLightweightConvenience ||
          variant == kGeminiFREExperimentParamLightweightPageSharing ||
          variant == kGeminiFREExperimentParamLightweightDiverse;
 }
@@ -929,10 +945,7 @@ GeminiLightweightFREVariant GetGeminiLightweightFREVariant() {
   if (variant == kGeminiFREExperimentParamLightweightDiverse) {
     return GeminiLightweightFREVariant::kDiverse;
   }
-  if (variant == kGeminiFREExperimentParamLightweightConvenience) {
-    return GeminiLightweightFREVariant::kConvenience;
-  }
-  NOTREACHED();
+  return GeminiLightweightFREVariant::kConvenience;
 }
 
 // Meant for experiments only.

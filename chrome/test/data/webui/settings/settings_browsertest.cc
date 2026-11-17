@@ -21,7 +21,6 @@
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/subscription_eligibility/subscription_eligibility_service_factory.h"
 #include "chrome/browser/ui/ui_features.h"
-#include "chrome/browser/ui/webui/settings/on_device_ai_settings_handler.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/webui_url_constants.h"
@@ -1141,6 +1140,10 @@ IN_PROC_BROWSER_TEST_F(SettingsTest, SearchEngineListDialog) {
   RunTest("settings/search_engine_list_dialog_test.js", "mocha.run()");
 }
 
+IN_PROC_BROWSER_TEST_F(SettingsTest, SearchEngineMoreEnginesDialog) {
+  RunTest("settings/search_engine_more_engines_dialog_test.js", "mocha.run()");
+}
+
 // TODO(crbug.com/448517054): Flaky on Linux debug builds.
 #if (BUILDFLAG(IS_LINUX) && !defined(NDEBUG))
 #define MAYBE_SearchEngines DISABLED_SearchEngines
@@ -1367,11 +1370,7 @@ IN_PROC_BROWSER_TEST_F(SettingsSystemPageTest, SystemPage) {
 #endif  //! BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-class SettingsAiPageOfficialTest : public SettingsBrowserTest {
- private:
-  base::test::ScopedFeatureList scoped_feature_list_{
-      features::kShowOnDeviceAiSettings};
-};
+using SettingsAiPageOfficialTest = SettingsBrowserTest;
 
 IN_PROC_BROWSER_TEST_F(SettingsAiPageOfficialTest, AiPageOfficial) {
   RunTest("settings/ai_page_official_test.js", "mocha.run()");
@@ -1676,12 +1675,6 @@ IN_PROC_BROWSER_TEST_F(SettingsNotificationsPageTest, NotificationsPage) {
           "runMochaSuite('NotificationsPage')");
 }
 
-IN_PROC_BROWSER_TEST_F(SettingsNotificationsPageTest,
-                       NotificationPermissionReview) {
-  RunTest("settings/notifications_page_test.js",
-          "runMochaSuite('NotificationPermissionReview')");
-}
-
 class SettingsGeolocationPageTest : public SettingsBrowserTest {};
 
 IN_PROC_BROWSER_TEST_F(SettingsGeolocationPageTest, GeolocationPage) {
@@ -1740,11 +1733,6 @@ IN_PROC_BROWSER_TEST_F(SettingsSafetyHubTest, SafetyHubPage) {
 
 IN_PROC_BROWSER_TEST_F(SettingsSafetyHubTest, UnusedSitePermissionsModule) {
   RunTest("settings/safety_hub_unused_site_permissions_module_test.js",
-          "mocha.run()");
-}
-
-IN_PROC_BROWSER_TEST_F(SettingsSafetyHubTest, NotificationPermissionsModule) {
-  RunTest("settings/safety_hub_notification_permissions_module_test.js",
           "mocha.run()");
 }
 

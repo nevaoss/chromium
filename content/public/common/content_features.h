@@ -49,10 +49,6 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kAndroidPkAutocorrectUnderlineV2);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kAndroidRemoveSetLocalFocusWorkaroundOnBaklava);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAndroidReplayDelKeyEvent);
-CONTENT_EXPORT BASE_DECLARE_FEATURE(
-    kAndroidBlockMisspellingSuggestionSpanInCompositionMode);
-CONTENT_EXPORT BASE_DECLARE_FEATURE(
-    kAndroidBlockGrammarSuggestionSpanInCompositionMode);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAndroidWarmUpSpareRendererWithTimeout);
 CONTENT_EXPORT extern const base::FeatureParam<std::string>
     kAndroidSpareRendererCreationTiming;
@@ -308,6 +304,7 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kResourceBroker);
 CONTENT_EXPORT BASE_DECLARE_FEATURE_PARAM(base::TimeDelta,
                                           kResourceBrokerGraceWindow);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kRestrictThreadPoolInBackground);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kRFHHiddenWhenHiddenButPainting);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kSpareRendererProcessPriority);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kSkipIPCChannelPausingForNonGuests);
 CONTENT_EXPORT extern const base::FeatureParam<bool>

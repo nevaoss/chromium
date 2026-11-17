@@ -1989,7 +1989,8 @@ void WebFrameWidgetImpl::UpdateVisualProperties(
         visual_properties.max_size_for_auto_resize,
         visual_properties.screen_infos.current().device_scale_factor);
     if (View() && View()->GetPage()) {
-      View()->GetPage()->SetAlwaysOnTop(visual_properties.always_on_top);
+      View()->GetPage()->SetAlwaysOnTopPopup(
+          visual_properties.always_on_top_popup);
     }
   }
 
@@ -5348,6 +5349,10 @@ void WebFrameWidgetImpl::SetScreenInfoAndSize(
 
 float WebFrameWidgetImpl::GetCompositingScaleFactor() {
   return compositing_scale_factor_;
+}
+
+float WebFrameWidgetImpl::GetExternalPageScaleFactor() const {
+  return ForTopMostMainFrame() ? 1.0f : page_scale_factor_in_mainframe_;
 }
 
 const cc::LayerTreeDebugState* WebFrameWidgetImpl::GetLayerTreeDebugState() {

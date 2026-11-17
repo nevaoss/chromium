@@ -256,6 +256,9 @@ should be able to be added at any place in this file.
       summary="For AddToHomescreen IPH feature using text bubble (obsolete)."/>
   <variant name="_AimActivationHint"
       summary="A hint to activate AI Mode on Android Desktop via keystrokes."/>
+  <variant name="_AndroidBottomBarEducation"
+      summary="For the education onboarding flow and IPHs for the Android
+               bottom bar."/>
   <variant name="_AndroidBottomBarGlic"
       summary="Describes the GLIC button added in the bottom bar."/>
   <variant name="_AndroidBottomBarNewTab"
@@ -951,6 +954,8 @@ should be able to be added at any place in this file.
       summary="For tab switcher with tab groups."/>
   <variant name="_TabOrganizationSuccess"
       summary="For the tab organization feature. (obsolete)"/>
+  <variant name="_TabPickerSelectTabs"
+      summary="For the first-time tab selection IPH in the tab picker."/>
   <variant name="_TabPinnedFeature" summary="For tab pinned overflow hint."/>
   <variant name="_TabScrollButtonFeature"
       summary="For the tab scroll button feature."/>
@@ -2274,6 +2279,16 @@ should be able to be added at any place in this file.
   <description>
     A user has tapped the button to change the position of the autoclick bubble
     menu.
+  </description>
+</action>
+
+<action name="Accessibility.CrosCursorShakeToLocate.Enlarged">
+  <owner>jackgeng@google.com</owner>
+  <owner>cros-sw-perf@google.com</owner>
+  <owner>ash/accessibility/OWNERS</owner>
+  <description>
+    A Chrome OS user shook the mouse and Shake to Locate Cursor enlarged the
+    cursor. Only recorded when the setting is enabled.
   </description>
 </action>
 
@@ -9509,6 +9524,51 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="ContentSettings.Notifications.SystemPermissionIconShown">
+  <owner>mek@chromium.org</owner>
+  <owner>pwa-team@google.com</owner>
+  <description>
+    The notifications blocked icon is shown because the macOS system-level
+    notification permission is not granted for the web app.
+  </description>
+</action>
+
+<action name="ContentSettings.NotificationsDialog.Closed">
+  <owner>mek@chromium.org</owner>
+  <owner>pwa-team@google.com</owner>
+  <description>
+    The content settings notifications bubble for macOS system permission is
+    closed.
+  </description>
+</action>
+
+<action name="ContentSettings.NotificationsDialog.DontAllowClicked">
+  <owner>mek@chromium.org</owner>
+  <owner>pwa-team@google.com</owner>
+  <description>
+    The user clicked 'Don't allow' from the content settings notifications
+    bubble to block notifications for the site in Chrome.
+  </description>
+</action>
+
+<action name="ContentSettings.NotificationsDialog.OpenSystemSettingsClicked">
+  <owner>mek@chromium.org</owner>
+  <owner>pwa-team@google.com</owner>
+  <description>
+    The user clicked 'Open System Settings' from the content settings
+    notifications bubble.
+  </description>
+</action>
+
+<action name="ContentSettings.NotificationsDialog.Shown">
+  <owner>mek@chromium.org</owner>
+  <owner>pwa-team@google.com</owner>
+  <description>
+    The content settings notifications bubble for macOS system permission was
+    shown, either automatically or by clicking the indicator icon.
+  </description>
+</action>
+
 <action name="ContentSuggestions.Feed.CardAction.ClosedContextMenu">
   <owner>harringtond@chromium.org</owner>
   <owner>carlosk@chromium.org</owner>
@@ -10269,6 +10329,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="ContextualTasks.EphemeralToolbarButton.AutoDismissed">
+  <owner>dianaou@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when the ephemeral contextual tasks toolbar button is automatically
+    dismissed after its auto-dismiss timeout expires.
+  </description>
+</action>
+
 <action name="ContextualTasks.EphemeralToolbarButton.Shown">
   <owner>dianaou@chromium.org</owner>
   <owner>chrome-contextual-tasks-eng@google.com</owner>
@@ -10278,12 +10347,40 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action
+    name="ContextualTasks.EphemeralToolbarButton.UserAction.RemoveByContextMenu">
+  <owner>dianaou@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when the user removes the ephemeral contextual tasks toolbar button
+    for the current task via its context menu.
+  </description>
+</action>
+
 <action name="ContextualTasks.HistoryNavigation.UserAction.NavigatedInFullTab">
   <owner>hujasonx@google.com</owner>
   <owner>chrome-contextual-tasks-eng@google.com</owner>
   <description>
     Logged when the back or forward button is clicked in the Contextual Tasks
     full tab and results in a task switch.
+  </description>
+</action>
+
+<action name="ContextualTasks.LensRegionChip.Dismissed">
+  <owner>nguyenbryan@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when the user dismisses the Lens region chip in the Contextual
+    Tasks composebox plate.
+  </description>
+</action>
+
+<action name="ContextualTasks.LensRegionChip.Shown">
+  <owner>nguyenbryan@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when the Lens region chip is shown in the Contextual Tasks
+    composebox plate.
   </description>
 </action>
 
@@ -10302,6 +10399,16 @@ should be able to be added at any place in this file.
   <description>
     Recorded when the user closes the side panel for a session entered via an
     Ask Google entry point.
+  </description>
+</action>
+
+<action
+    name="ContextualTasks.SidePanel.UserAction.Close.EphemeralToolbarButton">
+  <owner>dianaou@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when the user closes the side panel for a session entered via the
+    ephemeral (unpinned) toolbar button.
   </description>
 </action>
 
@@ -14490,31 +14597,6 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
-<action name="GlicPanelResized">
-  <owner>fsenra@google.com</owner>
-  <owner>dewittj@google.com</owner>
-  <description>
-    Recorded when the glic panel is resized. The resizing can be triggered by an
-    animation, by the content expanding or by the user resizing the window.
-  </description>
-</action>
-
-<action name="GlicPanelUserResizeEnded">
-  <owner>fsenra@google.com</owner>
-  <owner>iwells@google.com</owner>
-  <description>
-    Recorded when the glic panel stops being resized by the user.
-  </description>
-</action>
-
-<action name="GlicPanelUserResizeStarted">
-  <owner>fsenra@google.com</owner>
-  <owner>iwells@google.com</owner>
-  <description>
-    Recorded when the glic panel starts being resized by the user.
-  </description>
-</action>
-
 <action name="GlicReactionCanned" not_user_triggered="true">
   <owner>harringtond@chromium.org</owner>
   <owner>carlosk@chromium.org</owner>
@@ -14611,28 +14693,6 @@ should be able to be added at any place in this file.
     Tracks a single response stop in glic, the cause is unspecified. This is
     reported for all stops in older server versions, and only successful
     completions in newer server versions.
-  </description>
-</action>
-
-<action name="GlicSessionBegin">
-  <owner>carlosk@chromium.org</owner>
-  <owner>harringtond@chromium.org</owner>
-  <owner>erikchen@chromium.org</owner>
-  <description>
-    A glic session is defined as the period of time from a user opening the glic
-    window to a user closing the glic window. This event tracks the opening of
-    the glic window.
-  </description>
-</action>
-
-<action name="GlicSessionEnd">
-  <owner>carlosk@chromium.org</owner>
-  <owner>harringtond@chromium.org</owner>
-  <owner>erikchen@chromium.org</owner>
-  <description>
-    A glic session is defined as the period of time from a user opening the glic
-    window to a user closing the glic window. This event tracks the act of
-    closing the glic window.
   </description>
 </action>
 
@@ -29235,16 +29295,6 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
-<action name="Overscroll_Cancelled.Reload">
-  <owner>jonross@chromium.org</owner>
-  <description>
-    When vertical overscroll corresponding to the RELOAD navigation is cancelled
-    - either because the user performed an interfering action such as pressing a
-    key, or because the user ended the drag before the navigation threshold was
-    passed.
-  </description>
-</action>
-
 <action name="Overscroll_Navigated.Back">
   <owner>mfomitchev@chromium.org</owner>
   <description>
@@ -29256,13 +29306,6 @@ should be able to be added at any place in this file.
   <owner>mfomitchev@chromium.org</owner>
   <description>
     When horizontal overscroll initiates a FORWARD navigation in the browser.
-  </description>
-</action>
-
-<action name="Overscroll_Navigated.Reload">
-  <owner>jonross@chromium.org</owner>
-  <description>
-    When vertical overscroll initiates a RELOAD navigation in the browser.
   </description>
 </action>
 
@@ -31333,39 +31376,6 @@ should be able to be added at any place in this file.
   <description>
     The user clicked the three dotted menu in chrome://profile-picker.
   </description>
-</action>
-
-<action name="ProjectsPanel.TabGroups.CreateNewGroup.{HadExistingGroups}">
-  <owner>chazzy@chromium.org</owner>
-  <owner>top-chrome-desktop-ui@google.com</owner>
-  <description>
-    The user created a new tab group from the projects panel.
-  </description>
-  <token key="HadExistingGroups">
-    <variant name="WithExistingGroups"
-        summary="Existing groups were shown in the panel"/>
-    <variant name="WithoutExistingGroups"
-        summary="No existing groups were shown in the panel"/>
-  </token>
-</action>
-
-<action name="ProjectsPanel.TabGroups.OpenGroup">
-  <owner>chazzy@chromium.org</owner>
-  <owner>top-chrome-desktop-ui@google.com</owner>
-  <description>
-    The user opened an existing group from the projects panel.
-  </description>
-</action>
-
-<action name="ProjectsPanel.Threads.OpenThread.{ThreadType}">
-  <owner>chazzy@chromium.org</owner>
-  <owner>top-chrome-desktop-ui@google.com</owner>
-  <description>The user opened a thread from the projects panel.</description>
-  <token key="ThreadType">
-    <variant name="AiMode" summary="AI Mode chat thread"/>
-    <variant name="Gemini" summary="Gemini chat thread"/>
-    <variant name="Unknown" summary="Unknown chat thread type"/>
-  </token>
 </action>
 
 <action name="PWAInstallIcon">

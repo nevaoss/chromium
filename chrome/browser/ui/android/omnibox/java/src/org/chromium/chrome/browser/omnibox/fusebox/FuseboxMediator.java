@@ -762,7 +762,7 @@ import java.util.function.Supplier;
                     () -> onAddCurrentTab(currentTab));
             mModel.set(
                     FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_FAVICON,
-                    OmniboxResourceProvider.getFaviconBitmapForTab(currentTab));
+                    mResourceProvider.getTabFavicon(currentTab));
         } else {
             mModel.set(FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_VISIBLE, false);
         }
@@ -797,7 +797,7 @@ import java.util.function.Supplier;
         List<PopupButtonData> buttons = new ArrayList<>();
         for (int i = 0; i < eligibleTabs.size(); i++) {
             Tab tab = eligibleTabs.get(i);
-            Bitmap favicon = OmniboxResourceProvider.getFaviconBitmapForTab(tab);
+            Bitmap favicon = mResourceProvider.getTabFavicon(tab);
 
             buttons.add(
                     new PopupButtonData.Builder()
@@ -830,11 +830,7 @@ import java.util.function.Supplier;
         if (currentAttachedIds.contains(tab.getId())) return;
         var attachment =
                 FuseboxAttachment.forTab(
-                        tab,
-                        isCurrentTab(tab),
-                        mContext.getResources(),
-                        source,
-                        /* isSuggestedTab= */ false);
+                        tab, isCurrentTab(tab), source, /* isSuggestedTab= */ false);
 
         mModelList.add(attachment);
     }
@@ -971,7 +967,6 @@ import java.util.function.Supplier;
                         FuseboxAttachment.forTab(
                                 tab,
                                 isCurrentTab(tab),
-                                mContext.getResources(),
                                 FuseboxAttachmentButtonType.TAB_PICKER,
                                 /* isSuggestedTab= */ false);
                 attachment.setIsPartOfMultiTabSelection(isPartOfMultiTabSelection);
@@ -1004,7 +999,6 @@ import java.util.function.Supplier;
                         FuseboxAttachment.forTab(
                                 tab,
                                 /* bypassTabCache= */ false,
-                                mContext.getResources(),
                                 FuseboxAttachmentButtonType.SUGGESTED_TAB,
                                 /* isSuggestedTab= */ true);
                 if (mModelList.add(attachment)) {

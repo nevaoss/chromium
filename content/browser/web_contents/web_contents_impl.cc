@@ -3293,6 +3293,13 @@ void WebContentsImpl::SetPrimaryPageImportance(
          "IsNotPerceptibleImportanceSupported() is false";
   CHECK(main_frame_importance >= subframe_importance);
 
+  RenderWidgetHostImpl* main_frame_rwh =
+      GetPrimaryMainFrame()->GetRenderWidgetHost();
+  if (subframe_importance == primary_subframe_importance_ &&
+      main_frame_rwh->importance() == main_frame_importance) {
+    return;
+  }
+
   // Batch service binding updates for the renderer processes of the main frame
   // and the subframes.
   base::android::ScopedServiceBindingBatch scoped_service_binding_batch;
@@ -3302,8 +3309,7 @@ void WebContentsImpl::SetPrimaryPageImportance(
     ApplyPrimaryPageSubframeImportance();
   }
 
-  GetPrimaryMainFrame()->GetRenderWidgetHost()->SetImportance(
-      main_frame_importance);
+  main_frame_rwh->SetImportance(main_frame_importance);
 }
 
 void WebContentsImpl::ApplyPrimaryPageSubframeImportance() {
@@ -5247,8 +5253,8 @@ bool WebContentsImpl::GetResizable() {
   return GetDelegate() && GetDelegate()->GetCanResize();
 }
 
-bool WebContentsImpl::GetIsAlwaysOnTop() {
-  return GetDelegate() && GetDelegate()->GetIsAlwaysOnTop();
+bool WebContentsImpl::GetIsAlwaysOnTopPopup() {
+  return GetDelegate() && GetDelegate()->GetIsAlwaysOnTopPopup();
 }
 
 void WebContentsImpl::FullscreenFrameSetUpdated() {
@@ -11612,6 +11618,10 @@ void WebContentsImpl::CreateRenderWidgetHostViewForRenderManager(
   OPTIONAL_TRACE_EVENT1(
       "content", "WebContentsImpl::CreateRenderWidgetHostViewForRenderManager",
       "render_view_host", render_view_host);
+
+  // Creating the view can run a nested message loop, and callers keep using
+  // `this` and the new view afterwards, so `this` must not be destroyed here.
+  base::AutoReset<bool> scope(&prevent_destruction_, true);
 
   bool is_inner_frame_tree = [&]() {
     FrameTree* frame_tree =

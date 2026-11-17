@@ -289,7 +289,7 @@ OffscreenCanvasRenderingContext2D::ProduceCanvasResource(FlushReason reason) {
 
   FlushCanvas(reason);
   scoped_refptr<CanvasResource> frame =
-      GetSharedImageProvider()->ProduceCanvasResource();
+      GetSharedImageProvider()->ProduceCanvasResource(GetSoftwareSurface());
   if (!frame)
     return nullptr;
 
@@ -381,8 +381,7 @@ void OffscreenCanvasRenderingContext2D::WillDraw(
     adjusted_dirty_rect.Outset(1);
   }
 
-  GetCanvasPerformanceMonitor().DidDraw(draw_type);
-  Host()->DidDraw(adjusted_dirty_rect);
+  CanvasRenderingContext::DidDraw(adjusted_dirty_rect, draw_type);
 
   if (layer_count_ == 0) [[likely]] {
     // TODO(crbug.com/1246486): Make auto-flushing layer friendly.

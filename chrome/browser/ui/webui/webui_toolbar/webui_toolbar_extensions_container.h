@@ -21,6 +21,7 @@
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "ui/base/interaction/element_tracker.h"
+#include "ui/gfx/image/image_skia.h"
 #include "ui/views/interaction/element_tracker_views.h"
 #include "ui/views/widget/widget_observer.h"
 
@@ -144,6 +145,19 @@ class WebUIToolbarExtensionsContainer
     return pinned_by_default_iph_extension_id_;
   }
 
+  // Accessors used by ExtensionsMenuTestUtil to drive this container the same
+  // way it drives ExtensionsToolbarDesktop.
+  ExtensionsMenuCoordinator* GetExtensionsMenuCoordinatorForTesting() {
+    return extensions_menu_coordinator_.get();
+  }
+  ToolbarActionViewModel* popup_owner_for_testing() { return popup_owner_; }
+  int GetNumberOfActionsForTesting() const { return actions_.size(); }
+
+  // Returns the icon currently shown in the toolbar for the action with
+  // `action_id`, rasterized with the widget's color provider. The action must
+  // exist.
+  gfx::ImageSkia GetActionIconForTesting(const std::string& action_id);
+
  private:
   FRIEND_TEST_ALL_PREFIXES(WebUIToolbarWebViewInteractiveUiTest,
                            ExtensionUserActionsPlumbing);
@@ -179,6 +193,12 @@ class WebUIToolbarExtensionsContainer
 
   void OnContextMenuShownFromToolbar(const std::string& action_id);
   void OnContextMenuClosedFromToolbar();
+
+  // Returns true if the action must be visible on the toolbar, even if there's
+  // not enough room for it, e.g., because it's popped out, has an open context
+  // menu, has a widget anchored to it, or is the pinned-by-default IPH anchor.
+  // Doesn't consider whether the action is pinned.
+  bool ShouldForceVisibility(const std::string& action_id) const;
 
   const raw_ref<BrowserWindowInterface> browser_;
   const raw_ptr<views::Widget> widget_;

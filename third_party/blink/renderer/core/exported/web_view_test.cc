@@ -651,10 +651,13 @@ TEST_F(WebViewTest, SetBaseBackgroundColorWithColorScheme) {
 
   mojom::blink::ColorScheme color_scheme = mojom::blink::ColorScheme::kLight;
   Color system_background_color = LayoutTheme::GetTheme().SystemColor(
-      CSSValueID::kCanvas, color_scheme,
-      web_view->GetPage()->GetColorProviderForPainting(
-          color_scheme, /*in_forced_colors=*/true),
-      document->IsInWebAppScope() && document->IsInitialProfile());
+      CSSValueID::kCanvas,
+      /*theme_info=*/
+      {.color_provider = web_view->GetPage()->GetColorProviderForPainting(
+           color_scheme, /*in_forced_colors=*/true),
+       .color_scheme = color_scheme,
+       .can_expose_system_accent_color =
+           document->IsInWebAppScope() && document->IsInitialProfile()});
   EXPECT_EQ(system_background_color, frame_view->BaseBackgroundColor());
 
   color_scheme_helper.SetInForcedColors(*document, /*in_forced_colors=*/false);
@@ -1737,6 +1740,20 @@ TEST_F(WebViewTest, AutoResizeWithViewportMetaDoesNotZoomOut) {
   EXPECT_EQ(1.0f, web_view->PageScaleFactor());
   EXPECT_EQ(450, client.GetTestData().Width());
   EXPECT_EQ(500, client.GetTestData().Height());
+
+  // Re-applying SetIgnoreViewportTagScaleLimits (as ApplyWebPreferences does
+  // on Android) should not clobber the auto-resize minimum scale constraint.
+  web_view->SetIgnoreViewportTagScaleLimits(false);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(1.0f, web_view->MinimumPageScaleFactor());
+  EXPECT_EQ(1.0f, web_view->PageScaleFactor());
+  EXPECT_EQ(gfx::Size(450, 500), web_view->MainFrameSize());
+
+  web_view->SetIgnoreViewportTagScaleLimits(true);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(1.0f, web_view->MinimumPageScaleFactor());
+  EXPECT_EQ(1.0f, web_view->PageScaleFactor());
+  EXPECT_EQ(gfx::Size(450, 500), web_view->MainFrameSize());
 
   web_view_helper_.Reset();
 }

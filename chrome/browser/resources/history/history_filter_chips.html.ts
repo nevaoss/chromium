@@ -17,13 +17,13 @@ export function getHtml(this: HistoryFilterChipsElement) {
         <select id="actorSelect" class="md-select"
             @change="${this.onActorSelectChange_}">
           <option value="all"
-              ?selected="${!this.isUserSelected() && !this.isActorSelected()}">
+              .selected="${!this.isUserSelected() && !this.isActorSelected()}">
             $i18n{sourceFilterAllActors}
           </option>
-          <option value="user" ?selected="${this.isUserSelected()}">
+          <option value="user" .selected="${this.isUserSelected()}">
             $i18n{sourceFilterChipUser}
           </option>
-          <option value="actor" ?selected="${this.isActorSelected()}">
+          <option value="actor" .selected="${this.isActorSelected()}">
             $i18n{sourceFilterChipActor}
           </option>
         </select>
@@ -43,13 +43,24 @@ export function getHtml(this: HistoryFilterChipsElement) {
     ${this.showDeviceFilter ? html`
       <div class="filter-chips">
         <cr-icon icon="cr:check" aria-hidden="true"></cr-icon>
-        <select id="deviceFilterChip" class="md-select">
-          <option>$i18n{deviceFilterAllDevices}</option>
-          ${this.devices.map(device => html`
-            <option>${device.name}</option>
+        <select id="deviceFilterChip" class="md-select"
+            @change="${this.onDeviceSelectChange_}">
+          <option value="-1" .selected="${this.clientIds.length === 0}">
+            $i18n{deviceFilterAllDevices}
+          </option>
+          ${this.devices.map((device, index) => html`
+            <option value="${index}"
+                .selected="${this.isDeviceSelected_(device)}">
+              ${device.name}
+            </option>
           `)}
         </select>
       </div>
+    ` : ''}
+    ${this.hasActiveFilter_() ? html`
+      <cr-button id="clearAllButton" @click="${this.onClearAllClick_}">
+        $i18n{resetFilters}
+      </cr-button>
     ` : ''}
   </div>
 </div>

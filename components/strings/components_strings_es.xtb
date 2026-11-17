@@ -118,6 +118,7 @@ De lo contrario, lo impedirá tu configuración de privacidad. Permitirá que el
 <translation id="1195558154361252544">Las notificaciones se bloquean automáticamente en todos los sitios, excepto en los que las permitas.</translation>
 <translation id="1197088940767939838">Naranja</translation>
 <translation id="1198412233443148072"><ph name="MEMBER_FIRST_NAME" /> ha eliminado la pestaña <ph name="WEBSITE_TITLE" /></translation>
+<translation id="119944043368869598">Borrar todo</translation>
 <translation id="1201402288615127009">Siguiente</translation>
 <translation id="1201895884277373915">Más entradas de este sitio</translation>
 <translation id="1204184165594298176">{0,plural, =1{No se ha podido copiar el archivo}other{No se han podido copiar <ph name="FILE_COUNT" /> archivos}}</translation>
@@ -618,7 +619,6 @@ De lo contrario, lo impedirá tu configuración de privacidad. Permitirá que el
 <translation id="2059166748188874810">Municipio</translation>
 <translation id="2059202684901022309">22x34 pulgadas</translation>
 <translation id="2063929825539050431">Para enviar rápidamente esta página a otro dispositivo, mantén pulsada la barra de direcciones</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{Una sugerencia}other{# sugerencias}}</translation>
 <translation id="2066969741541525119">Tu organización ha bloqueado el sitio al que quieres acceder</translation>
 <translation id="2071156619270205202">Esta tarjeta no reúne los requisitos necesarios para un número de tarjeta virtual.</translation>
 <translation id="2071852865256799872">Tu organización gestiona tu navegador, y <ph name="PROFILE_DOMAIN" /> gestiona tu perfil</translation>
@@ -665,6 +665,7 @@ De lo contrario, lo impedirá tu configuración de privacidad. Permitirá que el
 <translation id="2126374524350484896">Proveedor de PDF:</translation>
 <translation id="2127090458081644412">Contraseña guardada en este dispositivo</translation>
 <translation id="2127747486437921899">Cursiva</translation>
+<translation id="2129163794581571479">Con la tecnología de Gemini e Inteligencia personalizada. Tus solicitudes, títulos de páginas y URLs se pueden revisar para optimizar Autocompletar mejorado. <ph name="BEGIN_LINK" />Gestionar ajustes<ph name="END_LINK" /></translation>
 <translation id="2130448033692577677">Es posible que las plantillas que has especificado no se apliquen por no haber configurado la política DnsOverHttpsMode.</translation>
 <translation id="2130699163006053678">A3x7</translation>
 <translation id="2131006834960167560">Habilitar autocompletado de pagos abierto a altura completa.</translation>
@@ -710,7 +711,6 @@ De lo contrario, lo impedirá tu configuración de privacidad. Permitirá que el
 <translation id="2188375229972301266">Perforado múltiple en la parte inferior</translation>
 <translation id="218940509700321686">Valores separados por comas</translation>
 <translation id="2190094353033916816">Esta política tiene valores distintos aplicados a nivel de equipo y a nivel de usuario. La política funciona según lo previsto.</translation>
-<translation id="219061769324072544">Crédito,Tarjeta,Débito</translation>
 <translation id="2191980191135734720">Desbloquea la pantalla en el siguiente paso, normalmente con tu huella digital. También puedes <ph name="LINK_TEXT" />.</translation>
 <translation id="2194856509914051091">Notas importantes</translation>
 <translation id="2195729137168608510">Protección de correo electrónico</translation>
@@ -1575,6 +1575,7 @@ Para ocultar las opciones de pago aplazado, ve a la <ph name="BEGIN_LINK" />conf
 <translation id="3655670868607891010">Si este mensaje aparece con frecuencia, prueba a solucionarlo con estas <ph name="HELP_LINK" />.</translation>
 <translation id="3658742229777143148">Revisión</translation>
 <translation id="3659521826520353662">Qué sitios web definidos por el administrador se visitan y cuándo: <ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3663760610864720538">Con la tecnología de Gemini e Inteligencia personalizada. <ph name="BEGIN_LINK" />Gestionar ajustes<ph name="END_LINK" /></translation>
 <translation id="3664479564786885722">Busca más opciones de compra en otras tiendas que vendan este producto.</translation>
 <translation id="3664782872746246217">Palabras clave:</translation>
 <translation id="3670030362669914947">Número</translation>
@@ -1595,6 +1596,7 @@ Para ocultar las opciones de pago aplazado, ve a la <ph name="BEGIN_LINK" />conf
 <translation id="3693516565203081475">Elegir método de pago</translation>
 <translation id="3698353241727597930">Tu administrador ha configurado el almacenamiento de <ph name="CLOUD_STORAGE" /> gestionado por tu empresa para guardar <ph name="FILES" />. Estos archivos pueden ser monitorizados, auditados y conservados cuando los elimines.</translation>
 <translation id="3698629142018988477">Botón Crear sitio: actívalo para crear un nuevo sitio en Google Sites rápidamente</translation>
+<translation id="3698708128812719147">Pulsa Ctrl dos veces en cualquier lugar de la Web para encontrar y rellenar más información</translation>
 <translation id="3700094625653511150">Para ocultar las opciones de pago aplazado, ve a <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /></translation>
 <translation id="3700966190175650601">Estás usando tu huella digital para rellenar contraseñas</translation>
 <translation id="3701427423622901115">Se han restablecido los ajustes.</translation>
@@ -1862,7 +1864,6 @@ Para ocultar las opciones de pago aplazado, ve a la <ph name="BEGIN_LINK" />conf
 <translation id="4121428309786185360">Vencimiento el</translation>
 <translation id="4123572138124678573">Perforado triple en la parte inferior</translation>
 <translation id="412601465078863288">Tiempo de espera de subida agotado</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{Uno más}other{# más}}</translation>
 <translation id="4129810348470013900">Se ha producido un error. Comprueba tu conexión a Internet e inténtalo de nuevo.</translation>
 <translation id="4130226655945681476">Comprobar los cables de red, el módem y el router</translation>
 <translation id="4132448310531350254">Controladores duplicados de la extensión de archivo <ph name="FILE_EXTENSION" /> a los que hacen referencia las aplicaciones <ph name="POLICY_IDS_LIST" />.</translation>
@@ -1898,6 +1899,7 @@ Para ocultar las opciones de pago aplazado, ve a la <ph name="BEGIN_LINK" />conf
 <translation id="4185037616931963178">Actualiza el número Redress de forma segura</translation>
 <translation id="4186035307311647330">Dejar de seguir precio</translation>
 <translation id="4191334393248735295">Longitud</translation>
+<translation id="4192770747482479191">Pulsa ⌘ dos veces en cualquier lugar de la Web para buscar y rellenar más información</translation>
 <translation id="4195459680867822611">Botón Ver consejos de Chrome: actívalo para obtener información sobre las funciones de Chrome</translation>
 <translation id="4195643157523330669">Abrir en una pestaña nueva</translation>
 <translation id="4196861286325780578">&amp;Rehacer movimiento</translation>
@@ -2215,7 +2217,6 @@ Para ocultar las opciones de pago aplazado, ve a la <ph name="BEGIN_LINK" />conf
 <translation id="4725766358270333890">Subiendo <ph name="COUNT" /> archivos a Microsoft OneDrive</translation>
 <translation id="4726672564094551039">Volver a cargar políticas</translation>
 <translation id="4728558894243024398">Plataforma</translation>
-<translation id="4730773064303503917">Usa Pix para pagar a tus amigos y en establecimientos desde Wallet</translation>
 <translation id="4730977633786878901">Reseñas</translation>
 <translation id="4731638775147756694">Tu administrador ha bloqueado esta aplicación</translation>
 <translation id="4732860731866514038">Descargando el paquete de idioma <ph name="LANGUAGE" />... <ph name="PERCENT" /> %</translation>
@@ -2846,6 +2847,7 @@ Para ocultar las opciones de pago aplazado, ve a la <ph name="BEGIN_LINK" />conf
 <translation id="573974402615125334">Para compartir, unirte y colaborar en grupos de pestañas, sincroniza tu historial y tus pestañas</translation>
 <translation id="5740911612628596808">Sobre C9</translation>
 <translation id="574392208103952083">Media</translation>
+<translation id="5744350700955456407">Ahora Autocompletar mejorado puede buscar y rellenar información (como números de pedido y códigos de confirmación de vuelos) de aplicaciones como Gmail y Fotos</translation>
 <translation id="5745586894920491759">Chrome procesa los títulos de las páginas y las URLs en la nube</translation>
 <translation id="5745733273847572235">Puede solicitar permiso para acceder a tu ubicación</translation>
 <translation id="5750869797196646528">Seguimiento de manos</translation>
@@ -3227,7 +3229,6 @@ Para ocultar las opciones de pago aplazado, ve a la <ph name="BEGIN_LINK" />conf
 <translation id="638289054711715023">Papel de aluminio retráctil</translation>
 <translation id="6383221683286411806">Es posible que se cobren cargos en el futuro.</translation>
 <translation id="6384448607821972818">Se ha mostrado la contraseña de recuperación</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{Una sugerencia más}other{# sugerencias más}}</translation>
 <translation id="6386565501269869892">Sobre You 4</translation>
 <translation id="6387645831795005740">Los atacantes suelen imitar los sitios haciendo pequeños cambios en la URL que son difíciles de ver.</translation>
 <translation id="6389470377220713856">Nombre que aparece en la tarjeta</translation>
@@ -4836,7 +4837,6 @@ Más información:
 <translation id="9168814207360376865">Permite a los sitios comprobar si tienes métodos de pago guardados</translation>
 <translation id="9169931577761441333">Añadir <ph name="APP_NAME" /> a la pantalla de inicio</translation>
 <translation id="9170848237812810038">&amp;Deshacer</translation>
-<translation id="9170906125144697215">Paga con Pix sin cambiar de aplicación</translation>
 <translation id="9171296965991013597">¿Quieres salir de la aplicación?</translation>
 <translation id="9173282814238175921">Documento individual/Nueva hoja</translation>
 <translation id="9173995187295789444">Buscando dispositivos Bluetooth...</translation>

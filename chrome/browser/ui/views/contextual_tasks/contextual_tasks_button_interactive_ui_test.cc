@@ -5,6 +5,7 @@
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/metrics/user_action_tester.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/test/test_mock_time_task_runner.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/autocomplete/chrome_aim_eligibility_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
@@ -34,6 +35,7 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_button.h"
 #include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_close_tab_button.h"
+#include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_ephemeral_button_controller.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/immersive_mode_tester.h"
 #include "chrome/browser/ui/views/profiles/avatar_toolbar_button.h"
@@ -41,6 +43,7 @@
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/webui_url_constants.h"
+#include "chrome/grit/branded_strings.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
 #include "chrome/test/user_education/interactive_feature_promo_test.h"
@@ -63,9 +66,11 @@
 #include "net/base/url_util.h"
 #include "net/dns/mock_host_resolver.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
+#include "ui/base/l10n/l10n_util.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/layer_solid_color.h"
+#include "ui/views/controls/menu/menu_item_view.h"
 
 namespace {
 DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kFirstTab);
@@ -497,6 +502,9 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
                        RightClickRemoveHidesEphemeralButtonUntilNextAdded) {
+  base::UserActionTester user_action_tester;
+  base::HistogramTester histogram_tester;
+
   RunTestSequence(
       SignIntoEligibleAccount(), InstrumentTab(kFirstTab),
       AddInstrumentedTab(kSecondTab, GetTestURL()),
@@ -514,7 +522,15 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
       ClickMouse(ui_controls::RIGHT),
       SelectMenuItem(ContextualTasksButton::
                          kContextualTasksEphemeralButtonRemoveForTaskMenuItem),
-      WaitForHide(kContextualTasksEphemeralToolbarButtonElementId),
+      WaitForHide(kContextualTasksEphemeralToolbarButtonElementId), Do([&]() {
+        EXPECT_EQ(1, user_action_tester.GetActionCount(
+                         "ContextualTasks.EphemeralToolbarButton.UserAction."
+                         "RemoveByContextMenu"));
+        histogram_tester.ExpectUniqueSample(
+            "ContextualTasks.EphemeralToolbarButton.UserAction."
+            "RemoveByContextMenu",
+            true, 1);
+      }),
       // Switching away and back keeps the ephemeral button removed.
       SelectTab(kTabStripElementId, 1), SelectTab(kTabStripElementId, 0),
       EnsureNotPresent(kContextualTasksEphemeralToolbarButtonElementId),
@@ -1609,4 +1625,165 @@ IN_PROC_BROWSER_TEST_F(
         button->SetVisible(false);
         button->SetVisible(true);
       }));
+}
+
+class ContextualTasksEphemeralButtonAutoDismissInteractiveTest
+    : public ContextualTasksEphemeralButtonInteractiveTest {
+ public:
+  std::vector<base::test::FeatureRefAndParams> GetEnabledFeatures() override {
+    std::vector<base::test::FeatureRefAndParams> enabled_features =
+        ContextualTasksEphemeralButtonInteractiveTest::GetEnabledFeatures();
+    enabled_features.push_back(
+        {contextual_tasks::kContextualTasksEphemeralButtonAutoDismiss,
+         {{"ContextualTasksEphemeralButtonAutoDismissTimeMinutes", "120"}}});
+    return enabled_features;
+  }
+
+  void SetUpOnMainThread() override {
+    ContextualTasksEphemeralButtonInteractiveTest::SetUpOnMainThread();
+    task_runner_ = base::MakeRefCounted<base::TestMockTimeTaskRunner>();
+    if (auto* controller =
+            ContextualTasksEphemeralButtonController::From(browser())) {
+      controller->SetTaskRunnerForTesting(task_runner_);
+    }
+  }
+
+  void TearDownOnMainThread() override {
+    if (auto* controller =
+            ContextualTasksEphemeralButtonController::From(browser())) {
+      controller->SetTaskRunnerForTesting(nullptr);
+    }
+    task_runner_.reset();
+    ContextualTasksEphemeralButtonInteractiveTest::TearDownOnMainThread();
+  }
+
+  auto FastForwardBy(base::TimeDelta delta) {
+    return Do([this, delta]() { task_runner_->FastForwardBy(delta); });
+  }
+
+ private:
+  scoped_refptr<base::TestMockTimeTaskRunner> task_runner_;
+};
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonAutoDismissInteractiveTest,
+                       AutoDismissHidesButtonAndDisassociatesTaskAfterTimeout) {
+  base::UserActionTester user_action_tester;
+  base::HistogramTester histogram_tester;
+
+  RunTestSequence(
+      SignIntoEligibleAccount(), InstrumentTab(kFirstTab),
+      AddInstrumentedTab(kSecondTab, GetTestURL()),
+      SelectTab(kTabStripElementId, 0),
+      EnsureNotPresent(kContextualTasksEphemeralToolbarButtonElementId),
+      CreateTaskForTab(0), SimulateOpeningContextualTaskSidePanel(),
+      SimulateClosingContextualTaskSidePanel(),
+      WaitForShow(kContextualTasksEphemeralToolbarButtonElementId),
+      // Fast-forward the mock clock so the auto-dismiss timer fires and hides
+      // the ephemeral button.
+      FastForwardBy(base::Minutes(120)),
+      WaitForHide(kContextualTasksEphemeralToolbarButtonElementId),
+      Do([&]() {
+        EXPECT_EQ(1, user_action_tester.GetActionCount(
+                         "ContextualTasks.EphemeralToolbarButton."
+                         "AutoDismissed"));
+        histogram_tester.ExpectUniqueSample(
+            "ContextualTasks.EphemeralToolbarButton.AutoDismissed", 120, 1);
+      }),
+      Check([this]() {
+        content::WebContents* const web_contents =
+            browser()->GetTabStripModel()->GetWebContentsAt(0);
+        SessionID session_id =
+            sessions::SessionTabHelper::IdForTab(web_contents);
+        return !GetContextualTasksService()
+                    ->GetContextualTaskForTab(session_id)
+                    .has_value();
+      }));
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonAutoDismissInteractiveTest,
+                       ReopeningSidePanelCancelsAutoDismissTimer) {
+  RunTestSequence(
+      SignIntoEligibleAccount(), InstrumentTab(kFirstTab),
+      AddInstrumentedTab(kSecondTab, GetTestURL()),
+      SelectTab(kTabStripElementId, 0),
+      EnsureNotPresent(kContextualTasksEphemeralToolbarButtonElementId),
+      CreateTaskForTab(0), SimulateOpeningContextualTaskSidePanel(),
+      SimulateClosingContextualTaskSidePanel(),
+      WaitForShow(kContextualTasksEphemeralToolbarButtonElementId),
+      Check([this]() {
+        content::WebContents* const web_contents =
+            browser()->GetTabStripModel()->GetWebContentsAt(0);
+        SessionID session_id =
+            sessions::SessionTabHelper::IdForTab(web_contents);
+        auto* controller =
+            ContextualTasksEphemeralButtonController::From(browser());
+        return controller &&
+               controller->HasAutoDismissTimerForTesting(session_id);
+      }),
+      // Reopening the side panel cancels the pending auto-dismiss timer.
+      SimulateOpeningContextualTaskSidePanel(),
+      WaitForHide(kContextualTasksEphemeralToolbarButtonElementId),
+      Check([this]() {
+        content::WebContents* const web_contents =
+            browser()->GetTabStripModel()->GetWebContentsAt(0);
+        SessionID session_id =
+            sessions::SessionTabHelper::IdForTab(web_contents);
+        auto* controller =
+            ContextualTasksEphemeralButtonController::From(browser());
+        return controller &&
+               !controller->HasAutoDismissTimerForTesting(session_id);
+      }),
+      // Closing the side panel again restarts the auto-dismiss timer, which
+      // then hides the button when it expires.
+      SimulateClosingContextualTaskSidePanel(),
+      WaitForShow(kContextualTasksEphemeralToolbarButtonElementId),
+      FastForwardBy(base::Minutes(120)),
+      WaitForHide(kContextualTasksEphemeralToolbarButtonElementId));
+}
+
+class ContextualTasksEphemeralButtonCloseSidePanelContextMenuInteractiveTest
+    : public ContextualTasksEphemeralButtonInteractiveTest {
+ public:
+  std::vector<base::test::FeatureRefAndParams> GetEnabledFeatures() override {
+    return {
+        {contextual_tasks::kContextualTasks,
+         {{"ContextualTasksExpandButtonOptions", "toolbar-close-button"}}},
+        {contextual_tasks::kContextualTasksEphemeralBrandedEntryPoint,
+         {{"ContextualTasksEntryPoint", "toolbar-ephemeral-branded"}}},
+        {contextual_tasks::kContextualTasksHideCloseButtonInVerticalTabs, {}},
+        {contextual_tasks::kEnableContextualTasksPinButtonInToolbar, {}},
+        {contextual_tasks::kContextualTasksEphemeralButtonContextMenu,
+         {{"ContextualTasksEphemeralButtonContextMenuCloseSidePanel",
+           "true"}}}};
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksEphemeralButtonCloseSidePanelContextMenuInteractiveTest,
+    RightClickShowsCloseSidePanelAndRemovesButton) {
+  RunTestSequence(
+      SignIntoEligibleAccount(), InstrumentTab(kFirstTab),
+      AddInstrumentedTab(kSecondTab, GetTestURL()),
+      SelectTab(kTabStripElementId, 0),
+      EnsureNotPresent(kContextualTasksEphemeralToolbarButtonElementId),
+      CreateTaskForTab(0), SimulateOpeningContextualTaskSidePanel(),
+      SimulateClosingContextualTaskSidePanel(),
+      WaitForShow(kContextualTasksEphemeralToolbarButtonElementId),
+      WithView(kContextualTasksEphemeralToolbarButtonElementId,
+               [](views::View* view) {
+                 view->GetWidget()->LayoutRootViewIfNecessary();
+               }),
+      MoveMouseTo(kContextualTasksEphemeralToolbarButtonElementId),
+      ClickMouse(ui_controls::RIGHT),
+      WaitForShow(ContextualTasksButton::
+                      kContextualTasksEphemeralButtonRemoveForTaskMenuItem),
+      CheckViewProperty(
+          ContextualTasksButton::
+              kContextualTasksEphemeralButtonRemoveForTaskMenuItem,
+          &views::MenuItemView::title,
+          l10n_util::GetStringUTF16(
+              IDS_CONTEXTUAL_TASKS_EPHEMERAL_BUTTON_CONTEXT_MENU_CLOSE)),
+      SelectMenuItem(ContextualTasksButton::
+                         kContextualTasksEphemeralButtonRemoveForTaskMenuItem),
+      WaitForHide(kContextualTasksEphemeralToolbarButtonElementId));
 }

@@ -3742,8 +3742,6 @@ Si se inhabilita <ph name="NTPCARDSVISIBLE" />, no se mostrará la tarjeta de Ou
       Si se inhabilita la política, los dispositivos registrados no enviarán información sobre las sesiones activas del kiosko.</translation>
 <translation id="3303770131697159224">Configuración predeterminada del permiso de gestión de ventanas</translation>
 <translation id="3303911765031636277">Política de configuración para el conector OnFileAttached de Chrome Enterprise Connectors</translation>
-<translation id="3305586786770047829">Si se le asigna el valor 0 a esta política o no se define, la política <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> solo se aplicará al permiso de usuario para los usuarios afiliados.
-Si se le asigna el valor 1 a esta política, la política <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> se aplicará al permiso de usuario, aunque ese usuario no esté afiliado.</translation>
 <translation id="3307744348419745296">No permitir que las configuraciones de la red Wi‑Fi se sincronicen en los dispositivos <ph name="PRODUCT_OS_NAME" /> y en un teléfono Android conectado</translation>
 <translation id="3308724602356134956">Si se le asigna un valor a esta política, <ph name="PRODUCT_OS_NAME" />
 
@@ -6622,19 +6620,6 @@ Esta política es una tregua temporal para dar tiempo a la adaptación del conte
 <translation id="5120168808610189805">Habilitar la importación de la página principal en la primera ejecución</translation>
 <translation id="5124321040285474825">Configuración de las funciones de IA generativa en Autocompletar</translation>
 <translation id="5124368997194894978">Habilitar el inicio con CA (corriente alterna)</translation>
-<translation id="5124652340668722849">Configura una lista de dominios de aprovisionamiento (PvDs) que <ph name="PRODUCT_NAME" /> usará para obtener configuraciones de proxy de forma dinámica.
-
-Esta política permite especificar una lista de nombres de dominio o URIs de recursos que representan dominios de aprovisionamiento tal como se define en el RFC 8801 ("Discovering Provisioning Domain Names and Data"). Por cada PvD, el navegador resuelve la configuración JSON correspondiente haciendo una solicitud HTTPS a la ruta de endpoint conocida "https://[<ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />]/.well-known/pvd".
-
-Cada entrada de la lista especifica lo siguiente:
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />: el identificador del dominio de aprovisionamiento (un nombre de dominio).
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_AUTH_CONFIG" />: la configuración de autenticación opcional. Si no se configura o se le asigna el valor "none", no se realiza ninguna autenticación. Si se le asigna el valor "profile_bearer_token", el navegador obtiene un token de acceso OAuth2 con el permiso proporcionado para la cuenta principal con la que se ha iniciado sesión y lo adjunta al encabezado "Authorization" como token de "portador".
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_EXTRA_HEADERS" />: lista opcional de encabezados HTTP personalizados que se incluirán al consultar al endpoint de PvD. Se pueden inyectar valores dinámicos, como "profile_id" (que representa un identificador único y estable del perfil de navegador en el dispositivo, lo que permite la segmentación de la configuración por perfil) o "accept_language" (que representa los idiomas preferidos del navegador).
-
-Las configuraciones obtenidas se analizan de acuerdo con el esquema RFC 8801. Solo se aplican las reglas de enrutamiento y los proxies relacionados con la configuración de proxy de la carga útil JSON del PvD. Si no se define esta política, no se consultará ni se usará ningún dominio de aprovisionamiento para obtener configuraciones de proxy.</translation>
 <translation id="5130213897914754028">Impedir que los sitios usen SharedArrayBuffers</translation>
 <translation id="5130935469849337738">Ofrecer traducción siempre</translation>
 <translation id="513314432051760916">Política para controlar si se puede inhabilitar la opción de medición de anuncios de <ph name="PRIVACY_SANDBOX_NAME" /> para los usuarios.
@@ -8706,17 +8691,6 @@ Nota: Esta política solo se aplica a las plataformas compatibles con extensione
       Si se le asigna el valor "Inhabilitada", los Signed HTTP Exchanges no se podrán cargar.</translation>
 <translation id="6368011194414932347">Configurar la URL de la página principal</translation>
 <translation id="6368403635025849609">Permitir JavaScript en estos sitios</translation>
-<translation id="6368652917086795891">Configura los ajustes de conexión de <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> en <ph name="PRODUCT_NAME" />.
-
-Esta política se va a sustituir por la política <ph name="GEMINI_ENTERPRISE_URL_POLICY_NAME" />. Si se definen ambas, <ph name="GEMINI_ENTERPRISE_URL_POLICY_NAME" /> tiene prioridad.
-
-La política configura la URL de la aplicación web de <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> mediante <ph name="GEMINI_ENTERPRISE_SETTINGS_URL_POLICY_VALUE" />, que debe ser una URL válida que use el esquema https, apunte a un dominio de <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> y no incluya ningún nombre de usuario ni contraseña. Si no cumple estos requisitos, la política se ignorará y <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> se quedará sin configurar.
-
-Si se define esta política, se configurará <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> para los usuarios que hayan iniciado sesión con una cuenta gestionada o en un navegador gestionado.
-
-Si no se define esta política, no se configurará <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" />.
-
-Ten en cuenta que esta política no controla la integración general de <ph name="GOOGLE_GEMINI_PRODUCT_NAME" />, que se puede controlar mediante la política <ph name="GEMINI_SETTINGS_POLICY_NAME" />.</translation>
 <translation id="6368671810229507360">WebRTC</translation>
 <translation id="6370742079247037704">No permitir el uso de las APIs de IA integradas.</translation>
 <translation id="6371005337713685988">Configuración de Conjuntos de sitios web relacionados</translation>
@@ -9515,15 +9489,6 @@ NOTA: Solo los procesos de renderizado que se hayan iniciado recientemente refle
 <translation id="6833988859168635883">Inicio, Página principal y página Nueva pestaña</translation>
 <translation id="6835254082476223414">Habilitar las funciones de copia de seguridad y restauración de las máquinas virtuales de Linux</translation>
 <translation id="6835883744948188639">Mostrar un mensaje periódico al usuario indicando que se recomienda reiniciar el navegador</translation>
-<translation id="683688607121170501">Esta opción permite que los usuarios cambien de una cuenta de Google a otra en el área de contenido de la ventana de su navegador y en las aplicaciones de Android después de haber iniciado sesión en su dispositivo <ph name="PRODUCT_OS_NAME" />.
-
-      Si se le asigna el valor false a esta política, los usuarios no podrán iniciar sesión en otra cuenta de Google desde el área de contenido de un navegador que no esté en modo de navegación de incógnito ni en las aplicaciones de Android.
-
-      Si no se asigna ningún valor a esta política o se le asigna el valor true, se utilizará el comportamiento predeterminado: los usuarios podrán iniciar sesión en otra cuenta de Google desde el área de contenido del navegador y las aplicaciones de Android, excepto en el caso de cuentas de niños, en las que se bloqueará esta política en el área de contenido de los navegadores que no estén en modo de navegación de incógnito.
-
-      En caso de que no deba permitirse iniciar sesión en otra cuenta a través del modo de navegación de incógnito, este se puede bloquear con la política IncognitoModeAvailability.
-
-      Ten en cuenta que los usuarios podrán acceder a los servicios de Google sin tener que identificarse bloqueando las cookies.</translation>
 <translation id="6841254611279513739">Si se define esta política, establece el modo de impresión: solo en color, solo monocromo o sin restricción. Si no se le asigna ningún valor a esta política, no se aplica ninguna restricción.</translation>
 <translation id="6843008643303282259">Velocidad de subida deseada en kilobits por segundo.</translation>
 <translation id="6843296367238757293">Esta política está obsoleta. Te recomendamos que no la utilices. Consulta https://support.google.com/chrome/a/answer/7643500</translation>
@@ -10628,7 +10593,6 @@ Ten en cuenta que esta política no controla la integración general de <ph name
 <translation id="7491720878670299691">Intervalo en el que se consultan los datos de red y se comprueba si hay eventos. El valor mínimo permitido es 1 minuto.
 
       Si no se establece esta política, se aplicará el intervalo predeterminado de 1 minuto.</translation>
-<translation id="7496284563199466390">Controla qué usuarios gestionados pueden definir la política <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" />.</translation>
 <translation id="7498595166686106721">
       La política de permisos mostrar-capturar ofrece acceso a getDisplayMedia() según esta especificación: https://www.w3.org/TR/screen-capture/#feature-policy-integration Sin embargo, si se inhabilita esta política, no se implementará obligatoriamente este requisito y se permitirá acceder a getDisplayMedia() desde contextos que, si la política estuviera habilitada, estarían prohibidos Esta política de Enterprise es temporal. Está previsto que se retire a partir de la versión 100 de <ph name="PRODUCT_NAME" />. Está pensada para desbloquear a los usuarios de Enterprise cuyas aplicaciones no cumplan las especificaciones, pero necesiten tiempo para solucionarlo.
 

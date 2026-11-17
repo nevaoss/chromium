@@ -1469,7 +1469,7 @@ void FeatureList::RegisterOverride(std::string_view feature_name,
     if (found != overrides_.end() &&
         found->second.overridden_state == OVERRIDE_USE_DEFAULT) {
       // Also, keep the existing trial if a null trial was passed.
-      auto* trial = field_trial ? field_trial : &*found->second.field_trial;
+      auto* trial = field_trial ? field_trial : found->second.field_trial.get();
       found->second = OverrideEntry(overridden_state, trial);
       return;
     }
@@ -1541,14 +1541,11 @@ void FeatureList::GetFeatureOverridesImpl(std::string* enable_overrides,
 bool FeatureList::CheckFeatureIdentity(const Feature& feature) const {
   AutoLock auto_lock(feature_identity_tracker_lock_);
 
-  auto it = feature_identity_tracker_.find(feature.name);
-  if (it == feature_identity_tracker_.end()) {
-    // If it's not tracked yet, register it.
-    feature_identity_tracker_[feature.name] = &feature;
-    return true;
-  }
-  // Compare address of |feature| to the existing tracked entry.
-  return it->second == &feature;
+  auto [it, inserted] =
+      feature_identity_tracker_.try_emplace(feature.name, &feature);
+  // If it wasn't tracked yet, it is now registered; otherwise compare the
+  // address of `feature` to the existing tracked entry.
+  return inserted || it->second == &feature;
 }
 
 bool FeatureList::IsEarlyAccessInstance() const {

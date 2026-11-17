@@ -455,7 +455,9 @@ void BookmarkBridge::GetTopLevelFolderIds(
     int32_t j_force_visible_mask,
     const JavaRef<jobject>& j_result_obj) {
   CHECK_CURRENTLY_ON(BrowserThread::UI, base::NotFatalUntil::M161);
-  CHECK(IsLoaded(), base::NotFatalUntil::M161);
+  // TODO(crbug.com/574121399): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(IsLoaded());
 
   AddBookmarkNodesToBookmarkIdList(
       env, j_result_obj,
@@ -818,7 +820,9 @@ int32_t BookmarkBridge::GetTotalBookmarkCount(JNIEnv* env,
                                               int64_t id,
                                               int32_t type) {
   CHECK_CURRENTLY_ON(BrowserThread::UI, base::NotFatalUntil::M161);
-  CHECK(IsLoaded(), base::NotFatalUntil::M161);
+  // TODO(crbug.com/574131894): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(IsLoaded());
 
   std::queue<const BookmarkNode*> nodes;
   const BookmarkNode* parent = GetNodeByID(id, type);
@@ -1476,7 +1480,9 @@ bool BookmarkBridge::IsManaged(const BookmarkNode* node) const {
 }
 
 const BookmarkNode* BookmarkBridge::GetParentNode(const BookmarkNode* node) {
-  CHECK(IsLoaded(), base::NotFatalUntil::M161);
+  // TODO(crbug.com/573810976): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(IsLoaded());
   if (node == partner_bookmarks_shim_->GetPartnerBookmarksRoot())
     return bookmark_model_->mobile_node();
 

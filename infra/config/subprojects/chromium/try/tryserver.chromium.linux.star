@@ -525,7 +525,9 @@ try_.builder(
     ssd = True,
     contact_team_email = "chrome-devtools@google.com",
     cq_settings = try_.cq_settings(
-        includable_only = True,
+        location_filters = [
+            "third_party/chromium-bidi/.+",
+        ],
     ),
     main_list_view = "try",
 )
@@ -1091,7 +1093,6 @@ try_.builder(
     cores = 32,
     ssd = True,
     execution_timeout = 5 * time.hour,
-    notifies = ["chrome-rust-toolchain"],
     properties = {
         "disable_tbi": True,
         "$build/chromium_toolchain": {
@@ -1113,7 +1114,6 @@ try_.builder(
     cores = 32,
     ssd = True,
     execution_timeout = 5 * time.hour,
-    notifies = ["chrome-rust-toolchain"],
 )
 
 try_.builder(

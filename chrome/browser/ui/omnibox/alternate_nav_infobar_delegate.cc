@@ -15,7 +15,6 @@
 #include "chrome/browser/autocomplete/shortcuts_backend_factory.h"
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/ui_features.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/history/core/browser/history_service.h"
 #include "components/infobars/content/content_infobar_manager.h"
@@ -61,10 +60,7 @@ const gfx::VectorIcon& AlternateNavInfoBarDelegate::GetVectorIcon() const {
 }
 
 std::u16string AlternateNavInfoBarDelegate::GetLinkText() const {
-  if (base::FeatureList::IsEnabled(features::kInfoBarInlineLinks)) {
-    return std::u16string();
-  }
-  return base::UTF8ToUTF16(destination_url_.spec());
+  return std::u16string();
 }
 
 GURL AlternateNavInfoBarDelegate::GetLinkURL() const {
@@ -73,7 +69,7 @@ GURL AlternateNavInfoBarDelegate::GetLinkURL() const {
 
 bool AlternateNavInfoBarDelegate::LinkClicked(
     WindowOpenDisposition disposition) {
-  DCHECK(match_);
+  CHECK(match_, base::NotFatalUntil::M162);
   history::HistoryService* const history_service =
       HistoryServiceFactory::GetForProfile(profile_,
                                            ServiceAccessType::IMPLICIT_ACCESS);
@@ -141,11 +137,12 @@ AlternateNavInfoBarDelegate::AlternateNavInfoBarDelegate(
       destination_url_(destination_url),
       original_url_(original_url) {
   if (match_) {
-    DCHECK_EQ(destination_url_, match_->destination_url);
+    CHECK_EQ(destination_url_, match_->destination_url,
+             base::NotFatalUntil::M162);
   }
 
-  DCHECK(destination_url_.is_valid());
-  DCHECK(original_url_.is_valid());
+  CHECK(destination_url_.is_valid(), base::NotFatalUntil::M162);
+  CHECK(original_url_.is_valid(), base::NotFatalUntil::M162);
 
   substitutions_.emplace_back(base::UTF8ToUTF16(destination_url_.spec()),
                               /*is_link=*/true, std::nullopt);

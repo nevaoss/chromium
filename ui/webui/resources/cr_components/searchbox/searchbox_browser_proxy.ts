@@ -14,7 +14,7 @@
 
 import type {Action, AutocompleteMatch, AutocompleteResult, InputKeywordModel, MatchKeywordModel, PageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {KeywordType, PageCallbackRouter, PageHandlerFactory, PageHandlerRemote} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import {SecondaryTextPlacement, SuggestStyle} from '//resources/mojo/components/omnibox/browser/suggest_template_info.mojom-webui.js';
+import {ColorType, IconType, SecondaryTextPlacement, SuggestStyle} from '//resources/mojo/components/omnibox/browser/suggest_template_info.mojom-webui.js';
 import type {FormattedString, FormattedStringFragment, SuggestTemplateInfo} from '//resources/mojo/components/omnibox/browser/suggest_template_info.mojom-webui.js';
 
 export function createAutocompleteMatch(
@@ -40,7 +40,6 @@ export function createAutocompleteMatch(
     type: '',
     tailSuggestCommonPrefix: null,
     keywordModel: null,
-    fuseboxAction: null,
     suggestTemplate: createSuggestTemplateInfo(),
     urlEmphasis: null,
   };
@@ -58,12 +57,12 @@ export function createSuggestTemplateInfo(
     modifiers: Partial<SuggestTemplateInfo> = {}): SuggestTemplateInfo {
   const base: SuggestTemplateInfo = {
     primaryText: createFormattedString(),
-    primaryTextClass: [{offset: 0, style: 0}],
     secondaryText: createFormattedString(),
-    secondaryTextClass: [{offset: 0, style: 0}],
     secondaryTextPlacement: SecondaryTextPlacement.kUnspecified,
     image: null,
     style: SuggestStyle.kUnspecified,
+    typeIcon: IconType.kIconTypeUnspecified,
+    fuseboxAction: null,
   };
 
   return Object.assign(base, modifiers);
@@ -86,6 +85,11 @@ export function createAutocompleteResultForTesting(
 
 export function createSearchMatchForTesting(
     modifiers: Partial<AutocompleteMatch> = {}): AutocompleteMatch {
+  const dimFragment: FormattedStringFragment = {
+    startIndex: 0,
+    color: ColorType.kOnSurfaceDeemphasis,
+    isBolded: false,
+  };
   const base = createAutocompleteMatch({
     isSearchType: true,
     destinationUrl: 'https://www.google.com/search?q=hello+world',
@@ -93,8 +97,7 @@ export function createSearchMatchForTesting(
     type: 'search-what-you-typed',
     suggestTemplate: createSuggestTemplateInfo({
       primaryText: createFormattedString('hello world'),
-      secondaryText: createFormattedString('Google search'),
-      secondaryTextClass: [{offset: 0, style: 4}],
+      secondaryText: createFormattedString('Google search', [dimFragment]),
     }),
   });
 

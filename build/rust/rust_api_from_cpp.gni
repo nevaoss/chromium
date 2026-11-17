@@ -29,11 +29,14 @@ _globally_enabled_crubit_features = [
   # opt-in (to enable incremental migration of other Crubit clients).
   "layout_compat_optional",
 
+  # `template_instantiation` makes Crubit generate bindings for class template
+  # specializations (e.g. `base::IdType64<FooTag>`) used by the C++ headers.
+  "template_instantiation",
+
   # Other features to consider enabling by default:
   # TODO(crbug.com/40226863): Consider enabling `forward_declare`.
   # TODO(crbug.com/40226863): Consider enabling `layout_compat_string`.
   # TODO(crbug.com/40226863): Consider enabling `layout_compat_tuple`.
-  # TODO(crbug.com/40226863): Consider enabling `template_instantiation`.
 ]
 
 # Template to generate and build Rust bindings for a set of C++ headers using
@@ -105,6 +108,14 @@ _globally_enabled_crubit_features = [
 #     Internal parameters, used only by `//build/rust/crubit:cc_std` (bindings
 #     for the C++ standard library) to provide the target label and crate name
 #     that Crubit expects for `cc_std`.
+#
+#   internal_headers: (optional)
+#     Internal parameter, used only by `//build/rust/crubit:cc_std`.  A list of
+#     internal .h files of the target (e.g. `__memory/unique_ptr.h` from
+#     libc++).  Unlike `public_headers`, these headers are not `#include`d
+#     directly by the generated code.  But Crubit needs to know that C++
+#     declarations from these headers (e.g. `std::unique_ptr`) belong to this
+#     target.
 template("rust_api_from_cpp") {
   assert(enable_rust_api_from_cpp)
   assert(enable_rust)
@@ -136,6 +147,12 @@ template("rust_api_from_cpp") {
   _rebased_public_headers = []
   foreach(hdr, invoker.public_headers) {
     _rebased_public_headers += [ rebase_path(hdr, root_build_dir) ]
+  }
+
+  _rebased_target_headers = _rebased_public_headers
+  if (defined(invoker.internal_headers)) {
+    _rebased_target_headers +=
+        rebase_path(invoker.internal_headers, root_build_dir)
   }
 
   # Optional parameter: testonly.
@@ -265,7 +282,7 @@ template("rust_api_from_cpp") {
       crubit_target_and_args = [
         {
           t = _current_lib_target_full_label
-          h = _rebased_public_headers
+          h = _rebased_target_headers
           f = _globally_enabled_crubit_features
           c = _lib_target_crate_name
         },

@@ -32,10 +32,8 @@ import static org.chromium.ui.test.util.MockitoHelper.clearInvocations;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -295,7 +293,6 @@ public class FuseboxMediatorUnitTest {
     @Captor private ArgumentCaptor<PropertyModel> mScrimModelCaptor;
 
     private Context mContext;
-    private Resources mResources;
     private PropertyModel mModel;
     private FuseboxMediator mMediator;
     private FuseboxAttachmentModelList mAttachments;
@@ -329,15 +326,15 @@ public class FuseboxMediatorUnitTest {
                 new ContextThemeWrapper(
                         ApplicationProvider.getApplicationContext(),
                         R.style.Theme_BrowserUI_DayNight);
-        mResources = mContext.getResources();
-        mResourceProvider = new OmniboxResourceProvider(mContext, BrandedColorScheme.APP_DEFAULT);
+        mResourceProvider =
+                new OmniboxResourceProvider(
+                        mContext, BrandedColorScheme.APP_DEFAULT, mTabFaviconFactory);
         mModel = new PropertyModel(FuseboxProperties.ALL_KEYS);
         mModel.set(FuseboxProperties.POPUP_STATE, PopupState.HIDDEN);
         mModel.set(FuseboxProperties.FUSEBOX_LAYOUT_MODE, FuseboxLayoutMode.TOOLBAR);
 
         mAttachments = new FuseboxAttachmentModelList();
         mAttachments.setComposeboxQueryControllerBridge(mComposeboxQueryControllerBridge);
-        OmniboxResourceProvider.setTabFaviconFactory(mTabFaviconFactory);
         lenient().doReturn(BITMAP).when(mTabFaviconFactory).apply(any());
         lenient()
                 .when(mComposeboxQueryControllerBridge.getInputStateSupplier())
@@ -482,7 +479,6 @@ public class FuseboxMediatorUnitTest {
                 FuseboxAttachment.forTab(
                         tab,
                         /* bypassTabCache= */ false,
-                        mResources,
                         FuseboxAttachmentButtonType.TAB_PICKER,
                         /* isSuggestedTab= */ false));
         RobolectricUtil.runAllBackgroundAndUi();
@@ -501,7 +497,6 @@ public class FuseboxMediatorUnitTest {
                     FuseboxAttachment.forTab(
                             mockTab,
                             /* bypassTabCache= */ false,
-                            mResources,
                             FuseboxAttachmentButtonType.TAB_PICKER,
                             /* isSuggestedTab= */ false);
         } else if (attachmentType == FuseboxAttachmentType.ATTACHMENT_FILE) {
@@ -1230,13 +1225,11 @@ public class FuseboxMediatorUnitTest {
         assertTrue(mModel.get(FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_VISIBLE));
         assertNull(mModel.get(FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_FAVICON));
 
-        doReturn(BITMAP).when(mTabFaviconFactory).apply(any());
         doReturn("token").when(mComposeboxQueryControllerBridge).addTabContext(mTab1, false);
         assertFalse(mMediator.wasPopupItemSelected());
         mModel.get(FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_CLICKED).run();
         assertTrue(mMediator.wasPopupItemSelected());
         verify(mComposeboxQueryControllerBridge).addTabContext(mTab1, false);
-        assertEquals(BITMAP, ((BitmapDrawable) mAttachments.get(0).thumbnail).getBitmap());
 
         doReturn(mTab2).when(mTabModelSelector).getCurrentTab();
         mModel.get(FuseboxProperties.PLUS_BUTTON_CLICKED).run();

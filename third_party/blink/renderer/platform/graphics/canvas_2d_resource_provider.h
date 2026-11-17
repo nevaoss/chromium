@@ -25,17 +25,13 @@
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_snapshot_info.h"
 #include "third_party/blink/renderer/platform/graphics/flush_for_image_listener.h"
-#include "third_party/blink/renderer/platform/graphics/image_orientation.h"
 #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/scoped_raster_timer.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
-#include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/web_graphics_context_3d_provider_wrapper.h"
-#include "third_party/blink/renderer/platform/instrumentation/canvas_memory_dump_provider.h"
 #include "third_party/blink/renderer/platform/wtf/thread_specific.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
-#include "third_party/skia/include/core/SkSurface.h"
 #include "third_party/skia/include/gpu/ganesh/GrTypes.h"
 
 namespace gpu {
@@ -108,13 +104,11 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
       public WebGraphicsContext3DProviderWrapper::DestructionObserver,
       public viz::ContextLostObserver,
       public BitmapGpuChannelLostObserver,
-      public CanvasMemoryDumpClient,
       public ScopedRasterTimer::Host {
  public:
   constexpr static base::TimeDelta kUnusedResourceExpirationTime =
       base::Seconds(5);
 
-  // The returned instance will have been cleared at creation.
   static std::unique_ptr<Canvas2DResourceProvider> CreateWithClear(
       gfx::Size size,
       viz::SharedImageFormat format,
@@ -147,7 +141,6 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
       RasterMode raster_mode,
       gpu::SharedImageUsageSet shared_image_usage_flags);
 
-  // The returned instance will have been cleared at creation.
   static std::unique_ptr<Canvas2DResourceProvider>
   CreateWithClearForSoftwareCompositor(
       gfx::Size size,
@@ -178,15 +171,17 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
   int NumInflightResourcesForTesting() const { return num_inflight_resources_; }
   base::ByteSize EstimatedSizeInBytes() const;
 
-  scoped_refptr<CanvasResource> ProduceCanvasResource();
+  scoped_refptr<CanvasResource> ProduceCanvasResource(SkSurface* surface);
   void OnFlushForImage(cc::PaintImage::ContentId content_id);
 
   bool IsValid() const;
-  scoped_refptr<StaticBitmapImage> Snapshot(
-      ImageOrientation = ImageOrientationEnum::kDefault);
+  scoped_refptr<StaticBitmapImage> Snapshot();
 
   void SetAnimatedImageFrameIndexes(
       scoped_refptr<const cc::AnimatedImageFrameIndexMap>);
+  // Notifies before any unaccelerated drawing will be done on the resource used
+  // by this provider.
+  void WillDrawUnaccelerated();
   bool WritePixels(const SkImageInfo& orig_info,
                    const void* pixels,
                    size_t row_bytes,
@@ -201,6 +196,7 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
   gpu::raster::RasterInterface* RasterInterface() const;
   bool IsGraphite() const;
   void RecordingCleared();
+  void OnMemoryDump(base::trace_event::ProcessMemoryDump* pmd);
 
  private:
   Canvas2DResourceProvider(gfx::Size,
@@ -220,9 +216,6 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
                            WebGraphicsSharedImageInterfaceProvider*,
                            base::OnceClosure context_lost_callback = {});
 
-  scoped_refptr<UnacceleratedStaticBitmapImage> UnacceleratedSnapshot(
-      ImageOrientation);
-
   void ClearUnusedResources();
   bool IsGpuContextLost() const;
 
@@ -231,27 +224,16 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
   void OnResourceRefReturned(
       scoped_refptr<CanvasResourceSharedImage>&& resource) override;
   void OnDestroyResource() override { --num_inflight_resources_; }
-  // CanvasMemoryDumpClient implementation.
-  void OnMemoryDump(base::trace_event::ProcessMemoryDump* pmd) override;
-  size_t GetSize() const override;
 
   void EnsureWriteAccess();
-  void EndWriteAccess();
+  void EndWriteAccess(SkSurface* surface);
 
   scoped_refptr<CanvasResourceSharedImage> NewOrRecycledResource();
-
-  SkSurface* GetSkSurface() const;
-  CanvasImageProvider* GetOrCreateSWCanvasImageProvider();
 
   base::WeakPtr<WebGraphicsContext3DProviderWrapper> ContextProviderWrapper()
       const {
     return context_provider_wrapper_;
   }
-
-  // Should only be called from static Create*() methods.
-  // TODO(crbug.com/352263194): Eliminate this method by inlining its body at
-  // callsites.
-  void ClearAtCreation();
 
   // viz::ContextLostObserver implementation.
   void OnContextLost() override;
@@ -264,13 +246,6 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
 
   CanvasImageProvider* GetOrCreateCanvasImageProvider();
   void EnsureResourceReadyForDraw();
-
-  // Notifies before any unaccelerated drawing will be done on the resource used
-  // by this provider.
-  void WillDrawUnaccelerated();
-
-  SkSurfaceProps GetSkSurfaceProps() const;
-  sk_sp<SkSurface> CreateSkSurface() const;
 
   base::WeakPtr<Canvas2DResourceProvider> CreateWeakPtr();
 
@@ -332,11 +307,6 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
   gfx::HDRMetadata hdr_metadata_;
 
   base::OnceClosure context_lost_callback_;
-  mutable sk_sp<SkSurface> surface_;
-  const cc::PaintImage::Id snapshot_paint_image_id_;
-  cc::PaintImage::ContentId snapshot_paint_image_content_id_ =
-      cc::PaintImage::kInvalidContentId;
-  uint32_t snapshot_sk_image_id_ = 0u;
 
   base::WeakPtrFactory<Canvas2DResourceProvider> weak_ptr_factory_{this};
 };

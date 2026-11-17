@@ -574,7 +574,9 @@ String LocalDOMWindow::CheckAndGetJavascriptUrl(
   return script_source;
 }
 
-void LocalDOMWindow::ExceptionThrown(ErrorEvent* event) {
+void LocalDOMWindow::ExceptionThrown(
+    ErrorEvent* event,
+    SanitizeScriptErrors sanitize_script_errors) {
   MainThreadDebugger::Instance(GetIsolate())->ExceptionThrown(this, event);
 }
 
@@ -1684,11 +1686,11 @@ bool LocalDOMWindow::offscreenBuffering() const {
   return true;
 }
 
-bool LocalDOMWindow::alwaysOnTop() const {
+bool LocalDOMWindow::alwaysOnTopPopup() const {
   if (!GetFrame() || !GetFrame()->GetPage()) {
     return false;
   }
-  return GetFrame()->GetPage()->AlwaysOnTop();
+  return GetFrame()->GetPage()->AlwaysOnTopPopup();
 }
 
 int LocalDOMWindow::outerHeight() const {

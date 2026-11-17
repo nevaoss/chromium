@@ -163,16 +163,11 @@ class LocalDeviceGtestRunTest(unittest.TestCase):
             'TestSuite2.TestName1',
             'TestSuite2.TestName2',
         ]
-        expected_shard0 = [
-            'TestSuite1.TestName2',
-            'TestSuite1.TestName1',
-        ]
-        expected_shard1 = [
-            ['TestSuite1.PRE_TestName3', 'TestSuite1.TestName3'],
-            ['TestSuite2.PRE_TestName1', 'TestSuite2.TestName1'],
-            'TestSuite2.TestName2',
-        ]
-        # Shuffle the tests two times to check if the output is deterministic.
+
+        self._obj._env.sharding_strategy = 'bounded-load'
+        expected_shard0 = self._obj._ApplyExternalSharding(tests, 0, 2)
+        expected_shard1 = self._obj._ApplyExternalSharding(tests, 1, 2)
+
         random.shuffle(tests)
         self.assertListEqual(
             self._obj._ApplyExternalSharding(tests, 0, 2), expected_shard0
@@ -320,6 +315,138 @@ class LocalDeviceGtestRunTest(unittest.TestCase):
             '/data/media/10/chrome/test/coverage/profraw',
             '/host/coverage/dir',
             '0',
+            as_root=True,
+        )
+
+    def test_SetUp_disables_system_animations(self):
+        for concurrent_adb in (False, True):
+            with self.subTest(concurrent_adb=concurrent_adb):
+                mock_env = mock.MagicMock(
+                    spec=local_device_environment.LocalDeviceEnvironment
+                )
+                mock_env.concurrent_adb = concurrent_adb
+                mock_env.force_main_user = False
+                mock_ti = mock.MagicMock(
+                    spec=gtest_test_instance.GtestTestInstance
+                )
+                mock_ti.use_existing_test_data = True
+                mock_ti.deploy_mock_openxr_runtime = False
+                mock_ti.GetDataDependencies.return_value = [[]]
+
+                device = mock.MagicMock()
+                device.serial = 'device_1'
+                device.RunShellCommand.return_value = ['1.0', '0.5', 'null']
+                mock_env.parallel_devices.pMap.side_effect = lambda f, args: [
+                    f(device, args[0])
+                ]
+
+                run = local_device_gtest_run.LocalDeviceGtestRun(
+                    mock_env, mock_ti
+                )
+                run._delegate = mock.MagicMock()
+                run.SetUp()
+
+                expected_cmd = (
+                    'settings get global window_animation_scale && '
+                    'settings get global transition_animation_scale && '
+                    'settings get global animator_duration_scale && '
+                    'settings put global window_animation_scale 0 && '
+                    'settings put global transition_animation_scale 0 && '
+                    'settings put global animator_duration_scale 0'
+                )
+                device.RunShellCommand.assert_called_once_with(
+                    expected_cmd, shell=True, check_return=True
+                )
+                self.assertEqual(
+                    run._saved_animation_scales['device_1'],
+                    ['1.0', '0.5', '1.0'],
+                )
+
+    def test_TearDown_restores_saved_animation_scales(self):
+        mock_env = mock.MagicMock(
+            spec=local_device_environment.LocalDeviceEnvironment
+        )
+        mock_ti = mock.MagicMock(spec=gtest_test_instance.GtestTestInstance)
+
+        device = mock.MagicMock()
+        device.serial = 'device_1'
+        mock_env.parallel_devices.pMap.side_effect = lambda f: [f(device)]
+
+        run = local_device_gtest_run.LocalDeviceGtestRun(mock_env, mock_ti)
+        run._saved_animation_scales = {'device_1': ['1.0', '0.5', '1.0']}
+        run.TearDown()
+
+        expected_cmd = (
+            'settings put global window_animation_scale 1.0 && '
+            'settings put global transition_animation_scale 0.5 && '
+            'settings put global animator_duration_scale 1.0'
+        )
+        mock_env.parallel_devices.pMap.assert_called_once()
+        device.RunShellCommand.assert_called_once_with(
+            expected_cmd, shell=True, check_return=True
+        )
+
+    def test_TearDown_skips_when_already_zero(self):
+        mock_env = mock.MagicMock(
+            spec=local_device_environment.LocalDeviceEnvironment
+        )
+        mock_ti = mock.MagicMock(spec=gtest_test_instance.GtestTestInstance)
+
+        device = mock.MagicMock()
+        device.serial = 'device_1'
+        mock_env.parallel_devices.pMap.side_effect = lambda f: [f(device)]
+
+        run = local_device_gtest_run.LocalDeviceGtestRun(mock_env, mock_ti)
+        run._saved_animation_scales = {'device_1': ['0', '0.0', '0']}
+        run.TearDown()
+
+        mock_env.parallel_devices.pMap.assert_called_once()
+        device.RunShellCommand.assert_not_called()
+
+    def test_TearDown_skips_when_sigterm_received(self):
+        mock_env = mock.MagicMock(
+            spec=local_device_environment.LocalDeviceEnvironment
+        )
+        mock_ti = mock.MagicMock(spec=gtest_test_instance.GtestTestInstance)
+
+        device = mock.MagicMock()
+        device.serial = 'device_1'
+        mock_env.parallel_devices.pMap.side_effect = lambda f: [f(device)]
+
+        run = local_device_gtest_run.LocalDeviceGtestRun(mock_env, mock_ti)
+        run._saved_animation_scales = {'device_1': ['1.0', '1.0', '1.0']}
+        run.ReceivedSigterm()
+        run.TearDown()
+
+        mock_env.parallel_devices.pMap.assert_not_called()
+        device.RunShellCommand.assert_not_called()
+
+    def test_SetUp_push_test_data_drops_caches_in_force_main_user(self):
+        device = mock.MagicMock()
+        device.ResolveSpecialPath.return_value = (
+            '/data/media/10/chromium_tests_root'
+        )
+        self._obj._env.force_main_user = True
+        self._obj._env.concurrent_adb = False
+        self._obj._env.parallel_devices.pMap.side_effect = lambda fn, *args: fn(
+            device, *args
+        )
+        self._obj._test_instance.use_existing_test_data = False
+        self._obj._test_instance.deploy_mock_openxr_runtime = False
+        self._obj._test_instance.GetDataDependencies.return_value = [
+            ('/host/foo', 'foo')
+        ]
+        self._obj._delegate = mock.MagicMock()
+        self._obj._delegate.GetTestDataRoot.return_value = (
+            '/sdcard/chromium_tests_root'
+        )
+
+        self._obj.SetUp()
+
+        device.RunShellCommand.assert_any_call(
+            'sync && echo 3 > /proc/sys/vm/drop_caches',
+            shell=True,
+            check_return=True,
             as_root=True,
         )
 

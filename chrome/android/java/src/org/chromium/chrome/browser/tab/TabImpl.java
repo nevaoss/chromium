@@ -2417,6 +2417,17 @@ class TabImpl implements Tab, TabInternal {
             title = mUrl.getSpec();
         } else if (isNativePage()) {
             title = mNativePage.getTitle();
+            // Keep the navigation entry title, which is used as the WebContents title, in sync
+            // with the native page title. The native page title may change after the page is
+            // shown, e.g. a PdfPage gets the file name once the PDF download completes. The
+            // renderer may also reset the entry title, e.g. once the empty placeholder document
+            // of a PdfPage finishes parsing.
+            WebContents webContents = getWebContents();
+            if (mNativeTabAndroid != 0
+                    && webContents != null
+                    && !TextUtils.equals(webContents.getTitle(), title)) {
+                pushNativePageStateToNavigationEntry();
+            }
         } else if (getWebContents() != null) {
             title = getWebContents().getTitle();
         }
@@ -2605,7 +2616,8 @@ class TabImpl implements Tab, TabInternal {
      *
      * @param webContents The WebContents object that will initialize all the browser components.
      */
-    private void initWebContents(WebContents webContents) {
+    @VisibleForTesting
+    void initWebContents(WebContents webContents) {
         assert !isDormant() : "Dormant tabs must never initialize WebContents.";
         assert mWebContents == null : "WebContents is already initialized for this Tab.";
         assert mWebContentsState == null : "Pending WebContentsState must be cleared first.";
@@ -2906,7 +2918,11 @@ class TabImpl implements Tab, TabInternal {
 
             if (!restored) {
                 assumeNonNull(failedRestoreUrl);
-                loadUrl(new LoadUrlParams(failedRestoreUrl, PageTransition.GENERATED));
+                LoadUrlParams params =
+                        new LoadUrlParams(failedRestoreUrl, PageTransition.GENERATED);
+                params.setIsRendererInitiated(true);
+                params.setInitiatorOrigin(Origin.createOpaqueOrigin());
+                loadUrl(params);
             }
         } finally {
             TraceEvent.end("Tab.unfreezeContents");

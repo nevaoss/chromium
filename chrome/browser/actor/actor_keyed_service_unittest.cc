@@ -396,23 +396,33 @@ TEST_F(ActorKeyedServiceTest, PendingTasksLifecycle) {
             last_notified_count = count;
           }));
 
+  std::vector<std::string> added_tasks;
+  base::CallbackListSubscription added_subscription =
+      actor_service->AddPendingTaskAddedCallback(
+          base::BindLambdaForTesting([&](const std::string& context_id) {
+            added_tasks.push_back(context_id);
+          }));
+
   // Adding a pending task fires notification.
   actor_service->AddPendingTask("msg-1");
   EXPECT_EQ(1, notification_call_count);
   EXPECT_EQ(1u, actor_service->GetPendingTasksCount());
   EXPECT_TRUE(actor_service->HasPendingTask("msg-1"));
   EXPECT_EQ(1u, last_notified_count);
+  EXPECT_THAT(added_tasks, testing::ElementsAre("msg-1"));
 
   // Duplicate addition is ignored and does NOT fire notification.
   actor_service->AddPendingTask("msg-1");
   EXPECT_EQ(1, notification_call_count);
   EXPECT_EQ(1u, actor_service->GetPendingTasksCount());
+  EXPECT_THAT(added_tasks, testing::ElementsAre("msg-1"));
 
   // Second pending task.
   actor_service->AddPendingTask("msg-2");
   EXPECT_EQ(2, notification_call_count);
   EXPECT_EQ(2u, actor_service->GetPendingTasksCount());
   EXPECT_EQ(2u, last_notified_count);
+  EXPECT_THAT(added_tasks, testing::ElementsAre("msg-1", "msg-2"));
 
   // Remove first pending task.
   actor_service->RemovePendingTask("msg-1");
@@ -450,28 +460,6 @@ TEST_F(ActorKeyedServiceTest, PendingTaskRemovedOnFailureAndCancellation) {
   actor_service->OnMessageTriggerTaskStopped("cancel-msg");
   EXPECT_EQ(0u, actor_service->GetPendingTasksCount());
   EXPECT_FALSE(actor_service->HasPendingTask("cancel-msg"));
-}
-
-TEST_F(ActorKeyedServiceTest, PendingTaskResolvedOnCreateTask) {
-  auto* actor_service = ActorKeyedService::Get(profile());
-  ASSERT_TRUE(actor_service);
-
-  actor_service->AddPendingTask("trigger-123");
-  EXPECT_EQ(1u, actor_service->GetPendingTasksCount());
-  EXPECT_TRUE(actor_service->HasPendingTask("trigger-123"));
-
-  TaskSourceInfo source_info(TaskSourceInfo::Client::kExperimentalActor,
-                             "trigger-123");
-
-  TaskId id = actor_service->CreateTaskWithOptions(
-      source_info, NoEnterprisePolicyChecker(), /*options=*/nullptr,
-      /*delegate=*/nullptr, ui_state_manager());
-  EXPECT_FALSE(id.is_null());
-
-  // Task is now active and removed from pending.
-  EXPECT_EQ(1u, actor_service->GetActiveTasksCount());
-  EXPECT_EQ(0u, actor_service->GetPendingTasksCount());
-  EXPECT_FALSE(actor_service->HasPendingTask("trigger-123"));
 }
 
 }  // namespace

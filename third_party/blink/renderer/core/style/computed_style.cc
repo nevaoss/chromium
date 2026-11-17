@@ -334,6 +334,10 @@ bool ComputedStyle::NeedsReattachLayoutTree(const Element& element,
   if (!old_style->ScrollMarkerGroupEqual(*new_style)) {
     return true;
   }
+  if (!old_style->ScrollMarkerGroupNone() &&
+      old_style->IsScrollContainer() != new_style->IsScrollContainer()) {
+    return true;
+  }
   if (old_style->EffectiveOverscrollContainerType() !=
       new_style->EffectiveOverscrollContainerType()) {
     return true;
@@ -455,6 +459,10 @@ ComputedStyle::ComputeDifferenceIgnoringInheritedFirstLineStyle(
     return Difference::kDescendantAffecting;
   }
   if (old_style.ScrollMarkerGroupNone() != new_style.ScrollMarkerGroupNone()) {
+    return Difference::kDescendantAffecting;
+  }
+  if (!old_style.ScrollMarkerGroupNone() &&
+      old_style.IsScrollContainer() != new_style.IsScrollContainer()) {
     return Difference::kDescendantAffecting;
   }
   if (!old_style.NonIndependentInheritedEqual(new_style)) {
@@ -3124,7 +3132,13 @@ void ComputedStyleBuilder::SetAnimatedSource(CSSPropertyID property,
   if (!tracked) {
     return;
   }
-  UpdateAnimatedSource(*tracked, CSSProperty::Get(property),
+  const CSSProperty& css_property = CSSProperty::Get(property);
+  if (css_property.IsInherited() &&
+      !RuntimeEnabledFeatures::
+          TrackAnimatedSourcesForInheritedPropertiesEnabled()) {
+    return;
+  }
+  UpdateAnimatedSource(*tracked, css_property,
                        AnimatedSource::ForElement(&animating_element));
 }
 

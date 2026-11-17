@@ -184,6 +184,13 @@ BASE_DECLARE_FEATURE(kUpdateRequestForCorsRedirect);
 COMPONENT_EXPORT(NETWORK_CPP_FLAGS_AND_SWITCHES)
 BASE_DECLARE_FEATURE(kAvoidCorsURLLoaderRestartOnRedirect);
 
+// https://crbug.com/571161435
+// Kill switch. When enabled, requests with CredentialsMode::kSameOrigin allow
+// credentials and client certificates when `disable_web_security` is enabled on
+// the URLLoaderFactoryParams.
+COMPONENT_EXPORT(NETWORK_CPP_FLAGS_AND_SWITCHES)
+BASE_DECLARE_FEATURE(kAllowSameOriginCredentialsWithDisableWebSecurity);
+
 COMPONENT_EXPORT(NETWORK_CPP_FLAGS_AND_SWITCHES)
 BASE_DECLARE_FEATURE(kBrowsingTopics);
 
@@ -393,6 +400,14 @@ BASE_DECLARE_FEATURE(kEnforceIsolatedWorldOriginLock);
 // always cancelled.
 COMPONENT_EXPORT(NETWORK_CPP_FLAGS_AND_SWITCHES)
 BASE_DECLARE_FEATURE(kForwardProxyAuthWithoutPrompt);
+
+// Pre-warms `cryptbase.dll` on a background thread during NetworkService
+// startup on Windows so that subsequent `CryptProtectMemory` /
+// `CryptUnprotectMemory` calls by `os_crypt_async` and
+// `crypto::ProcessBoundString` do not block the Network IO thread on
+// synchronous delay-loading of `cryptbase.dll` (via `dpapi.dll`).
+COMPONENT_EXPORT(NETWORK_CPP_FLAGS_AND_SWITCHES)
+BASE_DECLARE_FEATURE(kPrewarmCryptbase);
 
 }  // namespace network::features
 

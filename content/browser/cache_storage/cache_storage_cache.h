@@ -176,11 +176,6 @@ class CONTENT_EXPORT CacheStorageCache {
   // getter will have an up-to-date value at that point.
   void Size(SizeCallback callback);
 
-  // Gets the cache's size, closes the backend, and then runs |callback| with
-  // the cache's size.  As per the comment for Size(), this also returns the
-  // padded size.
-  void GetSizeThenClose(SizeCallback callback);
-
   // Similar to MatchAll, but returns the associated requests as well.
   void GetAllMatchedEntries(blink::mojom::FetchAPIRequestPtr request,
                             blink::mojom::CacheQueryOptionsPtr match_options,
@@ -220,6 +215,10 @@ class CONTENT_EXPORT CacheStorageCache {
 
   base::WeakPtr<CacheStorageCache> AsWeakPtr();
 
+  // Immediately initiates shutdown of the backend, and invokes `callback` when
+  // that completes.
+  void ForceClose(base::OnceClosure callback);
+
   // Create a handle that will hold the CacheStorageCache alive. Client code
   // should hold one of these handles while waiting for operation callbacks to
   // be invoked.
@@ -257,9 +256,13 @@ class CONTENT_EXPORT CacheStorageCache {
   // The backend progresses from uninitialized, to open, to closed, and cannot
   // reverse direction.  The open step may be skipped.
   enum BackendState {
-    BACKEND_UNINITIALIZED,  // No backend, create backend on first operation.
-    BACKEND_OPEN,           // Backend can be used.
-    BACKEND_CLOSED          // Backend cannot be used.  All ops should fail.
+    // No backend, create backend on first operation.
+    BACKEND_UNINITIALIZED,
+    // Backend can be used.
+    BACKEND_OPEN,
+    // Backend cannot be used. All ops should fail. This is the state after
+    // failed initialization or after ForceClose is called.
+    BACKEND_CLOSED
   };
 
   friend class base::RefCounted<CacheStorageCache>;
@@ -506,14 +509,6 @@ class CONTENT_EXPORT CacheStorageCache {
       blink::mojom::CacheStorageError error,
       std::unique_ptr<QueryCacheResults> query_cache_results);
 
-  bool IsClosingOrClosed() const {
-    return close_requested_ || backend_state_ == BACKEND_CLOSED;
-  }
-
-  void SizeImpl(SizeCallback callback);
-
-  void GetSizeThenCloseDidGetSize(SizeCallback callback, int64_t cache_size);
-
   // Loads the backend and calls the callback with the result (true for
   // success). The callback will always be called. Virtual for tests.
   virtual void CreateBackend(ErrorCallback callback);
@@ -565,17 +560,16 @@ class CONTENT_EXPORT CacheStorageCache {
   base::OnceCallback<void(Args...)> WrapCallbackWithHandle(
       base::OnceCallback<void(Args...)> callback) {
     return base::BindOnce(&CacheStorageCache::RunWithHandle<Args...>,
-                          weak_ptr_factory_.GetWeakPtr(), CreateHandle(),
-                          std::move(callback));
+                          CreateHandle(), std::move(callback));
   }
 
   // Invoked by wrapped callbacks with the CacheStorageCacheHandle passed
   // as a parameter.  The handle is kept alive here simply to maintain
   // a self-reference during the operation.
   template <typename... Args>
-  void RunWithHandle(CacheStorageCacheHandle handle,
-                     base::OnceCallback<void(Args...)> callback,
-                     Args... args) {
+  static void RunWithHandle(CacheStorageCacheHandle handle,
+                            base::OnceCallback<void(Args...)> callback,
+                            Args... args) {
     std::move(callback).Run(std::forward<Args>(args)...);
     // |handle| is destroyed after running the inner wrapped callback.
   }
@@ -600,10 +594,6 @@ class CONTENT_EXPORT CacheStorageCache {
   BackendState backend_state_ = BACKEND_UNINITIALIZED;
   std::unique_ptr<CacheStorageScheduler> scheduler_;
   bool initializing_ = false;
-  // Reject new operations once closing is requested. Keep this separate from
-  // backend_state_ so previously scheduled operations can use the open backend
-  // until the close operation runs.
-  bool close_requested_ = false;
   // The actual cache size (not including padding).
   int64_t cache_size_;
   int64_t cache_padding_ = 0;
@@ -624,11 +614,13 @@ class CONTENT_EXPORT CacheStorageCache {
   // Whether or not to store data in disk or memory.
   const bool memory_only_;
 
-  // Active while waiting for the backend to finish closing and contains the
-  // callback passed to GetSizeThenClose().
+  // Non-null until backend cleanup completes. Initially a no-op; ForceClose()
+  // replaces it with its completion callback.
   base::OnceClosure post_backend_closed_callback_;
 
   SEQUENCE_CHECKER(sequence_checker_);
+  base::WeakPtrFactory<CacheStorageCache> backend_shutdown_weak_ptr_factory_{
+      this};
   base::WeakPtrFactory<CacheStorageCache> weak_ptr_factory_{this};
 };
 

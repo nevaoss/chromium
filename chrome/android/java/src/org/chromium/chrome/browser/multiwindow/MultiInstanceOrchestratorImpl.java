@@ -171,7 +171,8 @@ import java.util.function.Supplier;
             return false;
         }
 
-        if (!MultiWindowUtils.isWithinInstanceLimit()) {
+        if (!MultiWindowUtils.isWithinInstanceLimit(
+                MultiWindowUtils.getAllAppTaskIds(sourceActivity))) {
             var multiInstanceManager = getMultiInstanceManager(sourceActivity);
             if (multiInstanceManager != null) {
                 multiInstanceManager.showInstanceCreationLimitMessage();
@@ -199,7 +200,8 @@ import java.util.function.Supplier;
         if (tabs.isEmpty()) return;
         if (sourceActivity == null) return;
 
-        if (!MultiWindowUtils.isWithinInstanceLimit()) {
+        if (!MultiWindowUtils.isWithinInstanceLimit(
+                MultiWindowUtils.getAllAppTaskIds(sourceActivity))) {
             var multiInstanceManager = getMultiInstanceManager(sourceActivity);
             if (multiInstanceManager != null) {
                 multiInstanceManager.showInstanceCreationLimitMessage();
@@ -209,7 +211,12 @@ import java.util.function.Supplier;
 
         boolean openAdjacently = shouldMoveTabsInAdjacentWindow(sourceActivity, tabs.size());
         mTabReparentingDelegate.reparentTabsToNewWindow(
-                sourceActivity, tabs, INVALID_WINDOW_ID, openAdjacently, finalizeCallback, source);
+                tabs,
+                INVALID_WINDOW_ID,
+                openAdjacently,
+                finalizeCallback,
+                source,
+                /* destGroupTabId= */ Tab.INVALID_TAB_ID);
     }
 
     @Override
@@ -240,23 +247,19 @@ import java.util.function.Supplier;
         if (destActivity instanceof ChromeTabbedActivity tabbedActivity
                 && !tabbedActivity.isActivityFinishingOrDestroyed()) {
             mTabReparentingDelegate.reparentTabsToExistingWindow(
-                    tabbedActivity,
-                    tabs,
-                    destTabIndex,
-                    destGroupTabId,
-                    bringToFront);
-        } else {
+                    tabbedActivity, tabs, destTabIndex, destGroupTabId, bringToFront);
+        } else if (destActivity == null || !destActivity.isFinishing()) {
             Activity sourceActivity = TabUtils.getActivity(tabs.get(0));
             boolean openAdjacently =
                     sourceActivity != null
                             && shouldMoveTabsInAdjacentWindow(sourceActivity, tabs.size());
             mTabReparentingDelegate.reparentTabsToNewWindow(
-                    tabs.get(0).getContext(),
                     tabs,
                     destWindowId,
                     openAdjacently,
                     /* finalizeCallback= */ null,
-                    NewWindowAppSource.TAB_REPARENTING_TO_INSTANCE_WITH_NO_ACTIVITY);
+                    NewWindowAppSource.TAB_REPARENTING_TO_INSTANCE_WITH_NO_ACTIVITY,
+                    destGroupTabId);
         }
     }
 
@@ -275,6 +278,7 @@ import java.util.function.Supplier;
                             ? PersistedInstanceType.OFF_THE_RECORD
                             : PersistedInstanceType.REGULAR);
         }
+        // TODO(crbug.com/573931711): Share pre-fetched appTaskIds with moveTabsToNewWindow().
         int instanceCount = MultiWindowUtils.getInstanceCount(instanceType);
 
         Activity sourceActivity = TabUtils.getActivity(tabs.get(0));
@@ -318,7 +322,8 @@ import java.util.function.Supplier;
         Activity sourceActivity = MultiWindowUtils.getActivityById(tabGroupMetadata.sourceWindowId);
         if (sourceActivity == null) return;
 
-        if (!MultiWindowUtils.isWithinInstanceLimit()) {
+        if (!MultiWindowUtils.isWithinInstanceLimit(
+                MultiWindowUtils.getAllAppTaskIds(sourceActivity))) {
             MultiInstanceManager multiInstanceManager = getMultiInstanceManager(sourceActivity);
             if (multiInstanceManager != null) {
                 multiInstanceManager.showInstanceCreationLimitMessage();
@@ -345,10 +350,7 @@ import java.util.function.Supplier;
         if (destActivity instanceof ChromeTabbedActivity tabbedActivity
                 && !tabbedActivity.isActivityFinishingOrDestroyed()) {
             mTabReparentingDelegate.reparentTabGroupToExistingWindow(
-                    tabbedActivity,
-                    tabGroupMetadata,
-                    destTabIndex,
-                    bringToFront);
+                    tabbedActivity, tabGroupMetadata, destTabIndex, bringToFront);
         } else {
             boolean openAdjacently =
                     sourceActivity != null
@@ -375,6 +377,7 @@ import java.util.function.Supplier;
                             ? PersistedInstanceType.OFF_THE_RECORD
                             : PersistedInstanceType.REGULAR);
         }
+        // TODO(crbug.com/573931711): Share pre-fetched appTaskIds with moveTabGroupToNewWindow().
         int instanceCount = MultiWindowUtils.getInstanceCount(instanceType);
 
         if (instanceCount <= 1) {
@@ -503,7 +506,8 @@ import java.util.function.Supplier;
                             ? PersistedInstanceType.OFF_THE_RECORD
                             : PersistedInstanceType.REGULAR);
         }
-        int instanceCount = MultiWindowUtils.getInstanceCount(targetInstanceType);
+        Set<Integer> appTaskIds = MultiWindowUtils.getAllAppTaskIds(sourceActivity);
+        int instanceCount = MultiWindowUtils.getInstanceCount(targetInstanceType, appTaskIds);
         boolean isTargetIncognitoWindow =
                 IncognitoUtils.shouldOpenIncognitoAsWindow()
                         && ((targetInstanceType & PersistedInstanceType.OFF_THE_RECORD) != 0);
@@ -521,7 +525,7 @@ import java.util.function.Supplier;
         var multiInstanceManager =
                 (MultiInstanceManagerApi31) getMultiInstanceManager(sourceActivity);
         if (instanceCount == 0 || preferNew) {
-            if (!MultiWindowUtils.isWithinInstanceLimit()) {
+            if (!MultiWindowUtils.isWithinInstanceLimit(appTaskIds)) {
                 if (multiInstanceManager != null) {
                     multiInstanceManager.showInstanceCreationLimitMessage();
                 }

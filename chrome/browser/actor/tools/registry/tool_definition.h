@@ -69,7 +69,34 @@ enum class ToolId {
   kAddBookmark = 24,
   // Removes bookmarks matching the specified URL.
   kRemoveBookmark = 25,
-  kMaxValue = kRemoveBookmark,
+  // Scrolls an element or the main viewport by a page or to its start/end.
+  kScrollPage = 26,
+  // Opens a new browser window.
+  kCreateWindow = 27,
+  // Brings the specified window to the foreground.
+  kActivateWindow = 28,
+  // Closes the specified window.
+  kCloseWindow = 29,
+  // Moves the mouse pointer over an element on the page.
+  kMoveMouse = 30,
+  // Drags an element and drops it onto another element on the page.
+  kDragAndRelease = 31,
+  // Pauses execution for a specified duration in milliseconds.
+  kWait = 32,
+  // Executes a script tool in a document.
+  kScript = 33,
+  // Loads a set of URLs in background tabs and extracts their page content.
+  kLoadAndExtractContent = 34,
+  // Attempts to fill forms on the active webpage with user information.
+  kAttemptFormFilling = 35,
+  // Attempts to log in to the website using saved credentials or social login
+  // buttons.
+  kAttemptLogin = 36,
+  // Opens the Gemini side panel with a prompt.
+  kPromptGeminiPanel = 37,
+  // Closes the Gemini side panel if it is currently open.
+  kCloseGeminiPanel = 38,
+  kMaxValue = kCloseGeminiPanel,
 };
 
 // In-memory metadata and parameter schema for a shared browser tool. Prefer

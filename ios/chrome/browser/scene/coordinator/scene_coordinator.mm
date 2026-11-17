@@ -4,6 +4,8 @@
 
 #import "ios/chrome/browser/scene/coordinator/scene_coordinator.h"
 
+#import <utility>
+
 #import "base/cancelable_callback.h"
 #import "base/metrics/histogram_functions.h"
 #import "base/metrics/histogram_macros.h"
@@ -244,6 +246,8 @@ inline LayoutStateScenePassKey PassKey() {
   // container coordinator.
   GeminiFirstRunCoordinator* _geminiLiveFirstRunCoordinator;
   GeminiEntryFlowCoordinator* _geminiEntryFlowCoordinator;
+  // TODO(crbug.com/573186211): Remove once `IOSGeminiBottomSheetMigration`
+  // completes rollout.
   GeminiWebModalCoordinator* _geminiWebModalCoordinator;
   // Coordinator for display of the Password Checkup.
   PasswordCheckupCoordinator* _passwordCheckupCoordinator;
@@ -1902,6 +1906,8 @@ inline LayoutStateScenePassKey PassKey() {
 
 #pragma mark - GeminiWebModalCoordinatorDelegate
 
+// TODO(crbug.com/573186211): Remove once `IOSGeminiBottomSheetMigration`
+// completes rollout.
 - (void)geminiWebModalCoordinatorDidDismiss:
     (GeminiWebModalCoordinator*)coordinator {
   CHECK_EQ(_geminiWebModalCoordinator, coordinator);
@@ -2107,7 +2113,7 @@ inline LayoutStateScenePassKey PassKey() {
       ^(SigninCoordinator* coordinator,
         SigninCoordinatorResultOrIdentity result) {
         [weakSelf signinCompletedWithCoordinator:coordinator
-                                          result:result
+                                          result:std::move(result)
                                       completion:completion];
       };
 
@@ -2136,7 +2142,7 @@ inline LayoutStateScenePassKey PassKey() {
   CHECK_EQ(coordinator, _signinCoordinator);
 
   if (completion) {
-    completion(coordinator, result);
+    completion(coordinator, std::move(result));
   }
   [self stopSigninCoordinatorAnimated:YES];
 }
@@ -2853,6 +2859,13 @@ inline LayoutStateScenePassKey PassKey() {
 
 - (void)showGeminiWebModalForURL:(const GURL&)URL {
   CHECK(IsPageActionMenuEnabled());
+  if (IsIOSGeminiBottomSheetMigrationEnabled()) {
+    [_geminiContainerCoordinator showWebModalForURL:URL];
+    return;
+  }
+  // TODO(crbug.com/573186211): Remove once `IOSGeminiBottomSheetMigration`
+  // rolls out, and dispatch to `GeminiContainerCoordinator` directly instead of
+  // via `SceneCoordinator`.
   if (_geminiWebModalCoordinator) {
     return;
   }

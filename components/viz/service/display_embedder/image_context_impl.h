@@ -30,9 +30,6 @@
 namespace gpu {
 class SharedContextState;
 class SharedImageRepresentationFactory;
-namespace gles2 {
-class TexturePassthrough;
-}
 }  // namespace gpu
 
 namespace viz {
@@ -119,19 +116,16 @@ class ImageContextImpl final : public ExternalUseClient::ImageContext {
   // from the renderer.
   const bool is_for_render_pass_ = false;
 
-  // Fallback in case we cannot produce a |representation_|.
+  // Fallback in case we cannot produce or access `representation_`.
   raw_ptr<gpu::SharedContextState> fallback_context_state_ = nullptr;
   std::vector<GrBackendTexture> fallback_textures_;
   // Fallback textures used for fulfilling Graphite promise images. Owned by the
   // ImageContextImpl and must be destroyed on ImageContextImpl destruction.
   std::vector<skgpu::graphite::BackendTexture> graphite_fallback_textures_;
 
-  // Only one of the follow should be non-null at the same time.
-  scoped_refptr<gpu::gles2::TexturePassthrough> texture_passthrough_;
+  // Representation and scoped access for the real image. They are only accessed
+  // on the GPU thread.
   std::unique_ptr<gpu::SkiaImageRepresentation> representation_;
-
-  // For scoped read accessing |representation|. It is only accessed on GPU
-  // thread.
   std::unique_ptr<gpu::SkiaImageRepresentation::ScopedReadAccess>
       representation_scoped_read_access_;
 

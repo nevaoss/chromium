@@ -58,8 +58,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &features::kAndroidPkAutocorrectUnderlineV2,
     &features::kAndroidRemoveSetLocalFocusWorkaroundOnBaklava,
     &features::kAndroidReplayDelKeyEvent,
-    &features::kAndroidBlockMisspellingSuggestionSpanInCompositionMode,
-    &features::kAndroidBlockGrammarSuggestionSpanInCompositionMode,
     &features::kEarlyTopAppForSandboxedRenderer,
     &features::kStrictHighRankProcessLRU,
     &features::kFedCm,

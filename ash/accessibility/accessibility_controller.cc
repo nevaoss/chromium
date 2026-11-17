@@ -25,6 +25,7 @@
 #include "ash/accessibility/filter_keys_event_rewriter.h"
 #include "ash/accessibility/flash_screen_controller.h"
 #include "ash/accessibility/mouse_keys/mouse_keys_controller.h"
+#include "ash/accessibility/mouse_locator/mouse_shake_to_locate_controller.h"
 #include "ash/accessibility/sticky_keys/sticky_keys_controller.h"
 #include "ash/accessibility/switch_access/point_scan_controller.h"
 #include "ash/accessibility/ui/accessibility_confirmation_dialog.h"
@@ -1234,6 +1235,8 @@ void AccessibilityController::RegisterProfilePrefs(
   registry->RegisterBooleanPref(prefs::kAccessibilityHoverTextEnabled, false);
   registry->RegisterBooleanPref(prefs::kAccessibilityMonoAudioEnabled, false);
   registry->RegisterBooleanPref(prefs::kAccessibilityMouseKeysEnabled, false);
+  registry->RegisterBooleanPref(prefs::kAccessibilityShakeToLocateEnabled,
+                                false);
   registry->RegisterBooleanPref(prefs::kAccessibilityShortcutsEnabled, true);
   registry->RegisterBooleanPref(prefs::kAccessibilitySlowKeysEnabled, false);
   registry->RegisterBooleanPref(prefs::kAccessibilitySpokenFeedbackEnabled,
@@ -2746,6 +2749,11 @@ void AccessibilityController::ObservePrefs(PrefService* prefs) {
       base::BindRepeating(&AccessibilityController::UpdateLargeCursorFromPref,
                           base::Unretained(this)));
   pref_change_registrar_->Add(
+      prefs::kAccessibilityShakeToLocateEnabled,
+      base::BindRepeating(
+          &AccessibilityController::UpdateMouseShakeToLocateFromPref,
+          base::Unretained(this)));
+  pref_change_registrar_->Add(
       prefs::kAccessibilityShortcutsEnabled,
       base::BindRepeating(
           &AccessibilityController::UpdateShortcutsEnabledFromPref,
@@ -2844,6 +2852,7 @@ void AccessibilityController::ObservePrefs(PrefService* prefs) {
   UpdateMouseKeysDominantHandFromPref();
   UpdateFloatingMenuPositionFromPref();
   UpdateLargeCursorFromPref();
+  UpdateMouseShakeToLocateFromPref();
   UpdateCursorColorFromPrefs(/*notify=*/true);
   UpdateShortcutsEnabledFromPref();
   UpdateTabletModeShelfNavigationButtonsFromPref();
@@ -3058,8 +3067,26 @@ FloatingMenuPosition AccessibilityController::GetFloatingMenuPosition() {
       prefs::kAccessibilityFloatingMenuPosition));
 }
 
+void AccessibilityController::UpdateMouseShakeToLocateFromPref() {
+  DCHECK(active_user_prefs_);
+  if (auto* mouse_shake_to_locate =
+          Shell::Get()->mouse_shake_to_locate_controller()) {
+    mouse_shake_to_locate->SetEnabled(active_user_prefs_->GetBoolean(
+        prefs::kAccessibilityShakeToLocateEnabled));
+  }
+}
+
+void AccessibilityController::MaybeCancelMouseShakeToLocateEffect() {
+  if (auto* mouse_shake_to_locate =
+          Shell::Get()->mouse_shake_to_locate_controller()) {
+    mouse_shake_to_locate->CancelEffect();
+  }
+}
+
 void AccessibilityController::UpdateLargeCursorFromPref() {
   DCHECK(active_user_prefs_);
+  MaybeCancelMouseShakeToLocateEffect();
+
   const bool enabled = large_cursor().enabled();
   const int size = enabled ? active_user_prefs_->GetInteger(
                                  prefs::kAccessibilityLargeCursorDipSize)
@@ -3882,6 +3909,7 @@ void AccessibilityController::UpdateFeatureFromPref(FeatureType feature) {
           enabled);
       break;
     case FeatureType::kLargeCursor:
+      MaybeCancelMouseShakeToLocateEffect();
       Shell::Get()->cursor_manager()->SetCursorSize(
           large_cursor().enabled() ? ui::CursorSize::kLarge
                                    : ui::CursorSize::kNormal);

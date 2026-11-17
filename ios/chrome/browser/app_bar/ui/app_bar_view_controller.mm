@@ -37,7 +37,6 @@
 #import "ios/chrome/common/ui/util/constraints_ui_util.h"
 #import "ios/chrome/common/ui/util/dynamic_type_util.h"
 #import "ios/chrome/grit/ios_strings.h"
-#import "ui/base/device_form_factor.h"
 #import "ui/base/l10n/l10n_util_mac.h"
 
 namespace {
@@ -177,6 +176,8 @@ UIColor* AssistantHighlightBackgroundColor() {
   BOOL _canNavigateBack;
   BOOL _canNavigateForward;
   // Context menus for the App Bar buttons.
+  UIMenu* _backButtonMenu;
+  UIMenu* _forwardButtonMenu;
   UIMenu* _assistantButtonMenu;
   UIMenu* _openNewTabButtonMenu;
   UIMenu* _tabGridButtonMenu;
@@ -624,12 +625,12 @@ UIColor* AssistantHighlightBackgroundColor() {
       _tabGridButtonMenu = menu;
       return;
     case AppBarButtonTypeBack:
-      CHECK(IsFiveButtonAppBarLayoutEnabled());
-      // TODO(crbug.com/573542581): Implement back button long press menu.
+      CHECK(IsFiveButtonAppBarLayoutEnabled(), base::NotFatalUntil::M163);
+      _backButtonMenu = menu;
       return;
     case AppBarButtonTypeForward:
-      CHECK(IsFiveButtonAppBarLayoutEnabled());
-      // TODO(crbug.com/573542581): Implement forward button long press menu.
+      CHECK(IsFiveButtonAppBarLayoutEnabled(), base::NotFatalUntil::M163);
+      _forwardButtonMenu = menu;
       return;
   }
   NOTREACHED();
@@ -637,7 +638,7 @@ UIColor* AssistantHighlightBackgroundColor() {
 
 - (void)setCanNavigateBack:(BOOL)canNavigateBack
                    forward:(BOOL)canNavigateForward {
-  CHECK(IsFiveButtonAppBarLayoutEnabled());
+  CHECK(IsFiveButtonAppBarLayoutEnabled(), base::NotFatalUntil::M163);
   if (canNavigateBack == _canNavigateBack &&
       canNavigateForward == _canNavigateForward) {
     return;
@@ -737,7 +738,7 @@ UIColor* AssistantHighlightBackgroundColor() {
 // Updates the enabled state of the forward and back navigation buttons in the
 // toolbar.
 - (void)updateNavigationButtons {
-  CHECK(IsFiveButtonAppBarLayoutEnabled());
+  CHECK(IsFiveButtonAppBarLayoutEnabled(), base::NotFatalUntil::M163);
   _backButton.enabled =
       _buttonsEnabled && !_isTabGridVisible && _canNavigateBack;
   _forwardButton.enabled =
@@ -1003,8 +1004,10 @@ UIColor* AssistantHighlightBackgroundColor() {
 
   [self updateAssistantButton];
 
-  [button
-      addInteraction:[[UIContextMenuInteraction alloc] initWithDelegate:self]];
+  if (!IsAppBarDisableLongPressEnabled()) {
+    [button addInteraction:[[UIContextMenuInteraction alloc]
+                               initWithDelegate:self]];
+  }
 
   return button;
 }
@@ -1020,8 +1023,10 @@ UIColor* AssistantHighlightBackgroundColor() {
                 action:@selector(didTapOpenNewTabButton:)
       forControlEvents:UIControlEventTouchUpInside];
 
-  [button
-      addInteraction:[[UIContextMenuInteraction alloc] initWithDelegate:self]];
+  if (!IsAppBarDisableLongPressEnabled()) {
+    [button addInteraction:[[UIContextMenuInteraction alloc]
+                               initWithDelegate:self]];
+  }
 
   return button;
 }
@@ -1189,38 +1194,52 @@ UIColor* AssistantHighlightBackgroundColor() {
 
   [_tabGridContentView bringSubviewToFront:_tabCountLabel];
 
-  [button
-      addInteraction:[[UIContextMenuInteraction alloc] initWithDelegate:self]];
+  if (!IsAppBarDisableLongPressEnabled()) {
+    [button addInteraction:[[UIContextMenuInteraction alloc]
+                               initWithDelegate:self]];
+  }
 
   return button;
 }
 
 // Returns a back button for web navigation.
 - (UIButton*)createBackButton {
-  CHECK(IsFiveButtonAppBarLayoutEnabled());
+  CHECK(IsFiveButtonAppBarLayoutEnabled(), base::NotFatalUntil::M163);
   UIButton* button = [self buttonWithTitle:nil image:AppBarSymbol(SymbolBack)];
   button.accessibilityIdentifier = kAppBarBackButtonIdentifier;
   button.accessibilityLabel = l10n_util::GetNSString(IDS_ACCNAME_BACK);
   button.accessibilityHint =
-      l10n_util::GetNSString(IDS_IOS_TOOLBAR_ACCESSIBILITY_HINT_BACK);
+      IsAppBarDisableLongPressEnabled()
+          ? nil
+          : l10n_util::GetNSString(IDS_IOS_TOOLBAR_ACCESSIBILITY_HINT_BACK);
   [button addTarget:self
                 action:@selector(didTapBackButton)
       forControlEvents:UIControlEventTouchUpInside];
+  if (!IsAppBarDisableLongPressEnabled()) {
+    [button addInteraction:[[UIContextMenuInteraction alloc]
+                               initWithDelegate:self]];
+  }
   return button;
 }
 
 // Returns a forward button for web navigation.
 - (UIButton*)createForwardButton {
-  CHECK(IsFiveButtonAppBarLayoutEnabled());
+  CHECK(IsFiveButtonAppBarLayoutEnabled(), base::NotFatalUntil::M163);
   UIButton* button = [self buttonWithTitle:nil
                                      image:AppBarSymbol(SymbolForward)];
   button.accessibilityIdentifier = kAppBarForwardButtonIdentifier;
   button.accessibilityLabel = l10n_util::GetNSString(IDS_ACCNAME_FORWARD);
   button.accessibilityHint =
-      l10n_util::GetNSString(IDS_IOS_TOOLBAR_ACCESSIBILITY_HINT_FORWARD);
+      IsAppBarDisableLongPressEnabled()
+          ? nil
+          : l10n_util::GetNSString(IDS_IOS_TOOLBAR_ACCESSIBILITY_HINT_FORWARD);
   [button addTarget:self
                 action:@selector(didTapForwardButton)
       forControlEvents:UIControlEventTouchUpInside];
+  if (!IsAppBarDisableLongPressEnabled()) {
+    [button addInteraction:[[UIContextMenuInteraction alloc]
+                               initWithDelegate:self]];
+  }
   return button;
 }
 
@@ -1338,9 +1357,32 @@ UIColor* AssistantHighlightBackgroundColor() {
 // state.
 - (void)updateNewTabButtonAccessibilityHint {
   _openNewTabButton.accessibilityHint =
-      _isTabGridVisible
+      (_isTabGridVisible || IsAppBarDisableLongPressEnabled())
           ? nil
           : l10n_util::GetNSString(IDS_IOS_TOOLBAR_ACCESSIBILITY_HINT_NEW_TAB);
+}
+
+// Returns whether the App Bar can currently be seen by the user, i.e. it has a
+// position in the scene layout and is attached to a window.
+- (BOOL)isAppBarVisible {
+  return _layoutState.appBarPosition != AppBarPosition::kNone &&
+         self.viewIfLoaded.window != nil;
+}
+
+// Sets `symbol` on the tab grid button image view. The animated symbol content
+// transition is only used when it can be seen: on iOS 26 it backs the image
+// view with a RenderBox layer that is rendered synchronously on the main thread
+// during the next `CATransactionCommit`, which is wasted work (and a potential
+// hang) when the App Bar is hidden.
+- (void)setTabGridSymbol:(Symbol)symbol {
+  UIImage* image = AppBarSymbol(symbol);
+  if (IsAppBarStaticSymbolWhenHiddenEnabled() && ![self isAppBarVisible]) {
+    [_tabGridSymbolView setImage:image];
+    return;
+  }
+  [_tabGridSymbolView setSymbolImage:image
+               withContentTransition:[NSSymbolReplaceContentTransition
+                                         replaceOffUpTransition]];
 }
 
 // Updates the Tab Grid button for the given Tab Grid showing state.
@@ -1352,9 +1394,7 @@ UIColor* AssistantHighlightBackgroundColor() {
   } else {
     symbol = _isTabGridVisible ? SymbolAppFill : SymbolApp;
   }
-  [_tabGridSymbolView setSymbolImage:AppBarSymbol(symbol)
-               withContentTransition:[NSSymbolReplaceContentTransition
-                                         replaceOffUpTransition]];
+  [self setTabGridSymbol:symbol];
   _tabGridButton.accessibilityLabel = l10n_util::GetNSString(
       shouldShowTabGroupSymbol ? IDS_IOS_TOOLBAR_SHOW_TAB_GROUP
                                : IDS_IOS_APP_BAR_ALL_TABS);
@@ -1381,7 +1421,7 @@ UIColor* AssistantHighlightBackgroundColor() {
                   }
                   completion:nil];
   _tabGridButton.accessibilityHint =
-      _isTabGridVisible
+      (_isTabGridVisible || IsAppBarDisableLongPressEnabled())
           ? nil
           : l10n_util::GetNSString(IDS_IOS_TOOLBAR_ACCESSIBILITY_HINT_TAB_GRID);
 }
@@ -1409,14 +1449,14 @@ UIColor* AssistantHighlightBackgroundColor() {
   }
 }
 
-// Records the given `action`. If the device is an iPhone in portrait, and
+// Records the given `action`. If the app bar is at the bottom in portrait, and
 // Fullscreen is active, also records `fullscreenAction`.
 - (void)recordAction:(const char*)action
     withFullscreenAction:(const char*)fullscreenAction {
   base::RecordAction(base::UserMetricsAction(action));
 
-  bool isIPhone = ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_PHONE;
-  if (isIPhone && !_isRotated && _fullscreenProgress < 1.0) {
+  if (self.layoutState.appBarPosition == AppBarPosition::kBottom &&
+      !_isRotated && _fullscreenProgress < 1.0) {
     base::RecordAction(base::UserMetricsAction(fullscreenAction));
   }
 }
@@ -1471,7 +1511,7 @@ UIColor* AssistantHighlightBackgroundColor() {
 
 // Called when the back button for web navigation is tapped.
 - (void)didTapBackButton {
-  CHECK(IsFiveButtonAppBarLayoutEnabled());
+  CHECK(IsFiveButtonAppBarLayoutEnabled(), base::NotFatalUntil::M163);
   if (_isNtpVisible) {
     base::RecordAction(base::UserMetricsAction("MobileToolbarBackOnNTP"));
   }
@@ -1481,7 +1521,7 @@ UIColor* AssistantHighlightBackgroundColor() {
 
 // Called when the forward button for web navigation is tapped.
 - (void)didTapForwardButton {
-  CHECK(IsFiveButtonAppBarLayoutEnabled());
+  CHECK(IsFiveButtonAppBarLayoutEnabled(), base::NotFatalUntil::M163);
   if (_isNtpVisible) {
     base::RecordAction(base::UserMetricsAction("MobileToolbarForwardOnNTP"));
   }
@@ -1543,6 +1583,9 @@ UIColor* AssistantHighlightBackgroundColor() {
 - (UIContextMenuConfiguration*)contextMenuInteraction:
                                    (UIContextMenuInteraction*)interaction
                        configurationForMenuAtLocation:(CGPoint)location {
+  if (IsAppBarDisableLongPressEnabled()) {
+    return nil;
+  }
   UIView* view = interaction.view;
   UIMenu* menu = nil;
   if (view == _assistantButton) {
@@ -1553,13 +1596,19 @@ UIColor* AssistantHighlightBackgroundColor() {
     menu = _openNewTabButtonMenu;
   } else if (view == _tabGridButton) {
     menu = _tabGridButtonMenu;
+  } else if (view == _backButton) {
+    CHECK(IsFiveButtonAppBarLayoutEnabled(), base::NotFatalUntil::M163);
+    menu = _backButton.isEnabled ? _backButtonMenu : nil;
+  } else if (view == _forwardButton) {
+    CHECK(IsFiveButtonAppBarLayoutEnabled(), base::NotFatalUntil::M163);
+    menu = _forwardButton.isEnabled ? _forwardButtonMenu : nil;
   }
 
   if (!menu) {
     return nil;
   }
 
-  return [UIContextMenuConfiguration
+  UIContextMenuConfiguration* configuration = [UIContextMenuConfiguration
       configurationWithIdentifier:nil
                   previewProvider:nil
                    actionProvider:^UIMenu*(
@@ -1568,6 +1617,17 @@ UIColor* AssistantHighlightBackgroundColor() {
                          "MobileMenuToolbarMenuTriggered"));
                      return menu;
                    }];
+
+  if (IsFiveButtonAppBarLayoutEnabled()) {
+    // Preserve priority order (top-to-bottom) for navigation history menus,
+    // matching the Toolbar's presentation.
+    if (view == _backButton || view == _forwardButton) {
+      configuration.preferredMenuElementOrder =
+          UIContextMenuConfigurationElementOrderPriority;
+    }
+  }
+
+  return configuration;
 }
 
 - (UITargetedPreview*)contextMenuInteraction:

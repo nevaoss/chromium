@@ -440,8 +440,9 @@ void WebUIReadOnlyOmnibox::SetEmphasis(bool emphasize,
 
 void WebUIReadOnlyOmnibox::UpdateSchemeStyle(const gfx::Range& range) {
   // TODO(crbug.com/474060468): partial dupe with OmniboxViewViews
-  DCHECK(range.IsValid());
-  DCHECK(!controller()->edit_model()->user_input_in_progress());
+  CHECK(range.IsValid(), base::NotFatalUntil::M162);
+  CHECK(!controller()->edit_model()->user_input_in_progress(),
+        base::NotFatalUntil::M162);
 
   // Do not style the scheme for non-http/https URLs. For such schemes, styling
   // could be confusing or misleading. For example, the scheme isn't meaningful
@@ -651,6 +652,30 @@ bool WebUIReadOnlyOmnibox::IsWebUIToolbarViewOrDescendant(
   return toolbar_view && toolbar_view->Contains(view);
 }
 
+bool WebUIReadOnlyOmnibox::IsViewsFocusOutsideToolbar() const {
+  if (!toolbar_delegate_ || !toolbar_delegate_->GetView()) {
+    return false;
+  }
+  views::Widget* widget = toolbar_delegate_->GetView()->GetWidget();
+  views::FocusManager* focus_manager =
+      widget ? widget->GetFocusManager() : nullptr;
+  // Note that `GetFocusedView()` is null while the widget is inactive: on
+  // deactivation, `FocusManager::StoreFocusedView()` blurs the focused view
+  // and only remembers it as the *stored* view to re-focus on activation. So
+  // an inactive widget deliberately counts as "focus outside the toolbar".
+  // That matches OmniboxViewViews, which gets `OnBlur()` through the same
+  // path and is only re-focused via `RestoreFocusedView()` once the window is
+  // active again, and it's consistent with `OnBlur()` below, which keys its
+  // revert decision on `Widget::IsActive()`. If a focus request (e.g. Ctrl+L)
+  // races with deactivation, the WebUI's reply is dropped, but the WebView is
+  // still the stored focus view, so activation restores views focus to it,
+  // the page regains focus, and Blink dispatches `focus` on the still-focused
+  // `<input>` (which it skipped while the page was unfocused), producing a
+  // fresh report that is accepted then.
+  return focus_manager &&
+         !IsWebUIToolbarViewOrDescendant(focus_manager->GetFocusedView());
+}
+
 void WebUIReadOnlyOmnibox::OnBlur() {
   if (!has_focus_) {
     return;
@@ -714,16 +739,19 @@ base::expected<std::monostate, mojo_base::mojom::ErrorPtr>
 WebUIReadOnlyOmnibox::OnFocusChange(
     const toolbar_ui_api::mojom::OmniboxActionFocusChange& focus_change) {
   if (focus_change.has_focus) {
-    // Ignore stale focus notifications from the WebUI if the toolbar's view
-    // (or one of its descendants) doesn't actually hold Views focus.
-    if (toolbar_delegate_ && toolbar_delegate_->GetView()) {
-      views::Widget* widget = toolbar_delegate_->GetView()->GetWidget();
-      views::FocusManager* focus_manager =
-          widget ? widget->GetFocusManager() : nullptr;
-      if (focus_manager &&
-          !IsWebUIToolbarViewOrDescendant(focus_manager->GetFocusedView())) {
-        return base::ok(std::monostate());
-      }
+    // Focus reports from the WebUI are asynchronous, so by the time one
+    // arrives, views focus may have moved out of the toolbar already (e.g.
+    // the widget got deactivated or the user clicked into the page between
+    // the focus request and the reply). Honoring such a stale claim would
+    // leave `has_focus_` and the edit model focused with no `Blur()` to ever
+    // clear them (a later `SetFocus()` then becomes a no-op and
+    // `OmniboxTabHelper` observers never hear about focus changes). If the
+    // toolbar regains views focus later, the renderer dispatches a focus
+    // event and the WebUI reports again, at which point we accept it. The
+    // text/selection update that accompanies a focus request is rejected on
+    // the same grounds in `OnTextInput()`.
+    if (IsViewsFocusOutsideToolbar()) {
+      return base::ok(std::monostate());
     }
 
     if (!has_focus_) {
@@ -762,15 +790,27 @@ WebUIReadOnlyOmnibox::OnTextInput(
     return base::ok(std::monostate());
   }
 
+  // Text input can only legitimately originate from the WebUI while the
+  // toolbar's WebView holds views focus. If it doesn't (e.g. a focus request
+  // was queued before page init and flushed after focus moved on, or the
+  // widget was deactivated in between), this is the stale text/selection
+  // update that accompanies a stale focus request (see `OnFocusChange()`).
+  // Feeding it to `OnAfterPossibleChange()` would flip the edit model to
+  // focused via OMNIBOX_FOCUS_CHANGE_TYPING with no `Blur()` ever arriving to
+  // clear it, so drop it here instead.
+  if (IsViewsFocusOutsideToolbar()) {
+    return base::ok(std::monostate());
+  }
+
   ui_version_ = text_input.ui_version;
   if (text_input.unelision) {
     uint32_t saved_browser_version = browser_version_;
     // Let the edit model unelide as well to match what we did on the
     // WebUI side.
     bool unelide_ok = controller()->edit_model()->Unelide();
-    DCHECK(unelide_ok);
+    CHECK(unelide_ok, base::NotFatalUntil::M162);
     // It should produce the same text (the 'formatted full URL').
-    DCHECK_EQ(text_, text_input.text);
+    CHECK_EQ(text_, text_input.text, base::NotFatalUntil::M162);
 
     // Unelide() calls SetWindowTextAndCaretPos() and SelectAll(), which reset
     // browser_version_ and selection_. Since this unelision was initiated by
@@ -863,7 +903,7 @@ WebUIReadOnlyOmnibox::OnKey(
       break;
 
     case ui::DomKey::DEL:
-      DCHECK(shift);
+      CHECK(shift, base::NotFatalUntil::M162);
       if (controller()->IsPopupOpen()) {
         controller()->edit_model()->TryDeletingPopupLine(
             controller()->edit_model()->GetPopupSelection().line);
@@ -871,35 +911,35 @@ WebUIReadOnlyOmnibox::OnKey(
       break;
 
     case ui::DomKey::ARROW_UP:
-      DCHECK(!control);
-      DCHECK(!alt);
-      DCHECK(!shift);
-      DCHECK(!command);
+      CHECK(!control, base::NotFatalUntil::M162);
+      CHECK(!alt, base::NotFatalUntil::M162);
+      CHECK(!shift, base::NotFatalUntil::M162);
+      CHECK(!command, base::NotFatalUntil::M162);
       controller()->edit_model()->OnUpOrDownPressed(/*down=*/false,
                                                     /*page=*/false);
       break;
 
     case ui::DomKey::ARROW_DOWN:
-      DCHECK(!control);
-      DCHECK(!alt);
-      DCHECK(!shift);
-      DCHECK(!command);
+      CHECK(!control, base::NotFatalUntil::M162);
+      CHECK(!alt, base::NotFatalUntil::M162);
+      CHECK(!shift, base::NotFatalUntil::M162);
+      CHECK(!command, base::NotFatalUntil::M162);
       controller()->edit_model()->OnUpOrDownPressed(/*down=*/true,
                                                     /*page=*/false);
       break;
 
     case ui::DomKey::PAGE_UP:
-      DCHECK(!control);
-      DCHECK(!alt);
-      DCHECK(!shift);
+      CHECK(!control, base::NotFatalUntil::M162);
+      CHECK(!alt, base::NotFatalUntil::M162);
+      CHECK(!shift, base::NotFatalUntil::M162);
       controller()->edit_model()->OnUpOrDownPressed(/*down=*/false,
                                                     /*page=*/true);
       break;
 
     case ui::DomKey::PAGE_DOWN:
-      DCHECK(!control);
-      DCHECK(!alt);
-      DCHECK(!shift);
+      CHECK(!control, base::NotFatalUntil::M162);
+      CHECK(!alt, base::NotFatalUntil::M162);
+      CHECK(!shift, base::NotFatalUntil::M162);
       controller()->edit_model()->OnUpOrDownPressed(/*down=*/true,
                                                     /*page=*/true);
       break;

@@ -67,9 +67,6 @@
 
 namespace {
 
-// Size of the account picture shown in the ambient bubble.
-constexpr int kAmbientBubbleAvatarSize = 20;
-
 // We could have a situation where the WebContents with an actor task opens a
 // popup which then triggers the dialog, so we need to check the opener.
 tabs::TabInterface* InitiatingTaskTab(tabs::TabInterface* source_tab) {
@@ -662,7 +659,7 @@ void FedCmAccountSelectionView::ShowUrl(LinkType link_type, const GURL& url) {
           delegate_->GetWebContents());
   TabStripModel* tab_strip_model = browser->GetTabStripModel();
 
-  DCHECK(tab_strip_model);
+  CHECK(tab_strip_model, base::NotFatalUntil::M162);
   // Add a tab for the URL at the end of the tab strip, in the foreground.
   tab_strip_model->delegate()->AddTabAt(url, -1, true);
 
@@ -742,8 +739,8 @@ void FedCmAccountSelectionView::OnAccountsDisplayed() {
 bool FedCmAccountSelectionView::OnAccountSelected(
     const IdentityRequestAccountPtr& account,
     const ui::Event& event) {
-  DCHECK(state_ != State::IDP_SIGNIN_STATUS_MISMATCH);
-  DCHECK(state_ != State::AUTO_REAUTHN);
+  CHECK(state_ != State::IDP_SIGNIN_STATUS_MISMATCH, base::NotFatalUntil::M162);
+  CHECK(state_ != State::AUTO_REAUTHN, base::NotFatalUntil::M162);
 
   if (input_protector_->IsPossiblyUnintendedInteraction(
           event, /*allow_key_events=*/false) ||
@@ -1729,7 +1726,8 @@ bool FedCmAccountSelectionView::ShowAmbientBubble(
             .GetURL();
     federated_credential.icon =
         ui::ImageModel::FromImageSkia(webid::ComputeAccountCircleCroppedPicture(
-            *account, kAmbientBubbleAvatarSize, /*idp_image=*/std::nullopt,
+            *account, ambient_signin::kAccountPictureSize,
+            /*idp_image=*/std::nullopt,
             /*device_scale_factor=*/1.0f));
   }
 
@@ -1830,11 +1828,11 @@ void FedCmAccountSelectionView::HandleAmbientBubbleDecision(
   }
 
   if (!selected_account_index) {
-    // The bubble was dismissed, e.g. by the user closing it or by the tab
-    // navigating away.
-    // TODO(crbug.com/567563304): Distinguish between the user explicitly
-    // closing the bubble and other dismissals so that the appropriate
-    // DismissReason (and cooldown) can be used.
+    // The request was dismissed or ignored, e.g. because the chip expired or
+    // the tab navigated away. Closing the bubble keeps the chip, and the
+    // request pending.
+    // TODO(crbug.com/567563304): Tell apart requests whose bubble the user
+    // closed so that the appropriate DismissReason (and cooldown) can be used.
     // `this` may be deleted after this call.
     std::ignore =
         NotifyDelegate([&]() { delegate_->OnDismiss(DismissReason::kOther); });

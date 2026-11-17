@@ -685,6 +685,7 @@ if (_is_default_toolchain) {
       "//components/content_relationship_verification/android:java",
       "//components/content_settings/android:content_settings_enums_java",
       "//components/content_settings/android:java",
+      "//components/contextual_search:components_contextual_search_java",
       "//components/crash/android:java",
       "//components/data_sharing/public:public_java",
       "//components/device_reauth:device_reauth_java_enums",
@@ -886,6 +887,7 @@ if (_is_default_toolchain) {
 
     srcjar_deps = [
       ":chrome_android_java_enums_srcjar",
+      ":chrome_command_ids_javagen",
       ":chrome_strict_mode_switch",
       ":resource_id_javagen",
       "//chrome:offline_pages_enum_javagen",
@@ -966,6 +968,22 @@ if (_is_default_toolchain) {
     if (page_info_use_internal_android_resources) {
       deps += [ "//clank/components/page_info:java_resources" ]
     }
+  }
+
+  java_cpp_template("chrome_command_ids_javagen") {
+    sources =
+        [ "java/src/org/chromium/chrome/browser/ChromeCommandIds.template" ]
+    inputs = [
+      "../app/chrome_command_ids.h",
+      "//build/build_config.h",
+      "//ui/base/command_id_constants.h",
+      "$root_gen_dir/build/branding_buildflags.h",
+      "$root_gen_dir/services/screen_ai/buildflags/buildflags.h",
+    ]
+    deps = [
+      "//build:branding_buildflags",
+      "//services/screen_ai/buildflags",
+    ]
   }
 
   # Template for strict mode detection enabling/disabling so that proguard
@@ -1316,6 +1334,7 @@ if (_is_default_toolchain) {
       "//components/browser_ui/accessibility/android:junit",
       "//components/browser_ui/modaldialog/android:junit",
       "//components/browser_ui/notifications/android:junit",
+      "//components/browser_ui/share/android:junit",
       "//components/browser_ui/site_settings/android:junit",
       "//components/cached_flags:junit",
       "//components/enterprise/browser/reporting/android:junit",
@@ -1596,7 +1615,6 @@ if (_is_default_toolchain) {
       "//chrome/browser/ui/android/signin:javatests",
       "//chrome/browser/webid:javatests",
       "//components/browser_ui/share/android:javatests",
-      "//components/browser_ui/site_settings/android:javatests",
       "//components/language/android:javatests",
       "//components/paint_preview/player/android:javatests",
       "//components/payments/content/android:javatests",
@@ -2130,6 +2148,15 @@ if (_is_default_toolchain) {
 
   chrome_public_bundle("chrome_public_bundle") {
     bundle_name = "ChromePublic"
+    if (enable_manifest_verification) {
+      expected_android_manifest_template = "expectations/chrome_public_bundle__SPLIT_NAME.AndroidManifest.expected"
+      expected_proguard_config =
+          "expectations/chrome_public_bundle.proguard_flags.expected"
+    }
+    if (enable_libs_and_assets_verification) {
+      expected_libs_and_assets =
+          "expectations/$target_name.$target_cpu.libs_and_assets.expected"
+    }
   }
 
   create_app_bundle_minimal_apks("chrome_public_minimal_apks") {
@@ -2141,6 +2168,15 @@ if (_is_default_toolchain) {
     chrome_public_bundle("chrome_public_32_bundle") {
       bundle_name = "ChromePublic32"
       is_64_bit_browser = false
+      if (enable_manifest_verification) {
+        # chrome_public_bundle verifies all bundle modules, so only check base
+        # module here.
+        expected_android_manifest = "expectations/chrome_public_32_bundle__base.AndroidManifest.expected"
+      }
+      if (enable_libs_and_assets_verification) {
+        expected_libs_and_assets =
+            "expectations/$target_name.$target_cpu.libs_and_assets.expected"
+      }
     }
 
     create_app_bundle_minimal_apks("chrome_public_32_minimal_apks") {
@@ -2170,6 +2206,7 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/chrome/browser/base/ApplicationInitHook.java",
       "java/src/org/chromium/chrome/browser/base/ColdStartTracker.java",
       "java/src/org/chromium/chrome/browser/base/DexFixer.java",
+      "java/src/org/chromium/chrome/browser/base/DexFixerReason.java",
       "java/src/org/chromium/chrome/browser/base/SplitChromeApplication.java",
       "java/src/org/chromium/chrome/browser/base/SplitCompatAppComponentFactory.java",
       "java/src/org/chromium/chrome/browser/base/SplitCompatApplication.java",
@@ -2213,7 +2250,6 @@ if (_is_default_toolchain) {
       "//base:tristate_java",
       "//chrome/browser/android/metrics:base_java",
       "//chrome/browser/autofill/android:third_party_provider_java",
-      "//chrome/browser/base:java",
       "//chrome/browser/crash/android:java",
       "//chrome/browser/download/android:file_provider_java",
       "//chrome/browser/flags:java",
@@ -2410,6 +2446,7 @@ if (_is_default_toolchain) {
       "//components/browser_ui/modaldialog/android:unit_device_javatests",
       "//components/browser_ui/photo_picker/android:unit_device_javatests",
       "//components/browser_ui/settings/android:unit_device_javatests",
+      "//components/browser_ui/site_settings/android:unit_device_javatests",
       "//components/browser_ui/util/android:unit_device_javatests",
       "//components/browser_ui/widget/android:unit_device_javatests",
       "//components/embedder_support/android:unit_device_javatests",
@@ -2532,6 +2569,10 @@ if (_is_default_toolchain) {
       # to introducing flakes, while preserving 2 retries (3 attempts) for
       # other test suites (crbug.com/465148828).
       "--num-retries=1",
+
+      # Keep device (adb) command retries at 2, which would otherwise follow
+      # --num-retries.
+      "--device-retries=2",
     ]
   }
 
@@ -2635,60 +2676,9 @@ if (_is_default_toolchain) {
     }
   }
 
-  _verify_32bit_static_initializers =
-      defined(expected_static_initializer_32bit_count) &&
-      defined(android_app_secondary_abi)
-  _verify_64bit_static_initializers =
-      defined(expected_static_initializer_64bit_count) &&
-      android_64bit_target_cpu
-  if (_verify_32bit_static_initializers || _verify_64bit_static_initializers) {
-    group("check_chrome_static_initializers") {
-      deps = []
-      if (_verify_32bit_static_initializers) {
-        deps += [ ":check_chrome_32_static_initializers" ]
-      }
-      if (_verify_64bit_static_initializers) {
-        deps += [ ":check_chrome_64_static_initializers" ]
-      }
-    }
-    if (_verify_32bit_static_initializers) {
-      action_with_pydeps("check_chrome_32_static_initializers") {
-        script = "//build/android/gyp/assert_static_initializers.py"
-        if (android_64bit_target_cpu) {
-          _lib_abi_toolchain = "($android_secondary_abi_toolchain)"
-        } else {
-          _lib_abi_toolchain = ""
-        }
-        _lib_out_dir =
-            get_label_info(":libmonochrome$_lib_abi_toolchain", "root_out_dir")
-        deps = [ ":libmonochrome$_lib_abi_toolchain" ]
-        inputs = [ "$_lib_out_dir/lib.unstripped/libmonochrome.so" ]
-        outputs = [ "$target_gen_dir/$target_name.stamp" ]
-        args = [
-          "--expected-count=$expected_static_initializer_32bit_count",
-          "--tool-prefix",
-          rebase_path(android_tool_prefix, root_build_dir),
-          "--touch",
-          rebase_path(outputs[0], root_build_dir),
-          rebase_path(inputs[0], root_build_dir),
-        ]
-      }
-    }
-    if (_verify_64bit_static_initializers) {
-      action_with_pydeps("check_chrome_64_static_initializers") {
-        script = "//build/android/gyp/assert_static_initializers.py"
-        deps = [ ":libmonochrome_64" ]
-        inputs = [ "$root_build_dir/lib.unstripped/libmonochrome_64.so" ]
-        outputs = [ "$target_gen_dir/$target_name.stamp" ]
-        args = [
-          "--expected-count=$expected_static_initializer_64bit_count",
-          "--tool-prefix",
-          rebase_path(android_tool_prefix, root_build_dir),
-          "--touch",
-          rebase_path(outputs[0], root_build_dir),
-          rebase_path(inputs[0], root_build_dir),
-        ]
-      }
+  if (has_static_initializer_checks) {
+    check_static_initializers("check_chrome_static_initializers") {
+      library_target = ":libchrome"
     }
   }
 
@@ -3472,6 +3462,8 @@ if (_is_default_toolchain &&
         ":trichrome_library_32_apk_validate_libs_and_assets",
         ":trichrome_library_64_32_apk_validate_libs_and_assets",
         ":trichrome_library_64_apk_validate_libs_and_assets",
+        ":chrome_public_32_bundle_validate_libs_and_assets",
+        ":chrome_public_bundle_validate_libs_and_assets",
         "//android_webview:system_webview_32_64_bundle_validate_libs_and_assets",
         "//android_webview:system_webview_32_bundle_validate_libs_and_assets",
         "//android_webview:system_webview_64_32_bundle_validate_libs_and_assets",
@@ -3490,6 +3482,10 @@ if (_is_default_toolchain &&
         ":trichrome_library_32_apk_validate_android_manifest",
         ":trichrome_library_64_32_apk_validate_android_manifest",
         ":trichrome_library_64_apk_validate_android_manifest",
+        ":chrome_public_32_bundle__base_bundle_module_validate_android_manifest",
+        ":chrome_public_bundle__base_bundle_module_validate_android_manifest",
+        ":chrome_public_bundle_validate_manifests",
+        ":chrome_public_bundle_validate_proguard_config",
         "//android_webview:system_webview_32_64_base_bundle_module_validate_android_manifest",
         "//android_webview:system_webview_32_base_bundle_module_validate_android_manifest",
         "//android_webview:system_webview_64_32_base_bundle_module_validate_android_manifest",

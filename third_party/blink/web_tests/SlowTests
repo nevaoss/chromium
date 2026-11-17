@@ -107,8 +107,6 @@ crbug.com/420008 [ Mac13-arm64 ] virtual/threaded/http/tests/devtools/tracing/* 
 crbug.com/420008 [ Release Win ] virtual/threaded/http/tests/devtools/tracing/* [ Slow ]
 # Misc DevTools tests that are slow
 crbug.com/243492 inspector-protocol/injected-script-discard.js [ Slow ]
-crbug.com/678482 [ Linux ] http/tests/devtools/debugger/fetch-breakpoints.js [ Slow ]
-crbug.com/678482 [ Release Win ] http/tests/devtools/debugger/fetch-breakpoints.js [ Slow ]
 crbug.com/1451884 http/tests/inspector-protocol/fedcm/fedcm-confirm-idp-login.js [ Slow ]
 crbug.com/1236466 inspector-protocol/runtime/runtime-execution-contexts-events.js [ Slow ]
 crbug.com/1229701 [ Linux ] http/tests/inspector-protocol/network/disable-cache-media-resource.js [ Slow ]
@@ -1016,7 +1014,9 @@ crbug.com/517936094 external/wpt/wasm/core/simd/simd_f64x2_arith.wast.js.html [ 
 
 # Multi-case wdspec tests that exceed the 25s normal timeout on Chromium bots
 crbug.com/565447575 external/wpt/webdriver/tests/bidi/browser/create_user_context/invalid.py [ Slow ]
+crbug.com/565447575 external/wpt/webdriver/tests/bidi/browser/create_user_context/unhandled_prompt_behavior.py [ Slow ]
 crbug.com/565447575 external/wpt/webdriver/tests/bidi/browser/remove_user_context/user_context.py [ Slow ]
+crbug.com/565447575 external/wpt/webdriver/tests/bidi/browsing_context/capture_screenshot/capture_screenshot.py [ Slow ]
 crbug.com/565447575 external/wpt/webdriver/tests/bidi/browsing_context/context_created/context_created.py [ Slow ]
 crbug.com/565447575 external/wpt/webdriver/tests/bidi/browsing_context/context_created/original_opener.py [ Slow ]
 crbug.com/565447575 external/wpt/webdriver/tests/bidi/browsing_context/context_created/subscribe_steps.py [ Slow ]

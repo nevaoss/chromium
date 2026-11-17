@@ -15,6 +15,7 @@
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/side_panel/side_panel_action_callback.h"
@@ -207,6 +208,10 @@ void WebUIPinnedToolbarActions::OnThemeChanged() {
   OnActionsChanged();
 }
 
+void WebUIPinnedToolbarActions::OnControlsAppearInactiveChanged() {
+  OnActionsChanged();
+}
+
 void WebUIPinnedToolbarActions::OnActionsChanged() {
   const auto& old_states = delegate_->GetState().pinned_toolbar_actions_state;
   std::vector<toolbar_ui_api::mojom::PinnedToolbarActionStatePtr> states;
@@ -258,6 +263,18 @@ void WebUIPinnedToolbarActions::OnActionsChanged() {
                         ->GetStatefulImage();
     } else {
       image_model = item->GetImage();
+    }
+    // Like native PinnedActionToolbarButton, color vector icons with the
+    // toolbar button icon color rather than the action's own color, including
+    // the inactive color while the window is inactive on Mac.
+    if (image_model.IsVectorIcon()) {
+      const ui::VectorIconModel vector_icon = image_model.GetVectorIcon();
+      image_model = ui::ImageModel::FromVectorIcon(
+          *vector_icon.vector_icon(),
+          delegate_->GetState().controls_appear_inactive
+              ? kColorToolbarButtonIconInactive
+              : kColorToolbarButtonIcon,
+          vector_icon.icon_size(), vector_icon.badge_icon());
     }
     toolbar_ui_api::IconHandle previous_icon;
     // Opportunistically try to reuse the icon handle at the same index as
@@ -461,7 +478,7 @@ views::BubbleAnchor WebUIPinnedToolbarActions::GetBubbleAnchor(
     ui::TrackedElement* element =
         BrowserElements::From(delegate_->GetBrowser())
             ->GetElement(webui_toolbar::ActionIdToElementIdentifier(action_id));
-    DCHECK(element);
+    CHECK(element, base::NotFatalUntil::M162);
     return views::BubbleAnchor(element);
   }
   return views::BubbleAnchor();
@@ -577,7 +594,7 @@ void WebUIPinnedToolbarActions::MovePinnedAction(actions::ActionId action_id,
 
 void WebUIPinnedToolbarActions::MovePinnedActionBy(actions::ActionId action_id,
                                                    int delta) {
-  DCHECK(IsActionPinned(action_id));
+  CHECK(IsActionPinned(action_id), base::NotFatalUntil::M162);
   const auto& pinned_actions = GetVisiblePinnedActionIds();
   auto iter = std::ranges::find(pinned_actions, action_id);
   if (iter == pinned_actions.end()) {

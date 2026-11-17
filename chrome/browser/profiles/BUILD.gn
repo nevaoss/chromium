@@ -1053,6 +1053,9 @@ source_set("profiles_extra_parts_impl") {
       "//chrome/browser/ui/webui/omnibox_internals/aim_eligibility_extension",
       "//extensions/browser",
     ]
+    if (enable_webui_ntp) {
+      deps += [ "//chrome/browser/ui/webui/new_tab_page_extension" ]
+    }
   }
 
   if (enable_extensions) {
@@ -1321,15 +1324,12 @@ if (!is_android) {
 
     if (is_mac || is_win || is_linux) {
       sources += [ "profile_statistics_browsertest.cc" ]
+      deps += [ "//chrome/browser/autofill" ]
     }
 
     if (is_win) {
       sources += [ "profile_shortcut_manager_browsertest_win.cc" ]
     }
-
-    # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-    # enable the diagnostic by removing this line.
-    configs += [ "//build/config/compiler:no_exit_time_destructors" ]
   }
 }
 

@@ -45,6 +45,7 @@ from pylib.base import output_manager
 from pylib.base import output_manager_factory
 from pylib.base import test_instance_factory
 from pylib.base import test_run_factory
+from pylib.local.device import local_device_test_run
 from pylib.results import json_results
 from pylib.results import report_results
 from pylib.results.presentation import test_results_presentation
@@ -114,6 +115,14 @@ def AddTestLauncherOptions(parser):
         type=int,
         default=os.environ.get('GTEST_SHARD_INDEX', 0),
         help='Index of the external shard to run.',
+    )
+    parser.add_argument(
+        '--sharding-strategy',
+        choices=local_device_test_run.SHARDING_STRATEGIES,
+        default=local_device_test_run.SHARDING_STRATEGY_BOUNDED_LOAD,
+        help='How tests are assigned to external shards. "hash" is the legacy '
+        'name-hash assignment; "bounded-load" keeps the hash assignment '
+        'unless it would overload a shard (default: %(default)s).',
     )
     parser.add_argument(
         '--test-launcher-total-shards',
@@ -403,6 +412,12 @@ def AddDeviceOptions(parser):
         help='Cache device state to disk between runs',
     )
     parser.add_argument(
+        '--enable-test-data-cache',
+        action='store_true',
+        help='Skip pushing gtest data dependencies when a stamp of the host '
+        'files matches the one recorded on the device by the last push',
+    )
+    parser.add_argument(
         '--list-data',
         action='store_true',
         help='List files pushed to device and exit.',
@@ -419,6 +434,12 @@ def AddDeviceOptions(parser):
         action='store_true',
         help='Attempt to recover devices prior to the final retry. Warning: '
         'this will cause all devices to reboot.',
+    )
+    parser.add_argument(
+        '--device-retries',
+        type=int,
+        help='Default number of retries for device (adb) commands. Defaults '
+        'to the value of --num-retries.',
     )
 
     parser.add_argument(

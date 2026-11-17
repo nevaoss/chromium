@@ -1486,7 +1486,11 @@ ci.builder(
             "webdriver_bidi_unittests",
         ],
         mixins = [
-            "mac_26_vm_optional",
+            # crbug.com/574161395: The E2E tests start a new browser for each
+            # test. On Mac VMs the browser start stalls for minutes at a time,
+            # and the VMs have no GPU, which breaks screenshot tests. Run on
+            # bare metal only.
+            "mac_26_arm64",
         ],
         per_test_modifications = {
             "webdriver_bidi_e2e_tests": targets.mixin(
@@ -1498,10 +1502,10 @@ ci.builder(
     ),
     builderless = True,
     cpu = cpu.ARM64,
-    tree_closing = False,
     console_view_entry = consoles.console_view_entry(
         category = "webdriver",
         short_name = "bidi",
     ),
+    cq_mirrors_console_view = "mirrors",
     contact_team_email = "chrome-devtools@google.com",
 )

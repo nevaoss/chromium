@@ -739,19 +739,21 @@ void ContentSettingImageModel::Update(content::WebContents* contents) {
       ContentSettingImageModelStates::Get(contents)->SetBubbleWasAutoOpened(
           image_type(), false);
     }
+    ContentSettingImageModelStates::Get(contents)->SetIconShownRecorded(
+        image_type(), false);
   }
 }
 
 bool ContentSettingImageModel::ShouldRunAnimation(
     content::WebContents* contents) {
-  DCHECK(contents);
+  CHECK(contents, base::NotFatalUntil::M162);
   return !ContentSettingImageModelStates::Get(contents)->AnimationHasRun(
       image_type());
 }
 
 void ContentSettingImageModel::SetAnimationHasRun(
     content::WebContents* contents) {
-  DCHECK(contents);
+  CHECK(contents, base::NotFatalUntil::M162);
   ContentSettingImageModelStates::Get(contents)->SetAnimationHasRun(
       image_type(), true);
 }
@@ -859,7 +861,7 @@ bool ContentSettingBlockedImageModel::UpdateAndGetVisibility(
 
   SetIcon(type, is_blocked);
   set_explanatory_string_id(explanation_id);
-  DCHECK(tooltip_id);
+  CHECK(tooltip_id, base::NotFatalUntil::M162);
   set_tooltip(l10n_util::GetStringUTF16(tooltip_id));
   return true;
 }
@@ -1174,7 +1176,7 @@ bool ContentSettingMediaImageModel::UpdateAndGetVisibility(
   }
 #endif  // BUILDFLAG(IS_MAC)
 
-  DCHECK(IsMicAccessed() || IsCamAccessed());
+  CHECK(IsMicAccessed() || IsCamAccessed(), base::NotFatalUntil::M162);
 
   int id = IDS_CAMERA_BLOCKED;
   if (IsMicBlockedOnSiteLevel() || IsCameraBlockedOnSiteLevel()) {
@@ -1438,17 +1440,32 @@ bool ContentSettingNotificationsImageModel::UpdateAndGetVisibility(
         content_settings
             ->notifications_was_denied_because_of_system_permission();
 
-    const mac_notifications::mojom::PermissionStatus system_permission_status =
-        AppShimRegistry::Get()->GetNotificationPermissionStatusForApp(*app_id);
+    const AppShimRegistry::NotificationPermissionStatus
+        system_permission_status =
+            AppShimRegistry::Get()->GetNotificationPermissionStatusForApp(
+                *app_id);
 
     // If the system level permission for this app is currently "denied", and
     // either the chrome level permission was granted (and notifications have
     // been attempted to be used in this page) or the chrome level permission
     // just switched from "ask" to "blocked", show the indicator icon.
     if ((was_denied_because_of_system_permission || is_allowed) &&
-        system_permission_status ==
-            mac_notifications::mojom::PermissionStatus::kDenied) {
+        (system_permission_status ==
+             AppShimRegistry::NotificationPermissionStatus::kImplicitlyDenied ||
+         system_permission_status ==
+             AppShimRegistry::NotificationPermissionStatus::
+                 kExplicitlyDenied)) {
       SetIcon(ContentSettingsType::NOTIFICATIONS, /*blocked=*/true);
+      // UpdateAndGetVisibility() runs on every location bar refresh, and for
+      // multiple models sharing the same tab, so only record once per time
+      // the icon becomes visible in a tab.
+      ContentSettingImageModelStates* states =
+          ContentSettingImageModelStates::Get(web_contents);
+      if (!states->IconShownRecorded(image_type())) {
+        states->SetIconShownRecorded(image_type(), true);
+        base::RecordAction(base::UserMetricsAction(
+            "ContentSettings.Notifications.SystemPermissionIconShown"));
+      }
       // If the chrome level permission was just auto-denied, also popup the
       // bubble.
       set_should_auto_open_bubble(was_denied_because_of_system_permission);
@@ -1575,7 +1592,7 @@ std::unique_ptr<ContentSettingBubbleModel>
 ContentSettingImageModel::CreateBubbleModel(
     ContentSettingBubbleModel::Delegate* delegate,
     content::WebContents* web_contents) {
-  DCHECK(web_contents);
+  CHECK(web_contents, base::NotFatalUntil::M162);
   return CreateBubbleModelImpl(delegate, web_contents->GetPrimaryPage());
 }
 

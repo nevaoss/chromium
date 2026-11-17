@@ -693,7 +693,7 @@ https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histogra
 </histogram>
 
 <histogram name="MerchantTrust.BottomSheet.CloseReason"
-    enum="BottomSheet.StateChangeReason" expires_after="2026-04-25">
+    enum="BottomSheet.StateChangeReason" expires_after="2027-10-15">
   <owner>ayman@chromium.org</owner>
   <owner>zhiyuancai@chromium.org</owner>
   <owner>chrome-shopping@google.com</owner>
@@ -703,11 +703,14 @@ https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histogra
 
     Warning: this histogram was expired from 2023-04-25 to 2024-09-18; data may
     be missing.
+
+    Warning: this histogram was expired from 2026-04-25 to 2026-10-15; data may
+    be missing.
   </summary>
 </histogram>
 
 <histogram name="MerchantTrust.BottomSheet.DurationFullyOpened" units="ms"
-    expires_after="2026-04-25">
+    expires_after="2027-10-16">
   <owner>ayman@chromium.org</owner>
   <owner>zhiyuancai@chromium.org</owner>
   <owner>chrome-shopping@google.com</owner>
@@ -717,11 +720,14 @@ https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histogra
 
     Warning: this histogram was expired from 2023-04-25 to 2024-09-18; data may
     be missing.
+
+    Warning: this histogram was expired from 2026-04-25 to 2026-10-16; data may
+    be missing.
   </summary>
 </histogram>
 
 <histogram name="MerchantTrust.BottomSheet.DurationHalfOpened" units="ms"
-    expires_after="2026-04-25">
+    expires_after="2027-10-16">
   <owner>ayman@chromium.org</owner>
   <owner>zhiyuancai@chromium.org</owner>
   <owner>chrome-shopping@google.com</owner>
@@ -731,11 +737,14 @@ https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histogra
 
     Warning: this histogram was expired from 2023-04-25 to 2024-09-18; data may
     be missing.
+
+    Warning: this histogram was expired from 2026-04-25 to 2026-10-16; data may
+    be missing.
   </summary>
 </histogram>
 
 <histogram name="MerchantTrust.BottomSheet.DurationPeeked" units="ms"
-    expires_after="2026-04-25">
+    expires_after="2027-10-16">
   <owner>ayman@chromium.org</owner>
   <owner>zhiyuancai@chromium.org</owner>
   <owner>chrome-shopping@google.com</owner>
@@ -744,6 +753,9 @@ https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histogra
     peeking. Implemented for Android.
 
     Warning: this histogram was expired from 2023-04-25 to 2024-09-18; data may
+    be missing.
+
+    Warning: this histogram was expired from 2026-04-25 to 2026-10-16; data may
     be missing.
   </summary>
 </histogram>

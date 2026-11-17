@@ -302,7 +302,7 @@
 <translation id="3795971588916395511">‏نظام التشغيل Chrome من Google</translation>
 <translation id="3809772425479558446">‏يتطلّب Google Chrome نظام التشغيل Windows 10 أو إصدارًا أحدث.</translation>
 <translation id="3810973564298564668">إدارة</translation>
-<translation id="383455301564000773">‏هل ستتم الترقية إلى Windows 11؟ يُرجى تنزيل Chrome على OneDrive للاستعداد من اليوم الأول.</translation>
+<translation id="383455301564000773">‏قبل الترقية إلى Windows 11: يُرجى تنزيل Chrome على OneDrive للاستعداد من اليوم الأول.</translation>
 <translation id="383928141529488001">‏يجب منح Google Chrome الإذن بالوصول إلى البلوتوث لاستكشاف 
 الأجهزة التي تتضمّن بلوتوث. <ph name="IDS_SERIAL_DEVICE_CHOOSER_AUTHORIZE_BLUETOOTH_LINK" /></translation>
 <translation id="3846683726093018685">**تلخيص:** أريد وصفًا للموضوع الرئيسي وهدف محتوى لقطة الشاشة في جملة واحدة لا تزيد عن 30 كلمة.
@@ -348,6 +348,7 @@
 <translation id="4251615635259297716">‏هل ترغب في ربط بياناتك في Chrome بهذا الحساب؟</translation>
 <translation id="4252262470181310206">‏العمل أصبح سلسًا مع تطبيقاتك المفضّلة، مثل Google Drive وYouTube، على Chrome أثناء التنقل.</translation>
 <translation id="4266456958461406346">افتح قائمة المزيد "<ph name="THREE_DOTS_ICON" />"</translation>
+<translation id="4275788652681621337">إغلاق اللوحة الجانبية</translation>
 <translation id="4280647692742956593">‏يكفي تنزيل Chrome على هاتفك لفتح مجموعات علامات التبويب أو إنشائها أثناء التنقل.</translation>
 <translation id="4281844954008187215">بنود الخدمة</translation>
 <translation id="430327780270213103">‏السماح للإضافة بعرض طلبات الوصول في شريط أدوات Chrome</translation>

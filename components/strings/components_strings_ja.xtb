@@ -118,6 +118,7 @@
 <translation id="1195558154361252544">許可したサイトを除くすべてのサイトで通知を自動的にブロックします</translation>
 <translation id="1197088940767939838">オレンジ</translation>
 <translation id="1198412233443148072"><ph name="MEMBER_FIRST_NAME" /> さんがタブ「<ph name="WEBSITE_TITLE" />」を削除しました</translation>
+<translation id="119944043368869598">すべて削除</translation>
 <translation id="1201402288615127009">次へ</translation>
 <translation id="1201895884277373915">このサイトからの他の履歴</translation>
 <translation id="1204184165594298176">{0,plural, =1{ファイルのコピーがブロックされています}other{<ph name="FILE_COUNT" /> 個のファイルのコピーがブロックされています}}</translation>
@@ -618,7 +619,6 @@
 <translation id="2059166748188874810">市区町村</translation>
 <translation id="2059202684901022309">22x34 インチ</translation>
 <translation id="2063929825539050431">このページを別のデバイスに送信するには、アドレスバーを長押しします</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{1 件の候補}other{# 件の候補}}</translation>
 <translation id="2066969741541525119">アクセスしようとしたサイトは組織によってブロックされています</translation>
 <translation id="2071156619270205202">このカードでは仮想カード番号はご利用いただけません</translation>
 <translation id="2071852865256799872">お使いのブラウザは組織によって、プロフィールは <ph name="PROFILE_DOMAIN" /> によって管理されています</translation>
@@ -665,6 +665,7 @@
 <translation id="2126374524350484896">PDF 変換アプリケーション:</translation>
 <translation id="2127090458081644412">パスワードをこのデバイスに保存しました</translation>
 <translation id="2127747486437921899">斜体</translation>
+<translation id="2129163794581571479">Gemini のパーソナル インテリジェンスを使用します。リクエスト、ページのタイトル、URL は、高精度の自動入力の改善に向けて確認される場合があります。<ph name="BEGIN_LINK" />設定を管理する<ph name="END_LINK" /></translation>
 <translation id="2130448033692577677">DnsOverHttpsMode ポリシーが設定されていないため、指定したテンプレートを適用できない可能性があります。</translation>
 <translation id="2130699163006053678">A3x7</translation>
 <translation id="2131006834960167560">お支払い情報の自動入力を有効にする設定が画面全体に表示されています。</translation>
@@ -710,7 +711,6 @@
 <translation id="2188375229972301266">多穴パンチ（下）</translation>
 <translation id="218940509700321686">カンマ区切り値</translation>
 <translation id="2190094353033916816">このポリシーでは、マシンレベルとユーザーレベルで異なる値が適用されます。ポリシーは想定どおりに機能しています。</translation>
-<translation id="219061769324072544">クレジット,カード,デビット</translation>
 <translation id="2191980191135734720">次のステップで画面のロックを解除します（通常は指紋認証を使用します）。<ph name="LINK_TEXT" />こともできます。</translation>
 <translation id="2194856509914051091">留意事項</translation>
 <translation id="2195729137168608510">電子メールの保護</translation>
@@ -1081,6 +1081,7 @@
 <translation id="2807052079800581569">画像の Y 座標</translation>
 <translation id="2808278141522721006"><ph name="SETTINGS" /> で Windows Hello のオンとオフを切り替えることができます</translation>
 <translation id="2820957248982571256">スキャンしています…</translation>
+<translation id="282457273878278063">連絡先情報を管理</translation>
 <translation id="2824775600643448204">アドレス検索バー</translation>
 <translation id="2826760142808435982">接続は <ph name="CIPHER" /> を使用して暗号化および認証されており、<ph name="KX" /> が鍵交換メカニズムとして使用されています。</translation>
 <translation id="2828797285817981634">モーション センサーの使用を一時的に許可しました</translation>
@@ -1575,6 +1576,7 @@
 <translation id="3655670868607891010">このエラーが頻繁に表示される場合は、こちらの<ph name="HELP_LINK" />をお試しください。</translation>
 <translation id="3658742229777143148">変更履歴</translation>
 <translation id="3659521826520353662">管理者が定義したウェブサイトとアクセスした日時: <ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3663760610864720538">Gemini のパーソナル インテリジェンスを使用します。<ph name="BEGIN_LINK" />設定を管理する<ph name="END_LINK" /></translation>
 <translation id="3664479564786885722">この商品を販売している他のショップの購入オプションを検索します。</translation>
 <translation id="3664782872746246217">キーワード:</translation>
 <translation id="3670030362669914947">番号</translation>
@@ -1595,6 +1597,7 @@
 <translation id="3693516565203081475">お支払い方法を選択してください</translation>
 <translation id="3698353241727597930">企業が管理する <ph name="CLOUD_STORAGE" /> ストレージに <ph name="FILES" /> を保存するように管理者が設定しています。これらのファイルは、監視および監査され、削除した場合も保持される可能性があります。</translation>
 <translation id="3698629142018988477">[サイトを作成] ボタンです。実行すると、Google サイトで新しいサイトをすばやく作成できます</translation>
+<translation id="3698708128812719147">ウェブ上の任意の場所で Ctrl キーを 2 回押すと、詳細情報を探して入力できます</translation>
 <translation id="3700094625653511150">後払いオプションを非表示にするには、<ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /> に移動してください</translation>
 <translation id="3700966190175650601">パスワード入力で指紋認証を使用しています</translation>
 <translation id="3701427423622901115">リセットを確認しました。</translation>
@@ -1862,7 +1865,6 @@
 <translation id="4121428309786185360">有効期限</translation>
 <translation id="4123572138124678573">3 穴パンチ（下）</translation>
 <translation id="412601465078863288">アップロードがタイムアウトしました</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{他 1 件}other{他 # 件}}</translation>
 <translation id="4129810348470013900">エラーが発生しました。インターネット接続を確認してもう一度お試しください。</translation>
 <translation id="4130226655945681476">ネットワーク ケーブル、モデム、ルーターを確認する</translation>
 <translation id="4132448310531350254">アプリ「<ph name="POLICY_IDS_LIST" />」で参照されている file_extension「<ph name="FILE_EXTENSION" />」のハンドラが重複しています。</translation>
@@ -1898,6 +1900,7 @@
 <translation id="4185037616931963178">Redress 番号を安全に更新</translation>
 <translation id="4186035307311647330">価格トラッキングを停止</translation>
 <translation id="4191334393248735295">長さ</translation>
+<translation id="4192770747482479191">ウェブ上の任意の場所で ⌘ キーを 2 回押すと、詳細情報を探して入力できます</translation>
 <translation id="4195459680867822611">[Chrome のヒントを表示] ボタンです。実行すると、Chrome の機能を確認できます</translation>
 <translation id="4195643157523330669">新しいタブで開く</translation>
 <translation id="4196861286325780578">移動のやり直し（&amp;R）</translation>
@@ -2215,7 +2218,6 @@
 <translation id="4725766358270333890"><ph name="COUNT" /> 個のファイルを Microsoft OneDrive にアップロードしています</translation>
 <translation id="4726672564094551039">ポリシーを再読み込み</translation>
 <translation id="4728558894243024398">プラットフォーム</translation>
-<translation id="4730773064303503917">ウォレットを使用して友人やビジネスに Pix を送信できるようになりました</translation>
 <translation id="4730977633786878901">レビュー</translation>
 <translation id="4731638775147756694">このアプリケーションは管理者によってブロックされています</translation>
 <translation id="4732860731866514038"><ph name="LANGUAGE" /> の言語パックをダウンロードしています... <ph name="PERCENT" />% 完了</translation>
@@ -2846,6 +2848,7 @@
 <translation id="573974402615125334">タブグループの共有、参加、共同作業を行うには、履歴とタブを同期してください</translation>
 <translation id="5740911612628596808">C9 封筒</translation>
 <translation id="574392208103952083">中</translation>
+<translation id="5744350700955456407">高精度の自動入力機能で、Gmail やフォトなどのアプリから情報（注文番号やフライトの確認コードなど）を探して入力できるようになりました</translation>
 <translation id="5745586894920491759">Chrome はクラウドでページのタイトルと URL を処理します</translation>
 <translation id="5745733273847572235">位置情報を要求できる</translation>
 <translation id="5750869797196646528">ハンド トラッキング</translation>
@@ -3227,7 +3230,6 @@
 <translation id="638289054711715023">ホイル（シュリンク）</translation>
 <translation id="6383221683286411806">続行すると料金が請求される可能性があります。</translation>
 <translation id="6384448607821972818">再設定用のパスワードが表示されました</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{他 1 件の候補}other{他 # 件の候補}}</translation>
 <translation id="6386565501269869892">洋形 4 号封筒</translation>
 <translation id="6387645831795005740">不正なユーザーが URL のごく一部を一目ではわからないように改変してサイトを偽装する場合があります。</translation>
 <translation id="6389470377220713856">カード名義人（半角英文字）</translation>
@@ -4836,7 +4838,6 @@
 <translation id="9168814207360376865">お支払い方法を保存しているかどうかの確認をサイトに許可する</translation>
 <translation id="9169931577761441333">ホーム画面に <ph name="APP_NAME" /> を追加</translation>
 <translation id="9170848237812810038">取消(&amp;U)</translation>
-<translation id="9170906125144697215">アプリを切り替えずに Pix で支払う</translation>
 <translation id="9171296965991013597">アプリを終了しますか？</translation>
 <translation id="9173282814238175921">1 つのドキュメント（新規シート）</translation>
 <translation id="9173995187295789444">Bluetooth デバイスをスキャンしています...</translation>

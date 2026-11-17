@@ -40,6 +40,9 @@ cr-button {
   font-size: 0;
   line-height: 0;
   margin: 0;
+  /* cr-button would normally paint the focus ring outset, but that would clip
+   * against the toolbar bounds, so we paint it inset instead. */
+  outline-offset: -2px;
   padding: 0;
   min-width: var(--toolbar-button-height);
   --cr-button-size: var(--toolbar-button-height);
@@ -49,6 +52,12 @@ cr-button {
   --cr-button-background-color: transparent;
   --cr-button-border-color: transparent;
   --cr-button-border: 0;
+}
+
+/* Like native toolbar buttons, use the inactive icon color while the browser
+ * window is inactive on Mac. The browser sets controls-appear-inactive. */
+:host-context(toolbar-app[controls-appear-inactive]) cr-icon-button {
+  --cr-icon-button-fill-color: var(--color-toolbar-button-icon-inactive);
 }
 
 cr-icon-button[is-menu-open],

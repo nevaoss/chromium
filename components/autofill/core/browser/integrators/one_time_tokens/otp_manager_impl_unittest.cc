@@ -35,12 +35,10 @@
 #include "components/autofill/core/common/autofill_test_util.h"
 #include "components/autofill/core/common/form_data.h"
 #include "components/one_time_tokens/core/browser/fake_gmail_otp_backend.h"
-#include "components/one_time_tokens/core/browser/mock_one_time_token_service.h"
+#include "components/one_time_tokens/core/browser/fake_sms_otp_service.h"
 #include "components/one_time_tokens/core/browser/one_time_token.h"
 #include "components/one_time_tokens/core/browser/one_time_token_backend_notification.h"
 #include "components/one_time_tokens/core/browser/one_time_token_retrieval_error.h"
-#include "components/one_time_tokens/core/browser/one_time_token_service_impl.h"
-#include "components/one_time_tokens/core/browser/sms_otp_backend.h"
 #include "components/one_time_tokens/core/common/one_time_token_switches.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -49,7 +47,6 @@ using ::autofill::test::FormDescription;
 using ::autofill::test::GetServerTypes;
 using ::base::test::RunOnceCallback;
 using ::base::test::RunOnceCallbackRepeatedly;
-using ::one_time_tokens::OneTimeTokenServiceImpl;
 using ::testing::_;
 using ::testing::AllOf;
 using ::testing::ElementsAre;
@@ -73,17 +70,6 @@ constexpr char kPhishGuardLatencyHistogram[] =
     "Autofill.OneTimeTokens.PhishGuard.Latency";
 constexpr char kPhishGuardVerdictHistogram[] =
     "Autofill.OneTimeTokens.PhishGuard.Verdict";
-
-class MockSmsOtpBackend : public one_time_tokens::SmsOtpBackend {
- public:
-  MOCK_METHOD(
-      void,
-      RetrieveSmsOtp,
-      (base::OnceCallback<
-          void(base::expected<one_time_tokens::OneTimeToken,
-                              one_time_tokens::OneTimeTokenRetrievalError>)>),
-      (override));
-};
 
 class MockOtpPhishGuardDelegate : public OtpPhishGuardDelegate {
  public:
@@ -114,7 +100,7 @@ class OtpManagerImplTest
       public WithTestAutofillClientDriverManager<TestAutofillClient,
                                                  MockAutofillDriver> {
  public:
-  OtpManagerImplTest() : one_time_token_service_(&sms_otp_backend_) {}
+  OtpManagerImplTest() = default;
   ~OtpManagerImplTest() override = default;
 
   void SetUp() override {
@@ -209,8 +195,7 @@ class OtpManagerImplTest
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   test::AutofillUnitTestEnvironment autofill_test_environment_;
-  MockSmsOtpBackend sms_otp_backend_;
-  OneTimeTokenServiceImpl one_time_token_service_;
+  one_time_tokens::FakeSmsOtpService sms_otp_service_;
   base::HistogramTester histogram_tester_;
   FormFieldData test_field_;
   std::unique_ptr<
@@ -218,24 +203,24 @@ class OtpManagerImplTest
       detector_observation_;
 };
 
-// Tests that no query is issued to the SMS backend if a form does not contain
-// an OTP field.
+// Tests that no SMS OTP subscription is started if a form does not contain an
+// OTP field.
 TEST_F(OtpManagerImplTest, NonOtpForm_NoQueryIssued) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  // As the form has no OTP field, the SMS backend is not queried.
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp).Times(0);
+  // As the form has no OTP field, no SMS OTP subscription is started.
   AddFormWithFirstNameField();
+  EXPECT_EQ(sms_otp_service_.num_subscribers(), 0u);
 }
 
-// Tests that a query is issued to the SMS backend if a form contains an OTP
+// Tests that an SMS OTP subscription is started if a form contains an OTP
 // field.
 TEST_F(OtpManagerImplTest, OtpForm_QueryIssued) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  // As the form has a OTP field, the SMS backend is queried.
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp);
+  // As the form has a OTP field, an SMS OTP subscription is started.
   AddFormWithOtpField();
+  EXPECT_EQ(sms_otp_service_.num_subscribers(), 1u);
 }
 
 // Tests that the FieldDetectionToTickleLatency metric is recorded when an OTP
@@ -243,13 +228,12 @@ TEST_F(OtpManagerImplTest, OtpForm_QueryIssued) {
 TEST_F(OtpManagerImplTest, FieldDetectionToTickleLatency_OtpFormLogsMetric) {
   base::test::ScopedFeatureList feature_list(
       features::kAutofillGmailOtpPreLaunchMetrics);
-  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_ott_service;
   one_time_tokens::FakeGmailOtpBackend gmail_otp_backend;
 
   autofill_client().set_otp_metrics_tracker(std::make_unique<OtpMetricsTracker>(
       &gmail_otp_backend, autofill_client()));
 
-  OtpManagerImpl otp_manager(autofill_manager(), &mock_ott_service);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   AddFormWithOtpField();
 
   task_environment_.FastForwardBy(kTestFieldDetectionToTickleLatency);
@@ -265,13 +249,12 @@ TEST_F(OtpManagerImplTest, FieldDetectionToTickleLatency_OtpFormLogsMetric) {
 // OTP field is detected.
 TEST_F(OtpManagerImplTest,
        FieldDetectionToTickleLatency_NonOtpFormDoesNotLogMetric) {
-  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_ott_service;
   one_time_tokens::FakeGmailOtpBackend gmail_otp_backend;
 
   autofill_client().set_otp_metrics_tracker(std::make_unique<OtpMetricsTracker>(
       &gmail_otp_backend, autofill_client()));
 
-  OtpManagerImpl otp_manager(autofill_manager(), &mock_ott_service);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   AddFormWithFirstNameField();
 
   task_environment_.FastForwardBy(kTestFieldDetectionToTickleLatency);
@@ -288,13 +271,12 @@ TEST_F(OtpManagerImplTest,
        TickleReceivedBeforeOtpForm_NotifiesOtpMetricsTracker) {
   base::test::ScopedFeatureList feature_list(
       features::kAutofillGmailOtpPreLaunchMetrics);
-  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_ott_service;
   one_time_tokens::FakeGmailOtpBackend gmail_otp_backend;
 
   autofill_client().set_otp_metrics_tracker(std::make_unique<OtpMetricsTracker>(
       &gmail_otp_backend, autofill_client()));
 
-  OtpManagerImpl otp_manager(autofill_manager(), &mock_ott_service);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   gmail_otp_backend.OnIncomingOneTimeTokenBackendNotification(
       one_time_tokens::OneTimeTokenBackendNotification());
@@ -309,23 +291,22 @@ TEST_F(OtpManagerImplTest,
       OtpMetricsTracker::kFieldDetectionToTickleLatencyHistogram, 0);
 }
 
-// Tests that `GetOtpSuggestions` triggers an OTP retrieval from the
-// `SmsOtpBackend` the first time it is called, and that the results are
-// correctly passed to the callback.
+// Tests that observing an OTP field triggers an OTP retrieval from the
+// `SmsOtpService`, and that the results are correctly passed to the
+// `GetOtpSuggestions` callback.
 TEST_F(OtpManagerImplTest, GetOtpSuggestions_TriggersFirstRetrieval) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  // Prepare the handling of SMS requests from the SMS backend.
   one_time_tokens::OneTimeToken otp(one_time_tokens::OneTimeTokenType::kSmsOtp,
                                     kDefaultOtpValue, base::TimeTicks::Now());
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp)
-      .WillOnce(RunOnceCallback<0>(otp));
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck)
       .WillOnce(RunOnceCallback<1>(false));
 
   // Observing an OTP field is supposed to trigger an SMS OTP request.
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
+  ASSERT_EQ(sms_otp_service_.num_subscribers(), 1u);
+  sms_otp_service_.SimulateOtpArrived(otp);
 
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future;
   otp_manager.GetOtpSuggestions(*form, test_field_, future.GetCallback());
@@ -337,36 +318,26 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_TriggersFirstRetrieval) {
 // Tests that `GetOtpSuggestions` waits with the callback if an SMS OTP
 // retrieval is in progress.
 TEST_F(OtpManagerImplTest, GetOtpSuggestions_DoesNotTriggerWhileInProgress) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  // Prepare the handling of SMS requests from the SMS backend.
   one_time_tokens::OneTimeToken otp(one_time_tokens::OneTimeTokenType::kSmsOtp,
                                     kDefaultOtpValue, base::TimeTicks::Now());
-  base::OnceCallback<void(
-      base::expected<one_time_tokens::OneTimeToken,
-                     one_time_tokens::OneTimeTokenRetrievalError>)>
-      sms_backend_callback;
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp)
-      .WillOnce(
-          [&](base::OnceCallback<void(
-                  base::expected<one_time_tokens::OneTimeToken,
-                                 one_time_tokens::OneTimeTokenRetrievalError>)>
-                  callback) { sms_backend_callback = std::move(callback); });
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck)
       .WillOnce(RunOnceCallback<1>(false));
 
   // Observing an OTP field is supposed to trigger an SMS OTP request.
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
+  ASSERT_EQ(sms_otp_service_.num_subscribers(), 1u);
 
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future;
   otp_manager.GetOtpSuggestions(*form, test_field_, future.GetCallback());
 
-  // The future should not be ready yet, as the SMS backend has not responded.
+  // The future should not be ready yet, as no SMS OTP has arrived.
   EXPECT_FALSE(future.IsReady());
 
-  // Now, let the SMS backend respond.
-  std::move(sms_backend_callback).Run(otp);
+  // Now, let an SMS OTP arrive.
+  sms_otp_service_.SimulateOtpArrived(otp);
 
   // The future should now be ready, and contain the OTP.
   EXPECT_TRUE(future.IsReady());
@@ -377,12 +348,10 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_DoesNotTriggerWhileInProgress) {
 // Tests that `GetOtpSuggestions` immediately returns any OTPs that have
 // already been fetched.
 TEST_F(OtpManagerImplTest, GetOtpSuggestions_FetchesSmsOnlyOnce) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   one_time_tokens::OneTimeToken otp(one_time_tokens::OneTimeTokenType::kSmsOtp,
                                     kDefaultOtpValue, base::TimeTicks::Now());
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp)
-      .WillOnce(RunOnceCallback<0>(otp));
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck)
       .WillOnce(RunOnceCallback<1>(false))
       .WillOnce(RunOnceCallback<1>(false));
@@ -390,6 +359,8 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_FetchesSmsOnlyOnce) {
   // Observing an OTP field is supposed to trigger an SMS OTP request.
   const FormStructure* form1 = AddFormWithOtpField();
   ASSERT_TRUE(form1);
+  ASSERT_EQ(sms_otp_service_.num_subscribers(), 1u);
+  sms_otp_service_.SimulateOtpArrived(otp);
 
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future1;
   otp_manager.GetOtpSuggestions(*form1, test_field_, future1.GetCallback());
@@ -397,10 +368,11 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_FetchesSmsOnlyOnce) {
   ASSERT_EQ(future1.Get().size(), 1u);
   EXPECT_EQ(future1.Get()[0].value(), otp.value());
 
-  // Adding a second OTP form should not trigger a new SMS OTP retrieval.
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp).Times(0);
+  // Adding a second OTP form should not trigger a new SMS OTP retrieval but
+  // renew the existing subscription.
   const FormStructure* form2 = AddFormWithOtpField();
   ASSERT_TRUE(form2);
+  EXPECT_EQ(sms_otp_service_.num_subscribers(), 1u);
 
   // The results of the first result should still be delivered.
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future2;
@@ -413,21 +385,10 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_FetchesSmsOnlyOnce) {
 // Tests that if `GetOtpSuggestions` is called twice, only the callback from
 // the second call is run when OTPs are fetched.
 TEST_F(OtpManagerImplTest, GetOtpSuggestions_NewCallInvalidatesOldCallback) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  // Prepare the handling of SMS requests from the SMS backend.
   one_time_tokens::OneTimeToken otp(one_time_tokens::OneTimeTokenType::kSmsOtp,
                                     kDefaultOtpValue, base::TimeTicks::Now());
-  base::OnceCallback<void(
-      base::expected<one_time_tokens::OneTimeToken,
-                     one_time_tokens::OneTimeTokenRetrievalError>)>
-      sms_backend_callback;
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp)
-      .WillOnce(
-          [&](base::OnceCallback<void(
-                  base::expected<one_time_tokens::OneTimeToken,
-                                 one_time_tokens::OneTimeTokenRetrievalError>)>
-                  callback) { sms_backend_callback = std::move(callback); });
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck)
       .WillOnce(RunOnceCallback<1>(false));
 
@@ -438,7 +399,7 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_NewCallInvalidatesOldCallback) {
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future1;
   otp_manager.GetOtpSuggestions(*form, test_field_, future1.GetCallback());
 
-  // The future should not be ready yet, as the SMS backend has not responded.
+  // The future should not be ready yet, as no SMS OTP has arrived.
   EXPECT_FALSE(future1.IsReady());
 
   // Call GetOtpSuggestions again. This should invalidate the first callback by
@@ -452,8 +413,8 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_NewCallInvalidatesOldCallback) {
   // The second future should not be ready yet.
   EXPECT_FALSE(future2.IsReady());
 
-  // Now, let the SMS backend respond.
-  std::move(sms_backend_callback).Run(otp);
+  // Now, let an SMS OTP arrive.
+  sms_otp_service_.SimulateOtpArrived(otp);
 
   // The second future should now be ready, and contain the OTP.
   EXPECT_TRUE(future2.IsReady());
@@ -463,20 +424,19 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_NewCallInvalidatesOldCallback) {
 
 // Tests that an empty OTP value received from the backend is not stored.
 TEST_F(OtpManagerImplTest, GetOtpSuggestions_EmptyOtpIsNotStored) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   // Prepare a otp with an empty OTP.
   one_time_tokens::OneTimeToken otp(one_time_tokens::OneTimeTokenType::kSmsOtp,
                                     "", base::TimeTicks::Now());
 
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp)
-      .WillOnce(RunOnceCallback<0>(otp));
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck)
       .WillOnce(RunOnceCallback<1>(false));
 
   // Observing an OTP field is supposed to trigger an SMS OTP request.
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
+  sms_otp_service_.SimulateOtpArrived(otp);
 
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future;
   otp_manager.GetOtpSuggestions(*form, test_field_, future.GetCallback());
@@ -486,22 +446,11 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_EmptyOtpIsNotStored) {
 
 // Tests that `GetOtpSuggestions` filters out expired OTPs.
 TEST_F(OtpManagerImplTest, GetOtpSuggestions_FiltersExpiredOtps) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  // Prepare the otp from the SMS backend.
   one_time_tokens::OneTimeToken otp(one_time_tokens::OneTimeTokenType::kSmsOtp,
                                     kDefaultOtpValue,
                                     task_environment_.NowTicks());
-  base::OnceCallback<void(
-      base::expected<one_time_tokens::OneTimeToken,
-                     one_time_tokens::OneTimeTokenRetrievalError>)>
-      sms_backend_callback;
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp)
-      .WillOnce(
-          [&](base::OnceCallback<void(
-                  base::expected<one_time_tokens::OneTimeToken,
-                                 one_time_tokens::OneTimeTokenRetrievalError>)>
-                  callback) { sms_backend_callback = std::move(callback); });
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck)
       .WillOnce(RunOnceCallback<1>(false));
 
@@ -509,14 +458,14 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_FiltersExpiredOtps) {
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
 
-  // Request suggestions. The future should not be ready yet, as the SMS
-  // backend has not responded.
+  // Request suggestions. The future should not be ready yet, as no SMS OTP has
+  // arrived.
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future1;
   otp_manager.GetOtpSuggestions(*form, test_field_, future1.GetCallback());
   EXPECT_FALSE(future1.IsReady());
 
-  // Now, let the SMS backend respond.
-  std::move(sms_backend_callback).Run(otp);
+  // Now, let an SMS OTP arrive.
+  sms_otp_service_.SimulateOtpArrived(otp);
 
   // The future should now be ready, and contain the fresh OTP.
   ASSERT_EQ(future1.Get().size(), 1u);
@@ -534,16 +483,14 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_FiltersExpiredOtps) {
 // Tests that no suggestions are returned if the safety check returns false
 // (unsafe).
 TEST_F(OtpManagerImplTest, GetOtpSuggestions_SafetyCheckReturnsFalse) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  // Prepare the handling of SMS requests from the SMS backend.
   one_time_tokens::OneTimeToken otp(one_time_tokens::OneTimeTokenType::kSmsOtp,
                                     kDefaultOtpValue, base::TimeTicks::Now());
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp)
-      .WillOnce(RunOnceCallback<0>(otp));
   // Observing an OTP field is supposed to trigger an SMS OTP request.
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
+  sms_otp_service_.SimulateOtpArrived(otp);
 
   base::OnceCallback<void(bool is_phishing)> phish_guard_callback;
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck)
@@ -575,17 +522,15 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_SafetyCheckReturnsFalse) {
 
 // Tests that suggestions are returned if the safety check returns true.
 TEST_F(OtpManagerImplTest, GetOtpSuggestions_SafetyCheckReturnsTrue) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  // Prepare the handling of SMS requests from the SMS backend.
   one_time_tokens::OneTimeToken otp(one_time_tokens::OneTimeTokenType::kSmsOtp,
                                     kDefaultOtpValue, base::TimeTicks::Now());
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp)
-      .WillOnce(RunOnceCallback<0>(otp));
 
   // Observing an OTP field is supposed to trigger an SMS OTP request.
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
+  sms_otp_service_.SimulateOtpArrived(otp);
 
   base::OnceCallback<void(bool is_phishing)> phish_guard_callback;
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck)
@@ -618,13 +563,12 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_SafetyCheckReturnsTrue) {
 
 // Tests that GetOtpSuggestions returns empty if the origin is opaque.
 TEST_F(OtpManagerImplTest, GetOtpSuggestions_OpaqueOriginReturnsEmpty) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
+  ASSERT_EQ(sms_otp_service_.num_subscribers(), 1u);
 
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp).Times(0);
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck).Times(0);
 
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future;
@@ -638,12 +582,10 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_OpaqueOriginReturnsEmpty) {
 // Tests that the frame token of the field is passed to
 // StartOtpPhishGuardCheck.
 TEST_F(OtpManagerImplTest, GetOtpSuggestions_PhishGuardCheckPassesFrameToken) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   one_time_tokens::OneTimeToken otp(one_time_tokens::OneTimeTokenType::kSmsOtp,
                                     kDefaultOtpValue, base::TimeTicks::Now());
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp)
-      .WillOnce(RunOnceCallback<0>(otp));
 
   LocalFrameToken subframe_token = test::MakeLocalFrameToken();
   const FormStructure* form = AddForm({
@@ -656,6 +598,7 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_PhishGuardCheckPassesFrameToken) {
           },
   });
   ASSERT_TRUE(form);
+  sms_otp_service_.SimulateOtpArrived(otp);
 
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck)
       .WillOnce([&](LocalFrameToken frame_to_fill,
@@ -675,17 +618,15 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_PhishGuardCheckPassesFrameToken) {
 // and that the verdict is logged as kUnknown.
 TEST_F(OtpManagerImplTest, GetOtpSuggestions_NoPhishingDelegate) {
   autofill_client().set_otp_phish_guard_delegate(nullptr);
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  // Prepare the handling of SMS requests from the SMS backend.
   one_time_tokens::OneTimeToken otp(one_time_tokens::OneTimeTokenType::kSmsOtp,
                                     kDefaultOtpValue, base::TimeTicks::Now());
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp)
-      .WillOnce(RunOnceCallback<0>(otp));
 
   // Observing an OTP field is supposed to trigger an SMS OTP request.
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
+  sms_otp_service_.SimulateOtpArrived(otp);
 
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future;
   otp_manager.GetOtpSuggestions(*form, test_field_, future.GetCallback());
@@ -703,12 +644,10 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_NoPhishingDelegate) {
 // Tests that `OnOtpAvailable` is logged even if the PhishGuard check blocks
 // delivery.
 TEST_F(OtpManagerImplTest, OnOtpAvailable_LoggedEvenIfPhishGuardBlocks) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   one_time_tokens::OneTimeToken otp(one_time_tokens::OneTimeTokenType::kSmsOtp,
                                     kDefaultOtpValue, base::TimeTicks::Now());
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp)
-      .WillOnce(RunOnceCallback<0>(otp));
 
   base::OnceCallback<void(bool is_phishing)> phish_guard_callback;
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck)
@@ -720,6 +659,7 @@ TEST_F(OtpManagerImplTest, OnOtpAvailable_LoggedEvenIfPhishGuardBlocks) {
   // Observing an OTP field triggers retrieval.
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
+  sms_otp_service_.SimulateOtpArrived(otp);
 
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future;
   otp_manager.GetOtpSuggestions(*form, test_field_, future.GetCallback());
@@ -740,20 +680,10 @@ TEST_F(OtpManagerImplTest, OnOtpAvailable_LoggedEvenIfPhishGuardBlocks) {
 // Tests that `OnOtpAvailable` is not logged if there is no pending callback
 // when the OTP arrives.
 TEST_F(OtpManagerImplTest, OnOtpAvailable_NotLoggedIfNoPendingCallback) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   one_time_tokens::OneTimeToken otp(one_time_tokens::OneTimeTokenType::kSmsOtp,
                                     kDefaultOtpValue, base::TimeTicks::Now());
-  base::OnceCallback<void(
-      base::expected<one_time_tokens::OneTimeToken,
-                     one_time_tokens::OneTimeTokenRetrievalError>)>
-      sms_backend_callback;
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp)
-      .WillOnce(
-          [&](base::OnceCallback<void(
-                  base::expected<one_time_tokens::OneTimeToken,
-                                 one_time_tokens::OneTimeTokenRetrievalError>)>
-                  callback) { sms_backend_callback = std::move(callback); });
 
   // Observing an OTP field triggers retrieval.
   const FormStructure* form = AddFormWithOtpField();
@@ -772,7 +702,7 @@ TEST_F(OtpManagerImplTest, OnOtpAvailable_NotLoggedIfNoPendingCallback) {
 
   // Receive the token. The metric should not be logged because the pending
   // callback was cleared.
-  std::move(sms_backend_callback).Run(otp);
+  sms_otp_service_.SimulateOtpArrived(otp);
 
   EXPECT_FALSE(autofill_manager()
                    .GetOtpFormEventLogger()
@@ -782,28 +712,17 @@ TEST_F(OtpManagerImplTest, OnOtpAvailable_NotLoggedIfNoPendingCallback) {
 // Tests that `OnBeforeFocusOnFormField` clears the pending callback for
 // `GetOtpSuggestions`.
 TEST_F(OtpManagerImplTest, OnBeforeFocusOnFormField_ClearsPendingCallback) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  // Prepare the handling of SMS requests from the SMS backend.
   one_time_tokens::OneTimeToken otp(one_time_tokens::OneTimeTokenType::kSmsOtp,
                                     kDefaultOtpValue, base::TimeTicks::Now());
-  base::OnceCallback<void(
-      base::expected<one_time_tokens::OneTimeToken,
-                     one_time_tokens::OneTimeTokenRetrievalError>)>
-      sms_backend_callback;
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp)
-      .WillOnce(
-          [&](base::OnceCallback<void(
-                  base::expected<one_time_tokens::OneTimeToken,
-                                 one_time_tokens::OneTimeTokenRetrievalError>)>
-                  callback) { sms_backend_callback = std::move(callback); });
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
 
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future;
   otp_manager.GetOtpSuggestions(*form, test_field_, future.GetCallback());
 
-  // The future should not be ready yet, as the SMS backend has not responded.
+  // The future should not be ready yet, as no SMS OTP has arrived.
   EXPECT_FALSE(future.IsReady());
 
   // Simulate a focus on a form field. This should clear the pending callback.
@@ -813,9 +732,9 @@ TEST_F(OtpManagerImplTest, OnBeforeFocusOnFormField_ClearsPendingCallback) {
   // The future should now contain an empty vector.
   EXPECT_TRUE(future.Get().empty());
 
-  // Now, let the SMS backend respond. This should not affect the already run
+  // Now, let an SMS OTP arrive. This should not affect the already run
   // callback.
-  std::move(sms_backend_callback).Run(otp);
+  sms_otp_service_.SimulateOtpArrived(otp);
   EXPECT_TRUE(future.IsReady());
   EXPECT_TRUE(future.Get().empty());
 }
@@ -823,21 +742,10 @@ TEST_F(OtpManagerImplTest, OnBeforeFocusOnFormField_ClearsPendingCallback) {
 // Tests that `OnBeforeFocusOnNonFormField` clears the pending callback for
 // `GetOtpSuggestions`.
 TEST_F(OtpManagerImplTest, OnBeforeFocusOnNonFormField_ClearsPendingCallback) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  // Prepare the handling of SMS requests from the SMS backend.
   one_time_tokens::OneTimeToken otp(one_time_tokens::OneTimeTokenType::kSmsOtp,
                                     kDefaultOtpValue, base::TimeTicks::Now());
-  base::OnceCallback<void(
-      base::expected<one_time_tokens::OneTimeToken,
-                     one_time_tokens::OneTimeTokenRetrievalError>)>
-      sms_backend_callback;
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp)
-      .WillOnce(
-          [&](base::OnceCallback<void(
-                  base::expected<one_time_tokens::OneTimeToken,
-                                 one_time_tokens::OneTimeTokenRetrievalError>)>
-                  callback) { sms_backend_callback = std::move(callback); });
 
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
@@ -845,7 +753,7 @@ TEST_F(OtpManagerImplTest, OnBeforeFocusOnNonFormField_ClearsPendingCallback) {
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future;
   otp_manager.GetOtpSuggestions(*form, test_field_, future.GetCallback());
 
-  // The future should not be ready yet, as the SMS backend has not responded.
+  // The future should not be ready yet, as no SMS OTP has arrived.
   EXPECT_FALSE(future.IsReady());
 
   // Simulate a focus on a non-form field. This should clear the pending
@@ -855,9 +763,9 @@ TEST_F(OtpManagerImplTest, OnBeforeFocusOnNonFormField_ClearsPendingCallback) {
   // The future should now contain an empty vector.
   EXPECT_TRUE(future.Get().empty());
 
-  // Now, let the SMS backend respond. This should not affect the already run
+  // Now, let an SMS OTP arrive. This should not affect the already run
   // callback.
-  std::move(sms_backend_callback).Run(otp);
+  sms_otp_service_.SimulateOtpArrived(otp);
   EXPECT_TRUE(future.IsReady());
   EXPECT_TRUE(future.Get().empty());
 }
@@ -865,7 +773,7 @@ TEST_F(OtpManagerImplTest, OnBeforeFocusOnNonFormField_ClearsPendingCallback) {
 // Tests that `SelectMostRecentToken` returns `last_retrieved_gmail_otp_` when
 // it is present and not expired.
 TEST_F(OtpManagerImplTest, SelectMostRecentToken_ReturnsLastRetrievedGmailOtp) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   one_time_tokens::OneTimeToken token(
       one_time_tokens::OneTimeTokenType::kGmail, "789",
       base::TimeTicks::Now() - base::Seconds(15), "sender@example.com");
@@ -881,7 +789,7 @@ TEST_F(OtpManagerImplTest, SelectMostRecentToken_ReturnsLastRetrievedGmailOtp) {
 // `last_retrieved_gmail_otp_` is expired (older than 3 minutes).
 TEST_F(OtpManagerImplTest,
        SelectMostRecentToken_ReturnsNulloptWhenTokenExpired) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   test_api(otp_manager)
       .set_last_retrieved_gmail_otp(one_time_tokens::OneTimeToken(
           one_time_tokens::OneTimeTokenType::kGmail, "999",
@@ -894,7 +802,7 @@ TEST_F(OtpManagerImplTest,
 // retrieved.
 TEST_F(OtpManagerImplTest,
        SelectMostRecentToken_ReturnsNulloptWhenCacheIsEmpty) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   EXPECT_FALSE(test_api(otp_manager).SelectMostRecentToken().has_value());
 }
 
@@ -912,12 +820,9 @@ TEST_F(OtpManagerImplTest,
       one_time_tokens::OneTimeTokenType::kGmail, "654321",
       base::TimeTicks::Now(), "sender@example.com");
 
-  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_service;
-  OtpManagerImpl otp_manager(autofill_manager(), &mock_service);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   test_api(otp_manager).set_last_retrieved_gmail_otp(gmail_otp);
 
-  EXPECT_CALL(mock_service, GetRecentOneTimeTokens);
-  EXPECT_CALL(mock_service, Subscribe);
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck)
       .WillOnce(RunOnceCallback<1>(/*is_phishing=*/false));
 
@@ -927,6 +832,7 @@ TEST_F(OtpManagerImplTest,
   EXPECT_TRUE(future.IsReady());
   ASSERT_EQ(future.Get().size(), 1u);
   EXPECT_EQ(future.Get()[0].value(), "654321");
+  EXPECT_EQ(sms_otp_service_.num_subscribers(), 1u);
   EXPECT_TRUE(test_api(otp_manager).gmail_otp_tickle_subscription().IsAlive());
   EXPECT_TRUE(autofill_manager()
                   .GetOtpFormEventLogger()
@@ -951,11 +857,9 @@ TEST_F(OtpManagerImplTest,
       one_time_tokens::OneTimeTokenType::kGmail, "654321",
       base::TimeTicks::Now(), "sender@example.com");
 
-  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_service;
-  OtpManagerImpl otp_manager(autofill_manager(), &mock_service);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   test_api(otp_manager).set_last_retrieved_gmail_otp(gmail_otp);
 
-  EXPECT_CALL(mock_service, GetRecentOneTimeTokens);
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck)
       .WillOnce(RunOnceCallback<1>(/*is_phishing=*/true));
 
@@ -964,6 +868,7 @@ TEST_F(OtpManagerImplTest,
 
   EXPECT_TRUE(future.IsReady());
   EXPECT_TRUE(future.Get().empty());
+  EXPECT_EQ(sms_otp_service_.num_subscribers(), 1u);
   EXPECT_TRUE(autofill_manager()
                   .GetOtpFormEventLogger()
                   .HasLoggedDataToFillAvailableForTesting());
@@ -989,14 +894,11 @@ TEST_F(OtpManagerImplTest,
       one_time_tokens::OneTimeTokenType::kSmsOtp, "999999",
       base::TimeTicks::Now());
 
-  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_service;
-  ON_CALL(mock_service, GetRecentOneTimeTokens)
-      .WillByDefault(
-          [&](one_time_tokens::OneTimeTokenService::Callback callback) {
-            callback.Run(base::ok(backend_sms_otp));
-          });
+  // Cache an SMS OTP in the `SmsOtpService` so that it is returned by
+  // `GetRecentOneTimeTokens`.
+  sms_otp_service_.SimulateOtpArrived(backend_sms_otp);
 
-  OtpManagerImpl otp_manager(autofill_manager(), &mock_service);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   test_api(otp_manager).set_last_retrieved_gmail_otp(gmail_otp);
 
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck)
@@ -1022,47 +924,44 @@ TEST_F(OtpManagerImplTest,
       one_time_tokens::OneTimeTokenType::kGmail, "654321",
       base::TimeTicks::Now() - base::Minutes(4), "sender@example.com");
 
-  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_service;
-  OtpManagerImpl otp_manager(autofill_manager(), &mock_service);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   test_api(otp_manager).set_last_retrieved_gmail_otp(expired_gmail_otp);
-
-  EXPECT_CALL(mock_service, GetRecentOneTimeTokens);
 
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future;
   otp_manager.GetOtpSuggestions(*form, test_field_, future.GetCallback());
 
   EXPECT_FALSE(future.IsReady());
+  EXPECT_EQ(sms_otp_service_.num_subscribers(), 1u);
 }
 
-// Tests that no query is issued to the SMS backend if the OTP field is in a
+// Tests that no SMS OTP subscription is started if the OTP field is in a
 // cross-origin iframe with mismatched TLD+1.
 TEST_F(OtpManagerImplTest, CrossOriginOtpFormNoQueryIssued) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp).Times(0);
   AddFormWithOtpField(
       /*field_origin=*/url::Origin::Create(GURL("https://attacker.test")),
       /*main_frame_origin=*/url::Origin::Create(GURL("https://example.test")));
+  EXPECT_EQ(sms_otp_service_.num_subscribers(), 0u);
 }
 
-// Tests that a query is issued to the SMS backend if the OTP field is in a
+// Tests that an SMS OTP subscription is started if the OTP field is in a
 // same-TLD+1 iframe.
 TEST_F(OtpManagerImplTest, SameTldPlusOneOtpFormQueryIssued) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp);
   AddFormWithOtpField(
       /*field_origin=*/url::Origin::Create(GURL("https://sub.example.test")),
       /*main_frame_origin=*/url::Origin::Create(GURL("https://example.test")));
+  EXPECT_EQ(sms_otp_service_.num_subscribers(), 1u);
 }
 
 // Tests that `GetOtpSuggestions` immediately returns empty suggestions without
-// checking phishing or querying backend when the form contains a cross-origin
-// OTP field.
+// checking phishing or subscribing to SMS OTPs when the form contains a
+// cross-origin OTP field.
 TEST_F(OtpManagerImplTest, GetOtpSuggestionsCrossOriginFormReturnsEmpty) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp).Times(0);
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck).Times(0);
 
   const FormStructure* form = AddFormWithOtpField(
@@ -1075,20 +974,21 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestionsCrossOriginFormReturnsEmpty) {
 
   EXPECT_TRUE(future.IsReady());
   EXPECT_TRUE(future.Get().empty());
+  EXPECT_EQ(sms_otp_service_.num_subscribers(), 0u);
 }
 
 // Tests that when the driver is for an embedded frame tree (e.g. fenced frame),
-// no query is issued to the SMS backend even if field and main frame origins
+// no SMS OTP subscription is started even if field and main frame origins
 // match.
 TEST_F(OtpManagerImplTest, EmbeddedFrameTreeNoQueryIssued) {
   autofill_driver().SetIsEmbedded(true);
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp).Times(0);
   AddFormWithOtpField(
       /*field_origin=*/url::Origin::Create(GURL("https://example.test")),
       /*main_frame_origin=*/url::Origin::Create(GURL("https://example.test")));
+  EXPECT_EQ(sms_otp_service_.num_subscribers(), 0u);
 }
 
 // Tests that `GetOtpSuggestions` immediately returns empty suggestions when the
@@ -1096,9 +996,8 @@ TEST_F(OtpManagerImplTest, EmbeddedFrameTreeNoQueryIssued) {
 TEST_F(OtpManagerImplTest, EmbeddedFrameTreeGetOtpSuggestionsReturnsEmpty) {
   autofill_driver().SetIsEmbedded(true);
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp).Times(0);
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck).Times(0);
 
   const FormStructure* form = AddFormWithOtpField(
@@ -1111,17 +1010,16 @@ TEST_F(OtpManagerImplTest, EmbeddedFrameTreeGetOtpSuggestionsReturnsEmpty) {
 
   EXPECT_TRUE(future.IsReady());
   EXPECT_TRUE(future.Get().empty());
+  EXPECT_EQ(sms_otp_service_.num_subscribers(), 0u);
 }
 
 // Tests that `GetOtpSuggestions` returns OTP suggestions when the form is on a
 // same-TLD+1 origin.
 TEST_F(OtpManagerImplTest, GetOtpSuggestionsSameTldPlusOneFormReturnsOtp) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   one_time_tokens::OneTimeToken otp(one_time_tokens::OneTimeTokenType::kSmsOtp,
                                     kDefaultOtpValue, base::TimeTicks::Now());
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp)
-      .WillOnce(RunOnceCallback<0>(otp));
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck)
       .WillOnce(RunOnceCallback<1>(false));
 
@@ -1129,6 +1027,7 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestionsSameTldPlusOneFormReturnsOtp) {
       /*field_origin=*/url::Origin::Create(GURL("https://sub.example.test")),
       /*main_frame_origin=*/url::Origin::Create(GURL("https://example.test")));
   ASSERT_TRUE(form);
+  sms_otp_service_.SimulateOtpArrived(otp);
 
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future;
   otp_manager.GetOtpSuggestions(*form, *form->field(0), future.GetCallback());
@@ -1140,9 +1039,8 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestionsSameTldPlusOneFormReturnsOtp) {
 // Tests that `GetOtpSuggestions` immediately returns empty suggestions if the
 // OTP field is not focusable.
 TEST_F(OtpManagerImplTest, GetOtpSuggestionsUnfocusableOtpFieldReturnsEmpty) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp).Times(0);
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck).Times(0);
 
   const FormStructure* form = AddFormWithOtpField(
@@ -1155,6 +1053,7 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestionsUnfocusableOtpFieldReturnsEmpty) {
 
   EXPECT_TRUE(future.IsReady());
   EXPECT_TRUE(future.Get().empty());
+  EXPECT_EQ(sms_otp_service_.num_subscribers(), 0u);
 }
 
 // Tests that in a same-origin form containing both a password `ONE_TIME_CODE`
@@ -1163,12 +1062,10 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestionsUnfocusableOtpFieldReturnsEmpty) {
 // triggered on the text field.
 TEST_F(OtpManagerImplTest,
        GetOtpSuggestionsPasswordFieldInMixedFormReturnsEmpty) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   one_time_tokens::OneTimeToken otp(one_time_tokens::OneTimeTokenType::kSmsOtp,
                                     kDefaultOtpValue, base::TimeTicks::Now());
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp)
-      .WillOnce(RunOnceCallback<0>(otp));
 
   const FormStructure* form = AddForm({
       .fields =
@@ -1187,6 +1084,7 @@ TEST_F(OtpManagerImplTest,
   });
   ASSERT_TRUE(form);
   ASSERT_EQ(form->fields().size(), 2u);
+  sms_otp_service_.SimulateOtpArrived(otp);
 
   // Triggering on the password field must not return suggestions.
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck).Times(0);
@@ -1212,9 +1110,8 @@ TEST_F(OtpManagerImplTest,
 // same-origin text `ONE_TIME_CODE` field blocks OTP retrieval and suggestions.
 TEST_F(OtpManagerImplTest,
        CrossOriginPasswordOtpFieldWithSameOriginTextOtpFieldReturnsEmpty) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp).Times(0);
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck).Times(0);
 
   const FormStructure* form = AddForm({
@@ -1251,6 +1148,7 @@ TEST_F(OtpManagerImplTest,
                                 same_origin_future.GetCallback());
   EXPECT_TRUE(same_origin_future.IsReady());
   EXPECT_TRUE(same_origin_future.Get().empty());
+  EXPECT_EQ(sms_otp_service_.num_subscribers(), 0u);
 }
 
 // Tests that `GetOtpSuggestions` returns empty suggestions if the trigger field
@@ -1258,16 +1156,15 @@ TEST_F(OtpManagerImplTest,
 // valid same-origin OTP form.
 TEST_F(OtpManagerImplTest,
        GetOtpSuggestionsCrossOriginTriggerFieldOnValidFormReturnsEmpty) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp);
   const FormStructure* form = AddFormWithOtpField(
       /*field_origin=*/url::Origin::Create(GURL("https://example.test")),
       /*main_frame_origin=*/url::Origin::Create(GURL("https://example.test")));
   ASSERT_TRUE(form);
   ASSERT_EQ(form->fields().size(), 1u);
+  ASSERT_EQ(sms_otp_service_.num_subscribers(), 1u);
 
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp).Times(0);
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck).Times(0);
 
   FormFieldData cross_origin_field = *form->field(0);
@@ -1289,10 +1186,7 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_ReturnsMockOtpWhenSwitchIsSet) {
   scoped_command_line.GetProcessCommandLine()->AppendSwitchASCII(
       one_time_tokens::switches::kMockOtpValue, "987654");
 
-  // When mock OTP is set, no SMS backend retrieval should occur.
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp).Times(0);
-
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
@@ -1308,6 +1202,9 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_ReturnsMockOtpWhenSwitchIsSet) {
   EXPECT_THAT(
       future.Get(),
       ElementsAre(Property(&one_time_tokens::OneTimeToken::value, "987654")));
+
+  // When mock OTP is set, no SMS OTP retrieval should occur.
+  EXPECT_EQ(sms_otp_service_.num_subscribers(), 0u);
 }
 
 // Tests that `GetOtpSuggestions` returns empty suggestions when the form is not
@@ -1317,9 +1214,8 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_MockOtpIgnoredForNonOtpForm) {
   scoped_command_line.GetProcessCommandLine()->AppendSwitchASCII(
       one_time_tokens::switches::kMockOtpValue, "987654");
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
-  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp).Times(0);
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck).Times(0);
 
   FormData form_data;
@@ -1332,6 +1228,7 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_MockOtpIgnoredForNonOtpForm) {
 
   EXPECT_TRUE(future.IsReady());
   EXPECT_TRUE(future.Get().empty());
+  EXPECT_EQ(sms_otp_service_.num_subscribers(), 0u);
 }
 
 // Tests that a tickle subscription is not created in the constructor or when a
@@ -1340,9 +1237,8 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_MockOtpIgnoredForNonOtpForm) {
 TEST_F(OtpManagerImplTest, TickleSubscriptionCreatedLazilyOnOtpFormParsed) {
   autofill_client().set_gmail_otp_backend(
       std::make_unique<one_time_tokens::FakeGmailOtpBackend>());
-  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_ott_service;
 
-  OtpManagerImpl otp_manager(autofill_manager(), &mock_ott_service);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   EXPECT_FALSE(test_api(otp_manager).gmail_otp_tickle_subscription().IsAlive());
 
   // Parsing a non-OTP form should still not subscribe to tickles.
@@ -1362,9 +1258,8 @@ TEST_F(OtpManagerImplTest, TickleSubscriptionCreatedLazilyOnOtpFormParsed) {
 // available.
 TEST_F(OtpManagerImplTest, NoTickleSubscriptionWithoutGmailOtpBackend) {
   autofill_client().set_gmail_otp_backend(nullptr);
-  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_ott_service;
 
-  OtpManagerImpl otp_manager(autofill_manager(), &mock_ott_service);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   AddFormWithOtpField();
   EXPECT_FALSE(test_api(otp_manager).gmail_otp_tickle_subscription().IsAlive());
 }
@@ -1374,9 +1269,8 @@ TEST_F(OtpManagerImplTest, NoTickleSubscriptionWithoutGmailOtpBackend) {
 TEST_F(OtpManagerImplTest, TickleSubscriptionRenewedOnSubsequentOtpFormParsed) {
   autofill_client().set_gmail_otp_backend(
       std::make_unique<one_time_tokens::FakeGmailOtpBackend>());
-  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_ott_service;
 
-  OtpManagerImpl otp_manager(autofill_manager(), &mock_ott_service);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   AddFormWithOtpField();
   ASSERT_TRUE(test_api(otp_manager).gmail_otp_tickle_subscription().IsAlive());
   base::Time initial_expiration =
@@ -1404,9 +1298,8 @@ TEST_F(OtpManagerImplTest,
        TickleSubscriptionRecreatedOnOtpFormParsedIfExpired) {
   autofill_client().set_gmail_otp_backend(
       std::make_unique<one_time_tokens::FakeGmailOtpBackend>());
-  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_ott_service;
 
-  OtpManagerImpl otp_manager(autofill_manager(), &mock_ott_service);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   AddFormWithOtpField();
   ASSERT_TRUE(test_api(otp_manager).gmail_otp_tickle_subscription().IsAlive());
 
@@ -1436,7 +1329,7 @@ TEST_F(OtpManagerImplTest, GmailOtpBackendTickleStartsGmailOtpRetriever) {
   one_time_tokens::FakeGmailOtpBackend* backend_ptr = backend.get();
   autofill_client().set_gmail_otp_backend(std::move(backend));
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   // As the user has not opted into Gmail OTP filling yet, parsing an OTP form
   // subscribes to tickles but does not start `GmailOtpRetriever`.
   AddFormWithOtpField();
@@ -1456,7 +1349,7 @@ TEST_F(OtpManagerImplTest, GmailOtpBackendTickleStartsGmailOtpRetriever) {
 // Tests that IsOtpFieldDetected returns false when no OtpFieldDetector is
 // set on AutofillClient.
 TEST_F(OtpManagerImplTest, IsOtpFieldDetected_NoDetector) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   EXPECT_FALSE(test_api(otp_manager).IsOtpFieldDetected());
 }
 
@@ -1469,7 +1362,7 @@ TEST_F(OtpManagerImplTest, IsOtpFieldDetected_DetectorWithoutOtpField) {
   observation.Observe(&autofill_manager());
   autofill_client().set_otp_field_detector(std::move(detector));
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   EXPECT_FALSE(test_api(otp_manager).IsOtpFieldDetected());
 
   AddFormWithFirstNameField();
@@ -1485,7 +1378,7 @@ TEST_F(OtpManagerImplTest, IsOtpFieldDetected_DetectorWithOtpField) {
   observation.Observe(&autofill_manager());
   autofill_client().set_otp_field_detector(std::move(detector));
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   AddFormWithOtpField();
   EXPECT_TRUE(test_api(otp_manager).IsOtpFieldDetected());
 }
@@ -1493,7 +1386,7 @@ TEST_F(OtpManagerImplTest, IsOtpFieldDetected_DetectorWithOtpField) {
 // Tests that AnyOtpFieldContainsTypedInput returns false when no forms are
 // cached in AutofillManager.
 TEST_F(OtpManagerImplTest, AnyOtpFieldContainsTypedInput_NoForms) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   EXPECT_FALSE(test_api(otp_manager).AnyOtpFieldContainsTypedInput());
 }
 
@@ -1501,7 +1394,7 @@ TEST_F(OtpManagerImplTest, AnyOtpFieldContainsTypedInput_NoForms) {
 // has user typed input.
 TEST_F(OtpManagerImplTest,
        AnyOtpFieldContainsTypedInput_NonOtpFieldWithTypedInput) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithFirstNameField();
   ASSERT_TRUE(form);
   test_api(autofill_manager())
@@ -1516,7 +1409,7 @@ TEST_F(OtpManagerImplTest,
 // no user typed input.
 TEST_F(OtpManagerImplTest,
        AnyOtpFieldContainsTypedInput_OtpFieldWithoutTypedInput) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
 
@@ -1527,7 +1420,7 @@ TEST_F(OtpManagerImplTest,
 // user typed input.
 TEST_F(OtpManagerImplTest,
        AnyOtpFieldContainsTypedInput_OtpFieldWithTypedInput) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
   test_api(autofill_manager())
@@ -1543,7 +1436,7 @@ TEST_F(OtpManagerImplTest,
 // typed input across multiple fields and forms.
 TEST_F(OtpManagerImplTest,
        AnyOtpFieldContainsTypedInput_MultipleFieldsAndForms) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   FormDescription form_description = {
       .fields =
@@ -1588,7 +1481,7 @@ TEST_F(OtpManagerImplTest,
 // Tests that UserOptedIntoGmailOtpFilling returns false when the user opt-in
 // preference is in its default state (disabled).
 TEST_F(OtpManagerImplTest, UserOptedIntoGmailOtpFilling_Default) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   EXPECT_FALSE(test_api(otp_manager).UserOptedIntoGmailOtpFilling());
 }
 
@@ -1596,7 +1489,7 @@ TEST_F(OtpManagerImplTest, UserOptedIntoGmailOtpFilling_Default) {
 // preference is enabled.
 TEST_F(OtpManagerImplTest, UserOptedIntoGmailOtpFilling_Enabled) {
   prefs::SetAutofillGmailOtpFillingEnabled(autofill_client().GetPrefs(), true);
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   EXPECT_TRUE(test_api(otp_manager).UserOptedIntoGmailOtpFilling());
 }
 
@@ -1604,7 +1497,7 @@ TEST_F(OtpManagerImplTest, UserOptedIntoGmailOtpFilling_Enabled) {
 // preference is disabled.
 TEST_F(OtpManagerImplTest, UserOptedIntoGmailOtpFilling_Disabled) {
   prefs::SetAutofillGmailOtpFillingEnabled(autofill_client().GetPrefs(), true);
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   ASSERT_TRUE(test_api(otp_manager).UserOptedIntoGmailOtpFilling());
 
   prefs::SetAutofillGmailOtpFillingEnabled(autofill_client().GetPrefs(), false);
@@ -1612,10 +1505,10 @@ TEST_F(OtpManagerImplTest, UserOptedIntoGmailOtpFilling_Disabled) {
 }
 
 // Tests that GetOtpSuggestions immediately invokes the callback with empty
-// suggestions if OneTimeTokenService is nullptr.
+// suggestions if SmsOtpService is nullptr.
 TEST_F(OtpManagerImplTest, GetOtpSuggestions_NullServiceInvokesCallback) {
   OtpManagerImpl otp_manager(autofill_manager(),
-                             /*one_time_token_service=*/nullptr);
+                             /*sms_otp_service=*/nullptr);
   const FormStructure* form = AddFormWithOtpField();
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future;
   otp_manager.GetOtpSuggestions(*form, test_field_, future.GetCallback());
@@ -1624,11 +1517,10 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_NullServiceInvokesCallback) {
 }
 
 // Tests that GetOtpSuggestions invokes the callback with empty suggestions
-// when OneTimeTokenService has no SMS backend (e.g. Desktop).
+// when SmsOtpService has no SMS backend (e.g. Desktop).
 TEST_F(OtpManagerImplTest, GetOtpSuggestions_NullSmsBackendInvokesCallback) {
-  OneTimeTokenServiceImpl service_without_backend(
-      /*sms_otp_backend=*/nullptr);
-  OtpManagerImpl otp_manager(autofill_manager(), &service_without_backend);
+  sms_otp_service_.set_platform_supported(false);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future;
   otp_manager.GetOtpSuggestions(*form, test_field_, future.GetCallback());
@@ -1640,7 +1532,7 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestions_NullSmsBackendInvokesCallback) {
 // suggestions if overwritten by a subsequent call or if subscription expires.
 TEST_F(OtpManagerImplTest,
        GetOtpSuggestions_OverwrittenOrExpiredCallbackInvoked) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
 
   base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>>
@@ -1667,8 +1559,8 @@ TEST_F(OtpManagerImplTest,
 // is still pending resolves the callback with empty suggestions.
 TEST_F(OtpManagerImplTest,
        Destructor_ResolvesPendingGetOtpSuggestionsCallbackWithEmpty) {
-  auto otp_manager = std::make_unique<OtpManagerImpl>(autofill_manager(),
-                                                      &one_time_token_service_);
+  auto otp_manager =
+      std::make_unique<OtpManagerImpl>(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
 
@@ -1683,7 +1575,7 @@ TEST_F(OtpManagerImplTest,
 
 // Tests that focus events correctly track the currently focused field and form.
 TEST_F(OtpManagerImplTest, FocusTracking_SetsAndClearsFocusedFieldAndForm) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
@@ -1706,7 +1598,7 @@ TEST_F(OtpManagerImplTest, FocusTracking_SetsAndClearsFocusedFieldAndForm) {
 // Tests that `GetTargetOtpField` returns the focused field when it is an OTP
 // field.
 TEST_F(OtpManagerImplTest, GetTargetOtpField_ReturnsOtpFieldWhenFocused) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
@@ -1726,7 +1618,7 @@ TEST_F(OtpManagerImplTest, GetTargetOtpField_ReturnsOtpFieldWhenFocused) {
 // field is not an OTP field, even if an OTP field exists in cached forms.
 TEST_F(OtpManagerImplTest,
        GetTargetOtpField_ReturnsNullptrWhenNonOtpFieldFocused) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   const FormStructure* form = AddForm({
       .fields =
@@ -1751,7 +1643,7 @@ TEST_F(OtpManagerImplTest,
 // no field is focused.
 TEST_F(OtpManagerImplTest,
        GetTargetOtpField_ReturnsOtpFieldWhenNoFieldFocused) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
@@ -1767,7 +1659,7 @@ TEST_F(OtpManagerImplTest,
 // cached forms.
 TEST_F(OtpManagerImplTest,
        GetTargetOtpField_ReturnsNullptrWhenNoOtpFieldInCachedForms) {
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   const FormStructure* form = AddFormWithFirstNameField();
   ASSERT_TRUE(form);
@@ -1781,7 +1673,7 @@ class OtpManagerImplDeliveryTest : public OtpManagerImplTest {
     OtpManagerImplTest::SetUp();
     prefs::SetAutofillGmailOtpFillingEnabled(autofill_client().GetPrefs(),
                                              true);
-    otp_manager_.emplace(autofill_manager(), &one_time_token_service_);
+    otp_manager_.emplace(autofill_manager(), &sms_otp_service_);
     form_ = AddFormWithOtpField();
     ASSERT_TRUE(form_);
   }
@@ -2121,7 +2013,7 @@ class OtpManagerImplProactiveTriggerTest : public OtpManagerImplTest {
     OtpManagerImplTest::SetUp();
     prefs::SetAutofillGmailOtpFillingEnabled(autofill_client().GetPrefs(),
                                              true);
-    otp_manager_.emplace(autofill_manager(), &one_time_token_service_);
+    otp_manager_.emplace(autofill_manager(), &sms_otp_service_);
   }
 
   void TearDown() override {
@@ -2507,7 +2399,7 @@ TEST_F(OtpManagerImplTest,
   autofill_client().set_gmail_otp_backend(
       std::make_unique<one_time_tokens::FakeGmailOtpBackend>());
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
 
@@ -2527,7 +2419,7 @@ TEST_F(
   autofill_client().set_gmail_otp_backend(
       std::make_unique<one_time_tokens::FakeGmailOtpBackend>());
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
 
@@ -2547,7 +2439,7 @@ TEST_F(
   autofill_client().set_affiliation_service(&mock_affiliation_service);
   autofill_client().set_gmail_otp_backend(nullptr);
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
 
@@ -2567,7 +2459,7 @@ TEST_F(OtpManagerImplTest,
   autofill_client().set_gmail_otp_backend(
       std::make_unique<one_time_tokens::FakeGmailOtpBackend>());
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
 
@@ -2595,8 +2487,7 @@ TEST_F(OtpManagerImplTest,
       one_time_tokens::OneTimeTokenType::kGmail, "654321",
       base::TimeTicks::Now(), "sender@example.com");
 
-  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_service;
-  OtpManagerImpl otp_manager(autofill_manager(), &mock_service);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   test_api(otp_manager).set_last_retrieved_gmail_otp(gmail_otp);
 
   EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck)
@@ -2617,7 +2508,7 @@ TEST_F(OtpManagerImplTest,
 // succeeds and PhishGuard approves.
 TEST_F(OtpManagerImplTest, OnGmailOtpRetrieved_DeliversSuggestionsOnSuccess) {
   prefs::SetAutofillGmailOtpFillingEnabled(autofill_client().GetPrefs(), true);
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
 
@@ -2650,7 +2541,7 @@ TEST_F(OtpManagerImplTest, OnGmailOtpRetrieved_DeliversSuggestionsOnSuccess) {
 // retrieval fails.
 TEST_F(OtpManagerImplTest, OnGmailOtpRetrieved_DoesNotInvokeCallbackOnFailure) {
   prefs::SetAutofillGmailOtpFillingEnabled(autofill_client().GetPrefs(), true);
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
 
@@ -2672,7 +2563,7 @@ TEST_F(OtpManagerImplTest, OnGmailOtpRetrieved_DoesNotInvokeCallbackOnFailure) {
 TEST_F(OtpManagerImplTest,
        OnGmailOtpRetrieved_DoesNotInvokeCallbackWhenTokenEmpty) {
   prefs::SetAutofillGmailOtpFillingEnabled(autofill_client().GetPrefs(), true);
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
 
@@ -2692,7 +2583,7 @@ TEST_F(OtpManagerImplTest,
   EXPECT_EQ(test_api(otp_manager).gmail_otp_retriever(), nullptr);
 }
 
-// Tests that Gmail OTPs returned by `OneTimeTokenService` are ignored, even if
+// Tests that Gmail OTPs returned by `SmsOtpService` are ignored, even if
 // neither `AffiliationService` nor `GmailOtpBackend` is available, because
 // Gmail OTPs are only retrieved from the `GmailOtpBackend`.
 TEST_F(OtpManagerImplTest, GetRecentOneTimeTokens_IgnoresGmailOtp) {
@@ -2700,25 +2591,18 @@ TEST_F(OtpManagerImplTest, GetRecentOneTimeTokens_IgnoresGmailOtp) {
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
 
-  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_service;
-  one_time_tokens::OneTimeTokenService::Callback get_recent_callback;
-  EXPECT_CALL(mock_service, GetRecentOneTimeTokens)
-      .WillOnce([&get_recent_callback](
-                    one_time_tokens::OneTimeTokenService::Callback cb) {
-        get_recent_callback = std::move(cb);
-      });
-
-  OtpManagerImpl otp_manager(autofill_manager(), &mock_service);
-
-  base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future;
-  otp_manager.GetOtpSuggestions(*form, test_field_, future.GetCallback());
-
-  ASSERT_FALSE(get_recent_callback.is_null());
-  // Delivering a Gmail token through GetRecentOneTimeTokens should be ignored.
-  EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck).Times(0);
-  get_recent_callback.Run(one_time_tokens::OneTimeToken(
+  // Cache a Gmail token in the `SmsOtpService` so that it is delivered through
+  // `GetRecentOneTimeTokens`.
+  sms_otp_service_.SimulateOtpArrived(one_time_tokens::OneTimeToken(
       one_time_tokens::OneTimeTokenType::kGmail, "123456",
       base::TimeTicks::Now(), "sender@example.com"));
+
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
+
+  // Delivering a Gmail token through GetRecentOneTimeTokens should be ignored.
+  EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck).Times(0);
+  base::test::TestFuture<std::vector<one_time_tokens::OneTimeToken>> future;
+  otp_manager.GetOtpSuggestions(*form, test_field_, future.GetCallback());
 
   EXPECT_FALSE(future.IsReady());
   EXPECT_FALSE(autofill_manager()
@@ -2743,7 +2627,7 @@ TEST_F(OtpManagerImplOnTickleReceivedTest,
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   otp_manager.OnBeforeFocusOnFormField(autofill_manager(), form->global_id(),
                                        otp_field_id);
 
@@ -2767,7 +2651,7 @@ TEST_F(OtpManagerImplOnTickleReceivedTest,
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   otp_manager.OnBeforeFocusOnFormField(autofill_manager(), form->global_id(),
                                        otp_field_id);
 
@@ -2799,7 +2683,7 @@ TEST_F(OtpManagerImplOnTickleReceivedTest,
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   otp_manager.OnBeforeFocusOnFormField(autofill_manager(), form->global_id(),
                                        otp_field_id);
 
@@ -2822,7 +2706,7 @@ TEST_F(OtpManagerImplOnTickleReceivedTest,
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   test_api(otp_manager).OnTickleReceived();
 
@@ -2852,7 +2736,7 @@ TEST_F(OtpManagerImplOnTickleReceivedTest,
   ASSERT_TRUE(form);
   FieldGlobalId name_field_id = form->field(0)->global_id();
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   otp_manager.OnBeforeFocusOnFormField(autofill_manager(), form->global_id(),
                                        name_field_id);
 
@@ -2876,7 +2760,7 @@ TEST_F(OtpManagerImplOnTickleReceivedTest,
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   otp_manager.OnBeforeFocusOnFormField(autofill_manager(), form->global_id(),
                                        otp_field_id);
 
@@ -2905,7 +2789,7 @@ TEST_F(OtpManagerImplOnTickleReceivedTest,
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   otp_manager.OnBeforeFocusOnFormField(autofill_manager(), form->global_id(),
                                        otp_field_id);
 
@@ -2928,7 +2812,7 @@ TEST_F(OtpManagerImplOnTickleReceivedTest,
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   otp_manager.OnBeforeFocusOnFormField(autofill_manager(), form->global_id(),
                                        otp_field_id);
 
@@ -2951,7 +2835,7 @@ TEST_F(OtpManagerImplOnTickleReceivedTest,
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   otp_manager.OnBeforeFocusOnFormField(autofill_manager(), form->global_id(),
                                        otp_field_id);
 
@@ -2982,7 +2866,7 @@ TEST_F(OtpManagerImplOnTickleReceivedTest,
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   otp_manager.OnBeforeFocusOnFormField(autofill_manager(), form->global_id(),
                                        otp_field_id);
 
@@ -3008,7 +2892,7 @@ TEST_F(OtpManagerImplOnTickleReceivedTest,
 TEST_F(OtpManagerImplTest,
        OnGmailOtpRetrieved_ProactivelyTriggersSuggestionsOnSuccess) {
   prefs::SetAutofillGmailOtpFillingEnabled(autofill_client().GetPrefs(), true);
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
@@ -3036,7 +2920,7 @@ TEST_F(OtpManagerImplTest,
 // PhishGuard classifies the site as phishing.
 TEST_F(OtpManagerImplTest, OnGmailOtpRetrieved_SuppressedWhenPhishGuardBlocks) {
   prefs::SetAutofillGmailOtpFillingEnabled(autofill_client().GetPrefs(), true);
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
@@ -3067,7 +2951,7 @@ TEST_F(OtpManagerImplTest,
   autofill_client().set_gmail_otp_backend(
       std::make_unique<one_time_tokens::FakeGmailOtpBackend>());
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
@@ -3107,7 +2991,7 @@ TEST_F(OtpManagerImplTest,
 TEST_F(OtpManagerImplTest,
        OnGmailOtpRetrieved_DoesNotTriggerSuggestionsOnFailure) {
   prefs::SetAutofillGmailOtpFillingEnabled(autofill_client().GetPrefs(), true);
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
@@ -3131,7 +3015,7 @@ TEST_F(OtpManagerImplTest,
 TEST_F(OtpManagerImplTest,
        OnGmailOtpRetrieved_DoesNotTriggerSuggestionsOnEmptyToken) {
   prefs::SetAutofillGmailOtpFillingEnabled(autofill_client().GetPrefs(), true);
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
@@ -3152,7 +3036,7 @@ TEST_F(OtpManagerImplTest,
 TEST_F(OtpManagerImplTest,
        ReactiveThenProactiveTickle_DeduplicationSuppressesSubsequentTickle) {
   prefs::SetAutofillGmailOtpFillingEnabled(autofill_client().GetPrefs(), true);
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
@@ -3201,7 +3085,7 @@ TEST_F(OtpManagerImplTest,
   autofill_client().set_gmail_otp_backend(
       std::make_unique<one_time_tokens::FakeGmailOtpBackend>());
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
@@ -3261,7 +3145,7 @@ TEST_F(
   autofill_client().set_gmail_otp_backend(
       std::make_unique<one_time_tokens::FakeGmailOtpBackend>());
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
@@ -3345,7 +3229,7 @@ TEST_F(OtpManagerImplTest,
   autofill_client().set_gmail_otp_backend(
       std::make_unique<one_time_tokens::FakeGmailOtpBackend>());
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
   FieldGlobalId otp_field_id = form->field(0)->global_id();
@@ -3432,7 +3316,7 @@ TEST_F(
   autofill_client().set_gmail_otp_backend(
       std::make_unique<one_time_tokens::FakeGmailOtpBackend>());
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   one_time_tokens::OneTimeToken gmail_otp(
       one_time_tokens::OneTimeTokenType::kGmail, "654321",
       base::TimeTicks::Now(), "sender@example.com");
@@ -3470,7 +3354,7 @@ TEST_F(
       base::TimeTicks::Now(), "otp@bank.test"));
   autofill_client().set_gmail_otp_backend(std::move(backend));
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
@@ -3497,8 +3381,9 @@ TEST_F(
   autofill_client().set_gmail_otp_backend(
       std::make_unique<one_time_tokens::FakeGmailOtpBackend>());
 
-  OneTimeTokenServiceImpl desktop_service(/*sms_otp_backend=*/nullptr);
-  OtpManagerImpl otp_manager(autofill_manager(), &desktop_service);
+  // Simulate a platform without SMS OTP support (as on Desktop).
+  sms_otp_service_.set_platform_supported(false);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
 
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
@@ -3557,7 +3442,7 @@ TEST_F(OtpManagerImplTest,
   autofill_client().set_gmail_otp_backend(
       std::make_unique<one_time_tokens::FakeGmailOtpBackend>());
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
   otp_manager.OnBeforeFocusOnFormField(autofill_manager(), form->global_id(),
@@ -3601,7 +3486,7 @@ TEST_F(
   autofill_client().set_gmail_otp_backend(
       std::make_unique<one_time_tokens::FakeGmailOtpBackend>());
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
   ASSERT_GT(form->field_count(), 0u);
@@ -3645,7 +3530,7 @@ TEST_F(OtpManagerImplTest,
   autofill_client().set_gmail_otp_backend(
       std::make_unique<one_time_tokens::FakeGmailOtpBackend>());
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
   EXPECT_EQ(test_api(otp_manager).gmail_otp_retriever(), nullptr);
@@ -3667,7 +3552,7 @@ TEST_F(OtpManagerImplTest,
   autofill_client().set_gmail_otp_backend(
       std::make_unique<one_time_tokens::FakeGmailOtpBackend>());
 
-  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+  OtpManagerImpl otp_manager(autofill_manager(), &sms_otp_service_);
   const FormStructure* form = AddFormWithOtpField();
   ASSERT_TRUE(form);
   FormStructure* cached_form =

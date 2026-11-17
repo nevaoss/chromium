@@ -133,6 +133,15 @@ public class BottomBarConfigUtilsUnitTest {
     }
 
     @Test
+    public void testHasUserSetBottomBarEnabled() {
+        assertFalse(BottomBarConfigUtils.hasUserSetBottomBarEnabled());
+        BottomBarConfigUtils.setBottomBarUserEnabled(/* enabled= */ true);
+        assertTrue(BottomBarConfigUtils.hasUserSetBottomBarEnabled());
+        BottomBarConfigUtils.setBottomBarUserEnabled(/* enabled= */ false);
+        assertTrue(BottomBarConfigUtils.hasUserSetBottomBarEnabled());
+    }
+
+    @Test
     public void testSetBottomBarUserEnabled_RoundTrip() {
         BottomBarConfigUtils.setBottomBarUserEnabled(false);
         assertFalse(BottomBarConfigUtils.isBottomBarUserEnabled());
@@ -179,6 +188,43 @@ public class BottomBarConfigUtilsUnitTest {
     public void testShouldShowSettingsToggle_IgnoresUserPref() {
         BottomBarConfigUtils.setBottomBarUserEnabled(false);
         assertTrue(BottomBarConfigUtils.shouldShowSettingsToggle(mContext));
+    }
+
+    @Test
+    @EnableFeatures(
+            ChromeFeatureList.ANDROID_BOTTOM_BAR
+                    + ":show_settings_toggle/false/education_enabled/true")
+    public void testShouldObserveBottomBarEnabledChanges_Eligible_EducationEnabled() {
+        assertTrue(BottomBarConfigUtils.shouldObserveBottomBarEnabledChanges(mContext));
+    }
+
+    @Test
+    @EnableFeatures(
+            ChromeFeatureList.ANDROID_BOTTOM_BAR
+                    + ":show_settings_toggle/false/education_enabled/false")
+    public void testShouldObserveBottomBarEnabledChanges_Eligible_BothParamsFalse() {
+        assertFalse(BottomBarConfigUtils.shouldObserveBottomBarEnabledChanges(mContext));
+    }
+
+    @Test
+    @Config(qualifiers = "sw600dp")
+    @EnableFeatures(
+            ChromeFeatureList.ANDROID_BOTTOM_BAR
+                    + ":show_settings_toggle/false/education_enabled/true")
+    public void testShouldObserveBottomBarEnabledChanges_Tablet_EducationEnabled() {
+        // The observer only compares the user's choice, which defaults to true, so observing where
+        // the bar is not eligible would recreate the activity in a loop.
+        assertTrue(BottomBarConfigUtils.isBottomBarUserEnabled());
+        assertFalse(BottomBarConfigUtils.shouldObserveBottomBarEnabledChanges(mContext));
+    }
+
+    @Test
+    @EnableFeatures(
+            ChromeFeatureList.ANDROID_BOTTOM_BAR
+                    + ":show_settings_toggle/false/education_enabled/true")
+    public void testShouldObserveBottomBarEnabledChanges_Automotive_EducationEnabled() {
+        DeviceInfo.setIsAutomotiveForTesting(true);
+        assertFalse(BottomBarConfigUtils.shouldObserveBottomBarEnabledChanges(mContext));
     }
 
     @Test
@@ -429,6 +475,12 @@ public class BottomBarConfigUtilsUnitTest {
 
     @Test
     @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_BAR)
+    public void testIsGlicSettingToggleParamEnabled_DefaultBaseline() {
+        assertTrue(BottomBarConfigUtils.isGlicSettingToggleParamEnabled());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_BAR)
     public void testGetBottomBarHeightDp_DefaultBaseline() {
         assertEquals(
                 BottomBarConfigUtils.DEFAULT_BOTTOM_BAR_HEIGHT_DP,
@@ -487,5 +539,18 @@ public class BottomBarConfigUtilsUnitTest {
 
         when(mTab.isOffTheRecord()).thenReturn(true);
         assertTrue(BottomBarConfigUtils.isNtp(mTab));
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_BAR)
+    public void testShouldRemoveTopPaddingForBottomOmnibox_DefaultTrue() {
+        assertTrue(BottomBarConfigUtils.shouldRemoveTopPaddingForBottomOmnibox());
+    }
+
+    @Test
+    @EnableFeatures(
+            ChromeFeatureList.ANDROID_BOTTOM_BAR + ":remove_top_padding_for_bottom_omnibox/false")
+    public void testShouldRemoveTopPaddingForBottomOmnibox_FalseParam() {
+        assertFalse(BottomBarConfigUtils.shouldRemoveTopPaddingForBottomOmnibox());
     }
 }

@@ -31,7 +31,6 @@ import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.ApplicationTestUtils;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
-import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.DoNotBatch;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -88,8 +87,8 @@ public class SidePanelContainerCoordinatorIntegrationTest {
     @Rule
     public RenderTestRule mRenderTestRule =
             RenderTestRule.Builder.withPublicCorpus()
-                    .setRevision(2)
-                    .setDescription("Ligatures and contextual alternates disabled in UI text")
+                    .setRevision(4)
+                    .setDescription("Side panel header aligned with UX spec")
                     .setBugComponent(RenderTestRule.Component.UI_BROWSER_TOP_CHROME_SIDE_PANEL)
                     .build();
 
@@ -126,6 +125,7 @@ public class SidePanelContainerCoordinatorIntegrationTest {
         TextView titleView = containerView.findViewById(R.id.side_panel_title);
         assertNotNull(titleView);
         assertEquals("Developer Panel", titleView.getText().toString());
+        assertEquals(View.GONE, containerView.findViewById(R.id.side_panel_icon).getVisibility());
     }
 
     @Test
@@ -405,13 +405,16 @@ public class SidePanelContainerCoordinatorIntegrationTest {
         var tab = mResponsivePageStation.getTab();
         var webContents = tab.getWebContents();
         assertNotNull(webContents);
+        int originalWebContentsWidth = ThreadUtils.runOnUiThreadBlocking(webContents::getWidth);
 
         var coordinator = getSidePanelContainerCoordinator();
         showPanel(tab);
-        int sidePanelWidth = waitForContainerViewOpen(coordinator).getWidth();
+        waitForContainerViewOpen(coordinator);
 
+        // WebContents#getWidth() returns a value in dp, whereas View#getWidth() and
+        // getWindowWidth() return px; compare against originalWebContentsWidth in dp.
         CriteriaHelper.pollUiThread(
-                () -> webContents.getWidth() + sidePanelWidth <= getWindowWidth(activity),
+                () -> webContents.getWidth() < originalWebContentsWidth,
                 "WebContents isn't resized to accommodate side panel.");
 
         // Act: Change the theme.
@@ -420,10 +423,10 @@ public class SidePanelContainerCoordinatorIntegrationTest {
         // Assert:
         // (1) Wait for the SidePanelContainerCoordinator in the new Activity to be initialized,
         // then
-        // (2) Verify the WebContents's width in the new Activity matches the width before theme
-        // change.
+        // (2) Verify the WebContents's width in the new Activity remains narrowed for the side
+        // panel.
         var newCoordinator = waitForSidePanelContainerCoordinator(activityInNewTheme);
-        int newSidePanelWidth = waitForContainerViewOpen(newCoordinator).getWidth();
+        waitForContainerViewOpen(newCoordinator);
         CriteriaHelper.pollUiThread(
                 () -> {
                     var newTab = activityInNewTheme.getActivityTabProvider().get();
@@ -436,8 +439,7 @@ public class SidePanelContainerCoordinatorIntegrationTest {
                         return false;
                     }
 
-                    return newWebContents.getWidth() + newSidePanelWidth
-                            <= getWindowWidth(activityInNewTheme);
+                    return newWebContents.getWidth() < originalWebContentsWidth;
                 },
                 "WebContents isn't resized to accommodate side panel.");
     }
@@ -599,8 +601,12 @@ public class SidePanelContainerCoordinatorIntegrationTest {
     @Test
     @MediumTest
     @DisableFeatures(ChromeFeatureList.DISABLE_GRID_TAB_SWITCHER)
-    @EnableFeatures(ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL_DEV_FEATURE + ":scope/window")
-    @DisabledTest(message = "crbug.com/567233434")
+    // BypassOutdatedSurfaceActivation avoids a Viz race that stalls the compositor for ~5s when
+    // switching to an evicted tab with the side panel open. See crbug.com/562893806.
+    @EnableFeatures({
+        ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL_DEV_FEATURE + ":scope/window",
+        "BypassOutdatedSurfaceActivation"
+    })
     public void closeAllTabsInGridTabSwitcher_undo_restoresWindowScopedSidePanel() {
         // Arrange: Open a second tab.
         var newTabPageStation = mResponsivePageStation.openNewTabFast();

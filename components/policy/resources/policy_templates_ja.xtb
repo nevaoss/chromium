@@ -3577,8 +3577,6 @@ Microsoft Outlook カードには、追加の管理者設定が必要です。Ch
       このポリシーを無効に設定すると、登録済みのデバイスはキオスク セッション情報を報告しません。</translation>
 <translation id="3303770131697159224">ウィンドウの管理に関する権限のデフォルトの設定</translation>
 <translation id="3303911765031636277">OnFileAttached Chrome Enterprise コネクタの設定ポリシー</translation>
-<translation id="3305586786770047829">このポリシーを 0 に設定するか未設定のままにした場合、<ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> ポリシーは関連付けられたユーザーのユーザー スコープでのみ適用されます。
-このポリシーを 1 に設定した場合、関連付けられていないユーザーであっても、<ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> ポリシーが該当のユーザー スコープで適用されます。</translation>
 <translation id="3307744348419745296">Wi-Fi ネットワーク設定を <ph name="PRODUCT_OS_NAME" /> デバイスと接続された Android スマートフォンとの間で同期できないようにする</translation>
 <translation id="3308724602356134956">このポリシーを設定した場合、ユーザーのデスクトップと
 
@@ -6354,19 +6352,6 @@ Chrome 114 までは、このポリシーを使用するには <ph name="SYNC_DI
 <translation id="5120168808610189805">初回実行時のホームページのインポートを有効にする</translation>
 <translation id="5124321040285474825">自動入力での生成 AI 機能の設定</translation>
 <translation id="5124368997194894978">AC（交流電流）電源接続時の起動を有効にします</translation>
-<translation id="5124652340668722849"><ph name="PRODUCT_NAME" /> がプロキシ構成を動的に取得するために使用するプロビジョニング ドメイン（PvD）のリストを設定します。
-
-このポリシーでは、RFC 8801（「プロビジョニング ドメイン名とデータの検出」）で定義されているプロビジョニング ドメインを表すドメイン名またはリソース URI のリストを指定できます。ブラウザは、各 PvD について、既知のエンドポイント パス「https://[<ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />]/.well-known/pvd」に HTTPS リクエストを送信して、対応する JSON 構成を解決します。
-
-リストの各エントリでは、以下を指定します。
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />: プロビジョニング ドメインの識別子（ドメイン名）。
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_AUTH_CONFIG" />: オプションの認証構成。未構成または「なし」に設定した場合、認証は行われません。「profile_bearer_token」に設定した場合、ブラウザはログインしているメイン アカウントの指定されたスコープで OAuth2 アクセス トークンを取得し、「Authorization」ヘッダーに「Bearer」トークンとして付加します。
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_EXTRA_HEADERS" />: PvD エンドポイントをクエリする際に含めるカスタム HTTP ヘッダーのオプションのリスト。「profile_id」（デバイス上のブラウザ プロファイルの安定した一意の ID を表し、プロファイルごとの構成のターゲティングを可能にする）や「accept_language」（ブラウザの優先言語を表す）などの動的な値を挿入できます。
-
-取得した構成は、RFC 8801 スキーマに従って解析されます。PvD の JSON ペイロードのプロキシ構成関連のルーティング ルールとプロキシのみが適用されます。このポリシーを未設定のままにした場合、プロビジョニング ドメインはクエリされず、プロキシ構成の取得にも使用されません。</translation>
 <translation id="5130213897914754028">サイトに SharedArrayBuffers の使用を許可しない</translation>
 <translation id="5130935469849337738">常に翻訳を表示する</translation>
 <translation id="513314432051760916">このポリシーでは、ユーザーが <ph name="PRIVACY_SANDBOX_NAME" /> の広告測定設定をオフにできるかどうかを制御します。
@@ -8328,17 +8313,6 @@ Origin-Agent-Cluster HTTP ヘッダーは、オリジンキー エージェン�
       このポリシーを False に設定した場合、Signed HTTP Exchange は読み込まれません。</translation>
 <translation id="6368011194414932347">ホームページの URL を指定する</translation>
 <translation id="6368403635025849609">これらのサイトの JavaScript を許可する</translation>
-<translation id="6368652917086795891"><ph name="PRODUCT_NAME" /> で <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> の接続設定を構成します。
-
-このポリシーは <ph name="GEMINI_ENTERPRISE_URL_POLICY_NAME" /> ポリシーに置き換えられます。両方を設定した場合は、<ph name="GEMINI_ENTERPRISE_URL_POLICY_NAME" /> が優先されます。
-
-このポリシーでは、<ph name="GEMINI_ENTERPRISE_SETTINGS_URL_POLICY_VALUE" /> を介して <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> ウェブ アプリケーション URL を設定します。この URL は、HTTPS スキームを使用する有効な URL で、<ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> ドメインを指す必要があります。また、ユーザー名やパスワードを含んではなりません。これらの要件を満たしていない場合、ポリシーは無視され、<ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> は未設定のままになります。
-
-このポリシーを設定した場合、管理対象アカウントまたは管理対象ブラウザでログインしたユーザーに対して <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> が構成されます。
-
-このポリシーを未設定のままにした場合、<ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> は構成されません。
-
-なお、このポリシーは、<ph name="GEMINI_SETTINGS_POLICY_NAME" /> ポリシーで制御できる全般的な <ph name="GOOGLE_GEMINI_PRODUCT_NAME" /> の統合を制御するものではありません。</translation>
 <translation id="6368671810229507360">WebRTC</translation>
 <translation id="6370742079247037704">組み込みの AI API の使用を許可しない。</translation>
 <translation id="6371005337713685988">関連ウェブサイト セットの設定</translation>
@@ -9109,15 +9083,6 @@ M157 より前では、<ph name="AL_HEADER_NAME" /> HTTP リクエスト ヘッ�
 <translation id="6833988859168635883">起動ページ、ホームページ、新しいタブページ</translation>
 <translation id="6835254082476223414">Linux 仮想マシンのバックアップと復元を有効にする</translation>
 <translation id="6835883744948188639">再起動が推奨されることを示すメッセージをユーザーに繰り返し表示する</translation>
-<translation id="683688607121170501">ユーザーが <ph name="PRODUCT_OS_NAME" /> デバイスにログインした後に、ブラウザ ウィンドウのコンテンツ領域内や Android アプリケーションで Google アカウントを切り替えることができるかどうかを制御します。
-
-      このポリシーが false に設定されている場合、シークレット モード以外のブラウザ コンテンツ領域や Android アプリケーションから別の Google アカウントにログインすることはできません。
-
-      このポリシーが未設定の場合、または true に設定されている場合は、デフォルトの動作が使用されます。つまり、子アカウントでなければ、ブラウザのコンテンツ領域や Android アプリケーションから別の Google アカウントにログインできます。子アカウントの場合、シークレット モード以外のコンテンツ領域から別の Google アカウントにログインすることはできません。
-
-      シークレット モードで別のアカウントにログインできないようにする必要がある場合は、IncognitoModeAvailability ポリシーを使用してシークレット モードをブロックすることをご検討ください。
-
-      なお、ユーザーは Cookie をブロックすることで、承認されていない状態でも Google のサービスにアクセスできます。</translation>
 <translation id="6841254611279513739">このポリシーでは、カラー印刷のみ、白黒印刷のみ、カラー印刷モードの制限なし、のいずれかを設定します。このポリシーを未設定のままにした場合は制限なしとなります。</translation>
 <translation id="6843008643303282259">希望するアップロード速度（キロビット/秒）です。</translation>
 <translation id="6843296367238757293">このポリシーはサポートを終了しているため、使用しないことをおすすめします。詳しくは、https://support.google.com/chrome/a/answer/7643500 をご覧ください。</translation>
@@ -10152,7 +10117,6 @@ Kyber の提供には下位互換性があります。既存の TLS サーバー
 <translation id="7491720878670299691">ネットワーク データをポーリングしてイベントの有無を確認する間隔です。指定できる最小値は 1 分です。
 
       設定しない場合は、デフォルトの 1 分が適用されます。</translation>
-<translation id="7496284563199466390"><ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> ポリシーを設定できる管理対象ユーザーを制御する。</translation>
 <translation id="7498595166686106721">
       ディスプレイ キャプチャ許可ポリシーでは、仕様（https://www.w3.org/TR/screen-capture/#feature-policy-integration）に沿って、getDisplayMedia(), へのアクセスをゲートします。ただし、このポリシーを無効に設定した場合、この要件は適用されず、本来禁止されているコンテキストからの getDisplayMedia() の呼び出しが許可されます。このエンタープライズ ポリシーは一時的なものであり、<ph name="PRODUCT_NAME" /> バージョン 100 以降で削除される予定です。仕様を満たしていないため修正する時間が必要なアプリケーションを使用しているエンタープライズ ユーザーのブロックを解除することを目的としています。
 

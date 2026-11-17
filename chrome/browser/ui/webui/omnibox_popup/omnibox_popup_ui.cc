@@ -23,13 +23,13 @@
 #include "chrome/browser/ui/omnibox/omnibox_view.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h"
+#include "chrome/browser/ui/webui/cr_components/searchbox/plural_string_provider.h"
 #include "chrome/browser/ui/webui/favicon_source.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter_service.h"
 #include "chrome/browser/ui/webui/omnibox_popup/full_webui_omnibox_layout_helper.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_aim_handler.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_handler.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_web_contents_helper.h"
-#include "chrome/browser/ui/webui/plural_string_handler.h"
 #include "chrome/browser/ui/webui/sanitized_image/sanitized_image_source.h"
 #include "chrome/browser/ui/webui/searchbox/omnibox_composebox_handler.h"
 #include "chrome/browser/ui/webui/searchbox/webui_omnibox_full_handler.h"
@@ -37,6 +37,7 @@
 #include "chrome/browser/ui/webui/theme_colors_source_manager.h"
 #include "chrome/browser/ui/webui/theme_colors_source_manager_factory.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
+#include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_layout_css_helper.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/grit/omnibox_popup_resources.h"
@@ -233,6 +234,8 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
                      omnibox::kAskGBlockAutoTabZeroStateSuggestions.Get());
   source->AddBoolean("askGComposeboxPlaceholderEnabled",
                      omnibox::kAskGComposeboxPlaceholder.Get());
+  source->AddBoolean("askGSuggestionSidePanelDescription",
+                     omnibox::kAskGSuggestionSidePanelDescription.Get());
   source->AddBoolean("composeboxShowTypedSuggest",
                      omnibox::kShowComposeboxTypedSuggest.Get());
   source->AddBoolean("composeboxShowZps", omnibox::kShowComposeboxZps.Get());
@@ -291,6 +294,9 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
   int default_resource = IDR_OMNIBOX_POPUP_OMNIBOX_POPUP_HTML;
   if (omnibox::internal::IsWebUIOmniboxFullPopupEnabled()) {
     default_resource = IDR_OMNIBOX_POPUP_OMNIBOX_POPUP_FULL_HTML;
+    // Serves layout_constants_v<N>.css, which the full popup links from its
+    // <head>.
+    WebUIToolbarLayoutCssHelper::SetAsRequestFilter(source);
   }
   webui::SetupWebUIDataSource(source, kOmniboxPopupResources, default_resource);
   source->OverrideContentSecurityPolicy(
@@ -300,12 +306,6 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::MediaSrc,
       "media-src blob: data: 'self';");
-
-  // Add a handler to provide pluralized strings.
-  auto plural_string_handler = std::make_unique<PluralStringHandler>();
-  plural_string_handler->AddLocalizedString("sharingTabs",
-                                            IDS_COMPOSE_SHARING_TABS);
-  web_ui->AddMessageHandler(std::move(plural_string_handler));
 
   content::URLDataSource::Add(profile_,
                               std::make_unique<SanitizedImageSource>(profile_));
@@ -318,11 +318,17 @@ OmniboxPopupUI::~OmniboxPopupUI() = default;
 
 WEB_UI_CONTROLLER_TYPE_IMPL(OmniboxPopupUI)
 
-// The popup's render-blocking chrome://theme/colors.css is served from the
-// renderer without a browser round-trip, like the WebUI toolbar.
+// The popup's chrome://theme/colors.css and layout_constants_v0.css are
+// render-blocking stylesheets in <head>. Serve them from the renderer without
+// a browser round-trip, like the WebUI toolbar's.
 void OmniboxPopupUI::PopulateLocalResourceLoaderConfig(
     blink::mojom::LocalResourceLoaderConfig* config,
     const url::Origin& requesting_origin) {
+  // Only the full popup links the layout CSS.
+  if (omnibox::internal::IsWebUIOmniboxFullPopupEnabled()) {
+    WebUIToolbarLayoutCssHelper::PopulateLocalResourceLoaderConfig(
+        config, requesting_origin);
+  }
   auto* theme_colors_manager =
       ThemeColorsSourceManagerFactory::GetForProfile(profile_);
   // Without a manager the stylesheet is still fetched over the network.
@@ -417,6 +423,13 @@ void OmniboxPopupUI::CreatePageHandler(
   popup_aim_handler_ = std::make_unique<OmniboxPopupAimHandler>(
       std::move(receiver), std::move(page), web_ui()->GetWebContents());
   popup_aim_handler_->set_embedder(embedder());
+}
+
+void OmniboxPopupUI::BindInterface(
+    mojo::PendingReceiver<plural_string::mojom::PluralStringProvider>
+        receiver) {
+  PluralStringProvider::Create(std::move(receiver),
+                               GetSearchboxPluralStringIds());
 }
 
 void OmniboxPopupUI::BindInterface(

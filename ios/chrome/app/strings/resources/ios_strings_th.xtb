@@ -67,6 +67,7 @@
 <translation id="1179890706672152411">พื้นที่เก็บข้อมูลเต็ม</translation>
 <translation id="1181037720776840403">นำออก</translation>
 <translation id="1190609913194133056">ศูนย์การแจ้งเตือน</translation>
+<translation id="1191987227666124897">คำขอเลือกไม่ใช้</translation>
 <translation id="1196534270480620381">สรุปหน้านี้แบบสั้นๆ</translation>
 <translation id="1199631150313925648">ป้อนด้วยตนเอง</translation>
 <translation id="1199963004393929848">ธีมสีเขียว</translation>
@@ -194,10 +195,10 @@
 <translation id="154312949627292154">เปิดแท็บที่ได้รับจากอุปกรณ์อื่นๆ ของคุณจากหน้าจอล็อก</translation>
 <translation id="1544653821167545205">สรุปหน้าเว็บ</translation>
 <translation id="1545749641540134597">สแกนโค้ด QR</translation>
-<translation id="1545757265410828525">ประวัติราคา</translation>
 <translation id="1547610699249301703">แชร์รหัสผ่าน</translation>
 <translation id="1554043146674176775">ปิดโหมด AI</translation>
 <translation id="1554477036522844996">หน้าต่างใหม่</translation>
+<translation id="1557806604681757705">คอมพิวเตอร์ของคุณ</translation>
 <translation id="1558391695376153246">ปิดแท็บที่ไม่ระบุตัวตน</translation>
 <translation id="1560153516220021659">ปุ่มแถบเครื่องมือรองที่ยุบอยู่</translation>
 <translation id="1562601408588733317">จัดการการค้นหาและเติมข้อมูลด้วย Gemini</translation>
@@ -484,7 +485,6 @@
 <translation id="2434405374328098816">คุณบันทึกรหัสผ่านสำหรับ "<ph name="USERNAME" />" ที่ <ph name="WEBSITE" /> ไว้แล้ว</translation>
 <translation id="2434918313224755415">คุณสามารถเลื่อนไปทางซ้ายเพื่อท่องเว็บในโหมดไม่ระบุตัวตน</translation>
 <translation id="2435457462613246316">แสดงรหัสผ่าน</translation>
-<translation id="2451607499823206582">การติดตาม</translation>
 <translation id="2458827363789845126">{count,plural, =1{รายการประวัติการเข้าชม {count} รายการ}other{รายการประวัติการเข้าชม {count} รายการ}}</translation>
 <translation id="2461070143328828326">การตั้งค่ารหัสผ่าน</translation>
 <translation id="2462736546165239215">คุณดูประวัติการท่องเว็บทั้งหมดได้ที่นี่</translation>
@@ -624,6 +624,7 @@
 <translation id="2870560284913253234">เว็บไซต์</translation>
 <translation id="2876369937070532032">ส่ง URL ของหน้าบางส่วนที่คุณเข้าชมไปให้ Google เมื่อการรักษาความปลอดภัยมีความเสี่ยง</translation>
 <translation id="2883151425485251736">ดูและแก้ไขหัวข้อที่คุณซ่อนไปจากบัญชี</translation>
+<translation id="2884437560239137197">ต้องดำเนินการ</translation>
 <translation id="288655811176831528">ปิดแท็บ</translation>
 <translation id="2888631381369839306">เปิดการแจ้งเตือนการติดตามราคาแล้ว</translation>
 <translation id="2893168226686371498">เบราว์เซอร์เริ่มต้น</translation>
@@ -1400,7 +1401,6 @@
 <translation id="5371112366564891538">เพิ่มขนาดข้อความ</translation>
 <translation id="5376135254804080693">ยกเลิกการเลือกทั้งหมด</translation>
 <translation id="537853552771686272">จัดการหัวข้อและเว็บไซต์ที่คุณสนใจ</translation>
-<translation id="5385892579392932755">แล็ปท็อปของคุณ</translation>
 <translation id="5390458669633674385">{count,plural, =1{ปิดไปแล้ว {count} แท็บ}other{ปิดไปแล้ว {count} แท็บ}}</translation>
 <translation id="5394975111793637642">ซ่อนการ์ดรีวิวสินค้าสำหรับคุณ</translation>
 <translation id="5414763847370083940">คุณจะได้รับการแจ้งเตือนหากราคาลดลงในเว็บไซต์ใดก็ตาม</translation>
@@ -1465,6 +1465,7 @@
 <translation id="559567008082979829">ตั้งค่าให้ระบบลบการดาวน์โหลดของคุณหลังจากผ่านไป 1 เดือน</translation>
 <translation id="5596627076506792578">ตัวเลือกเพิ่มเติม</translation>
 <translation id="560322036295180549">ปิดโดยองค์กรของคุณ</translation>
+<translation id="5604254791550001355">แก้ไขพรอมต์</translation>
 <translation id="5611398002774823980">บันทึกในบัญชี</translation>
 <translation id="5612225021788368236">ปิดการโปรโมตเบราว์เซอร์เริ่มต้น</translation>
 <translation id="561269594905823128">แตะ<ph name="BEGIN_BOLD" />เลือกไฟล์<ph name="END_BOLD" /></translation>
@@ -1530,7 +1531,6 @@
 <translation id="5768870767339201169">ดำเนินการต่อจากที่ค้างไว้</translation>
 <translation id="5779117921996157216">{count,plural, =1{คุณมี {count} รหัสผ่านที่ถูกละเมิดซึ่งอาจทําให้การรักษาความปลอดภัยตกอยู่ในความเสี่ยง แก้ไขเลยเพื่อความปลอดภัย}other{คุณมี {count} รหัสผ่านที่ถูกละเมิดซึ่งอาจทําให้การรักษาความปลอดภัยตกอยู่ในความเสี่ยง แก้ไขเลยเพื่อความปลอดภัย}}</translation>
 <translation id="5791632441210678828">ปุ่มจัดเรียงสำหรับฟีดที่กำลังติดตาม</translation>
-<translation id="5799263916847593256">เปิดเพื่อดูประวัติราคา</translation>
 <translation id="5801568494490449797">ค่ากำหนด</translation>
 <translation id="5803566855766646066">คุณแน่ใจไหมว่าต้องการทิ้งบัตรใบใหม่นี้</translation>
 <translation id="5804241973901381774">สิทธิ์</translation>
@@ -1668,6 +1668,7 @@
 <translation id="6227958838185907047">ลงชื่อเข้าใช้ในชื่อ <ph name="NAME" /> <ph name="EMAIL" /></translation>
 <translation id="6231782223312638214">แนะนำ</translation>
 <translation id="6232329973559504466">ค้นหาในโหมดไม่ระบุตัวตน</translation>
+<translation id="6233463157595806945">ต้องป้อนข้อมูล</translation>
 <translation id="6234310016144827337">ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง</translation>
 <translation id="6236952928980352967">กู้คืนคำเตือน</translation>
 <translation id="623755660902014047">โหมดการอ่าน</translation>
@@ -1698,6 +1699,7 @@
 <translation id="6307792728709337290">บันทึกบัตรไว้ในบัญชี Google เพื่อป้อนข้อความอัตโนมัติสำหรับการซื้อใน Chrome ครั้งนี้และในอนาคต</translation>
 <translation id="6316141353357700666">เลือกรหัสผ่านที่ต้องการใช้จากรายการที่ปรากฏ</translation>
 <translation id="6321526113093607004">เพิ่มลงในบุ๊กมาร์ก</translation>
+<translation id="6322064144568952786">งานไม่สำเร็จ</translation>
 <translation id="6324054713176642683">เลือกจากธีม สี หรืออัปโหลดรูปภาพของคุณเอง</translation>
 <translation id="6327249202318869726">Gemini ปิดใช้งานอยู่สำหรับบัญชีของคุณ โปรดสอบถามข้อมูลเพิ่มเติมจากผู้ดูแลระบบ</translation>
 <translation id="6331836477476466332">เบราว์เซอร์ที่ปลอดภัยและทรงพลังมากขึ้นสำหรับคุณ</translation>
@@ -1880,7 +1882,6 @@
 <translation id="6815692190508268848">ใช้ค่ากำหนดลักษณะที่ปรากฏแล้ว</translation>
 <translation id="681631578600400068">บันทึกใบขับขี่</translation>
 <translation id="6825078212112407882">{count,plural, =1{บันทึกบุ๊กมาร์กไว้ในบัญชี Google {email} ของคุณแล้ว}other{บันทึกบุ๊กมาร์ก {count} รายการไว้ในบัญชี Google {email} ของคุณแล้ว}}</translation>
-<translation id="6826004672264649705">กำลังติดตามผลิตภัณฑ์นี้ เปิดเพื่อดูประวัติราคา</translation>
 <translation id="6830728435402077660">ไม่ปลอดภัย</translation>
 <translation id="6831043979455480757">แปลภาษา</translation>
 <translation id="6842136130964845393">โปรดยืนยันว่าเป็นคุณเพื่อให้เข้าถึงรหัสผ่านที่บันทึกไว้ได้ทุกเมื่อ</translation>
@@ -2015,6 +2016,7 @@
 <translation id="7241135764990439166">โหมดไม่ระบุตัวตนไม่พร้อมใช้งาน</translation>
 <translation id="7245288034498365666">จัดระเบียบและประหยัดเวลา</translation>
 <translation id="7253951228444156601">กำลังตรวจสอบรหัสผ่าน…</translation>
+<translation id="725583671816239562">งานเสร็จแล้ว</translation>
 <translation id="7261217796641151584">แชร์กลุ่ม</translation>
 <translation id="7266578100016339897">ซึ่งจะช่วยให้คุณจัดระเบียบข้อมูลได้ คุณสามารถเปลี่ยนแปลงได้ทุกเมื่อในการตั้งค่า</translation>
 <translation id="7270491814777319521">เป็นไปตาม<ph name="BEGIN_LINK" />ข้อกำหนดของ Google<ph name="END_LINK" /> และ<ph name="BEGIN_LINK" />ประกาศเกี่ยวกับนโยบายความเป็นส่วนตัวของแอป Gemini<ph name="END_LINK" /> Gemini เป็น AI และอาจทำผิดพลาดได้ ซึ่งรวมถึงข้อมูลเกี่ยวกับผู้คน</translation>
@@ -2057,6 +2059,7 @@
 <translation id="7411034503745719324"><ph name="EMAIL" /> <ph name="MANAGED_STATUS" /></translation>
 <translation id="7412027924265291969">ดำเนินการต่อ</translation>
 <translation id="741204030948306876">ได้สิ ตกลง</translation>
+<translation id="7417055777338419059">เขียนโค้ด เขียนข้อความ หรือสร้างสไลด์</translation>
 <translation id="7419565702166471774">ใช้การเชื่อมต่อที่ปลอดภัยทุกครั้ง</translation>
 <translation id="7423098979219808738">ถามก่อน</translation>
 <translation id="7425053386765766120">เพิ่มวิธีการชำระเงิน…</translation>
@@ -2321,7 +2324,6 @@
 <translation id="8187200657863701733">ระดับ Chrome ปัจจุบัน</translation>
 <translation id="8189484403434216074">สร้างกลุ่มแท็บ</translation>
 <translation id="8189615296021678665">แตะ "บันทึก" เพื่อเข้าถึงรหัสผ่านนี้ได้อย่างง่ายดายเมื่อลงชื่อเข้าใช้ครั้งถัดไป</translation>
-<translation id="8193953846147532858"><ph name="BEGIN_LINK" />อุปกรณ์ของคุณ<ph name="END_LINK" /> · <ph name="EMAIL" /></translation>
 <translation id="8195191503358432289">เพิ่มรหัสผ่าน</translation>
 <translation id="8195936400946057039">การป้องกันภัยคุกคามทางออนไลน์</translation>
 <translation id="8205564605687841303">ยกเลิก</translation>
@@ -2646,7 +2648,6 @@
 <translation id="9149866541089851383">แก้ไข...</translation>
 <translation id="9152637745605628097">เลือกจากธีม สี หรืออัปโหลดรูปภาพ</translation>
 <translation id="9153159728062222866">ข้ามการคัดลอกและวาง</translation>
-<translation id="9159628751968616911">ส่งหน้าเว็บ</translation>
 <translation id="9162412286847966593">ระบบจะไม่ใช้ข้อมูลและไฟล์บันทึกขององค์กรคุณในการปรับปรุงโมเดล Generative AI <ph name="BEGIN_LINK" />ความเป็นส่วนตัวของคุณกับ Gemini<ph name="END_LINK" /></translation>
 <translation id="9162432979321511934">เปิดการป้อนรหัสผ่านอัตโนมัติ</translation>
 <translation id="9165320910061267720">หากต้องการรับการแจ้งเตือนราคาลดลง คุณจะต้องเปิดการแจ้งเตือนในการตั้งค่า iOS</translation>

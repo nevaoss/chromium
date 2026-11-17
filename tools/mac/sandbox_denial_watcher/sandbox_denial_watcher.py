@@ -25,9 +25,12 @@ Usage (from the Chromium src directory):
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
+import functools
 import logging
 import math
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import sys
@@ -52,6 +55,7 @@ _BATCH_WINDOW_SECONDS = 1.0
 
 _LOG_PATH = "/usr/bin/log"
 _OSASCRIPT_PATH = "/usr/bin/osascript"
+_PS_PATH = "/bin/ps"
 
 _DISMISS_BUTTON_TITLE = "Dismiss"
 _FILE_BUG_BUTTON_TITLE = "File bug"
@@ -75,6 +79,55 @@ _dialog_lock = threading.Lock()
 
 _HOME_DIR = Path.home()
 
+# Placeholder representing any Chrome/Chromium flavor's Application Support
+# directory after target normalization.
+_CHROME_APP_SUPPORT_DIR = "<CHROME_APP_SUPPORT_DIR>"
+
+# Default product directory names under ~/Library/Application Support (see
+# chrome/common/chrome_paths_mac.mm and docs/user_data_dir.md).
+_CHROME_PRODUCT_DIRS = (
+    "Chromium",
+    "Google/Chrome",
+    "Google/Chrome Beta",
+    "Google/Chrome Canary",
+    "Google/Chrome Dev",
+    "Google/Chrome for Testing",
+)
+
+_CHROME_APP_SUPPORT_PREFIXES = tuple(
+    f"{_HOME_DIR}/Library/Application Support/{product}"
+    for product in _CHROME_PRODUCT_DIRS
+)
+
+# Placeholder representing any Chrome/Chromium flavor's app bundle directory
+# under /Applications after target normalization.
+_CHROME_BUNDLE_DIR = "<CHROME_BUNDLE_DIR>"
+
+_CHROME_APP_NAMES = (
+    "Chromium.app",
+    "Google Chrome.app",
+    "Google Chrome Beta.app",
+    "Google Chrome Canary.app",
+    "Google Chrome Dev.app",
+    "Google Chrome for Testing.app",
+)
+
+_CHROME_BUNDLE_PREFIXES = tuple(
+    f"/Applications/{app_name}" for app_name in _CHROME_APP_NAMES
+)
+
+# Placeholder representing the parent directory of a user's Darwin directories
+# (`/private/var/folders/<bucket>/<user hash>`) after target normalization.
+_DARWIN_USER_DIR = "<DARWIN_USER_DIR>"
+
+# Matches the three Darwin user dirs (user, temp, cache), which live at
+# `/private/var/folders/<bucket>/<user hash>/[0|C|T]`, e.g.:
+#   /private/var/folders/tr/6v8rtgkn5399hj49myh4zh3m00czwq/T/tmp.123
+#   -> <DARWIN_USER_DIR>/T/tmp.123
+_DARWIN_USER_DIR_PATTERN = re.compile(
+    r"^/private/var/folders/[^/]+/[^/]+(?=/[0CT](?=/|$))"
+)
+
 # Prefixes of the process names whose denials are reported.
 _INTERESTING_PROCS = (
     "Chromium",
@@ -87,8 +140,9 @@ _INTERESTING_PROCS = (
     "MTLCompilerService",
 )
 
-# Known expected denials grouped by action. Targets are matched exactly.
-_KNOWN_EXACT_DENIALS: dict[str, frozenset[str]] = {
+# Known expected denials grouped by action. Rules match the target itself (not
+# subpaths) and may use `*` wildcards within a single path segment.
+_KNOWN_TARGET_DENIALS: dict[str, frozenset[str]] = {
     "sysctl-read": frozenset(
         (
             "kern.bootargs",
@@ -108,6 +162,7 @@ _KNOWN_EXACT_DENIALS: dict[str, frozenset[str]] = {
             f"{_HOME_DIR}/Desktop",
         )
     ),
+    "file-write-create": frozenset((f"{_DARWIN_USER_DIR}/T/tmp.*",)),
     "mach-lookup": frozenset(
         (
             "com.apple.CoreServices.coreservicesd",
@@ -117,6 +172,7 @@ _KNOWN_EXACT_DENIALS: dict[str, frozenset[str]] = {
             "com.apple.backupd.sandbox.xpc",
             "com.apple.bsd.dirhelper",
             "com.apple.cmio.registerassistantservice.system-extensions",
+            "com.apple.coreservices.quarantine-resolver",
             "com.apple.ctkd.token-client",
             "com.apple.diagnosticd",
             "com.apple.distributed_notifications@Uv3",
@@ -129,6 +185,11 @@ _KNOWN_EXACT_DENIALS: dict[str, frozenset[str]] = {
             "com.apple.trustd.agent",
         )
     ),
+    "syscall-mig": frozenset(
+        (
+            "341",  # mach_voucher_debug_info, used by MTLCompiler
+        )
+    ),
     "system-info": frozenset(
         (
             "net.link.addr",
@@ -138,20 +199,87 @@ _KNOWN_EXACT_DENIALS: dict[str, frozenset[str]] = {
 }
 
 # Directory prefixes for operations that allow subpaths (e.g. file reads).
-_KNOWN_SUBPATH_DENIALS: dict[str, tuple[str, ...]] = {
-    "file-read-data": (
-        "/Library/Managed Preferences/",
-        "/System/Library/CoreServices/RawCamera.bundle/",
-        "/System/Library/ExtensionKit/ExtensionPoints/",
-        "/System/iOSSupport/System/Library/ExtensionKit/ExtensionPoints/",
-        f"{_HOME_DIR}/Library/Preferences/",
+# Rules may use `*` wildcards within a single path segment.
+_KNOWN_SUBPATH_DENIALS: dict[str, frozenset[str]] = {
+    "file-issue-extension": frozenset((f"target:{_CHROME_BUNDLE_DIR}/",)),
+    "file-read-data": frozenset(
+        (
+            "/Library/Managed Preferences/",
+            "/System/Library/CoreServices/RawCamera.bundle/",
+            "/System/Library/ExtensionKit/ExtensionPoints/",
+            "/System/iOSSupport/System/Library/ExtensionKit/ExtensionPoints/",
+            "/private/var/db/cmiodalassistants/Library/Preferences/",
+            f"{_DARWIN_USER_DIR}/C/*.helper/com.apple.metal/",
+            f"{_HOME_DIR}/Library/Preferences/",
+        )
+    ),
+    "file-write-mode": frozenset(
+        (f"{_DARWIN_USER_DIR}/T/scoped_dir*/CRX_INSTALL/",)
+    ),
+    "file-write-times": frozenset(
+        (
+            f"{_CHROME_APP_SUPPORT_DIR}/optimization_guide_model_store/",
+            f"{_DARWIN_USER_DIR}/T/scoped_dir*/CRX_INSTALL/",
+        )
     ),
 }
 
 
+def _replace_prefix(
+    path: str, prefixes: Sequence[str], placeholder: str
+) -> str:
+    """Replaces the first matching prefix in `path` with `placeholder`."""
+    for prefix in prefixes:
+        if path == prefix or path.startswith(f"{prefix}/"):
+            return f"{placeholder}{path[len(prefix) :]}"
+    return path
+
+
 def _normalize_target(target: str) -> str:
-    """Normalizes a denial target path by stripping trailing slashes."""
-    return target.rstrip("/") if target != "/" else "/"
+    """Normalizes a denial target path for matching and suppression."""
+    normalized = target.rstrip("/") if target != "/" else "/"
+    prefix = ""
+    if normalized.startswith("target:"):
+        prefix = "target:"
+        normalized = normalized[len(prefix) :]
+    normalized = _replace_prefix(
+        normalized, _CHROME_APP_SUPPORT_PREFIXES, _CHROME_APP_SUPPORT_DIR
+    )
+    normalized = _replace_prefix(
+        normalized, _CHROME_BUNDLE_PREFIXES, _CHROME_BUNDLE_DIR
+    )
+    normalized = _DARWIN_USER_DIR_PATTERN.sub(_DARWIN_USER_DIR, normalized)
+    return f"{prefix}{normalized}"
+
+
+@functools.lru_cache(maxsize=None)
+def _compile_glob_regex(pattern: str, match_subpaths: bool) -> re.Pattern[str]:
+    """Compiles a target pattern with `*` wildcards into a regex.
+
+    Each `*` matches zero or more characters within a single path segment
+    (`[^/]*`). If `match_subpaths` is True, the pattern matches both the
+    directory itself and any path beneath it.
+    """
+    body = r"[^/]*".join(re.escape(part) for part in pattern.split("*"))
+    suffix = r"(?:/.*)?$" if match_subpaths else r"$"
+    return re.compile(f"^{body}{suffix}")
+
+
+def _matches_target_rule(target: str, rule: str) -> bool:
+    """Returns True if `target` matches the single-target `rule`."""
+    if "*" not in rule:
+        return target == rule
+    return bool(_compile_glob_regex(rule, match_subpaths=False).match(target))
+
+
+def _matches_subpath_rule(target: str, prefix: str) -> bool:
+    """Returns True if `target` is `prefix` or a path beneath it."""
+    dir_path = prefix.rstrip("/")
+    if "*" not in dir_path:
+        return target == dir_path or target.startswith(f"{dir_path}/")
+    return bool(
+        _compile_glob_regex(dir_path, match_subpaths=True).match(target)
+    )
 
 
 class DenialFilter:
@@ -177,24 +305,22 @@ class DenialFilter:
         action = denial_event.action
         target = _normalize_target(denial_event.target)
 
-        if target in _KNOWN_EXACT_DENIALS.get(action, ()):
-            self._logger.debug(
-                "Filtered known denial matching '%s %s': %s",
-                action,
-                target,
-                denial_event.event_message,
-            )
-            return True
-
-        for prefix in _KNOWN_SUBPATH_DENIALS.get(action, ()):
-            normalized_prefix = prefix if prefix.endswith("/") else f"{prefix}/"
-            if target == normalized_prefix.rstrip(
-                "/"
-            ) or denial_event.target.startswith(normalized_prefix):
+        for rule in _KNOWN_TARGET_DENIALS.get(action, ()):
+            if _matches_target_rule(target, rule):
                 self._logger.debug(
                     "Filtered known denial matching '%s %s': %s",
                     action,
-                    normalized_prefix,
+                    rule,
+                    denial_event.event_message,
+                )
+                return True
+
+        for prefix in _KNOWN_SUBPATH_DENIALS.get(action, ()):
+            if _matches_subpath_rule(target, prefix):
+                self._logger.debug(
+                    "Filtered known denial matching '%s %s': %s",
+                    action,
+                    prefix,
                     denial_event.event_message,
                 )
                 return True
@@ -250,6 +376,36 @@ class DenialFilter:
 def _validate_process_name(proc: str) -> None:
     if not proc.isascii() or '"' in proc or "\\" in proc:
         raise ValueError(f"Invalid process name: {proc!r}")
+
+
+def _get_process_command_line(pid: int) -> Optional[str]:
+    """Returns the executable path and command-line arguments for `pid`.
+
+    For example:
+        '/Applications/Chromium.app/.../Chromium Helper --type=renderer ...'
+
+    Returns None if unavailable (e.g., if `ps` fails or if the process has
+    exited).
+    """
+    logger = logging.getLogger("sandbox_denial_watcher")
+    try:
+        res = subprocess.run(
+            [_PS_PATH, "-p", str(pid), "-o", "command="],
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=2,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as e:
+        logger.debug("Failed to query command line for pid %d: %s", pid, e)
+        return None
+
+    if res.returncode != 0:
+        logger.debug("ps exited with code %d for pid %d", res.returncode, pid)
+        return None
+
+    return res.stdout.strip() or None
 
 
 def prompt_to_file_bug(
@@ -380,6 +536,13 @@ class SandboxDenialWatcher:
                 return
 
             if batch_key not in self._active_batches:
+                # Capture the process command line now (rather than when the
+                # batch flushes) in case a short-lived process exits beforehand.
+                command_line = _get_process_command_line(denial_event.pid)
+                if command_line:
+                    denial_event = replace(
+                        denial_event, command_line=command_line
+                    )
                 self._active_batches[batch_key] = [denial_event]
                 timer = threading.Timer(
                     self._batch_window_seconds,

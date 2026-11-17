@@ -263,7 +263,7 @@ bool IsAccessibilityChromeVoxJapaneseBrailleEnabled() {
 }
 
 BASE_FEATURE(kAccessibilityGoogleTtsAutomaticReconnect,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 bool IsAccessibilityGoogleTtsAutomaticReconnectEnabled() {
   return base::FeatureList::IsEnabled(
       ::features::kAccessibilityGoogleTtsAutomaticReconnect);
@@ -407,7 +407,7 @@ bool IsReadAnythingReadAloudPhraseHighlightingEnabled() {
       ::features::kReadAnythingReadAloudPhraseHighlighting);
 }
 
-BASE_FEATURE(kReadAnythingOmniboxChip, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kReadAnythingOmniboxChip, base::FEATURE_ENABLED_BY_DEFAULT);
 bool IsReadAnythingOmniboxChipEnabled() {
   return base::FeatureList::IsEnabled(::features::kReadAnythingOmniboxChip);
 }
@@ -450,6 +450,11 @@ bool IsReadAnythingDistillerRefactorEnabled() {
 BASE_FEATURE(kImmersiveReadAnythingPrint, base::FEATURE_DISABLED_BY_DEFAULT);
 bool IsImmersiveReadAnythingPrintEnabled() {
   return base::FeatureList::IsEnabled(::features::kImmersiveReadAnythingPrint);
+}
+
+BASE_FEATURE(kReadAnythingSendFeedback, base::FEATURE_DISABLED_BY_DEFAULT);
+bool IsReadAnythingSendFeedbackEnabled() {
+  return base::FeatureList::IsEnabled(::features::kReadAnythingSendFeedback);
 }
 
 // This feature is only used in tests and must not be enabled by default.

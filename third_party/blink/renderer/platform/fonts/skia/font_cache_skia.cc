@@ -282,15 +282,19 @@ sk_sp<SkTypeface> FontCache::CreateTypeface(
 
   if (creation_params.CreationType() == kCreateFontByFciIdAndTtcIndex) {
     if (Platform::Current()->GetSandboxSupport()) {
-      return SkTypeface_Factory::FromFontConfigInterfaceIdAndTtcIndex(
+      return CreateSkTypefaceFromFontConfigInterfaceIdAndTtcIndex(
           creation_params.FontconfigInterfaceId(), creation_params.TtcIndex());
     }
+<<<<<<< HEAD
     return SkTypeface_Factory::FromFilenameAndTtcIndex(
 // NOTE(neva): Change to blink::String from std::string on
 // FontFaceCreationParams to avoid crash
 #if defined(__GNUC__) && !defined(__clang__)
         creation_params.Filename().Utf8(), creation_params.TtcIndex());
 #else
+=======
+    return CreateSkTypefaceFromFilenameAndTtcIndex(
+>>>>>>> 158.0.8113.0~1
         creation_params.Filename().data(), creation_params.TtcIndex());
 #endif
   }
@@ -370,7 +374,7 @@ const FontPlatformData* FontCache::CreateFontPlatformData(
       font_description.Orientation());
 
   font_platform_data->SetAvoidEmbeddedBitmaps(
-      BitmapGlyphsBlockList::ShouldAvoidEmbeddedBitmapsForTypeface(*typeface));
+      ShouldAvoidEmbeddedBitmapsForTypeface(*typeface));
 
   return font_platform_data;
 }

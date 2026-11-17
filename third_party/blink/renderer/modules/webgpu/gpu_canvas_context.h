@@ -86,7 +86,7 @@ class GPUCanvasContext : public ScriptWrappable,
   bool IsPaintable() const final { return true; }
   void Stop() final;
   cc::Layer* CcLayer() const final;
-  void Reshape(int width, int height) override;
+  void Reshape(gfx::Size old_size, gfx::Size new_size) override;
   void Dispose() override;
 
   // OffscreenCanvas-specific methods
@@ -134,6 +134,10 @@ class GPUCanvasContext : public ScriptWrappable,
   bool CopyTextureToResourceProvider(
       const wgpu::Texture& texture,
       CanvasNon2DResourceProvider* resource_provider) const;
+  std::optional<gpu::SyncToken> CopyTextureToSharedImage(
+      const wgpu::Texture& texture,
+      scoped_refptr<gpu::ClientSharedImage> dst_client_si,
+      const gpu::SyncToken& acquire_sync_token) const;
 
   void CopyToSwapTexture();
 

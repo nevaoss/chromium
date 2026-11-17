@@ -9,9 +9,8 @@
 #include "base/callback_list.h"
 #include "base/functional/bind.h"
 #include "base/memory/raw_ref.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/notreached.h"
-#include "base/time/time.h"
+#include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/ui/actions/actions_util.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/animation/browser_animation_controller.h"
@@ -27,6 +26,7 @@
 #include "extensions/buildflags/buildflags.h"
 #include "ui/actions/actions.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/views/view.h"
 #include "ui/views/view_tracker.h"
 #include "ui/views/view_utils.h"
@@ -228,15 +228,6 @@ void OrganizerPanelController::SetOrganizerVisible(bool visible,
                             : OrganizerPanelAnimations::kHide);
   }
 
-  if (is_visible_) {
-    last_opened_time_ = base::TimeTicks::Now();
-  } else {
-    base::TimeDelta open_duration = base::TimeTicks::Now() - last_opened_time_;
-    base::UmaHistogramCustomCounts("Projects.ProjectsPanel.TimeOpen",
-                                   open_duration.InSeconds(), 1,
-                                   base::Minutes(5).InSeconds(), 50);
-  }
-
   NotifyStateChanged();
 }
 
@@ -309,11 +300,27 @@ void OrganizerPanelController::UpdateOrganizerActionItem() {
     return;
   }
 
-  const auto& text = IsOrganizerPanelVisible()
+  const bool is_panel_in_vertical_strip =
+      IsOrganizerPanelVisible() &&
+      (GetCurrentOrganizerPanelLocation() ==
+           OrganizerPanelLocation::kVerticalTabStrip ||
+       (GetCurrentOrganizerPanelLocation() == OrganizerPanelLocation::kNone &&
+        OrganizerPanelHost::GetPreferredLocation(*browser_window_) ==
+            OrganizerPanelLocation::kVerticalTabStrip));
+  const auto& text = is_panel_in_vertical_strip
                          ? IDS_ORGANIZER_PANEL_CLOSE_TAB_SEARCH
-                         : IDS_VIEW_ORGANIZER_PANEL;
+                         : IDS_TAB_SEARCH_MENU;
   const std::u16string title_and_tooltip =
-      chrome::GetCleanTitleAndTooltipText(l10n_util::GetStringUTF16(text));
+      chrome::GetCleanText(l10n_util::GetStringUTF16(text));
   organizer_action->SetText(title_and_tooltip);
   organizer_action->SetTooltipText(title_and_tooltip);
+
+  const gfx::VectorIcon& icon =
+      is_panel_in_vertical_strip
+          ? (features::IsRoundedIconsEnabled() ? kCloseSmallIcon
+                                               : kCloseChromeRefreshOldIcon)
+          : (features::IsRoundedIconsEnabled() ? kManageSearchIcon
+                                               : kTabSearchTabStripOldIcon);
+  organizer_action->SetImage(
+      ui::ImageModel::FromVectorIcon(icon, ui::kColorIcon));
 }

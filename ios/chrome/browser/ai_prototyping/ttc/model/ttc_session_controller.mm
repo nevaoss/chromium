@@ -16,6 +16,7 @@
 #import "base/memory/weak_ptr.h"
 #import "base/sequence_checker.h"
 #import "base/strings/to_string.h"
+#import "components/optimization_guide/proto/features/common_quality_data.pb.h"
 #import "components/ttc/app/public/error_codes.h"
 #import "components/ttc/app/ttc_backend.h"
 #import "ios/chrome/browser/ai_prototyping/ttc/model/audio/ttc_audio_session_controller.h"
@@ -23,8 +24,28 @@
 #import "ios/chrome/browser/ai_prototyping/ttc/model/ttc_conversation.h"
 #import "ios/chrome/browser/ai_prototyping/ttc/model/ttc_journal.h"
 #import "ios/chrome/browser/ai_prototyping/ttc/model/ttc_session_controller_observer.h"
+#import "ios/chrome/browser/shared/model/browser/browser.h"
+#import "ios/chrome/browser/shared/model/browser/browser_list_utils.h"
+#import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
+#import "ios/web/public/web_state.h"
+#import "url/gurl.h"
 
 namespace {
+
+// Returns the active `WebState` of the most active regular `Browser` in
+// `browser_list`, or `nullptr` if none exists.
+web::WebState* GetInitialActiveWebState(BrowserList* browser_list) {
+  if (!browser_list) {
+    return nullptr;
+  }
+  Browser* browser =
+      browser_list_utils::GetMostActiveSceneBrowser(browser_list);
+  if (!browser) {
+    return nullptr;
+  }
+  WebStateList* web_state_list = browser->GetWebStateList();
+  return web_state_list ? web_state_list->GetActiveWebState() : nullptr;
+}
 
 // Returns the string representation of `lifecycle`.
 std::string SessionLifecycleToString(TTCSessionLifecycle lifecycle) {
@@ -44,8 +65,11 @@ std::string SessionLifecycleToString(TTCSessionLifecycle lifecycle) {
 
 void TtcSessionController::OnConversationInitialized() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (lifecycle_ != TTCSessionLifecycle::kInitializing) {
+    return;
+  }
   conversation_->SendToolSetUpdate(ttc::GetDefaultToolDefinitions());
-  OnSessionInitialized();
+  SetLifecycle(TTCSessionLifecycle::kLive);
 }
 
 void TtcSessionController::OnConversationClosed() {
@@ -53,28 +77,81 @@ void TtcSessionController::OnConversationClosed() {
 }
 
 void TtcSessionController::OnAudioEnergyUpdated(float energy) {
-  UserAudioLevelDidUpdate(energy);
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (lifecycle_ == TTCSessionLifecycle::kFinished || observers_.empty()) {
+    return;
+  }
+  for (TtcSessionControllerObserver& observer : observers_) {
+    observer.OnUserAudioLevelUpdated(this, energy);
+  }
 }
 
 void TtcSessionController::OnConversationError(ttc::ErrorCode error) {
-  FailWithError(error);
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (lifecycle_ == TTCSessionLifecycle::kFinished || fatal_error_reported_) {
+    return;
+  }
+  LogSessionError(error);
+  const bool is_fatal = ttc::IsFatal(error);
+  if (is_fatal) {
+    fatal_error_reported_ = true;
+  }
+  for (TtcSessionControllerObserver& observer : observers_) {
+    observer.OnSessionError(this, error);
+  }
+  if (is_fatal) {
+    StopSession();
+  }
+}
+
+#pragma mark - TtcPageContextMonitor::Delegate
+
+void TtcSessionController::OnPageContextFetched(
+    PageContextWrapperCallbackResponse response) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (lifecycle_ == TTCSessionLifecycle::kFinished || !response.has_value()) {
+    return;
+  }
+  const optimization_guide::proto::PageContext* page_context =
+      response.value().get();
+  if (!page_context || !page_context->has_annotated_page_content()) {
+    return;
+  }
+  const optimization_guide::proto::AnnotatedPageContent& apc =
+      page_context->annotated_page_content();
+  const optimization_guide::proto::FrameData& main_frame_data =
+      apc.main_frame_data();
+  // Fall back to top-level `PageContext` metadata when `main_frame_data`
+  // fields are empty.
+  const std::string& main_frame_url = main_frame_data.url();
+  const GURL url =
+      main_frame_url.empty() ? GURL(page_context->url()) : GURL(main_frame_url);
+  const std::string& main_frame_title = main_frame_data.title();
+  const std::string& title =
+      main_frame_title.empty() ? page_context->title() : main_frame_title;
+  conversation_->SendContextUpdate(url, title, apc);
 }
 
 #pragma mark - Initializers
 
 TtcSessionController::TtcSessionController(
-    std::unique_ptr<TtcConversation> conversation)
-    : conversation_(std::move(conversation)) {
+    std::unique_ptr<TtcConversation> conversation,
+    web::WebState* active_web_state)
+    : conversation_(std::move(conversation)),
+      initial_web_state_(active_web_state ? active_web_state->GetWeakPtr()
+                                          : nullptr) {
   CHECK(conversation_);
   conversation_->set_delegate(this);
   RegisterBackgroundObserver();
 }
 
 TtcSessionController::TtcSessionController(
-    std::unique_ptr<ttc::TtcBackend> backend)
+    std::unique_ptr<ttc::TtcBackend> backend,
+    BrowserList* browser_list)
     : TtcSessionController(std::make_unique<TtcConversation>(
-          [[TTCAudioSessionController alloc] init],
-          std::move(backend))) {}
+                               [[TTCAudioSessionController alloc] init],
+                               std::move(backend)),
+                           GetInitialActiveWebState(browser_list)) {}
 
 TtcSessionController::TtcSessionController()
     : TtcSessionController(std::make_unique<TtcConversation>()) {}
@@ -97,6 +174,12 @@ void TtcSessionController::set_journal(TTCJournal* journal) {
   conversation_->set_journal(journal);
 }
 
+web::WebState* TtcSessionController::GetVoiceFocusedWebState() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return page_context_monitor_ ? page_context_monitor_->web_state()
+                               : initial_web_state_.get();
+}
+
 #pragma mark - Session Lifecycle
 
 void TtcSessionController::StartSession() {
@@ -105,18 +188,24 @@ void TtcSessionController::StartSession() {
     return;
   }
   conversation_->Start();
-}
-
-void TtcSessionController::OnSessionInitialized() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (lifecycle_ != TTCSessionLifecycle::kInitializing) {
+  if (lifecycle_ == TTCSessionLifecycle::kFinished) {
     return;
   }
-  SetLifecycle(TTCSessionLifecycle::kLive);
+  // The backend queues outgoing frames until the connection is established, so
+  // page context extraction can start before initialization completes.
+  if (!page_context_monitor_ && initial_web_state_) {
+    page_context_monitor_ =
+        std::make_unique<TtcPageContextMonitor>(*initial_web_state_, this);
+  }
 }
 
 void TtcSessionController::StopSession() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (page_context_monitor_) {
+    page_context_monitor_->Disconnect();
+    page_context_monitor_.reset();
+  }
+  initial_web_state_.reset();
   conversation_->Stop();
   SetLifecycle(TTCSessionLifecycle::kFinished);
 }
@@ -140,36 +229,6 @@ void TtcSessionController::SetLifecycle(TTCSessionLifecycle lifecycle) {
   lifecycle_ = lifecycle;
   for (TtcSessionControllerObserver& observer : observers_) {
     observer.OnSessionLifecycleChanged(this, lifecycle_);
-  }
-}
-
-#pragma mark - Audio & Errors
-
-void TtcSessionController::UserAudioLevelDidUpdate(float audio_level) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (lifecycle_ == TTCSessionLifecycle::kFinished || observers_.empty()) {
-    return;
-  }
-  for (TtcSessionControllerObserver& observer : observers_) {
-    observer.OnUserAudioLevelUpdated(this, audio_level);
-  }
-}
-
-void TtcSessionController::FailWithError(ttc::ErrorCode error) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (lifecycle_ == TTCSessionLifecycle::kFinished || fatal_error_reported_) {
-    return;
-  }
-  LogSessionError(error);
-  const bool is_fatal = ttc::IsFatal(error);
-  if (is_fatal) {
-    fatal_error_reported_ = true;
-  }
-  for (TtcSessionControllerObserver& observer : observers_) {
-    observer.OnSessionError(this, error);
-  }
-  if (is_fatal) {
-    StopSession();
   }
 }
 

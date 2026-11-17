@@ -335,8 +335,6 @@
 #include "ui/base/clipboard/clipboard_metadata.h"
 #include "ui/base/ime/mojom/text_input_state.mojom.h"
 #include "ui/base/ime/text_input_client.h"
-#include "ui/base/ime/text_input_flags.h"
-#include "ui/base/ime/text_input_type.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/display/screen.h"
 #include "ui/events/event_constants.h"
@@ -3539,6 +3537,29 @@ EditableLevel RenderFrameHostImpl::GetFocusedEditableLevel() const {
   return focused_editable_level_;
 }
 
+bool RenderFrameHostImpl::IsFocusedElementPasswordLike() {
+  if (focused_editable_dom_node_id_.is_null()) {
+    return false;
+  }
+  RenderWidgetHostViewBase* view = GetView();
+  TextInputManager* text_input_manager =
+      view ? view->GetTextInputManager() : nullptr;
+  if (!text_input_manager ||
+      text_input_manager->GetActiveWidget() != GetRenderWidgetHost()) {
+    return false;
+  }
+  const ui::mojom::TextInputState* state =
+      text_input_manager->GetTextInputState();
+  // FocusedElementChanged and the text input state update arrive over
+  // separate IPCs, so the state may still describe the previously focused
+  // element. Only trust it if it refers to the currently focused element.
+  if (!state ||
+      state->node_id != focused_editable_dom_node_id_.GetUnsafeValue()) {
+    return false;
+  }
+  return TextInputManager::IsPasswordLike(*state);
+}
+
 const base::UnguessableToken& RenderFrameHostImpl::GetDevToolsFrameToken() {
   return devtools_frame_token();
 }
@@ -4108,8 +4129,14 @@ PageVisibilityState RenderFrameHostImpl::GetVisibilityState() {
     return PageVisibilityState::kHidden;
   }
 
-  return GetRenderWidgetHost()->IsHidden() ? PageVisibilityState::kHidden
-                                           : PageVisibilityState::kVisible;
+  if (base::FeatureList::IsEnabled(features::kRFHHiddenWhenHiddenButPainting)) {
+    RenderWidgetHostView* view = render_view_host_->GetWidget()->GetView();
+    return view && view->IsShowing() ? PageVisibilityState::kVisible
+                                     : PageVisibilityState::kHidden;
+  } else {
+    return GetRenderWidgetHost()->IsHidden() ? PageVisibilityState::kHidden
+                                             : PageVisibilityState::kVisible;
+  }
 }
 
 void RenderFrameHostImpl::OnAssociatedInterfaceRequest(
@@ -9911,10 +9938,7 @@ void RenderFrameHostImpl::TextSelectionChanged(const std::u16string& text,
     if (auto* text_input_manager = view->GetTextInputManager()) {
       if (const ui::mojom::TextInputState* state =
               text_input_manager->GetTextInputState()) {
-        is_password =
-            state->type == ui::TEXT_INPUT_TYPE_PASSWORD ||
-            (state->flags & ui::TEXT_INPUT_FLAG_HAS_BEEN_PASSWORD) ||
-            (state->flags & ui::TEXT_INPUT_FLAG_HAS_BEEN_CUSTOM_PASSWORD);
+        is_password = TextInputManager::IsPasswordLike(*state);
       }
     }
   }
@@ -11306,8 +11330,10 @@ RenderFrameHostImpl::GetUnboundedElementConstrainingBoundsInScreen(
   }
   bool allow_escaping =
       (GetUnboundedElementAuth() == UnboundedElementAuth::kAllowedPrivileged &&
-       GetOutermostMainFrame()->GetUnboundedElementAuth() ==
-           UnboundedElementAuth::kAllowedPrivileged) ||
+       (GetOutermostMainFrame()->GetUnboundedElementAuth() ==
+            UnboundedElementAuth::kAllowedPrivileged ||
+        GetContentClient()->browser()->IsUnboundedElementEscapingAllowed(
+            this, GetOutermostMainFrame()))) ||
       base::FeatureList::IsEnabled(
           blink::features::kUnsafeEscapingUnboundedElementOnTheOpenWeb);
   if (root_view && !allow_escaping) {
@@ -11343,6 +11369,12 @@ void RenderFrameHostImpl::RequestUnboundedSurface(
   }
   UnboundedElementAuth auth = GetUnboundedElementAuth();
   if (auth == UnboundedElementAuth::kDenied) {
+    // Note: RenderFrameImpl::DidCreateScriptContext() enables UnboundedElement
+    // for subframes of any privileged root frame without checking the temporary
+    // allowlist. If you hit this bad message from a subframe of a privileged
+    // WebUI or extension page, that root origin likely needs to be added to the
+    // allowlist in
+    // ChromeContentBrowserClient::IsUnboundedElementAllowedForSubframesOf().
     local_frame_host_receiver_.ReportBadMessage(
         "RequestUnboundedSurface is only supported from privileged contexts.");
     return;
@@ -16151,9 +16183,9 @@ bool RenderFrameHostImpl::ValidateURLAndOrigin(
   if ((navigation_request && navigation_request->IsLoadDataWithBaseURL()) ||
       (is_same_document_navigation &&
        renderer_url_info_.was_loaded_from_load_data_with_base_url) ||
-      (origin.opaque() && ChildProcessSecurityPolicyImpl::GetInstance()
-                              ->HasOriginCheckExemptionForWebView(
-                                  process->GetDeprecatedID(), origin))) {
+      (origin.opaque() &&
+       ChildProcessSecurityPolicyImpl::GetInstance()
+           ->HasOriginCheckExemptionForWebView(process->GetID(), origin))) {
     // Allow bypass if the process isn't locked. Otherwise run normal checks.
     if (!process->GetProcessLock().IsLockedToSite()) {
       return true;
@@ -16471,7 +16503,7 @@ bool RenderFrameHostImpl::DidCommitNavigationInternal(
       params->origin.opaque() &&
       !GetProcess()->GetProcessLock().IsLockedToSite()) {
     ChildProcessSecurityPolicyImpl::GetInstance()
-        ->GrantOriginCheckExemptionForWebView(GetProcess()->GetDeprecatedID(),
+        ->GrantOriginCheckExemptionForWebView(GetProcess()->GetID(),
                                               params->origin);
     // Log a crash key when LoadDataWithBaseURL is given an exemption, to help
     // diagnose any renderer kills that result from it.
@@ -16483,7 +16515,7 @@ bool RenderFrameHostImpl::DidCommitNavigationInternal(
   if (GetOrCreateWebPreferences().allow_universal_access_from_file_urls &&
       params->origin.scheme() == url::kFileScheme) {
     ChildProcessSecurityPolicyImpl::GetInstance()
-        ->GrantOriginCheckExemptionForWebView(GetProcess()->GetDeprecatedID(),
+        ->GrantOriginCheckExemptionForWebView(GetProcess()->GetID(),
                                               params->origin);
     // Log a crash key when universal access is given an exemption, to help
     // diagnose any renderer kills that result from it.

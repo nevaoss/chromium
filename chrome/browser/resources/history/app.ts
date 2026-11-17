@@ -26,7 +26,7 @@ import '/strings.m.js';
 import {ColorChangeUpdater, COLORS_CSS_SELECTOR} from 'chrome://resources/cr_components/color_change_listener/colors_css_updater.js';
 import {HelpBubbleMixinLit} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin_lit.js';
 import {HistoryResultType} from 'chrome://resources/cr_components/history/constants.js';
-import type {ForeignSessionPageCallbackRouter} from 'chrome://resources/cr_components/history/foreign_sessions.mojom-webui.js';
+import type {ForeignSession, ForeignSessionPageCallbackRouter} from 'chrome://resources/cr_components/history/foreign_sessions.mojom-webui.js';
 import {browserProxyFactory as foreignSessionBrowserProxyFactory} from 'chrome://resources/cr_components/history/foreign_sessions.mojom-webui.js';
 import type {Device, PageCallbackRouter, QueryResult, QueryState} from 'chrome://resources/cr_components/history/history.mojom-webui.js';
 import type {Suggestion} from 'chrome://resources/cr_components/history_embeddings/filter_chips.js';
@@ -48,8 +48,8 @@ import {browserProxyFactory as userEducationProxyFactory} from 'chrome://resourc
 import {getCss} from './app.css.js';
 import {getHtml} from './app.html.js';
 import {BrowserProxyImpl} from './browser_proxy.js';
+import type {HistoryIdentityState} from './browser_proxy.js';
 import {HistoryPageViewHistogram, HistorySignInState, SyncState} from './constants.js';
-import type {ForeignSession, HistoryIdentityState} from './externs.js';
 import type {HistoryListElement} from './history_list.js';
 import type {HistoryToolbarElement} from './history_toolbar.js';
 import {convertDateToQueryValue} from './query_manager.js';
@@ -179,6 +179,7 @@ export class HistoryAppElement extends HistoryAppElementBase {
       devices_: {type: Array},
       includeActorVisits_: {type: Boolean},
       includeUserVisits_: {type: Boolean},
+      clientIds_: {type: Array},
       isGlicWebActuationAvailable_: {type: Boolean},
       isBrowsingHistoryFilterByDeviceEnabled_: {type: Boolean},
     };
@@ -224,6 +225,7 @@ export class HistoryAppElement extends HistoryAppElementBase {
     after: null,
     includeUserVisits: true,
     includeActorVisits: true,
+    clientIds: [],
   };
   protected accessor selectedPage_: string = Page.HISTORY;
   protected accessor selectedTab_: number =
@@ -252,6 +254,7 @@ export class HistoryAppElement extends HistoryAppElementBase {
   protected accessor devices_: Device[] = [];
   protected accessor includeActorVisits_: boolean = true;
   protected accessor includeUserVisits_: boolean = true;
+  protected accessor clientIds_: string[] = [];
   protected accessor isGlicWebActuationAvailable_: boolean =
       loadTimeData.getBoolean('isGlicWebActuationAvailable');
   protected accessor isBrowsingHistoryFilterByDeviceEnabled_: boolean =
@@ -984,15 +987,20 @@ export class HistoryAppElement extends HistoryAppElementBase {
     this.historyClustersVisible_ = e.detail.value;
   }
 
-  protected onFilterChanged_(
-      e: CustomEvent<{userVisits: boolean, actorVisits: boolean}>) {
+  protected onFilterChanged_(e: CustomEvent<{
+    userVisits: boolean,
+    actorVisits: boolean,
+    clientIds: string[],
+  }>) {
     this.includeUserVisits_ = e.detail.userVisits;
     this.includeActorVisits_ = e.detail.actorVisits;
+    this.clientIds_ = e.detail.clientIds;
 
     this.fire('change-query', {
       search: this.queryState_.searchTerm,
       includeActorVisits: this.includeActorVisits_,
       includeUserVisits: this.includeUserVisits_,
+      clientIds: this.clientIds_,
     });
   }
 

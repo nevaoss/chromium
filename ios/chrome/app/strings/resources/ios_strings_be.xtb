@@ -10,6 +10,7 @@
 <translation id="1016495303386450659">Элемент абноўлены</translation>
 <translation id="1018804590490383958">Сканіраваць і запоўніць аўтаматычна</translation>
 <translation id="1019990162050689579">Гісторыя дзеянняў у праграмах Gemini</translation>
+<translation id="102471647093736603">Націсніце і ўтрымлівайце, каб перамясціць</translation>
 <translation id="102645702181682900">Задача пачата</translation>
 <translation id="102916930470544692">Ключ доступу</translation>
 <translation id="1030376737535466765">Адкрыць Менеджар пароляў</translation>
@@ -66,6 +67,7 @@
 <translation id="1179890706672152411">Сховішча запоўнена</translation>
 <translation id="1181037720776840403">Выдаліць</translation>
 <translation id="1190609913194133056">Цэнтр апавяшчэнняў</translation>
+<translation id="1191987227666124897">Запыт на адмову</translation>
 <translation id="1196534270480620381">Падсумуй змесціва гэтай старонкі</translation>
 <translation id="1199631150313925648">Увесці ўручную</translation>
 <translation id="1199963004393929848">Зялёная тэма</translation>
@@ -193,10 +195,10 @@
 <translation id="154312949627292154">Укладкі, атрыманыя з іншых вашых прылад, будуць адкрывацца з экрана блакіроўкі.</translation>
 <translation id="1544653821167545205">Падсумуй змесціва старонкі</translation>
 <translation id="1545749641540134597">Сканіраваць QR-код</translation>
-<translation id="1545757265410828525">Гісторыя цэн</translation>
 <translation id="1547610699249301703">Абагульвайце паролі</translation>
 <translation id="1554043146674176775">Выключыць рэжым AI</translation>
 <translation id="1554477036522844996">Новае акно</translation>
+<translation id="1557806604681757705">ваш камп’ютар</translation>
 <translation id="1558391695376153246">Закрыць укладкі інкогніта</translation>
 <translation id="1560153516220021659">Кнопка згорнутай дадатковай панэлі інструментаў</translation>
 <translation id="1562601408588733317">Кіруйце пошукам і запаўненнем інфармацыі з дапамогай Gemini</translation>
@@ -483,7 +485,6 @@
 <translation id="2434405374328098816">Вы ўжо захавалі пароль для карыстальніка <ph name="USERNAME" /> на вэб-сайце <ph name="WEBSITE" /></translation>
 <translation id="2434918313224755415">Каб праглядаць сайты ў рэжыме інкогніта, прагартайце экран улева.</translation>
 <translation id="2435457462613246316">Паказаць пароль</translation>
-<translation id="2451607499823206582">Адсочванне</translation>
 <translation id="2458827363789845126">{count,plural, =1{{count} элемент гісторыі}one{{count} элемент гісторыі}few{{count} элементы гісторыі}many{{count} элементаў гісторыі}other{{count} элемента гісторыі}}</translation>
 <translation id="2461070143328828326">Налады пароляў</translation>
 <translation id="2462736546165239215">Тут вы можаце знайсці ўсю гісторыю прагляду сайтаў.</translation>
@@ -623,6 +624,7 @@
 <translation id="2870560284913253234">Сайт</translation>
 <translation id="2876369937070532032">Адпраўляе URL-адрасы некаторых наведаных вамі старонак у Google, калі ваша бяспека пад пагрозай</translation>
 <translation id="2883151425485251736">Праглядайце і змяняйце схаваныя вамі тэмы</translation>
+<translation id="2884437560239137197">Звярніце ўвагу</translation>
 <translation id="288655811176831528">Закрыць укладку</translation>
 <translation id="2888631381369839306">Апавяшчэнні для адсочвання цэн уключаны</translation>
 <translation id="2893168226686371498">Стандартны браўзер</translation>
@@ -1208,6 +1210,7 @@
 <translation id="4808744395915275922">Абнаўленні</translation>
 <translation id="4813345808229079766">Падключэнне</translation>
 <translation id="4821595350501541683">Укладкі былі закрыты, а даныя пра работу ў браўзеры – выдалены</translation>
+<translation id="4823322556950229674">Націснуўшы і ўтрымліваючы адрасны радок, вы можаце перамясціць яго і кнопку "Назад" уніз</translation>
 <translation id="4824480232751123840">Аб’ём</translation>
 <translation id="4824497107140370669">{count,plural, =0{{domain}}=1{{domain} і яшчэ 1}one{{domain} і яшчэ {count}}few{{domain} і яшчэ {count}}many{{domain} і яшчэ {count}}other{{domain} і яшчэ {count}}}</translation>
 <translation id="4826588772550366629">камеру і мікрафон</translation>
@@ -1398,7 +1401,6 @@
 <translation id="5371112366564891538">Павялічыць памер тэксту</translation>
 <translation id="5376135254804080693">Скасаваць выбар усіх</translation>
 <translation id="537853552771686272">Выберыце, якія тэмы і сайты вас цікавяць</translation>
-<translation id="5385892579392932755">вашага ноўтбука</translation>
 <translation id="5390458669633674385">{count,plural, =1{Закрыта: {count}}one{Закрыта: {count}}few{Закрыта: {count}}many{Закрыта: {count}}other{Закрыта: {count}}}</translation>
 <translation id="5394975111793637642">Схаваць картку "Водгукі пра тавар для вас"</translation>
 <translation id="5414763847370083940">Пры зніжэнні цаны на любым з сайтаў вы атрымаеце абвестку.</translation>
@@ -1463,6 +1465,7 @@
 <translation id="559567008082979829">Наладзьце, каб спампоўкі выдаляліся праз адзін месяц.</translation>
 <translation id="5596627076506792578">Дадатковыя параметры</translation>
 <translation id="560322036295180549">Ваша арганізацыя выключыла гэты параметр</translation>
+<translation id="5604254791550001355">Змяніць запыт</translation>
 <translation id="5611398002774823980">Захаваць ва ўліковым запісе</translation>
 <translation id="5612225021788368236">Закрыць параду па выбары стандартнага браўзера</translation>
 <translation id="561269594905823128">Націсніце <ph name="BEGIN_BOLD" />Выбраць файл<ph name="END_BOLD" />.</translation>
@@ -1528,7 +1531,6 @@
 <translation id="5768870767339201169">Працягвайце з месца, дзе спыніліся</translation>
 <translation id="5779117921996157216">{count,plural, =1{У вас ёсць {count} раскрыты пароль, што можа паставіць пад пагрозу бяспеку. У мэтах бяспекі выправіце гэта.}one{У вас ёсць {count} раскрыты пароль, што можа паставіць пад пагрозу бяспеку. У мэтах бяспекі выправіце гэта.}few{У вас ёсць {count} раскрытыя паролі, што можа паставіць пад пагрозу бяспеку. У мэтах бяспекі выправіце гэта.}many{У вас ёсць {count} раскрытых пароляў, што можа паставіць пад пагрозу бяспеку. У мэтах бяспекі выправіце гэта.}other{У вас ёсць {count} раскрытага пароля, што можа паставіць пад пагрозу бяспеку. У мэтах бяспекі выправіце гэта.}}</translation>
 <translation id="5791632441210678828">Кнопка для сартавання стужкі "Вы падпісаны".</translation>
-<translation id="5799263916847593256">Адкрыйце, каб паглядзець гісторыю цэн</translation>
 <translation id="5801568494490449797">Параметры</translation>
 <translation id="5803566855766646066">Сапраўды адхіліць гэту новую картку?</translation>
 <translation id="5804241973901381774">Дазволы</translation>
@@ -1666,6 +1668,7 @@
 <translation id="6227958838185907047">Увайсці як <ph name="NAME" /> (<ph name="EMAIL" />)</translation>
 <translation id="6231782223312638214">Прапанаваныя</translation>
 <translation id="6232329973559504466">Пошук у рэжыме інкогніта</translation>
+<translation id="6233463157595806945">Патрабуецца ўвод</translation>
 <translation id="6234310016144827337">Праверце падключэнне і паўтарыце спробу</translation>
 <translation id="6236952928980352967">Аднавіць папярэджанне</translation>
 <translation id="623755660902014047">Рэжым чытання</translation>
@@ -1696,6 +1699,7 @@
 <translation id="6307792728709337290">Захавайце картку ва Уліковым запісе Google, каб яе рэквізіты запаўняліся аўтаматычна пры гэтай і наступных куплях у Chrome.</translation>
 <translation id="6316141353357700666">Выберыце патрэбны пароль са спіса.</translation>
 <translation id="6321526113093607004">Дадаць у Закладкі</translation>
+<translation id="6322064144568952786">Не атрымалася выканаць задачу</translation>
 <translation id="6324054713176642683">Выберыце тэму і колер або запампуйце ўласнае фота.</translation>
 <translation id="6327249202318869726">Сэрвіс Gemini выключаны для вашага ўліковага запісу. Па дадатковую інфармацыю звярніцеся да адміністратара.</translation>
 <translation id="6331836477476466332">Больш бяспечны і эфектыўны прагляд у інтэрнэце</translation>
@@ -1878,7 +1882,6 @@
 <translation id="6815692190508268848">Налады афармлення прыменены</translation>
 <translation id="681631578600400068">Захавайце вадзіцельскае пасведчанне</translation>
 <translation id="6825078212112407882">{count,plural, =1{Закладка захавана ў вашым Уліковым запісе Google ({email})}one{{count} закладка захавана ў вашым Уліковым запісе Google ({email})}few{{count} закладкі захаваны ў вашым Уліковым запісе Google ({email})}many{{count} закладак захавана ў вашым Уліковым запісе Google ({email})}other{{count} закладкі захаваны ў вашым Уліковым запісе Google ({email})}}</translation>
-<translation id="6826004672264649705">Вы адсочваеце гэты прадукт. Адкрыйце, каб паглядзець гісторыю цэн.</translation>
 <translation id="6830728435402077660">Не абаронена</translation>
 <translation id="6831043979455480757">Перакласці</translation>
 <translation id="6842136130964845393">Каб не страціць доступ да сваіх захаваных пароляў, пацвердзіце сваю асобу</translation>
@@ -2013,6 +2016,7 @@
 <translation id="7241135764990439166">Рэжым інкогніта недаступны</translation>
 <translation id="7245288034498365666">Упарадкуйце свае даныя і эканомце час</translation>
 <translation id="7253951228444156601">Ідзе праверка пароляў…</translation>
+<translation id="725583671816239562">Задача выканана</translation>
 <translation id="7261217796641151584">Абагуліць групу</translation>
 <translation id="7266578100016339897">Гэта дзеянне дапамагае захоўваць парадак. Змяніць гэты параметр можна ў любы час у наладах.</translation>
 <translation id="7270491814777319521">Прымяняюцца <ph name="BEGIN_LINK" />Умовы выкарыстання Google<ph name="END_LINK" /> і <ph name="BEGIN_LINK" />Паведамленне аб прыватнасці ў праграмах Gemini<ph name="END_LINK" />. Gemini – гэта штучны інтэлект, ён можа рабіць памылкі, у тым ліку адносна інфармацыі пра людзей.</translation>
@@ -2055,6 +2059,7 @@
 <translation id="7411034503745719324"><ph name="EMAIL" />. <ph name="MANAGED_STATUS" />.</translation>
 <translation id="7412027924265291969">Працягнуць</translation>
 <translation id="741204030948306876">Так, я згаджаюся</translation>
+<translation id="7417055777338419059">Пішыце код, тэксты або стварайце слайды</translation>
 <translation id="7419565702166471774">Заўсёды выкарыстоўваць бяспечнае падключэнне</translation>
 <translation id="7423098979219808738">Спачатку запытваць</translation>
 <translation id="7425053386765766120">Дадаць спосаб аплаты…</translation>
@@ -2319,7 +2324,6 @@
 <translation id="8187200657863701733">Бягучы ўзровень Chrome</translation>
 <translation id="8189484403434216074">Стварэнне групы ўкладак</translation>
 <translation id="8189615296021678665">Націсніце "Захаваць", каб лёгка скарыстаць гэты пароль пры наступным уваходзе ў сістэму.</translation>
-<translation id="8193953846147532858"><ph name="BEGIN_LINK" />Вашы прылады<ph name="END_LINK" /> · <ph name="EMAIL" /></translation>
 <translation id="8195191503358432289">Дадайце пароль</translation>
 <translation id="8195936400946057039">Абараніце сябе ад пагроз у інтэрнэце</translation>
 <translation id="8205564605687841303">Скасаваць</translation>
@@ -2644,7 +2648,6 @@
 <translation id="9149866541089851383">Змяніць...</translation>
 <translation id="9152637745605628097">Выберыце тэму, колер або запампуйце відарыс</translation>
 <translation id="9153159728062222866">Без капіравання і ўстаўкі</translation>
-<translation id="9159628751968616911">Адпраўка вэб-старонкі</translation>
 <translation id="9162412286847966593">Даныя і запісы вашай арганізацыі не будуць выкарыстоўвацца для паляпшэння мадэлей генератыўнага AI. <ph name="BEGIN_LINK" />Ваша прыватнасць і Gemini<ph name="END_LINK" /></translation>
 <translation id="9162432979321511934">Уключыце аўтазапаўненне пароляў</translation>
 <translation id="9165320910061267720">Каб атрымліваць абвесткі аб зніжэнні цэн, уключыце апавяшчэнні ў наладах iOS.</translation>

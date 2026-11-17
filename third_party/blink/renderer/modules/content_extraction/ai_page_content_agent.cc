@@ -1617,7 +1617,7 @@ void ProcessAnchorNode(const MathMLAnchorElement& anchor_element,
 constexpr size_t kMaxStrippedMathMLBytes = 65536;  // 64 KiB
 
 // Maximum DOM nesting depth before aborting recursive MathML serialization.
-constexpr int kMaxMathMLSerializationDepth = 128;
+constexpr int kMaxMathMLSerializationDepth = 64;
 
 // Escapes XML special characters ('&', '<', '>', and attribute quotes/control
 // chars per `entity_mask`) and '$' (for LLM LaTeX delimiter safety). Returns

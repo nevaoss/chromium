@@ -83,6 +83,7 @@
 #import "ios/chrome/browser/autofill/model/personal_data_manager_factory.h"
 #import "ios/chrome/browser/autofill/model/strike_database_factory.h"
 #import "ios/chrome/browser/consent_auditor/model/consent_auditor_factory.h"
+#import "ios/chrome/browser/device_reauth/model/ios_device_auth_availability_checker.h"
 #import "ios/chrome/browser/device_reauth/model/ios_device_authenticator.h"
 #import "ios/chrome/browser/device_reauth/model/ios_device_authenticator_factory.h"
 #import "ios/chrome/browser/device_reauth/model/reauthentication_service.h"
@@ -205,12 +206,6 @@ ChromeAutofillClientIOS::ChromeAutofillClientIOS(
                   &ChromeAutofillClientIOS::OnActorTaskStateChange,
                   weak_ptr_factory_.GetWeakPtr()));
     }
-  }
-
-  if (autofill::IsAutofillAtMemorySearchUIEnabled(this)) {
-    at_memory_manager_ = std::make_unique<AtMemoryManager>(
-        this, ios::HistoryServiceFactory::GetForProfile(
-                  profile_, ServiceAccessType::EXPLICIT_ACCESS));
   }
 }
 
@@ -381,7 +376,15 @@ ChromeAutofillClientIOS::GetRemoteModelExecutor() {
   return OptimizationGuideServiceFactory::GetForProfile(profile_);
 }
 
-autofill::AtMemoryManager* ChromeAutofillClientIOS::GetAtMemoryManager() {
+AtMemoryManager* ChromeAutofillClientIOS::GetAtMemoryManager() {
+  if (!IsAutofillAtMemorySearchUIEnabled(this)) {
+    return nullptr;
+  }
+  if (!at_memory_manager_) {
+    at_memory_manager_ = std::make_unique<AtMemoryManager>(
+        this, ios::HistoryServiceFactory::GetForProfile(
+                  profile_, ServiceAccessType::EXPLICIT_ACCESS));
+  }
   return at_memory_manager_.get();
 }
 
@@ -769,6 +772,14 @@ ChromeAutofillClientIOS::GetIOSDeviceAuthenticator(
 std::unique_ptr<device_reauth::DeviceAuthenticator>
 ChromeAutofillClientIOS::GetDeviceAuthenticator(std::string histogram) const {
   return GetIOSDeviceAuthenticator(std::move(histogram));
+}
+
+std::unique_ptr<device_reauth::DeviceAuthAvailabilityChecker>
+ChromeAutofillClientIOS::GetDeviceAuthAvailabilityChecker() const {
+  id<ReauthenticationProtocol> reauthModule =
+      ReauthenticationServiceFactory::GetForProfile(profile_)
+          ->GetReauthModule();
+  return CreateIOSDeviceAuthAvailabilityChecker(reauthModule);
 }
 
 std::optional<std::u16string> ChromeAutofillClientIOS::GetUserEmail() {

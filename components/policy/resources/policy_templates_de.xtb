@@ -3714,8 +3714,6 @@ Wenn die Richtlinie <ph name="NTPCARDSVISIBLE" /> deaktiviert ist, wird die Outl
       Ist sie deaktiviert, senden registrierte Geräte keine Informationen zur Kiosksitzung.</translation>
 <translation id="3303770131697159224">Standardeinstellung für die Berechtigung „Fensterverwaltung“</translation>
 <translation id="3303911765031636277">Konfigurationsrichtlinie für den Chrome Enterprise-Connector "OnFileAttached"</translation>
-<translation id="3305586786770047829">Wenn diese Richtlinie auf „0“ festgelegt oder nicht konfiguriert ist, wird die Richtlinie „<ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" />“ nur auf Nutzerebene für Nutzer angewendet, die mit einer Organisation verknüpft sind.
-Wenn diese Richtlinie auf „1“ festgelegt ist, wird die Richtlinie „<ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" />“ auf Nutzerebene angewendet, auch wenn der Nutzer nicht mit einer Organisation verknüpft ist.</translation>
 <translation id="3307744348419745296">Nicht zulassen, dass WLAN-Konfigurationen zwischen <ph name="PRODUCT_OS_NAME" />-Geräten und einem verbundenen Android-Smartphone synchronisiert werden</translation>
 <translation id="3308724602356134956">Wenn du die Richtlinie konfigurierst, wird <ph name="PRODUCT_OS_NAME" />
 
@@ -6572,19 +6570,6 @@ Diese Richtlinie ist eine vorübergehende Lösung, damit genug Zeit ist, Webinha
 <translation id="5120168808610189805">Import der Startseite bei der ersten Ausführung aktivieren</translation>
 <translation id="5124321040285474825">Einstellungen für auf generativer KI basierende Funktionen in Autofill</translation>
 <translation id="5124368997194894978">Starten bei anliegender Netzspannung aktivieren</translation>
-<translation id="5124652340668722849">Konfiguriert eine Liste von Bereitstellungsdomains (Provisioning Domains, PvDs), die <ph name="PRODUCT_NAME" /> zum dynamischen Abrufen von Proxykonfigurationen verwendet.
-
-Mit dieser Richtlinie kann eine Liste von Domainnamen oder Ressourcen-URIs angegeben werden, die Bereitstellungsdomains gemäß RFC 8801 („Discovering Provisioning Domain Names and Data“) darstellen. Für jede PvD löst der Browser die entsprechende JSON-Konfiguration auf, indem er eine HTTPS-Anfrage an den bekannten Endpunktpfad „https://[<ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />]/.well-known/pvd“ sendet.
-
-Jeder Eintrag in der Liste gibt Folgendes an:
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />: Die Kennung der Bereitstellungsdomain (ein Domainname).
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_AUTH_CONFIG" />: Die optionale Authentifizierungskonfiguration. Wenn sie nicht konfiguriert oder auf „none“ gesetzt ist, wird keine Authentifizierung durchgeführt. Wenn die Einstellung „profile_bearer_token“ lautet, weist sie den Browser an, ein OAuth2-Zugriffstoken mit dem angegebenen Bereich für das angemeldete primäre Konto abzurufen und es im „Authorization“-Header als „Bearer“-Token anzuhängen.
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_EXTRA_HEADERS" />: Eine optionale Liste benutzerdefinierter HTTP-Header, die beim Abfragen des PvD-Endpunkts enthalten sein sollen. Dynamische Werte können eingefügt werden, z. B. „profile_id“ (steht für eine stabile, eindeutige ID des Browserprofils auf dem Gerät, die Targeting nach Profilkonfiguration ermöglicht) oder „accept_language“ (steht für die bevorzugten Sprachen des Browsers).
-
-Die abgerufenen Konfigurationen werden gemäß dem RFC 8801-Schema geparst. Es werden nur Routingregeln und Proxys aus der JSON-Nutzlast des PvD angewendet, die sich auf die Proxykonfiguration beziehen. Wenn diese Richtlinie nicht konfiguriert ist, werden keine Bereitstellungsdomains abgefragt oder zum Abrufen von Proxykonfigurationen verwendet.</translation>
 <translation id="5130213897914754028">Websites die Nutzung von „SharedArrayBuffers“ nicht erlauben</translation>
 <translation id="5130935469849337738">Übersetzung immer anbieten</translation>
 <translation id="513314432051760916">Durch diese Richtlinie wird festgelegt, ob die <ph name="PRIVACY_SANDBOX_NAME" />-Einstellung für die Erfolgsmessung bei Anzeigen für Nutzer deaktiviert werden kann.
@@ -8606,17 +8591,6 @@ Hinweis: Diese Richtlinie gilt nur für Plattformen, die Erweiterungen unterstü
       Wenn die Richtlinie auf "False" gesetzt ist, werden die Signed HTTP Exchanges nicht geladen.</translation>
 <translation id="6368011194414932347">Startseiten-URL konfigurieren</translation>
 <translation id="6368403635025849609">JavaScript auf diesen Websites zulassen</translation>
-<translation id="6368652917086795891">Konfiguriert die Verbindungseinstellungen für <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> in <ph name="PRODUCT_NAME" />.
-
-Diese Richtlinie wird durch die Richtlinie „<ph name="GEMINI_ENTERPRISE_URL_POLICY_NAME" />“ ersetzt. Wenn beide konfiguriert sind, hat „<ph name="GEMINI_ENTERPRISE_URL_POLICY_NAME" />“ Vorrang.
-
-Die Richtlinie konfiguriert die URL der <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" />-Webanwendung über <ph name="GEMINI_ENTERPRISE_SETTINGS_URL_POLICY_VALUE" />. Dies muss eine gültige URL sein, die das HTTPS-Schema verwendet, auf eine <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" />-Domain verweist und keinen Nutzernamen oder kein Passwort enthält. Wenn sie diese Anforderungen nicht erfüllt, wird die Richtlinie ignoriert und <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> bleibt unkonfiguriert.
-
-Ist diese Richtlinie konfiguriert, wird <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> für Nutzer konfiguriert, die mit einem verwalteten Konto oder einem verwalteten Browser angemeldet sind.
-
-Wenn diese Richtlinie nicht konfiguriert ist, wird <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> nicht konfiguriert.
-
-Diese Richtlinie steuert nicht die allgemeine <ph name="GOOGLE_GEMINI_PRODUCT_NAME" />-Integration, die über die Richtlinie „<ph name="GEMINI_SETTINGS_POLICY_NAME" />“ gesteuert werden kann.</translation>
 <translation id="6368671810229507360">WebRTC</translation>
 <translation id="6370742079247037704">Nicht zulassen, dass Seiten die integrierten KI-APIs verwenden.</translation>
 <translation id="6371005337713685988">Einstellungen für Gruppen ähnlicher Websites</translation>
@@ -9413,15 +9387,6 @@ HINWEIS: Während der Browser ausgeführt wird, werden Änderungen an dieser Ric
 <translation id="6833988859168635883">Start, Startseite und Seite "Neuer Tab"</translation>
 <translation id="6835254082476223414">Sichern und Wiederherstellen von virtuellen Maschinen mit Linux aktivieren</translation>
 <translation id="6835883744948188639">Dem Nutzer eine wiederkehrende Aufforderung anzeigen, dass ein Neustart empfohlen wird</translation>
-<translation id="683688607121170501">Mit dieser Einstellung können Nutzer nach der Anmeldung auf ihrem <ph name="PRODUCT_OS_NAME" />-Gerät im Inhaltsbereich des Browserfensters und in Android-Apps zwischen Google-Konten wechseln.
-
-Wenn diese Richtlinie auf "false" gesetzt ist, ist die Anmeldung in einem anderen Google-Konto im Inhaltsbereich eines Browsers, der nicht im Inkognitomodus ist, und in Android-Apps nicht erlaubt.
-
-Ist sie nicht konfiguriert oder auf "true" gesetzt, wird das Standardverhalten verwendet: Die Anmeldung in einem anderen Google-Konto aus dem Inhaltsbereich eines Browsers und in Android-Apps ist dann erlaubt; hiervon ausgenommen sind jedoch Konten für Kinder, bei denen die Anmeldung für den Inhaltsbereich eines Browsers, der nicht im Inkognitomodus ist, blockiert wird.
-
-Falls die Anmeldung in einem anderen Konto über den Inkognitomodus nicht erlaubt sein soll, kannst du diesen Modus mithilfe der Richtlinie "IncognitoModeAvailability" blockieren.
-
-Hinweis: Nutzer können Cookies blockieren und so auf Google-Dienste zugreifen, die nicht authentifiziert sind.</translation>
 <translation id="6841254611279513739">Durch die Richtlinie wird festgelegt, ob nur in Farbe, nur in Schwarz-Weiß oder ohne Farbmodusbeschränkung gedruckt wird. Wenn die Richtlinie nicht konfiguriert ist, wird keine Beschränkung angewendet.</translation>
 <translation id="6843008643303282259">Gewünschte Upload-Geschwindigkeit in kbit/s.</translation>
 <translation id="6843296367238757293">Diese Richtlinie ist veraltet. Von ihrer Verwendung wird abgeraten. Weitere Informationen dazu findest du unter https://support.google.com/chrome/a/answer/7643500</translation>
@@ -10524,7 +10489,6 @@ Diese Richtlinie steuert nicht die allgemeine <ph name="GOOGLE_GEMINI_PRODUCT_NA
 <translation id="7491720878670299691">Häufigkeit, mit der Netzwerkdaten gepollt und auf Ereignisse geprüft werden. Die geringste zulässige Häufigkeit beträgt 1 Minute.
 
       Wenn die Richtlinie nicht konfiguriert ist, beträgt die Häufigkeit standardmäßig 1 Minute.</translation>
-<translation id="7496284563199466390">Bestimmt, welche verwalteten Nutzer die Richtlinie „<ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" />“ festlegen können.</translation>
 <translation id="7498595166686106721">
       Die Richtlinie für Berechtigungen zur Display-Erfassung ermöglicht Zugriff auf „getDisplayMedia()“ gemäß dieser Spezifikation: https://www.w3.org/TR/screen-capture/#feature-policy-integration. Ist die Richtlinie jedoch deaktiviert, wird diese Anforderung nicht erzwungenund „getDisplayMedia()“ wird aus Kontexten zugelassen, die andernfalls nicht zulässig wären. Diese Unternehmensrichtlinie ist vorübergehend. Nach Version 100 von <ph name="PRODUCT_NAME" /> wird sie voraussichtlich entfernt. Sie soll Unternehmensnutzer freigeben, deren Anwendung nicht spezifikationskonform ist, jedoch erst nach einiger Zeit angepasst werden kann.
 

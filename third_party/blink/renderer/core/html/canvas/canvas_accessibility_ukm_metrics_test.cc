@@ -2,26 +2,36 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/test/bind.h"
 #include "components/ukm/test_ukm_recorder.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/blink/public/platform/scheduler/test/renderer_scheduler_test_support.h"
+#include "third_party/blink/renderer/core/dom/events/native_event_listener.h"
 #include "third_party/blink/renderer/core/html/canvas/canvas_context_creation_attributes_core.h"
 #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context.h"
-#include "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.h"
+#include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
+#include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 
 namespace blink {
 
 namespace {
 enum class Task { kGetContext, kSetIsDisplayed, kDidProcessTask };
-}
+
+class TestEmptyEventListener final : public NativeEventListener {
+ public:
+  void Invoke(ExecutionContext*, Event*) override {}
+};
+}  // namespace
 
 class CanvasAccessibilityUkmMetricsTest
     : public PageTestBase,
       public testing::WithParamInterface<std::tuple<Task, Task, Task>> {
  public:
-  CanvasAccessibilityUkmMetricsTest() = default;
+  CanvasAccessibilityUkmMetricsTest()
+      : PageTestBase(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
 
   void SetUp() override {
     PageTestBase::SetUp();
@@ -63,6 +73,9 @@ class CanvasAccessibilityUkmMetricsTest
       }
     }
 
+    // Fast-forward time to let the scheduled UKM recording delay elapse.
+    FastForwardBy(CanvasRenderingContext::kAccessibilityUkmRecordingDelay);
+
     // Verify that one record exists.
     auto entries = recorder_.GetEntriesByName(
         ukm::builders::Accessibility_Canvas::kEntryName);
@@ -85,6 +98,7 @@ class CanvasAccessibilityUkmMetricsTest
     // records.
     base::PendingTask dummy_pending_task2(FROM_HERE, base::OnceClosure());
     canvas_element_->RenderingContext()->DidProcessTask(dummy_pending_task2);
+    FastForwardBy(CanvasRenderingContext::kAccessibilityUkmRecordingDelay);
     EXPECT_EQ(
         recorder_
             .GetEntriesByName(ukm::builders::Accessibility_Canvas::kEntryName)
@@ -118,7 +132,8 @@ INSTANTIATE_TEST_SUITE_P(
 
 class CanvasAccessibilityUkmMetricsValueTest : public PageTestBase {
  public:
-  CanvasAccessibilityUkmMetricsValueTest() = default;
+  CanvasAccessibilityUkmMetricsValueTest()
+      : PageTestBase(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
 
   void SetUp() override {
     PageTestBase::SetUp();
@@ -132,6 +147,15 @@ class CanvasAccessibilityUkmMetricsValueTest : public PageTestBase {
   void TearDown() override {
     PageTestBase::TearDown();
     CanvasRenderingContext::GetCanvasPerformanceMonitor().ResetForTesting();
+  }
+
+  // Runs a callback in a posted task and runs pending tasks. Drawing inside a
+  // task observer lifecycle ensures DidDraw registers the context observer
+  // and DidProcessTask is invoked upon task completion, mirroring production.
+  void RunInTask(base::OnceClosure callback) {
+    scheduler::GetSingleThreadTaskRunnerForTesting()->PostTask(
+        FROM_HERE, std::move(callback));
+    test::RunPendingTasks();
   }
 
  protected:
@@ -150,6 +174,21 @@ TEST_F(CanvasAccessibilityUkmMetricsValueTest, VerifyHasText) {
   canvas_element_->SetIsDisplayed(true);
   base::PendingTask dummy_pending_task(FROM_HERE, base::OnceClosure());
   canvas_element_->RenderingContext()->DidProcessTask(dummy_pending_task);
+  // Drawing to canvas directly in a test body registers
+  // CanvasPerformanceMonitor as a TaskTimeObserver outside an active message
+  // loop task. Reset it before FastForwardBy() runs new tasks, otherwise the
+  // task runner invokes CanvasPerformanceMonitor::WillProcessTask() and trips
+  // NOTREACHED().
+  CanvasRenderingContext::GetCanvasPerformanceMonitor().ResetForTesting();
+
+  // No UKM should be recorded before the delay has elapsed.
+  EXPECT_EQ(
+      recorder_
+          .GetEntriesByName(ukm::builders::Accessibility_Canvas::kEntryName)
+          .size(),
+      0);
+
+  FastForwardBy(CanvasRenderingContext::kAccessibilityUkmRecordingDelay);
 
   // Verify that one record exists.
   auto entries = recorder_.GetEntriesByName(
@@ -158,6 +197,152 @@ TEST_F(CanvasAccessibilityUkmMetricsValueTest, VerifyHasText) {
   auto* entry = entries[0].get();
   ukm::TestUkmRecorder::ExpectEntryMetric(
       entry, ukm::builders::Accessibility_Canvas::kHasTextName, 1);
+}
+
+TEST_F(CanvasAccessibilityUkmMetricsValueTest, VerifyRetryWhenDisplayedLater) {
+  ASSERT_TRUE(canvas_element_);
+  CanvasContextCreationAttributesCore attributes;
+  canvas_element_->GetCanvasRenderingContext(
+      GetDocument().GetExecutionContext(), "2d", attributes);
+
+  canvas_element_->SetIsDisplayed(false);
+  EXPECT_FALSE(canvas_element_->IsDisplayed());
+
+  base::PendingTask dummy_pending_task(FROM_HERE, base::OnceClosure());
+  canvas_element_->RenderingContext()->DidProcessTask(dummy_pending_task);
+
+  // Fast forward delay while canvas is not displayed.
+  FastForwardBy(CanvasRenderingContext::kAccessibilityUkmRecordingDelay);
+
+  // UKM should not be recorded since the canvas is not displayed, and the
+  // recording schedule flag should be reset.
+  EXPECT_EQ(
+      recorder_
+          .GetEntriesByName(ukm::builders::Accessibility_Canvas::kEntryName)
+          .size(),
+      0);
+
+  // Later, canvas becomes displayed. This should reschedule the recording.
+  canvas_element_->SetIsDisplayed(true);
+
+  // Before delay elapses, still no record.
+  EXPECT_EQ(
+      recorder_
+          .GetEntriesByName(ukm::builders::Accessibility_Canvas::kEntryName)
+          .size(),
+      0);
+
+  // Fast forward delay again.
+  FastForwardBy(CanvasRenderingContext::kAccessibilityUkmRecordingDelay);
+
+  // UKM record should now exist.
+  auto entries = recorder_.GetEntriesByName(
+      ukm::builders::Accessibility_Canvas::kEntryName);
+  ASSERT_EQ(entries.size(), 1);
+  auto* entry = entries[0].get();
+  ukm::TestUkmRecorder::ExpectEntryMetric(
+      entry, ukm::builders::Accessibility_Canvas::kRenderingContextName,
+      static_cast<int>(CanvasRenderingContext::CanvasRenderingAPI::k2D));
+}
+
+TEST_F(CanvasAccessibilityUkmMetricsValueTest,
+       VerifyPointerListenerRecordedInUkm) {
+  ASSERT_TRUE(canvas_element_);
+  CanvasContextCreationAttributesCore attributes;
+  canvas_element_->GetCanvasRenderingContext(
+      GetDocument().GetExecutionContext(), "2d", attributes);
+  canvas_element_->SetIsDisplayed(true);
+
+  canvas_element_->addEventListener(
+      event_type_names::kPointerdown,
+      MakeGarbageCollected<TestEmptyEventListener>());
+
+  RunInTask(base::BindLambdaForTesting([&]() {
+    canvas_element_->RenderingContext()->fillTextForTesting("draw", 10, 10);
+  }));
+  FastForwardBy(CanvasRenderingContext::kAccessibilityUkmRecordingDelay);
+
+  auto entries = recorder_.GetEntriesByName(
+      ukm::builders::Accessibility_Canvas::kEntryName);
+  ASSERT_EQ(entries.size(), 1);
+  auto* entry = entries[0].get();
+  ukm::TestUkmRecorder::ExpectEntryMetric(
+      entry, ukm::builders::Accessibility_Canvas::kHasMouseListenerName, 1);
+}
+
+TEST_F(CanvasAccessibilityUkmMetricsValueTest,
+       VerifyTouchListenerRecordedInUkm) {
+  ASSERT_TRUE(canvas_element_);
+  CanvasContextCreationAttributesCore attributes;
+  canvas_element_->GetCanvasRenderingContext(
+      GetDocument().GetExecutionContext(), "2d", attributes);
+  canvas_element_->SetIsDisplayed(true);
+
+  canvas_element_->addEventListener(
+      event_type_names::kTouchstart,
+      MakeGarbageCollected<TestEmptyEventListener>());
+
+  RunInTask(base::BindLambdaForTesting([&]() {
+    canvas_element_->RenderingContext()->fillTextForTesting("draw", 10, 10);
+  }));
+  FastForwardBy(CanvasRenderingContext::kAccessibilityUkmRecordingDelay);
+
+  auto entries = recorder_.GetEntriesByName(
+      ukm::builders::Accessibility_Canvas::kEntryName);
+  ASSERT_EQ(entries.size(), 1);
+  auto* entry = entries[0].get();
+  ukm::TestUkmRecorder::ExpectEntryMetric(
+      entry, ukm::builders::Accessibility_Canvas::kHasMouseListenerName, 1);
+}
+
+TEST_F(CanvasAccessibilityUkmMetricsValueTest,
+       VerifyTouchMoveListenerRecordedInUkm) {
+  ASSERT_TRUE(canvas_element_);
+  CanvasContextCreationAttributesCore attributes;
+  canvas_element_->GetCanvasRenderingContext(
+      GetDocument().GetExecutionContext(), "2d", attributes);
+  canvas_element_->SetIsDisplayed(true);
+
+  canvas_element_->addEventListener(
+      event_type_names::kTouchmove,
+      MakeGarbageCollected<TestEmptyEventListener>());
+
+  RunInTask(base::BindLambdaForTesting([&]() {
+    canvas_element_->RenderingContext()->fillTextForTesting("draw", 10, 10);
+  }));
+  FastForwardBy(CanvasRenderingContext::kAccessibilityUkmRecordingDelay);
+
+  auto entries = recorder_.GetEntriesByName(
+      ukm::builders::Accessibility_Canvas::kEntryName);
+  ASSERT_EQ(entries.size(), 1);
+  auto* entry = entries[0].get();
+  ukm::TestUkmRecorder::ExpectEntryMetric(
+      entry, ukm::builders::Accessibility_Canvas::kHasMouseListenerName, 1);
+}
+
+TEST_F(CanvasAccessibilityUkmMetricsValueTest,
+       VerifyPointerCancelListenerRecordedInUkm) {
+  ASSERT_TRUE(canvas_element_);
+  CanvasContextCreationAttributesCore attributes;
+  canvas_element_->GetCanvasRenderingContext(
+      GetDocument().GetExecutionContext(), "2d", attributes);
+  canvas_element_->SetIsDisplayed(true);
+
+  canvas_element_->addEventListener(
+      event_type_names::kPointercancel,
+      MakeGarbageCollected<TestEmptyEventListener>());
+
+  RunInTask(base::BindLambdaForTesting([&]() {
+    canvas_element_->RenderingContext()->fillTextForTesting("draw", 10, 10);
+  }));
+  FastForwardBy(CanvasRenderingContext::kAccessibilityUkmRecordingDelay);
+
+  auto entries = recorder_.GetEntriesByName(
+      ukm::builders::Accessibility_Canvas::kEntryName);
+  ASSERT_EQ(entries.size(), 1);
+  auto* entry = entries[0].get();
+  ukm::TestUkmRecorder::ExpectEntryMetric(
+      entry, ukm::builders::Accessibility_Canvas::kHasMouseListenerName, 1);
 }
 
 }  // namespace blink

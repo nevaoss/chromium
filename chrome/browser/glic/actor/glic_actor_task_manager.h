@@ -83,7 +83,7 @@ class GlicActorTaskManager {
   bool IsActuating() const;
 
   // Returns the last acted tabs for the current task.
-  std::vector<tabs::TabInterface*> GetLastActedTabs() const;
+  std::vector<raw_ptr<tabs::TabInterface>> GetLastActedTabs() const;
 
   // Returns the ID of the current active task, if any.
   std::optional<int> current_task_id() const;
@@ -100,6 +100,8 @@ class GlicActorTaskManager {
   Profile* profile() const { return profile_; }
 
   GlicActorClientSessionInterface* GetClientSessionForTesting();
+
+  void NotifyActuatingChangedForTesting(bool is_actuating);
 
   // TODO(b/561944228): CriticalActionService needs conversation_id, this is a
   // temporary solution while b/494212836 is in place; remove once fixed.

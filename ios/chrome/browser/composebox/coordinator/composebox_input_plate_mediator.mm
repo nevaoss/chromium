@@ -19,6 +19,8 @@
 #import "base/debug/dump_without_crashing.h"
 #import "base/files/file_path.h"
 #import "base/functional/bind.h"
+#import "base/functional/callback.h"
+#import "base/functional/callback_helpers.h"
 #import "base/ios/block_types.h"
 #import "base/memory/ptr_util.h"
 #import "base/memory/raw_ptr.h"
@@ -57,6 +59,8 @@
 #import "ios/chrome/browser/cobrowse/model/cobrowse_context.h"
 #import "ios/chrome/browser/cobrowse/model/cobrowse_util.h"
 #import "ios/chrome/browser/cobrowse/model/ios_contextual_tasks_service_factory.h"
+#import "ios/chrome/browser/cobrowse/shared/metrics/assistant_aim_metrics_constants.h"
+#import "ios/chrome/browser/cobrowse/shared/metrics/assistant_aim_metrics_recorder.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_constants.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_query_contextualizer_delegate_bridge.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_url_loader.h"
@@ -280,6 +284,10 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   // automatically re-attached in Co-browse mode.
   std::set<web::WebStateID> _removedWebStateIDs;
 
+  // Holds a pending send callback while attachments are being extracted or
+  // uploaded.
+  base::OnceClosure _pendingSendCallback;
+
   // Delegate for the query contextualizer.
   std::unique_ptr<QueryContextualizerDelegateBridge>
       _queryContextualizerDelegate;
@@ -448,6 +456,9 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   _stateManager = nil;
   _aimEligibilityService = nullptr;
   _cobrowseBrowserAgent = nullptr;
+  // Reset the pending send callback before `_queryContextualizer`, since
+  // `_pendingSendCallback` may hold an unretained pointer to it.
+  _pendingSendCallback.Reset();
   _queryContextualizer.reset();
   _queryContextualizerDelegate.reset();
   _composeboxObserverBridge.reset();
@@ -581,11 +592,12 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
     }
   }
 
-  return [[ComposeboxAttachmentSelection alloc] initWithTabIDs:tabIDs
-                                             cachedWebStateIDs:{}
-                                                        images:images
-                                                         files:files
-                                                    driveItems:driveItems];
+  return [[ComposeboxAttachmentSelection alloc]
+      initWithTabSelection:ComposeboxTabSelection{.selected_ids =
+                                                      std::move(tabIDs)}
+                    images:images
+                     files:files
+                driveItems:driveItems];
 }
 
 - (void)updateAttachments:(ComposeboxAttachmentSelection*)attachments {
@@ -644,8 +656,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
 
   // TODO(crbug.com/512774045): update attachment is called in both embedded an
   // focus flow. Verify metrics recording in both flows.
-  [self attachSelectedTabsWithWebStateIDs:attachments.tabIDs
-                        cachedWebStateIDs:attachments.cachedWebStateIDs];
+  [self attachTabSelection:attachments.tabSelection];
 }
 
 - (void)removeSharedTabWithInputItemIdentifier:
@@ -729,12 +740,9 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   return [_stateManager maxTabAttachmentCount];
 }
 
-- (void)attachSelectedTabsWithWebStateIDs:
-            (std::set<web::WebStateID>)selectedWebStateIDs
-                        cachedWebStateIDs:
-                            (std::set<web::WebStateID>)cachedWebStateIDs {
-  [self attachSelectedTabsWithWebStateIDs:selectedWebStateIDs
-                        cachedWebStateIDs:cachedWebStateIDs
+- (void)attachTabSelection:(const ComposeboxTabSelection&)selection {
+  [self attachSelectedTabsWithWebStateIDs:selection.selected_ids
+                        cachedWebStateIDs:selection.cached_ids
                      fromExternalWebState:nullptr
                                    source:ComposeboxInputItemSource::kTabPicker
                                 autoAdded:NO];
@@ -811,9 +819,10 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
     return;
   }
 
-  // Once the user submits a contextual query, promote any auto-added tab to a
-  // committed attachment so active-tab or focus updates do not remove it via
-  // `-removeAutoAddedItems`.
+  // Once the user submits a contextual query, promote any auto-added tab (and
+  // start its deferred extraction and upload) before checking for pending
+  // attachments, and so active-tab or focus updates during the wait do not
+  // remove it via `-removeAutoAddedItems`.
   [self promoteAutoAddedItems];
 
   auto advancedToolsParams = [_stateManager additionalQueryParams];
@@ -848,6 +857,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
       _contextualSearchSession->AsWeakPtr(), std::move(search_url_request_info),
       std::move(callback));
 
+  base::OnceClosure sendTextClosure;
   if (_queryContextualizer) {
     contextual_tasks::QueryContextualizer::ContextualizeParams params;
     params.task_id = std::nullopt;
@@ -860,10 +870,14 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
                ignored_handle) { std::move(closure).Run(); },
         std::move(createSearchUrlCallback));
     params.enable_smart_tab_selection = false;
-    _queryContextualizer->Contextualize(std::move(params));
+    sendTextClosure = base::BindOnce(
+        &contextual_tasks::QueryContextualizer::Contextualize,
+        base::Unretained(_queryContextualizer.get()), std::move(params));
   } else {
-    std::move(createSearchUrlCallback).Run();
+    sendTextClosure = std::move(createSearchUrlCallback);
   }
+
+  [self runOrWaitForPendingAttachments:std::move(sendTextClosure)];
 }
 
 - (void)processTab:(web::WebState*)webState
@@ -1546,14 +1560,76 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   }
 }
 
+// Returns the WebState in `_webStateList` associated with
+// `inputItemIdentifier`, or `nullptr` if not found.
+- (web::WebState*)webStateForInputItemIdentifier:
+    (base::UnguessableToken)inputItemIdentifier {
+  if (!_webStateList) {
+    return nullptr;
+  }
+  auto it = _latestTabSelectionMapping.find(inputItemIdentifier);
+  if (it == _latestTabSelectionMapping.end() || !it->second.valid()) {
+    return nullptr;
+  }
+  WebStateSearchCriteria searchCriteria{
+      .identifier = it->second,
+      .pinned_state = WebStateSearchCriteria::PinnedState::kAny,
+  };
+  int tabIndex = GetWebStateIndex(_webStateList.get(), searchCriteria);
+  if (tabIndex == WebStateList::kInvalidIndex) {
+    return nullptr;
+  }
+  return _webStateList->GetWebStateAt(tabIndex);
+}
+
 // Promotes all currently auto-added items to user attachments once the user
-// interacts with them by sending a query.
+// interacts with them by sending a query, starting extraction and upload for
+// any auto-added tab that was lazily deferred.
 - (void)promoteAutoAddedItems {
-  for (ComposeboxInputItem* item in _items.containedItems) {
-    if (item.isAutoAdded) {
-      item.isAutoAdded = NO;
+  // Iterate over a copy, as `attachWebState:` or `handleFailedAttachment:` may
+  // synchronously remove the item if the attachment fails.
+  for (ComposeboxInputItem* item in [_items.containedItems copy]) {
+    if (!item.isAutoAdded) {
+      continue;
+    }
+    item.isAutoAdded = NO;
+    // For auto-added tabs whose upload was deferred, proceed with extraction
+    // and upload.
+    if (item.state == ComposeboxInputItemState::kDeferred) {
+      web::WebState* webState =
+          [self webStateForInputItemIdentifier:item.identifier];
+      if (webState) {
+        [self setState:ComposeboxInputItemState::kLoading onItem:item];
+        [self.consumer updateState:item.state
+             forItemWithIdentifier:item.identifier];
+        [self attachWebState:webState identifier:item.identifier isCached:NO];
+      } else {
+        [self handleFailedAttachment:item.identifier];
+      }
     }
   }
+}
+
+// Runs `callback` immediately if no attachment is awaiting extraction or
+// upload, or holds it in `_pendingSendCallback` until all attachments
+// settle.
+- (void)runOrWaitForPendingAttachments:(base::OnceClosure)callback {
+  _pendingSendCallback = std::move(callback);
+  [self maybeRunPendingSendCallback];
+}
+
+// Runs `_pendingSendCallback` if one is waiting and all attachments are ready
+// for send.
+- (void)maybeRunPendingSendCallback {
+  if (!_pendingSendCallback) {
+    return;
+  }
+  for (ComposeboxInputItem* item in _items.containedItems) {
+    if (!item.readyForSend) {
+      return;
+    }
+  }
+  std::move(_pendingSendCallback).Run();
 }
 
 // Whether the current instance is associated with cobrowse.
@@ -1576,8 +1652,21 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
   CHECK(_entrypoint == ComposeboxEntrypoint::kCobrowse);
 
+  if (!_contextualSearchSession) {
+    return;
+  }
+
   [self promoteAutoAddedItems];
 
+  __weak __typeof(self) weakSelf = self;
+  [self runOrWaitForPendingAttachments:base::BindOnce(^{
+          [weakSelf executeAIMFollowup:text];
+        })];
+}
+
+// Builds and dispatches the ClientToAimRequest for a Cobrowse followup query.
+- (void)executeAIMFollowup:(NSString*)text {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
   if (!_contextualSearchSession) {
     return;
   }
@@ -1597,6 +1686,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   request_info->query_start_time = base::Time::Now();
   request_info->file_tokens =
       _contextualSearchSession->GetUploadedContextTokens();
+  NSUInteger attachmentCount = request_info->file_tokens.size();
 
   request_info->active_tool = inputState->active_tool;
   request_info->active_model = inputState->active_model;
@@ -1606,12 +1696,15 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
           std::move(request_info));
 
   [self.URLLoader prepareLoadWithClientToAimMessage:message];
+  [self.assistantMetricsRecorder
+      recordFollowupSubmittedWithAttachmentCount:attachmentCount];
   [self clearNonTabItems];
 }
 
 // Informs the model of a context change (e.g.; attachment added or deleted).
 - (void)notifyContextChanged {
   [_stateManager onContextChanged];
+  [self maybeRunPendingSendCallback];
 }
 
 // Updates the awaiting attachment signals state.
@@ -1656,8 +1749,11 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
           onItem:(ComposeboxInputItem*)item {
   item.state = state;
 
-  composebox_debugger::event::QueryAttachment eventType;
+  std::optional<composebox_debugger::event::QueryAttachment> eventType;
   switch (state) {
+    case ComposeboxInputItemState::kDeferred:
+    case ComposeboxInputItemState::kLoading:
+      break;
     case ComposeboxInputItemState::kUploading:
       eventType = composebox_debugger::event::QueryAttachment::kAdded;
       break;
@@ -1668,17 +1764,18 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
     case ComposeboxInputItemState::kError:
       eventType = composebox_debugger::event::QueryAttachment::kUploadFailed;
       break;
-    default:
-      return;
   }
 
-  [self.debugLogger
-      logEvent:[ComposeboxDebuggerEvent
-                   queryAttachmentEvent:eventType
-                               withType:[self attachmentEventTypeForItem:item]
-                                  title:[self
-                                            attachmentEventTitleForItem:item]]];
+  if (eventType.has_value()) {
+    [self.debugLogger
+        logEvent:
+            [ComposeboxDebuggerEvent
+                queryAttachmentEvent:*eventType
+                            withType:[self attachmentEventTypeForItem:item]
+                               title:[self attachmentEventTitleForItem:item]]];
+  }
   [self updateAwaitingAttachmentSignalsState];
+  [self maybeRunPendingSendCallback];
 }
 
 // Returns the attachment event title for a given item.
@@ -1710,13 +1807,13 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   }
 }
 
-// Helper for `-attachSelectedTabsWithWebStateIDs:cachedWebStateIDs:`. Attaches
-// the selected tabs. `cachedWebStateIDs` contains the IDs of the tabs that have
-// their content cached. When a tab attachment is initiated for tabs with a
-// different web state than the current window (such as a UI drag-and-drop
-// action across windows), an `externalWebState` is provided to make tabs from
-// another eligible browser window visible. Otherwise, `externalWebState` should
-// be `nullptr`.
+// Helper for `-attachTabSelection:`. Attaches the selected tabs.
+// `cachedWebStateIDs` contains the IDs of the tabs that have their content
+// cached. When a tab attachment is initiated for tabs with a different web
+// state than the current window (such as a UI drag-and-drop action across
+// windows), an `externalWebState` is provided to make tabs from another
+// eligible browser window visible. Otherwise, `externalWebState` should be
+// `nullptr`.
 - (void)attachSelectedTabsWithWebStateIDs:
             (std::set<web::WebStateID>)selectedWebStateIDs
                         cachedWebStateIDs:
@@ -1767,9 +1864,20 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
     if (item) {
       item.isAutoAdded = autoAdded;
     }
-    [self attachWebState:candidateWebState
-              identifier:identifier
-                isCached:cachedWebStateIDs.contains(candidateID)];
+    if (autoAdded) {
+      // Auto-added tabs are only extracted and uploaded once the user sends a
+      // query with them (see `-promoteAutoAddedItems`), so the content of a
+      // tab the user doesn't use is never uploaded.
+      if (item) {
+        [self setState:ComposeboxInputItemState::kDeferred onItem:item];
+        [self.consumer updateState:item.state
+             forItemWithIdentifier:item.identifier];
+      }
+    } else {
+      [self attachWebState:candidateWebState
+                identifier:identifier
+                  isCached:cachedWebStateIDs.contains(candidateID)];
+    }
   }
 }
 
@@ -1841,6 +1949,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   // through the standard search navigation flow.
   if ([self shouldInvokeAssistantForAIMQuery]) {
     CobrowseContext* context = [[CobrowseContext alloc] initWithURL:URL];
+    context.entrypoint = AssistantAimEntrypoint::kAskAboutCurrentPage;
     context.attachedItems = _items.containedItems;
     if (_cobrowseBrowserAgent) {
       _cobrowseBrowserAgent->SetCobrowseContext(context);
@@ -2379,13 +2488,10 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   BOOL allowsMultimodalActions =
       dseGoogle && eligibleToAIM && !compactInCobrowse;
   BOOL canSend = hasContent && !compactMode && allowsMultimodalActions;
-  BOOL forceDisableShortcuts =
-      base::FeatureList::IsEnabled(kHideFuseboxVoiceLensActions);
   BOOL hasVisibleContent = compactMode ? _hasText : hasContent;
   // Note: Temporarily disable shortcuts for cobrowse.
   // See http://crbug.com/539904096 for more details.
-  BOOL showShortcuts = !hasVisibleContent && !canSend &&
-                       !forceDisableShortcuts && !self.isCobrowse;
+  BOOL showShortcuts = !hasVisibleContent && !canSend && !self.isCobrowse;
   // Hide the plus button is different from !allowsMultimodalActions. When the
   // plus button is hidden, the user can still use multimodal actions from other
   // sources such as drag and drop.
@@ -2572,6 +2678,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   [self updateConsumerItems];
   [self commitUIUpdates];
   [_stateManager onItemsUpdated];
+  [self maybeRunPendingSendCallback];
 }
 
 #pragma mark - VoiceSearchDelegate

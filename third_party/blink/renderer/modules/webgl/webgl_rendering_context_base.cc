@@ -55,7 +55,6 @@
 #include "gpu/command_buffer/client/raster_interface.h"
 #include "gpu/command_buffer/client/shared_image_interface.h"
 #include "gpu/command_buffer/common/capabilities.h"
-#include "gpu/command_buffer/common/shared_image_capabilities.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
 #include "gpu/command_buffer/common/sync_token.h"
 #include "gpu/config/gpu_driver_bug_workaround_type.h"
@@ -946,21 +945,11 @@ scoped_refptr<StaticBitmapImage> WebGLRenderingContextBase::GetImage() {
   // the drawing buffer being smaller than the canvas size.
   // See https://crbug.com/845742.
   gfx::Size size = GetDrawingBuffer()->Size();
-  // We are grabbing a snapshot that is generally not for compositing, so use a
-  // custom resource provider to specify only the minimal required set of
-  // usages, resulting in as lightweight a backing of the created SharedImage
-  // as possible. This SharedImage will be the destination of a copy of the
-  // drawing buffer's contents made via the raster interface. It also may be
-  // read back via the raster interface. In addition, we tag the SharedImage
-  // with display usage since there are uncommon paths which may use this
-  // snapshot for compositing.
-  auto shared_image_usages = gpu::SHARED_IMAGE_USAGE_RASTER_READ |
-                             gpu::SHARED_IMAGE_USAGE_RASTER_WRITE |
-                             gpu::SHARED_IMAGE_USAGE_DISPLAY_READ;
 
   if (SharedGpuContext::IsGpuCompositingEnabled()) {
     base::WeakPtr<WebGraphicsContext3DProviderWrapper> shared_context_wrapper =
         SharedGpuContext::ContextProviderWrapper();
+
     if (!shared_context_wrapper ||
         !shared_context_wrapper->ContextProvider().RasterInterface() ||
         shared_context_wrapper->ContextProvider().IsContextLost()) {
@@ -980,76 +969,20 @@ scoped_refptr<StaticBitmapImage> WebGLRenderingContextBase::GetImage() {
     // elsewhere assumes RGBA. OTOH the software path seems to be assuming N32
     // somewhere in the later pipeline but for offscreen canvas only.
     viz::SharedImageFormat format = GetSharedImageFormat();
-    bool should_force_bgra8_to_rgba =
-        !shared_image_usages.HasAny(gpu::SHARED_IMAGE_USAGE_WEBGPU_READ |
-                                    gpu::SHARED_IMAGE_USAGE_WEBGPU_WRITE);
-#if BUILDFLAG(IS_WIN)
-    // Concurrent read/write on Windows results in a swapchain backing, which
-    // supports BGRA; hence there is no need to force to RGBA in this case.
-    should_force_bgra8_to_rgba =
-        should_force_bgra8_to_rgba &&
-        !shared_image_usages.Has(gpu::SHARED_IMAGE_USAGE_CONCURRENT_READ_WRITE);
-#endif
-
-#if BUILDFLAG(IS_LINUX)
-    // WebGpu preferred canvas on linux is RGBA and interop (vk on gl) is
-    // dependent on canvas copies being RGBA (not BGRA).
-    should_force_bgra8_to_rgba = true;
-#endif
-
-    if (format != viz::SinglePlaneFormat::kRGBA_F16 &&
-        should_force_bgra8_to_rgba) {
+    if (format != viz::SinglePlaneFormat::kRGBA_F16) {
       format = viz::SinglePlaneFormat::kRGBA_8888;
     }
 
-    const bool is_mappable_shared_image_allowed =
-        IsScanoutSupportedForCanvasWithFormat(format, capabilities);
-
-    // If we cannot use overlay, we have to remove the scanout flag and the
-    // concurrent read write flag.
-    const auto& shared_image_caps = shared_context_wrapper->ContextProvider()
-                                        .SharedImageInterface()
-                                        ->GetCapabilities();
-    bool is_overlay_supported =
-        is_mappable_shared_image_allowed &&
-        shared_image_caps.supports_scanout_shared_images;
-
-#if BUILDFLAG(IS_WIN)
-    // On Windows, SCANOUT usage is additionally supported in the special case
-    // of the swapchain being used on the service side to implement concurrent
-    // read/write.
-    is_overlay_supported =
-        is_overlay_supported ||
-        (shared_image_usages.Has(
-             gpu::SHARED_IMAGE_USAGE_CONCURRENT_READ_WRITE) &&
-         shared_image_caps.shared_image_swap_chain);
-#endif
-
-    if (!is_overlay_supported) {
-      shared_image_usages.RemoveAll(
-          gpu::SHARED_IMAGE_USAGE_CONCURRENT_READ_WRITE |
-          gpu::SHARED_IMAGE_USAGE_SCANOUT);
-    }
-
-#if BUILDFLAG(IS_MAC)
-    if (shared_image_usages.Has(gpu::SHARED_IMAGE_USAGE_SCANOUT) &&
-        format == viz::SinglePlaneFormat::kRGBA_8888) {
-      // GPU-accelerated scannout usage on Mac uses IOSurface.  Must switch from
-      // RGBA_8888 to BGRA_8888 in that case.
-      format = viz::SinglePlaneFormat::kBGRA_8888;
-    }
-#endif
-
-    // These SharedImages are both read and written by the raster interface
-    // (both occur, for example, when copying canvas resources between
-    // canvases). Additionally, these SharedImages can be put into
-    // AcceleratedStaticBitmapImages (via Bitmap()) that are then copied into
-    // GL textures by WebGL (via
-    // AcceleratedStaticBitmapImage::CopyToTexture()).
-    shared_image_usages = shared_image_usages |
-                          gpu::SHARED_IMAGE_USAGE_RASTER_READ |
-                          gpu::SHARED_IMAGE_USAGE_RASTER_WRITE |
-                          gpu::SHARED_IMAGE_USAGE_GLES2_READ;
+    // This SharedImage will be the destination of a copy of the drawing
+    // buffer's contents made via the raster interface. It may subsequently be
+    // read via the raster interface, copied into a GL texture by WebGL (via
+    // AcceleratedStaticBitmapImage::CopyToTexture()), or used for display
+    // compositing.
+    gpu::SharedImageUsageSet shared_image_usages =
+        gpu::SHARED_IMAGE_USAGE_RASTER_READ |
+        gpu::SHARED_IMAGE_USAGE_RASTER_WRITE |
+        gpu::SHARED_IMAGE_USAGE_GLES2_READ |
+        gpu::SHARED_IMAGE_USAGE_DISPLAY_READ;
     // Add WEBGPU_READ usage to allow importing into WebGPU without a copy.
     if (base::FeatureList::IsEnabled(kCanvasResourceIsWebGPUCompatible)) {
       shared_image_usages |= gpu::SHARED_IMAGE_USAGE_WEBGPU_READ;
@@ -1064,29 +997,16 @@ scoped_refptr<StaticBitmapImage> WebGLRenderingContextBase::GetImage() {
                 {format, size, GetColorSpace(), kTopLeft_GrSurfaceOrigin,
                  GetAlphaType(), shared_image_usages, "CanvasResourceRaster"},
                 gpu::kNullSurfaceHandle);
-    gpu::SyncToken sync_token = client_si->creation_sync_token();
-    auto access = client_si->BeginRasterAccess(raster_interface, sync_token,
-                                               /*readonly=*/false);
-    sync_token = gpu::RasterScopedAccess::EndAccess(std::move(access));
-    client_si->UpdateDestructionSyncToken(sync_token);
-
     // TODO(xlai): Flush should not be necessary if the synchronization in
     // CopyToPlatformTexture is done correctly. See crbug.com/794706.
     raster_interface->Flush();
 
-    std::optional<gpu::SyncToken> external_sync_token =
+    std::optional<gpu::SyncToken> sync_token =
         GetDrawingBuffer()->CopyToPlatformSharedImage(
-            raster_interface, client_si, sync_token, kBackBuffer);
-    if (!external_sync_token) {
+            raster_interface, client_si, client_si->creation_sync_token(),
+            kBackBuffer);
+    if (!sync_token) {
       return nullptr;
-    }
-    sync_token = external_sync_token.value();
-    if (!shared_context_wrapper->ContextProvider().IsContextLost()) {
-      auto post_write_access = client_si->BeginRasterAccess(
-          raster_interface, sync_token, /*readonly=*/true);
-      sync_token =
-          gpu::RasterScopedAccess::EndAccess(std::move(post_write_access));
-      client_si->UpdateDestructionSyncToken(sync_token);
     }
     if (shared_context_wrapper->ContextProvider().IsContextLost()) {
       return nullptr;
@@ -1102,7 +1022,7 @@ scoped_refptr<StaticBitmapImage> WebGLRenderingContextBase::GetImage() {
         client_si);
 
     return AcceleratedStaticBitmapImage::CreateFromCanvasSharedImage(
-        std::move(client_si), sync_token, GetAlphaType(),
+        std::move(client_si), sync_token.value(), GetAlphaType(),
         drawing_buffer_tone_mapping_hdr_metadata_,
         std::move(shared_context_wrapper), base::PlatformThread::CurrentRef(),
         ThreadScheduler::Current()->CleanupTaskRunner(),
@@ -2536,9 +2456,29 @@ WebGLRenderingContextBase::GetRGBAUnacceleratedStaticBitmapImage(
       source_buffer);
 }
 
-void WebGLRenderingContextBase::Reshape(int width, int height) {
+void WebGLRenderingContextBase::Reshape(gfx::Size old_size,
+                                        gfx::Size new_size) {
+  if (Host()->IsOffscreenCanvas()) {
+    if (old_size == new_size) {
+      return;
+    }
+    if (isContextLost()) {
+      DidDraw(CanvasPerformanceMonitor::DrawType::kOther);
+      return;
+    }
+  } else {
+    SizeChanged();
+    Host()->UpdateMemoryUsage();
+    if (old_size == new_size) {
+      return;
+    }
+  }
+
   if (isContextLost())
     return;
+
+  int width = new_size.width();
+  int height = new_size.height();
 
   GLint buffer = 0;
   if (IsWebGL2()) {
@@ -2592,6 +2532,10 @@ void WebGLRenderingContextBase::Reshape(int width, int height) {
   if (buffer) {
     ContextGL()->BindBuffer(GL_PIXEL_UNPACK_BUFFER,
                             static_cast<GLuint>(buffer));
+  }
+
+  if (Host()->IsOffscreenCanvas()) {
+    DidDraw(CanvasPerformanceMonitor::DrawType::kOther);
   }
 }
 

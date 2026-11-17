@@ -11,10 +11,13 @@ import android.graphics.Bitmap;
 import android.graphics.Picture;
 import android.net.http.SslCertificate;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.textclassifier.TextClassifier;
 import android.widget.FrameLayout;
 
 import androidx.annotation.UiThread;
@@ -22,12 +25,15 @@ import androidx.annotation.UiThread;
 import org.chromium.android_webview.AwContents.DependencyFactory;
 import org.chromium.android_webview.AwContents.InternalAccessDelegate;
 import org.chromium.android_webview.gfx.AwDrawFnImpl.DrawFnAccess;
+import org.chromium.android_webview.renderer_priority.RendererPriority;
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.ThreadUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.content_public.browser.NavigationHistory;
+
+import java.util.Map;
 
 /**
  * Represents underlying Chromium web contents state that can survive moving across WebViews.
@@ -323,11 +329,188 @@ public class AwWebContent {
         return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_PAGE_DOWN).pageDown(bottom);
     }
 
+    public void setRendererPriorityPolicy(
+            @RendererPriority int rendererRequestedPriority, boolean waivedWhenNotVisible) {
+        ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_SET_RENDERER_PRIORITY_POLICY)
+                .setRendererPriorityPolicy(rendererRequestedPriority, waivedWhenNotVisible);
+    }
+
+    @RendererPriority
+    public int getRendererRequestedPriority() {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_GET_RENDERER_REQUESTED_PRIORITY)
+                .getRendererRequestedPriority();
+    }
+
+    public boolean getRendererPriorityWaivedWhenNotVisible() {
+        return ensureAwContents(
+                        StartupCallSite
+                                .WEBVIEW_INSTANCE_GET_RENDERER_PRIORITY_WAIVED_WHEN_NOT_VISIBLE)
+                .getRendererPriorityWaivedWhenNotVisible();
+    }
+
+    public void setTextClassifier(@Nullable TextClassifier textClassifier) {
+        ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_SET_TEXT_CLASSIFIER)
+                .setTextClassifier(textClassifier);
+    }
+
+    public @Nullable TextClassifier getTextClassifier() {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_GET_TEXT_CLASSIFIER)
+                .getTextClassifier();
+    }
+
+    public void extractSmartClipData(int x, int y, int width, int height) {
+        ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_EXTRACT_SMART_CLIP_DATA)
+                .extractSmartClipData(x, y, width, height);
+    }
+
+    public void setSmartClipResultHandler(@Nullable Handler resultHandler) {
+        ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_SET_SMART_CLIP_RESULT_HANDLER)
+                .setSmartClipResultHandler(resultHandler);
+    }
+
+    public AwPrintDocumentAdapter createPrintDocumentAdapter(String documentName) {
+        return new AwPrintDocumentAdapter(
+                ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_CREATE_PRINT_DOCUMENT_ADAPTER)
+                        .getPdfExporter(),
+                documentName);
+    }
+
+    public void loadUrl(@Nullable String url) {
+        ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_LOAD_URL).loadUrl(url);
+    }
+
+    public void loadUrl(@Nullable String url, @Nullable Map<String, String> additionalHttpHeaders) {
+        ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_LOAD_URL_ADDITIONAL_HEADERS)
+                .loadUrl(url, additionalHttpHeaders);
+    }
+
+    public void postUrl(String url, byte[] postData) {
+        ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_POST_URL).postUrl(url, postData);
+    }
+
+    public void loadData(
+            @Nullable String data, @Nullable String mimeType, @Nullable String encoding) {
+        ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_LOAD_DATA)
+                .loadData(data, mimeType, encoding);
+    }
+
+    public void loadDataWithBaseURL(
+            @Nullable String baseUrl,
+            @Nullable String data,
+            @Nullable String mimeType,
+            @Nullable String encoding,
+            @Nullable String historyUrl) {
+        ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_LOAD_DATA_WITH_BASE_URL)
+                .loadDataWithBaseURL(baseUrl, data, mimeType, encoding, historyUrl);
+    }
+
     // The following methods don't trigger startup. They queue the action to run once Chromium has
     // started or run the action immediately if Chromium has already started.
 
     public void goBack() {
         runOrQueueUntilStarted(AwContents::goBack);
+    }
+
+    public void goForward() {
+        runOrQueueUntilStarted(AwContents::goForward);
+    }
+
+    public void goBackOrForward(int steps) {
+        runOrQueueUntilStarted(awContents -> awContents.goBackOrForward(steps));
+    }
+
+    public void stopLoading() {
+        runOrQueueUntilStarted(AwContents::stopLoading);
+    }
+
+    public void reload() {
+        runOrQueueUntilStarted(AwContents::reload);
+    }
+
+    public void onPause() {
+        runOrQueueUntilStarted(AwContents::onPause);
+    }
+
+    public void onResume() {
+        runOrQueueUntilStarted(AwContents::onResume);
+    }
+
+    public void pauseTimers() {
+        runOrQueueUntilStarted(AwContents::pauseTimers);
+    }
+
+    public void resumeTimers() {
+        runOrQueueUntilStarted(AwContents::resumeTimers);
+    }
+
+    public void setNetworkAvailable(boolean networkUp) {
+        runOrQueueUntilStarted(awContents -> awContents.setNetworkAvailable(networkUp));
+    }
+
+    public void clearCache(boolean includeDiskFiles) {
+        runOrQueueUntilStarted(awContents -> awContents.clearCache(includeDiskFiles));
+    }
+
+    public void clearHistory() {
+        runOrQueueUntilStarted(AwContents::clearHistory);
+    }
+
+    public void clearSslPreferences() {
+        runOrQueueUntilStarted(AwContents::clearSslPreferences);
+    }
+
+    public void clearView() {
+        runOrQueueUntilStarted(AwContents::clearView);
+    }
+
+    public void hideAutofillPopup() {
+        runOrQueueUntilStarted(AwContents::hideAutofillPopup);
+    }
+
+    public void findNext(boolean forward) {
+        runOrQueueUntilStarted(awContents -> awContents.findNext(forward));
+    }
+
+    public void findAllAsync(@Nullable String searchString) {
+        runOrQueueUntilStarted(awContents -> awContents.findAllAsync(searchString));
+    }
+
+    public void clearMatches() {
+        runOrQueueUntilStarted(AwContents::clearMatches);
+    }
+
+    public void documentHasImages(Message message) {
+        runOrQueueUntilStarted(awContents -> awContents.documentHasImages(message));
+    }
+
+    public void requestFocusNodeHref(@Nullable Message msg) {
+        runOrQueueUntilStarted(awContents -> awContents.requestFocusNodeHref(msg));
+    }
+
+    public void requestImageRef(@Nullable Message msg) {
+        runOrQueueUntilStarted(awContents -> awContents.requestImageRef(msg));
+    }
+
+    public void saveWebArchive(
+            String basename, boolean autoname, @Nullable Callback<String> callback) {
+        runOrQueueUntilStarted(
+                awContents -> awContents.saveWebArchive(basename, autoname, callback));
+    }
+
+    public void addJavascriptInterface(Object object, String name) {
+        runOrQueueUntilStarted(awContents -> awContents.addJavascriptInterface(object, name));
+    }
+
+    public void removeJavascriptInterface(String interfaceName) {
+        runOrQueueUntilStarted(awContents -> awContents.removeJavascriptInterface(interfaceName));
+    }
+
+    public void invokeZoomPicker() {
+        runOrQueueUntilStarted(AwContents::invokeZoomPicker);
+    }
+
+    public void flingScroll(int velocityX, int velocityY) {
+        runOrQueueUntilStarted(awContents -> awContents.flingScroll(velocityX, velocityY));
     }
 
     // The following methods don't trigger startup. They return a default value if the AwContents

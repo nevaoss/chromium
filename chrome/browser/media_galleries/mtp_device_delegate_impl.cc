@@ -1463,7 +1463,9 @@ void MTPDeviceDelegateImpl::WriteDataIntoSnapshotFile(
 
 void MTPDeviceDelegateImpl::PendingRequestDone() {
   CHECK_CURRENTLY_ON(content::BrowserThread::IO, base::NotFatalUntil::M161);
-  CHECK(task_in_progress_, base::NotFatalUntil::M161);
+  // TODO(crbug.com/574984025): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(task_in_progress_);
   task_in_progress_ = false;
   ProcessNextPendingRequest();
 }
@@ -1786,7 +1788,9 @@ void MTPDeviceDelegateImpl::OnDidFillFileCache(
     return;
   }
 
-  CHECK(path.IsParent(pending_tasks_.front().path), base::NotFatalUntil::M161);
+  // TODO(crbug.com/575078191): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(path.IsParent(pending_tasks_.front().path));
   if (has_more) {
     return;  // Wait until all entries have been read.
   }

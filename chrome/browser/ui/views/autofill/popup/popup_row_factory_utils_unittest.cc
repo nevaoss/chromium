@@ -30,6 +30,7 @@
 #include "ui/compositor/layer.h"
 #include "ui/events/test/event_generator.h"
 #include "ui/gfx/range/range.h"
+#include "ui/gfx/text_constants.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/controls/button/image_button.h"
 #include "ui/views/controls/image_view.h"
@@ -562,6 +563,47 @@ TEST_F(PopupRowFactoryUtilsTest, AutofillAiSourceAttributionRowView_RtlLayout) {
   EXPECT_EQ(link_view->bounds().x(), space_view->bounds().right());
 }
 
+TEST_F(PopupRowFactoryUtilsTest,
+       AutofillAiSourceAttributionRowView_RtlLayoutWithMoreSourcesSuffix) {
+  base::test::ScopedRestoreICUDefaultLocale scoped_locale("ar");
+  ASSERT_TRUE(base::i18n::IsRTL());
+
+  Suggestion suggestion(
+      u"Suggested by Gemini · Photos\u00A0[1] + 2 other sources",
+      SuggestionType::kAutofillAiSourceAttribution);
+  suggestion.icon = Suggestion::Icon::kSpark;
+  suggestion.payload = Suggestion::AutofillAiPayload(
+      EntityInstance::EntityId("test-guid"),
+      {Suggestion::PersonalContextSourceCitation(
+          GURL("https://photos.google.com/test"), gfx::Range(29, 32))});
+  ShowSuggestion(suggestion);
+
+  views::StyledLabel* styled_label =
+      FindStyledLabel(&row_view().GetContentView());
+  ASSERT_THAT(styled_label, NotNull());
+  styled_label->SizeToFit(1000);
+
+  // In RTL, child views are ordered from right to left (origin 0 on right).
+  // The "+ 2 other sources" suffix (child 6) is separated from "[1]" (child 4)
+  // by an isolated space view (child 5) and stays trailing after "[1]" in RTL
+  // x-coordinates.
+  ASSERT_EQ(styled_label->children().size(), 7u);
+  const auto* link_view = AsViewClass<Label>(styled_label->children()[4]);
+  const auto* suffix_space_view =
+      AsViewClass<Label>(styled_label->children()[5]);
+  const auto* suffix_view = AsViewClass<Label>(styled_label->children()[6]);
+  ASSERT_THAT(link_view, NotNull());
+  ASSERT_THAT(suffix_space_view, NotNull());
+  ASSERT_THAT(suffix_view, NotNull());
+  EXPECT_EQ(link_view->GetText(), u"[1]");
+  EXPECT_EQ(suffix_space_view->GetText(), u" ");
+  EXPECT_EQ(suffix_view->GetText(), u"+ 2 other sources");
+
+  EXPECT_GT(suffix_space_view->bounds().width(), 0);
+  EXPECT_EQ(suffix_space_view->bounds().x(), link_view->bounds().right());
+  EXPECT_EQ(suffix_view->bounds().x(), suffix_space_view->bounds().right());
+}
+
 TEST_F(
     PopupRowFactoryUtilsTest,
     AutofillAiSourceAttributionRowView_AppAndBadgeWrapTogetherOnNarrowWidth) {
@@ -751,6 +793,26 @@ TEST_F(PopupRowFactoryUtilsTest, WalletDirectOfferShortTextNoExtraPadding) {
   gfx::Insets insets = row_view().GetContentView().GetInsideBorderInsets();
   EXPECT_EQ(insets.top(), 0);
   EXPECT_EQ(insets.bottom(), 0);
+}
+
+TEST_F(PopupRowFactoryUtilsTest,
+       GmailOneTimePasswordSenderAddressElideBehavior) {
+  ON_CALL(controller(), GetMainFillingProduct())
+      .WillByDefault(Return(FillingProduct::kOneTimePassword));
+
+  Suggestion suggestion(u"123456", SuggestionType::kGmailOneTimePasswordEntry);
+  suggestion.labels = {{Suggestion::Text(u"sender@example.com")}};
+  ShowSuggestion(suggestion);
+
+  views::Label* main_label =
+      FindLabelWithText(&row_view().GetContentView(), u"123456");
+  ASSERT_THAT(main_label, NotNull());
+  EXPECT_EQ(main_label->GetElideBehavior(), gfx::ELIDE_TAIL);
+
+  views::Label* sender_label =
+      FindLabelWithText(&row_view().GetContentView(), u"sender@example.com");
+  ASSERT_THAT(sender_label, NotNull());
+  EXPECT_EQ(sender_label->GetElideBehavior(), gfx::ELIDE_EMAIL);
 }
 
 }  // namespace autofill

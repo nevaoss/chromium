@@ -118,6 +118,7 @@
 <translation id="1195558154361252544">Известувањата се автоматски блокирани за сите сајтови, освен за оние за коишто сте ги дозволиле</translation>
 <translation id="1197088940767939838">Портокалова</translation>
 <translation id="1198412233443148072"><ph name="MEMBER_FIRST_NAME" /> ја отстрани картичката „<ph name="WEBSITE_TITLE" />“</translation>
+<translation id="119944043368869598">Избриши ги сите</translation>
 <translation id="1201402288615127009">Следно</translation>
 <translation id="1201895884277373915">Повеќе од оваа локација</translation>
 <translation id="1204184165594298176">{0,plural, =1{Датотеката е блокирана за копирање}one{<ph name="FILE_COUNT" /> датотека се блокирани за копирање}other{<ph name="FILE_COUNT" /> датотеки се блокирани за копирање}}</translation>
@@ -618,7 +619,6 @@
 <translation id="2059166748188874810">Општина</translation>
 <translation id="2059202684901022309">22 x 34 инчи</translation>
 <translation id="2063929825539050431">За да може брзо да ја испратите страницава на друг уред, допрете и задржете ја лентата за адреса</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{1 предлог}one{# предлог}other{# предлози}}</translation>
 <translation id="2066969741541525119">Сајтот е блокиран од вашата организација</translation>
 <translation id="2071156619270205202">Картичкава не е подобна за број на виртуелна картичка.</translation>
 <translation id="2071852865256799872">Со вашиот прелистувач управува вашата организација, а со вашиот профил управува <ph name="PROFILE_DOMAIN" /></translation>
@@ -665,6 +665,7 @@
 <translation id="2126374524350484896">Приказ во PDF:</translation>
 <translation id="2127090458081644412">Лозинката е зачувана на уредов</translation>
 <translation id="2127747486437921899">Курзив</translation>
+<translation id="2129163794581571479">Овозможено од Gemini со „Лична интелигенција“. Вашите барања, наслови на страници и URL-адреси може да се прегледуваат за да се подобри „Подобрено автоматско пополнување“. <ph name="BEGIN_LINK" />Управувајте со поставките<ph name="END_LINK" /></translation>
 <translation id="2130448033692577677">Шаблоните што ги назначивте не може да се применат бидејќи правилото DnsOverHttpsMode не е поставено.</translation>
 <translation id="2130699163006053678">A3x7</translation>
 <translation id="2131006834960167560">Долниот лист со „Овозможете автоматско пополнување за плаќања“ е отворен на целосна висина.</translation>
@@ -710,7 +711,6 @@
 <translation id="2188375229972301266">Повеќе дупки долу</translation>
 <translation id="218940509700321686">Вредности разделени со запирка</translation>
 <translation id="2190094353033916816">Ова правило има различни вредности применети на ниво на машина и на корисник. Правилото функционира како што е предвидено.</translation>
-<translation id="219061769324072544">Кредитна,картичка,дебитна</translation>
 <translation id="2191980191135734720">Отклучете го екранот на следниот чекор, обично со отпечатокот. Може <ph name="LINK_TEXT" />.</translation>
 <translation id="2194856509914051091">Нешта што треба да се земат предвид</translation>
 <translation id="2195729137168608510">Заштита на е-пошта</translation>
@@ -1081,6 +1081,7 @@
 <translation id="2807052079800581569">Позиција на сликата Y</translation>
 <translation id="2808278141522721006">Можете да вклучите или исклучите Windows Hello во <ph name="SETTINGS" /></translation>
 <translation id="2820957248982571256">Се скенира…</translation>
+<translation id="282457273878278063">Управувајте со податоците за контакт</translation>
 <translation id="2824775600643448204">Лента за адреса и за пребарување</translation>
 <translation id="2826760142808435982">Поврзувањето е шифрирано и автентицирано со употреба на <ph name="CIPHER" /> и користи <ph name="KX" /> како клучен механизам за размена.</translation>
 <translation id="2828797285817981634">Сензорите за движење се дозволени засега</translation>
@@ -1575,6 +1576,7 @@
 <translation id="3655670868607891010">Доколку ова го гледате често, обидете се со овие <ph name="HELP_LINK" />.</translation>
 <translation id="3658742229777143148">Ревизија</translation>
 <translation id="3659521826520353662">Веб-сајтови дефинирани од администраторот што се отвораат, заедно со времето на отворање: <ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3663760610864720538">Овозможено од Gemini со „Лична интелигенција“. <ph name="BEGIN_LINK" />Управувајте со поставките<ph name="END_LINK" /></translation>
 <translation id="3664479564786885722">Пребарајте повеќе опции за купување од други продавници што го продаваат овој производ.</translation>
 <translation id="3664782872746246217">Клучни зборови:</translation>
 <translation id="3670030362669914947">Број</translation>
@@ -1595,6 +1597,7 @@
 <translation id="3693516565203081475">Изберете начин на плаќање</translation>
 <translation id="3698353241727597930">Администраторот конфигурирал да се зачуваат <ph name="FILES" /> во просторот на <ph name="CLOUD_STORAGE" /> управуван од претпријатието. Овие датотеки може да се набљудуваат, ревидираат и задржат кога ќе ги избришете.</translation>
 <translation id="3698629142018988477">Копче за создавање сајт, активирајте го за да набрзина создадете нов сајт во Google Sites</translation>
+<translation id="3698708128812719147">Притиснете Ctrl двапати каде било на веб за да најдете и да пополните повеќе податоци</translation>
 <translation id="3700094625653511150">За да ги скриете опциите за „Платете подоцна“, одете во <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /></translation>
 <translation id="3700966190175650601">Го користите отпечатокот за пополнување лозинки</translation>
 <translation id="3701427423622901115">Ресетирањето е потврдено.</translation>
@@ -1862,7 +1865,6 @@
 <translation id="4121428309786185360">Истекува на</translation>
 <translation id="4123572138124678573">Три дупки долу</translation>
 <translation id="412601465078863288">Времето за прикачување истече</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{1 друга}one{# друга}other{# други}}</translation>
 <translation id="4129810348470013900">Нешто тргна наопаку. Проверете ја интернет-врската и обидете се повторно.</translation>
 <translation id="4130226655945681476">Да ги проверите мрежните кабли, модемот и рутерот</translation>
 <translation id="4132448310531350254">Дупликат ракувачи за наставка на датотека „<ph name="FILE_EXTENSION" />“ како референца од апликациите „<ph name="POLICY_IDS_LIST" />“.</translation>
@@ -1898,6 +1900,7 @@
 <translation id="4185037616931963178">Ажурирајте го бројот за ревизија безбедно</translation>
 <translation id="4186035307311647330">Отследи ја цената</translation>
 <translation id="4191334393248735295">Должина</translation>
+<translation id="4192770747482479191">Притиснете ⌘ двапати каде било на веб за да најдете и да пополните повеќе податоци</translation>
 <translation id="4195459680867822611">Копче за гледање совети за Chrome, активирајте го за да дознаете за функциите на Chrome</translation>
 <translation id="4195643157523330669">Отвори во нова картичка</translation>
 <translation id="4196861286325780578">&amp;Повтори преместување</translation>
@@ -2215,7 +2218,6 @@
 <translation id="4725766358270333890">Се прикачуваат <ph name="COUNT" /> датотеки во Microsoft OneDrive</translation>
 <translation id="4726672564094551039">Повторно вчитување политики</translation>
 <translation id="4728558894243024398">Платформа</translation>
-<translation id="4730773064303503917">Испраќајте пари на пријателите и бизнисите со Pix во Wallet</translation>
 <translation id="4730977633786878901">Рецензии</translation>
 <translation id="4731638775147756694">Администраторот ја блокирал апликацијата</translation>
 <translation id="4732860731866514038">Се презема јазичен пакет за <ph name="LANGUAGE" />… <ph name="PERCENT" /> %</translation>
@@ -2846,6 +2848,7 @@
 <translation id="573974402615125334">За да споделувате, да се придружувате и да соработувате во групи картички, синхронизирајте ги историјата и картичките</translation>
 <translation id="5740911612628596808">Плик C9</translation>
 <translation id="574392208103952083">Медиум</translation>
+<translation id="5744350700955456407">„Подобрено автоматско пополнување“ отсега може да наоѓа и да пополнува податоци, како броеви на нарачки и кодови за потврда на летови, од апликации како Gmail и „Фотографии“</translation>
 <translation id="5745586894920491759">Chrome ги обработува URL-адресите и насловите на страниците во облакот</translation>
 <translation id="5745733273847572235">Може да прашува за вашата локација</translation>
 <translation id="5750869797196646528">Следење раце</translation>
@@ -3227,7 +3230,6 @@
 <translation id="638289054711715023">Фолија за вакуумирање</translation>
 <translation id="6383221683286411806">Ако продолжите, може да произлезат трошоци.</translation>
 <translation id="6384448607821972818">Лозинката за враќање е прикажана</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{1 друг предлог}one{# друг предлог}other{# други предлози}}</translation>
 <translation id="6386565501269869892">Плик You 4</translation>
 <translation id="6387645831795005740">Напаѓачите понекогаш имитираат сајтови, така што вршат мали, тешко забележливи промени во URL-адресата.</translation>
 <translation id="6389470377220713856">Име на картичка</translation>
@@ -4835,7 +4837,6 @@
 <translation id="9168814207360376865">Дозволете сајтовите да проверуваат дали имате зачувани начини на плаќање</translation>
 <translation id="9169931577761441333">Додајте ја <ph name="APP_NAME" /> на почетниот екран</translation>
 <translation id="9170848237812810038">&amp;Врати</translation>
-<translation id="9170906125144697215">Плаќајте со Pix без да менувате апликации</translation>
 <translation id="9171296965991013597">Дали да се излезе од апликацијата?</translation>
 <translation id="9173282814238175921">Еден документ/нов лист</translation>
 <translation id="9173995187295789444">Скенира за уреди со Bluetooth…</translation>

@@ -76,11 +76,11 @@
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/consent_auditor/fake_consent_auditor.h"
+#include "components/device_reauth/mock_device_auth_availability_checker.h"
 #include "components/device_reauth/mock_device_authenticator.h"
 #include "components/metrics/profile_metrics_service.h"
 #include "components/one_time_tokens/core/browser/gmail_otp_backend.h"
-#include "components/one_time_tokens/core/browser/one_time_token_service_impl.h"
-#include "components/one_time_tokens/core/browser/sms_otp_backend.h"
+#include "components/one_time_tokens/core/browser/sms_otp_service.h"
 #include "components/optimization_guide/core/feature_registry/feature_registration.h"
 #include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
 #include "components/personal_context/core/personal_context_types.h"
@@ -290,9 +290,7 @@ class TestAutofillClientTemplate : public T {
     return compose_delegate_.get();
   }
 
-  test::AutofillTestingPrefService* GetPrefs() override {
-    return prefs_.get();
-  }
+  test::AutofillTestingPrefService* GetPrefs() override { return prefs_.get(); }
 
   const test::AutofillTestingPrefService* GetPrefs() const override {
     return const_cast<TestAutofillClientTemplate*>(this)->GetPrefs();
@@ -572,9 +570,6 @@ class TestAutofillClientTemplate : public T {
 
   std::unique_ptr<device_reauth::DeviceAuthenticator> GetDeviceAuthenticator(
       std::string histogram) const override {
-    if (device_authenticator_) {
-      return std::move(device_authenticator_);
-    }
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID) || \
     BUILDFLAG(IS_CHROMEOS)
     return std::make_unique<device_reauth::MockDeviceAuthenticator>();
@@ -582,6 +577,27 @@ class TestAutofillClientTemplate : public T {
     return nullptr;
 #endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID) ||
         // BUILDFLAG(IS_CHROMEOS)
+  }
+
+  std::unique_ptr<device_reauth::DeviceAuthAvailabilityChecker>
+  GetDeviceAuthAvailabilityChecker() const override {
+    if (device_auth_availability_checker_) {
+      return std::move(device_auth_availability_checker_);
+    }
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID) || \
+    BUILDFLAG(IS_CHROMEOS)
+    return std::make_unique<device_reauth::MockDeviceAuthAvailabilityChecker>();
+#else
+    return nullptr;
+#endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID) ||
+        // BUILDFLAG(IS_CHROMEOS)
+  }
+
+  // Sets the `DeviceAuthAvailabilityChecker` to return on the next call to
+  // `GetDeviceAuthAvailabilityChecker()`.
+  void set_device_auth_availability_checker(
+      std::unique_ptr<device_reauth::DeviceAuthAvailabilityChecker> checker) {
+    device_auth_availability_checker_ = std::move(checker);
   }
 
 #if BUILDFLAG(IS_IOS)
@@ -811,11 +827,6 @@ class TestAutofillClientTemplate : public T {
     supports_device_reauth_ = supports_device_reauth;
   }
 
-  void set_device_authenticator(
-      std::unique_ptr<device_reauth::DeviceAuthenticator> authenticator) {
-    device_authenticator_ = std::move(authenticator);
-  }
-
   void set_crowdsourcing_manager(
       std::unique_ptr<AutofillCrowdsourcingManager> crowdsourcing_manager) {
     crowdsourcing_manager_ = std::move(crowdsourcing_manager);
@@ -866,29 +877,14 @@ class TestAutofillClientTemplate : public T {
     return identity_test_env_;
   }
 
-  // Allows to return an injected SMS OTP backend which can be set using the
-  // `set_sms_otp_backend`. If no backend is injected, it'll return null.
-  one_time_tokens::SmsOtpBackend* GetSmsOtpBackend() const {
-    return injected_sms_otp_backend_ ? injected_sms_otp_backend_.get()
-                                     : nullptr;
+  one_time_tokens::SmsOtpService* GetSmsOtpService() const override {
+    return injected_sms_otp_service_ ? injected_sms_otp_service_.get()
+                                     : T::GetSmsOtpService();
   }
 
-  void set_sms_otp_backend(
-      std::unique_ptr<one_time_tokens::SmsOtpBackend> sms_otp_backend) {
-    injected_sms_otp_backend_ = std::move(sms_otp_backend);
-  }
-
-  one_time_tokens::OneTimeTokenService* GetOneTimeTokenService()
-      const override {
-    return injected_one_time_token_service_
-               ? injected_one_time_token_service_.get()
-               : T::GetOneTimeTokenService();
-  }
-
-  void set_one_time_token_service(
-      std::unique_ptr<one_time_tokens::OneTimeTokenService>
-          one_time_token_service) {
-    injected_one_time_token_service_ = std::move(one_time_token_service);
+  void set_sms_otp_service(
+      std::unique_ptr<one_time_tokens::SmsOtpService> sms_otp_service) {
+    injected_sms_otp_service_ = std::move(sms_otp_service);
   }
 
   one_time_tokens::GmailOtpBackend* GetGmailOtpBackend() const override {
@@ -964,9 +960,7 @@ class TestAutofillClientTemplate : public T {
   std::unique_ptr<AutocompleteHistoryManager> autocomplete_history_manager_;
   ::testing::NiceMock<MockAutocompleteHistoryManager>
       mock_autocomplete_history_manager_;
-  std::unique_ptr<one_time_tokens::SmsOtpBackend> injected_sms_otp_backend_;
-  std::unique_ptr<one_time_tokens::OneTimeTokenService>
-      injected_one_time_token_service_;
+  std::unique_ptr<one_time_tokens::SmsOtpService> injected_sms_otp_service_;
   std::unique_ptr<one_time_tokens::GmailOtpBackend> injected_gmail_otp_backend_;
 
   std::unique_ptr<FieldClassificationModelHandler>
@@ -1023,8 +1017,8 @@ class TestAutofillClientTemplate : public T {
 
   bool supports_device_reauth_ = true;
 
-  mutable std::unique_ptr<device_reauth::DeviceAuthenticator>
-      device_authenticator_;
+  mutable std::unique_ptr<device_reauth::DeviceAuthAvailabilityChecker>
+      device_auth_availability_checker_;
 
   bool is_tab_in_actor_mode_ = false;
 

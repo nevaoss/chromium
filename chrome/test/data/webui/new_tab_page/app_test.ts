@@ -25,6 +25,7 @@ import {getDeepActiveElement} from 'chrome://resources/js/util.js';
 import {SuggestInventory} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
 import {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, TabAttachmentSource} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertGT, assertNear, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
+import {createSuggestTemplateInfo} from 'chrome://webui-test/cr_components/searchbox/searchbox_test_utils.js';
 import type {MetricsTracker} from 'chrome://webui-test/metrics_test_support.js';
 import {fakeMetricsPrivate} from 'chrome://webui-test/metrics_test_support.js';
 import type {TestMock} from 'chrome://webui-test/test_mock.js';
@@ -3080,41 +3081,41 @@ suite('NewTabPageAppTest', () => {
         actionChipsPageRemote.onActionChipsChanged([
           {
             suggestion: 'tab-suggestion',
-            suggestTemplateInfo: {
+            suggestTemplateInfo: createSuggestTemplateInfo({
               typeIcon: IconType.kFavicon,
-              primaryText: {text: 'TabContext', a11yText: null},
-              secondaryText: {text: 'tab-subtitle', a11yText: null},
+              primaryText: 'TabContext',
+              secondaryText: 'tab-subtitle',
               fuseboxAction: createFuseboxAction({
                 preselectedTool: ToolMode.kUnspecified,
                 preselectedModel: ModelMode.kUnspecified,
               }),
-            },
+            }),
             tab: fakeTab,
           },
           {
             suggestion: 'image-suggestion',
-            suggestTemplateInfo: {
+            suggestTemplateInfo: createSuggestTemplateInfo({
               typeIcon: IconType.kBanana,
-              primaryText: {text: 'Nano Banana', a11yText: null},
-              secondaryText: {text: 'image-subtitle', a11yText: null},
+              primaryText: 'Nano Banana',
+              secondaryText: 'image-subtitle',
               fuseboxAction: createFuseboxAction({
                 preselectedTool: ToolMode.kImageGen,
                 preselectedModel: ModelMode.kUnspecified,
               }),
-            },
+            }),
             tab: null,
           },
           {
             suggestion: 'ds-suggestion',
-            suggestTemplateInfo: {
+            suggestTemplateInfo: createSuggestTemplateInfo({
               typeIcon: IconType.kGlobeWithSearchLoop,
-              primaryText: {text: 'DeepSearch', a11yText: null},
-              secondaryText: {text: 'ds-subtitle', a11yText: null},
+              primaryText: 'DeepSearch',
+              secondaryText: 'ds-subtitle',
               fuseboxAction: createFuseboxAction({
                 preselectedTool: ToolMode.kDeepSearch,
                 preselectedModel: ModelMode.kUnspecified,
               }),
-            },
+            }),
             tab: null,
           },
         ]);
@@ -3481,15 +3482,15 @@ suite('NewTabPageAppTest', () => {
         async () => {
           actionChipsPageRemote.onActionChipsChanged([{
             suggestion: 'test suggestion',
-            suggestTemplateInfo: {
+            suggestTemplateInfo: createSuggestTemplateInfo({
               typeIcon: IconType.kSubArrowRight,
-              primaryText: {text: 'Model test', a11yText: null},
-              secondaryText: {text: 'subtitle', a11yText: null},
+              primaryText: 'Model test',
+              secondaryText: 'subtitle',
               fuseboxAction: createFuseboxAction({
                 preselectedTool: ToolMode.kUnspecified,
                 preselectedModel: ModelMode.kGeminiPro,
               }),
-            },
+            }),
             tab: null,
           }]);
           await microtasksFinished();
@@ -3794,6 +3795,24 @@ suite('NewTabPageAppTest', () => {
       assertEquals('lhsWrapper', leftHandSide.id);
     });
 
+    test('LHS receives isDark from theme', async () => {
+      await setThreadsRailEnabled(true);
+
+      const leftHandSide = $$(app, 'cr-left-hand-side');
+      assertTrue(!!leftHandSide);
+      assertEquals(undefined, leftHandSide.isDark);
+
+      callbackRouterRemote.setTheme(createTheme({isDark: true}));
+      await callbackRouterRemote.$.flushForTesting();
+      await microtasksFinished();
+      assertEquals(true, leftHandSide.isDark);
+
+      callbackRouterRemote.setTheme(createTheme({isDark: false}));
+      await callbackRouterRemote.$.flushForTesting();
+      await microtasksFinished();
+      assertEquals(false, leftHandSide.isDark);
+    });
+
     test('RHS content fills the RHS height', async () => {
       await setThreadsRailEnabled(true);
 
@@ -3821,18 +3840,46 @@ suite('NewTabPageAppTest', () => {
 
     test('shortcuts use the window width when feature disabled', async () => {
       await setThreadsRailEnabled(false);
+      await setRhsWrapperWidth(700);
 
       const mostVisited = app.shadowRoot.querySelector('cr-most-visited');
       assertTrue(!!mostVisited);
-      assertEquals(null, mostVisited.widthContainer);
+      assertEquals(null, mostVisited.containerWidth);
     });
 
     test('shortcuts use the RHS width when feature enabled', async () => {
       await setThreadsRailEnabled(true);
+      await setRhsWrapperWidth(700);
 
       const mostVisited = app.shadowRoot.querySelector('cr-most-visited');
       assertTrue(!!mostVisited);
-      assertEquals($$(app, '#rhsWrapper'), mostVisited.widthContainer);
+      assertEquals(700, mostVisited.containerWidth);
+    });
+
+    test('LHS open-composebox event opens and focuses composebox', async () => {
+      await setThreadsRailEnabled(true);
+
+      const leftHandSide = $$(app, 'cr-left-hand-side');
+      assertTrue(!!leftHandSide);
+      assertFalse(!!app.shadowRoot.querySelector('#composebox'));
+
+      leftHandSide.dispatchEvent(new CustomEvent('open-composebox'));
+      await microtasksFinished();
+
+      const composebox =
+          app.shadowRoot.querySelector<NtpComposeboxElement>('#composebox');
+      assertTrue(!!composebox);
+      assertTrue(!!composebox.state);
+
+      let focusCalled = false;
+      composebox.focusInput = () => {
+        focusCalled = true;
+      };
+
+      leftHandSide.dispatchEvent(new CustomEvent('open-composebox'));
+      await microtasksFinished();
+
+      assertTrue(focusCalled);
     });
 
     test(
@@ -3905,18 +3952,20 @@ suite('NewTabPageAppTest', () => {
 
       test('modules use the window width when feature disabled', async () => {
         await setThreadsRailEnabled(false);
+        await setRhsWrapperWidth(700);
 
         const modules = app.shadowRoot.querySelector('ntp-modules');
         assertTrue(!!modules);
-        assertEquals(null, modules.widthContainer);
+        assertEquals(null, modules.containerWidth);
       });
 
       test('modules use the RHS width when feature enabled', async () => {
         await setThreadsRailEnabled(true);
+        await setRhsWrapperWidth(700);
 
         const modules = app.shadowRoot.querySelector('ntp-modules');
         assertTrue(!!modules);
-        assertEquals($$(app, '#rhsWrapper'), modules.widthContainer);
+        assertEquals(700, modules.containerWidth);
       });
     });
   });

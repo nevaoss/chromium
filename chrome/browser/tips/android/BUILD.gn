@@ -27,6 +27,7 @@ android_library("java") {
     ":java_resources",
     "//base:base_java",
     "//build/android:build_java",
+    "//chrome/browser/feature_engagement:java",
     "//chrome/browser/flags:java",
     "//chrome/browser/lens:java",
     "//chrome/browser/notifications:java",
@@ -48,6 +49,7 @@ android_library("java") {
     "//components/browser_ui/notifications/android:utils_java",
     "//components/browser_ui/settings/android:java",
     "//components/embedder_support/android:util_java",
+    "//components/feature_engagement/public:public_java",
     "//components/prefs/android:java",
     "//components/signin/public/android:java",
     "//components/user_prefs/android:java",
@@ -65,6 +67,7 @@ android_library("java") {
 # targets without depending on (or forming a cycle with) the tips
 # implementation in ":java".
 android_library("public_java") {
+  srcjar_deps = [ ":signal_keys_srcjar" ]
   sources = [
     "java/src/org/chromium/chrome/browser/tips/TipsPromoCustomizer.java",
     "java/src/org/chromium/chrome/browser/tips/TipsPromoHandler.java",
@@ -75,6 +78,11 @@ android_library("public_java") {
     "//third_party/androidx:androidx_annotation_annotation_java",
     "//ui/android:ui_no_recycler_view_java",
   ]
+}
+
+java_cpp_strings("signal_keys_srcjar") {
+  sources = [ "//chrome/browser/tips/core/tips_signal_keys.h" ]
+  class_name = "org.chromium.chrome.browser.tips.TipsSignalKeys"
 }
 
 java_cpp_enum("jni_enums") {
@@ -132,6 +140,7 @@ robolectric_library("junit") {
     "//base:base_java",
     "//base:base_java_test_support",
     "//base:base_junit_test_support",
+    "//chrome/browser/feature_engagement:java",
     "//chrome/browser/flags:java",
     "//chrome/browser/lens:java",
     "//chrome/browser/notifications:java",
@@ -149,6 +158,7 @@ robolectric_library("junit") {
     "//components/browser_ui/notifications/android:java",
     "//components/browser_ui/notifications/android:utils_java",
     "//components/browser_ui/settings/android:java",
+    "//components/feature_engagement/public:public_java",
     "//components/signin/public/android:java",
     "//content/public/android:content_full_java",
     "//third_party/androidx:androidx_test_core_java",

@@ -102,10 +102,9 @@ void LogKeyMetric(std::string_view key_metric_name,
 }  // namespace
 
 AutofillAiLogger::AutofillAiLogger(AutofillClient* client)
-    : client_(CHECK_DEREF(client)),
-      ukm_logger_(client),
-      profile_metrics_service_(
-          CHECK_DEREF(client->GetProfileMetricsService())) {}
+    : ukm_logger_(client),
+      profile_metrics_service_(CHECK_DEREF(client->GetProfileMetricsService())),
+      entity_suppression_manager_(client->GetEntitySuppressionManager()) {}
 AutofillAiLogger::~AutofillAiLogger() {
   for (const auto& [form_id, states] : form_states_) {
     if (!submitted_forms_.contains(form_id)) {
@@ -393,16 +392,12 @@ void AutofillAiLogger::RecordPersonalContextSuppressionMetrics(
     FormGlobalId form_id) const {
   const base::flat_set<EntityInstance, EntityInstance::CompareByGuid>*
       entities = base::FindOrNull(personal_context_entities_shown_, form_id);
-  if (!entities) {
-    return;
-  }
-  const EntitySuppressionManager* suppression_manager =
-      client_->GetEntitySuppressionManager();
-  if (!suppression_manager) {
+  if (!entities || !entity_suppression_manager_) {
     return;
   }
   for (const EntityInstance& entity : *entities) {
-    const bool is_suppressed = suppression_manager->IsSuppressed(entity);
+    const bool is_suppressed =
+        entity_suppression_manager_->IsSuppressed(entity);
     profile_metrics_service_->UmaHistogramBoolean(
         base::StrCat({"Autofill.Ai.Suppression.",
                       EntityTypeToMetricsString(entity.type()),

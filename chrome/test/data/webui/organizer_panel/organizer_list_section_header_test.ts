@@ -20,6 +20,25 @@ suite('OrganizerListSectionHeaderTest', () => {
     await microtasksFinished();
   });
 
+  test('has options tooltip and aria-label on menu button', () => {
+    const menuButton = header.$.menuButton;
+    assertEquals('Options', menuButton.title);
+    assertEquals('Options', menuButton.getAttribute('aria-label'));
+  });
+
+  test('has expand/collapse tooltip on expand button', async () => {
+    const expandButton = header.$.expandButton;
+    assertEquals('Collapse', expandButton.title);
+
+    header.expanded = false;
+    await microtasksFinished();
+    assertEquals('Expand', expandButton.title);
+
+    header.expanded = true;
+    await microtasksFinished();
+    assertEquals('Collapse', expandButton.title);
+  });
+
   test('toggles expanded state when expand button is clicked', async () => {
     const expandButton = header.$.expandButton;
     const expandIcon = expandButton.$.icon;
@@ -70,74 +89,24 @@ suite('OrganizerListSectionHeaderTest', () => {
         assertEquals('none', getComputedStyle(expandIcon).display);
       });
 
-  test(
-      'shows menu button on hover only when expanded and enabled', async () => {
-        const menuButton = header.$.menuButton;
+  test('shows menu button only when expanded and enabled', async () => {
+    const menuButton = header.$.menuButton;
 
-        assertFalse(isVisible(menuButton));
+    assertTrue(isVisible(menuButton));
 
-        header.classList.add('hovered');
-        assertTrue(isVisible(menuButton));
+    header.expanded = false;
+    await microtasksFinished();
+    assertFalse(isVisible(menuButton));
 
-        header.expanded = false;
-        await microtasksFinished();
-        assertFalse(isVisible(menuButton));
+    header.expanded = true;
+    header.disabled = true;
+    await microtasksFinished();
+    assertFalse(isVisible(menuButton));
 
-        header.expanded = true;
-        header.disabled = true;
-        await microtasksFinished();
-        assertFalse(isVisible(menuButton));
-
-        header.disabled = false;
-        await microtasksFinished();
-        assertTrue(isVisible(menuButton));
-
-        header.classList.remove('hovered');
-        assertFalse(isVisible(menuButton));
-      });
-
-  test(
-      'shows menu button on keyboard focus only when expanded and enabled',
-      async () => {
-        const expandIcon = header.$.expandButton.$.icon;
-        const menuButton = header.$.menuButton;
-
-        assertFalse(isVisible(menuButton));
-
-        document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Tab'}));
-        expandIcon.focus();
-        assertTrue(isVisible(menuButton));
-
-        menuButton.focus();
-        assertTrue(isVisible(menuButton));
-
-        menuButton.click();
-        await microtasksFinished();
-        assertTrue(header.$.menu.open);
-        assertTrue(isVisible(menuButton));
-
-        header.$.menu.close();
-        await microtasksFinished();
-        assertFalse(header.$.menu.open);
-        assertTrue(isVisible(menuButton));
-
-        header.expanded = false;
-        await microtasksFinished();
-        assertFalse(isVisible(menuButton));
-
-        header.expanded = true;
-        header.disabled = true;
-        await microtasksFinished();
-        assertFalse(isVisible(menuButton));
-
-        header.disabled = false;
-        await microtasksFinished();
-        expandIcon.focus();
-        assertTrue(isVisible(menuButton));
-
-        document.dispatchEvent(new MouseEvent('mousedown'));
-        assertFalse(isVisible(menuButton));
-      });
+    header.disabled = false;
+    await microtasksFinished();
+    assertTrue(isVisible(menuButton));
+  });
 
   test('opens menu with show some and show all options', async () => {
     const menu = header.$.menu;
@@ -156,7 +125,6 @@ suite('OrganizerListSectionHeaderTest', () => {
     assertFalse(header.$.showSomeCheck.hasAttribute('invisible'));
     assertTrue(header.$.showAllCheck.hasAttribute('invisible'));
 
-    header.classList.add('hovered');
     menuButton.click();
     await microtasksFinished();
 

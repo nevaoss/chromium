@@ -790,7 +790,7 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="OptimizationGuide.AIPageContent.ExtractionStatus"
+<histogram name="OptimizationGuide.AIPageContent.ExtractionStatus2"
     enum="AIPageContentExtractionStatus" expires_after="2027-04-09">
   <owner>linnan@chromium.org</owner>
   <owner>chrome-intelligence-core@google.com</owner>
@@ -848,7 +848,7 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records the size in bytes of the serialized MathML content extracted for a
     &lt;math&gt; element in AnnotatedPageContent when serialization succeeds
-    within the 64 KiB size limit and 128-level depth limit. Recorded once per
+    within the 64 KiB size limit and 64-level depth limit. Recorded once per
     visible root &lt;math&gt; element extracted by AIPageContentAgent with
     populated stripped_mathml.
   </summary>
@@ -1496,6 +1496,18 @@ chromium-metrics-reviews@google.com.
     Records the current validation status of the on-device model. Recorded each
     time the model is updated, or on startup with an existing model if
     validation has not completed for that model.
+  </summary>
+</histogram>
+
+<histogram
+    name="OptimizationGuide.ModelExecution.OnDevicePostprocessedModelIdleDisconnect"
+    enum="Boolean" expires_after="2027-04-14">
+  <owner>cduvall@chromium.org</owner>
+  <owner>holte@chromium.org</owner>
+  <owner>jingyun@google.com</owner>
+  <summary>
+    Records whether a postprocessed model disconnect was from the model idle
+    timeout. Recorded each time a postprocessed model disconnects.
   </summary>
 </histogram>
 

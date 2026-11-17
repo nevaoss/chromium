@@ -199,7 +199,17 @@ public class SettingsPageTest {
                         });
 
         // 1. Simulate opening the side panel (shrinking container width to narrow).
-        final int narrowWidth = Math.min(800, originalWidth - 200);
+        final int narrowWidth =
+                ThreadUtils.runOnUiThreadBlocking(
+                        () ->
+                                Math.min(
+                                        ViewUtils.dpToPx(
+                                                mActivityTestRule
+                                                        .getActivity()
+                                                        .getResources()
+                                                        .getDisplayMetrics(),
+                                                500),
+                                        originalWidth - 200));
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
                     var activity = mActivityTestRule.getActivity();
@@ -523,7 +533,6 @@ public class SettingsPageTest {
     @Test
     @MediumTest
     @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
-    @EnableFeatures(ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID)
     public void testAutofillAndPasswordsHighlighting() {
         // The test requires an emulator wide enough to use two-column mode.
         Resources res = mActivityTestRule.getActivity().getResources();
@@ -633,10 +642,7 @@ public class SettingsPageTest {
     @Test
     @MediumTest
     @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
-    @EnableFeatures({
-        ChromeFeatureList.SETTINGS_IN_TAB_URL_NAV,
-        ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID
-    })
+    @EnableFeatures(ChromeFeatureList.SETTINGS_IN_TAB_URL_NAV)
     public void testPaymentAppsUrlHighlightsMainMenu_urlNav() {
         assertUrlHighlightsAutofillAndPasswords("/paymentApps", AndroidPaymentAppsFragment.class);
     }
@@ -648,10 +654,7 @@ public class SettingsPageTest {
     @Test
     @MediumTest
     @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
-    @EnableFeatures({
-        ChromeFeatureList.SETTINGS_IN_TAB_URL_NAV,
-        ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID
-    })
+    @EnableFeatures(ChromeFeatureList.SETTINGS_IN_TAB_URL_NAV)
     public void testFoldedRowPagesUrlHighlightMainMenu_urlNav() {
         assertUrlHighlightsAutofillAndPasswords("/payments", AutofillPaymentMethodsFragment.class);
         assertUrlHighlightsAutofillAndPasswords("/addresses", AutofillProfilesFragment.class);

@@ -89,8 +89,8 @@ TabStripComboButton::TabStripComboButton(BrowserWindowInterface* browser,
   if (start_button) {
     start_button_ = AddChildView(std::move(start_button));
   }
-  end_button_ = AddChildView(
-      CreateFlatEdgeButtonFor(kActionTabSearch, kTabSearchButtonElementId));
+  end_button_ = AddChildView(CreateFlatEdgeButtonFor(
+      GetEndButtonActionId(), kTabSearchButtonElementId));
 
   PrefService* prefs = browser_->GetProfile()->GetPrefs();
   pref_registrar_.Init(prefs);
@@ -102,8 +102,13 @@ TabStripComboButton::TabStripComboButton(BrowserWindowInterface* browser,
       prefs::kEverythingMenuPinnedToTabstrip,
       base::BindRepeating(&TabStripComboButton::UpdateButtonsVisibility,
                           base::Unretained(this)));
+
   UpdateButtonsVisibility();
   UpdateStyles();
+
+  // Don't animate on startup.
+  start_button_animation_.End();
+  end_button_animation_.End();
 }
 
 TabStripComboButton::~TabStripComboButton() {
@@ -114,6 +119,7 @@ void TabStripComboButton::UpdateButtonsVisibility() {
   if (!browser_ || !BrowserActions::From(browser_)) {
     return;
   }
+
   auto update_button_visibility = [&](actions::ActionItem* action_item,
                                       gfx::SlideAnimation& animation,
                                       bool target_visible) {
@@ -372,10 +378,14 @@ void TabStripComboButton::OnHostDestroying() {
 }
 
 void TabStripComboButton::SetTabSearchBubbleHost(TabSearchBubbleHost* host) {
+  const actions::ActionId action_id = GetEndButtonActionId();
+  CHECK_EQ(action_id, kActionTabSearch);
+
   tab_search_bubble_host_observation_.Reset();
   if (host) {
     tab_search_bubble_host_observation_.Observe(host);
     const bool use_vertical_strip_icon = context_ == Context::kVerticalTabStrip;
+
     GetEndButtonActionItem()->SetImage(ui::ImageModel::FromVectorIcon(
         use_vertical_strip_icon
             ? (features::IsRoundedIconsEnabled() ? kManageSearchIcon
@@ -400,6 +410,14 @@ bool TabStripComboButton::IsTabSearchPinned() {
   return prefs->GetBoolean(prefs::kTabSearchPinnedToTabstrip);
 }
 
+actions::ActionId TabStripComboButton::GetEndButtonActionId() const {
+  if (context_ == Context::kVerticalTabStrip &&
+      organizer_panel::IsOrganizerPanelFeatureEnabled()) {
+    return kActionToggleOrganizerPanel;
+  }
+  return kActionTabSearch;
+}
+
 actions::ActionItem* TabStripComboButton::GetStartButtonActionItem() {
   return actions::ActionManager::Get().FindAction(
       kActionTabGroupsMenu, BrowserActions::From(browser_)->root_action_item());
@@ -407,7 +425,8 @@ actions::ActionItem* TabStripComboButton::GetStartButtonActionItem() {
 
 actions::ActionItem* TabStripComboButton::GetEndButtonActionItem() {
   return actions::ActionManager::Get().FindAction(
-      kActionTabSearch, BrowserActions::From(browser_)->root_action_item());
+      GetEndButtonActionId(),
+      BrowserActions::From(browser_)->root_action_item());
 }
 
 void TabStripComboButton::AnimationProgressed(const gfx::Animation* animation) {

@@ -414,6 +414,10 @@ void ActionAppMenuMetrics::LogMenuActionWithId(actions::ActionId action_id) {
     case kActionSetBrowserAsDefault:
       RecordAction(MENU_ACTION_SET_BROWSER_AS_DEFAULT, "SetBrowserAsDefault");
       break;
+    case kActionScheduledRestartDialog:
+      RecordAction(MENU_ACTION_SCHEDULED_RESTART_DIALOG,
+                   "ScheduledRestartDialog");
+      break;
     case kActionSafetyHubShowPasswordCheckup:
       RecordAction(MENU_ACTION_SAFETY_HUB_SHOW_PASSWORD_CHECKUP,
                    "SafetyHubNotificationPasswordCheck");
@@ -464,6 +468,12 @@ void ActionAppMenuMetrics::LogMenuActionWithId(actions::ActionId action_id) {
       base::RecordAction(base::UserMetricsAction(
           "TabGroups_SavedTabGroups_OpenedFromAppMenu"));
       RecordAction(MENU_ACTION_SAVED_TAB_GROUP_PIN, "SavedTabGroupPin");
+      break;
+    case kActionCloseTabGroup:
+    case kActionToggleTabGroupFocus:
+      base::RecordAction(base::UserMetricsAction(
+          "TabGroups_SavedTabGroups_OpenedFromAppMenu"));
+      RecordTimeToAction();
       break;
 
     // Bookmark bar visibility submenu.

@@ -158,7 +158,6 @@
       {
         "args": [
           "--git-revision=${got_revision}",
-          "--bypass-skia-gold-functionality",
           "--test-launcher-print-test-stdio=always"
         ],
         "merge": {
@@ -196,7 +195,7 @@
             "os": "Ubuntu-22.04"
           },
           "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com",
-          "shards": 5
+          "shards": 6
         },
         "test": "blink_unittests",
         "test_id_prefix": "ninja://third_party/blink/renderer/controller:blink_unittests/"
@@ -1166,7 +1165,8 @@
       },
       {
         "args": [
-          "--test-launcher-print-test-stdio=always"
+          "--test-launcher-print-test-stdio=always",
+          "--gtest_filter=-ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854774784_000000_Gt:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854774784_000000_Le:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854775808_000000_Ge:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854775808_000000_Lt"
         ],
         "merge": {
           "script": "//testing/merge_scripts/standard_gtest_merge.py"
@@ -1410,7 +1410,7 @@
             "os": "Ubuntu-22.04"
           },
           "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com",
-          "shards": 20
+          "shards": 18
         },
         "test": "sync_integration_tests",
         "test_id_prefix": "ninja://chrome/test:sync_integration_tests/"

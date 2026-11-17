@@ -310,36 +310,39 @@ void OffscreenCanvas::setHeight(unsigned height) {
 }
 
 void OffscreenCanvas::SetSize(gfx::Size size) {
-  // Setting size of a canvas also resets it.
-  if (size == Size()) {
-    if (context_ && context_->IsRenderingContext2D()) {
-      context_->Reset();
-      origin_clean_ = true;
-      // We need to trigger the draw, because we did reset the context.
-      context_->DidDraw(CanvasPerformanceMonitor::DrawType::kOther);
-    }
-    return;
-  }
-
+  gfx::Size old_size = size_;
   size_ = size;
 
-  if (context_ && context_->isContextLost()) {
-    context_->RestoreFromInvalidSizeIfNeeded();
+  if (frame_dispatcher_) {
+    frame_dispatcher_->Reshape(Size());
   }
 
-  if (frame_dispatcher_)
-    frame_dispatcher_->Reshape(Size());
-  if (context_) {
-    if (context_->IsWebGL() || IsWebGPU()) {
-      context_->Reshape(Size().width(), Size().height());
-    } else if (context_->IsRenderingContext2D() ||
-               context_->IsImageBitmapRenderingContext()) {
-      context_->Reset();
-      if (context_->IsRenderingContext2D()) {
-        origin_clean_ = true;
-      }
+  if (!context_) {
+    return;
+  }
+  if (context_->IsRenderingContext2D()) {
+    if (size_ != old_size && context_->isContextLost()) {
+      context_->RestoreFromInvalidSizeIfNeeded();
     }
+
+    // Setting size of a canvas also resets it.
+    context_->Reset();
+    origin_clean_ = true;
     context_->DidDraw(CanvasPerformanceMonitor::DrawType::kOther);
+  } else if (context_->IsWebGL()) {
+    context_->Reshape(old_size, Size());
+  } else if (context_->IsWebGPU()) {
+    if (old_size != size_) {
+      context_->Reshape(old_size, Size());
+      context_->DidDraw(CanvasPerformanceMonitor::DrawType::kOther);
+    }
+  } else if (context_->IsImageBitmapRenderingContext()) {
+    if (old_size != size_) {
+      context_->Reset();
+      context_->DidDraw(CanvasPerformanceMonitor::DrawType::kOther);
+    }
+  } else {
+    NOTREACHED();
   }
 }
 
@@ -727,7 +730,7 @@ CanvasResourceDispatcher* OffscreenCanvas::GetOrCreateResourceDispatcher() {
               std::move(dispatcher_task_runner),
               blink::BindRepeating(
                   [](OffscreenCanvas* canvas) {
-                    if (canvas->frame_dispatcher_) {
+                    if (canvas && canvas->frame_dispatcher_) {
                       canvas->frame_dispatcher_->SetAnimationState(
                           canvas->placeholder_client_->GetAnimationState());
                     }
@@ -844,8 +847,7 @@ void OffscreenCanvas::NotifyGpuContextLost() {
     // We'll need to recreate a new frame dispatcher once the context is
     // restored in order to reestablish the compositor frame sink mojo
     // channel.
-    placeholder_client_ = nullptr;
-    frame_dispatcher_ = nullptr;
+    DiscardResourceDispatcher();
   }
 }
 

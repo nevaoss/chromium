@@ -4,6 +4,7 @@
 
 #import "ios/chrome/browser/content_suggestions/coordinator/content_suggestions_coordinator.h"
 
+#import <optional>
 #import <string_view>
 #import <vector>
 
@@ -83,6 +84,7 @@
 #import "ios/chrome/browser/content_suggestions/shortcuts/coordinator/shortcuts_mediator.h"
 #import "ios/chrome/browser/content_suggestions/tab_resumption/coordinator/tab_resumption_mediator.h"
 #import "ios/chrome/browser/content_suggestions/tips/coordinator/tips_magic_stack_mediator.h"
+#import "ios/chrome/browser/content_suggestions/tips/coordinator/tips_ntp_customization_coordinator.h"
 #import "ios/chrome/browser/content_suggestions/tips/model/tips_metrics.h"
 #import "ios/chrome/browser/content_suggestions/tips/ui/tips_module_config.h"
 #import "ios/chrome/browser/content_suggestions/ui/content_suggestions_collection_utils.h"
@@ -223,7 +225,8 @@ using segmentation_platform::TipIdentifier;
     PriceTrackingPromoActionDelegate,
     SetUpListDefaultBrowserPromoCoordinatorDelegate,
     SetUpListTapDelegate,
-    ShopCardActionDelegate>
+    ShopCardActionDelegate,
+    TipsNTPCustomizationCoordinatorDelegate>
 
 @property(nonatomic, strong)
     ContentSuggestionsViewController* contentSuggestionsViewController;
@@ -263,9 +266,14 @@ using segmentation_platform::TipIdentifier;
   SigninCoordinator* _signinCoordinator;
   MagicStackCollectionViewController* _magicStackCollectionView;
   DefaultBrowserMediator* _defaultBrowserMediator;
+  TipsNTPCustomizationCoordinator* _tipsNTPCustomizationCoordinator;
 
   raw_ptr<segmentation_platform::SegmentationPlatformService>
       _segmentationService;
+
+  // Ephemeral card whose visibility logging was deferred because the NTP was
+  // bypassed when the card was initially shown.
+  std::optional<ContentSuggestionsModuleType> _deferredEphemeralCard;
 }
 
 - (void)start {
@@ -565,6 +573,7 @@ using segmentation_platform::TipIdentifier;
 }
 
 - (void)stop {
+  _deferredEphemeralCard = std::nullopt;
   _segmentationService = nullptr;
   [_shortcutsMediator disconnect];
   _shortcutsMediator = nil;
@@ -612,11 +621,22 @@ using segmentation_platform::TipIdentifier;
   [_notificationsOptInAlertCoordinator stop];
   _notificationsOptInAlertCoordinator = nil;
   [self stopSigninCoordinator];
+  [_tipsNTPCustomizationCoordinator stop];
+  _tipsNTPCustomizationCoordinator = nil;
 }
 
 #pragma mark - Public methods
 
+- (void)setWebState:(web::WebState*)webState {
+  if (_webState == webState) {
+    return;
+  }
+  _webState = webState;
+  _deferredEphemeralCard = std::nullopt;
+}
+
 - (void)refresh {
+  _deferredEphemeralCard = std::nullopt;
   [_magicStackCollectionView reset];
   // Refresh in case there are new MVT to show.
   if (!IsNTPRedesignEnabled()) {
@@ -628,6 +648,13 @@ using segmentation_platform::TipIdentifier;
   // Fetch after resetting ranking since subscriptions could be returned
   // synchronously.
   [_priceTrackingPromoMediator fetchLatestSubscription];
+}
+
+- (void)logDeferredEphemeralCardVisibilityIfNeeded {
+  if (!_deferredEphemeralCard.has_value()) {
+    return;
+  }
+  [self logEphemeralCardVisibility:_deferredEphemeralCard.value()];
 }
 
 #pragma mark - ContentSuggestionsCommands and Helpers
@@ -858,8 +885,17 @@ using segmentation_platform::TipIdentifier;
       break;
     }
     case TipIdentifier::kNTPCustomization: {
-      CHECK(!segmentation_platform::features::
-                IsMagicStackTipsV2IosActionableEnabled());
+      if (segmentation_platform::features::
+              IsMagicStackTipsV2IosActionableEnabled()) {
+        [_tipsNTPCustomizationCoordinator stop];
+        _tipsNTPCustomizationCoordinator =
+            [[TipsNTPCustomizationCoordinator alloc]
+                initWithBaseViewController:self.magicStackCollectionView
+                                   browser:self.browser];
+        _tipsNTPCustomizationCoordinator.delegate = self;
+        [_tipsNTPCustomizationCoordinator start];
+        break;
+      }
       [self.delegate openMainCustomizationMenuWithIconBubbleOnDismiss:YES
                                                        scrollToBottom:YES];
       break;
@@ -878,6 +914,10 @@ using segmentation_platform::TipIdentifier;
       segmentation_platform::kNTPThemeEphemeralModule);
 }
 
+- (void)didSaveNTPThemeBackgroundPhoto {
+  [self.delegate presentCustomizationButtonBubble];
+}
+
 #pragma mark - MagicStackCollectionViewAudience
 
 - (void)didTapMagicStackEditButton {
@@ -886,6 +926,11 @@ using segmentation_platform::TipIdentifier;
 }
 
 - (void)logEphemeralCardVisibility:(ContentSuggestionsModuleType)card {
+  if ([self.delegate isNTPBypassed]) {
+    _deferredEphemeralCard = card;
+    return;
+  }
+  _deferredEphemeralCard = std::nullopt;
   segmentation_platform::home_modules::HomeModulesCardRegistry* registry =
       segmentation_platform::SegmentationPlatformServiceFactory::
           GetHomeCardRegistryForProfile(self.profile);
@@ -1446,6 +1491,16 @@ using segmentation_platform::TipIdentifier;
     params.web_params.transition_type = ui::PAGE_TRANSITION_AUTO_BOOKMARK;
     urlLoadingBrowserAgent->Load(params);
   }
+}
+
+#pragma mark - TipsNTPCustomizationCoordinatorDelegate
+
+- (void)tipsNTPCustomizationCoordinator:
+            (TipsNTPCustomizationCoordinator*)coordinator
+                    didFinishWithAccept:(BOOL)didAccept {
+  [_tipsNTPCustomizationCoordinator stop];
+  _tipsNTPCustomizationCoordinator = nil;
+  // TODO(crbug.com/571447764): Trigger the undo snackbar.
 }
 
 #pragma mark - Helpers

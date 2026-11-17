@@ -156,10 +156,10 @@ class CONTENT_EXPORT CacheStorage : public CacheStorageCacheObserver {
                       int64_t trace_id,
                       CacheStorageCache::ResponseCallback callback);
 
-  // Sums the sizes of each cache and closes them. Runs |callback| with the
-  // size. The sizes include any doomed caches and will also force close all
-  // caches even if there are existing handles to them.
-  void GetSizeThenCloseAllCaches(SizeCallback callback);
+  // Immediately initiates shutdown without using the scheduler. It is an error
+  // to call any other method after this.
+  void ForceClose(base::OnceClosure callback,
+                  std::unique_ptr<CacheStorage> owned_this);
 
   // The size of all of the storage key's contents. This value should be used as
   // an estimate only since the cache may be modified at any time.
@@ -191,7 +191,7 @@ class CONTENT_EXPORT CacheStorage : public CacheStorageCacheObserver {
 
  protected:
   // Virtual for testing
-  virtual void CacheUnreferenced(CacheStorageCache* cache);
+  virtual void CacheUnreferenced(CacheStorageCache* cache, int64_t size_bytes);
 
  private:
   friend class CacheStorageCache;
@@ -248,10 +248,6 @@ class CONTENT_EXPORT CacheStorage : public CacheStorageCacheObserver {
                                 ErrorCallback callback,
                                 int64_t trace_id,
                                 bool success);
-  void DeleteCacheFinalize(CacheStorageCache* doomed_cache);
-  void DeleteCacheDidGetSize(CacheStorageCache* doomed_cache,
-                             int64_t cache_size);
-  void DeleteCacheDidCleanUp(bool success);
 
   // The EnumerateCache callbacks are below.
   void EnumerateCachesImpl(int64_t trace_id, EnumerateCachesCallback callback);
@@ -286,13 +282,9 @@ class CONTENT_EXPORT CacheStorage : public CacheStorageCacheObserver {
       int64_t trace_id,
       CacheStorageCache::ResponseCallback callback);
 
-  void GetSizeThenCloseAllCachesImpl(SizeCallback callback);
-
   void SizeImpl(SizeCallback callback);
-  void SizeRetrievedFromCache(CacheStorageCacheHandle cache_handle,
-                              base::OnceClosure closure,
-                              int64_t* accumulator,
-                              int64_t size);
+
+  void SizeRetrievedFromCache(CacheStorageCacheHandle cache_handle);
 
   void NotifyCacheContentChanged(const std::u16string& cache_name);
 

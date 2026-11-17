@@ -6,6 +6,9 @@
 
 #include <memory>
 #include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #include "base/apple/foundation_util.h"
 #include "base/apple/scoped_cftyperef.h"
@@ -19,6 +22,8 @@
 #include "base/memory/weak_ptr.h"
 #include "base/no_destructor.h"
 #include "base/sequence_checker.h"
+#include "base/strings/strcat.h"
+#include "base/strings/string_util.h"
 #include "base/strings/sys_string_conversions.h"
 #include "base/task/bind_post_task.h"
 #include "base/task/sequenced_task_runner.h"
@@ -32,6 +37,7 @@
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/common/content_switches.h"
+#include "url/gurl.h"
 
 namespace enterprise_auth {
 
@@ -45,6 +51,14 @@ const CFStringRef kExtensibleSsoPrefName(CFSTR("com.apple.extensiblesso"));
 const CFStringRef kExtensionIdentifierKey(CFSTR("ExtensionIdentifier"));
 const CFStringRef kTeamIdentifierKey(CFSTR("TeamIdentifier"));
 const CFStringRef kHostsKey(CFSTR("Hosts"));
+const CFStringRef kUrlsKey(CFSTR("URLs"));
+
+using Config = ExtensibleEnterpriseSSOPrefsHandler::Config;
+
+// The handler is owned by `PlatformAuthPolicyObserver` and is created and
+// destroyed as the policy changes, so a non-owning pointer is tracked here
+// instead of making the class a true singleton.
+ExtensibleEnterpriseSSOPrefsHandler* g_instance = nullptr;
 
 base::RepeatingCallback<std::unique_ptr<CFPreferencesObserver>()>&
 GetCfPrefsOverrideForTesting() {
@@ -109,10 +123,13 @@ class CFPreferencesObserverImpl final : public CFPreferencesObserver {
           CFPreferencesCopyAppValue(kHostsKey, kExtensibleSsoPrefName));
       auto team_id = ScopedPropList(CFPreferencesCopyAppValue(
           kTeamIdentifierKey, kExtensibleSsoPrefName));
+      auto urls = ScopedPropList(
+          CFPreferencesCopyAppValue(kUrlsKey, kExtensibleSsoPrefName));
       return RawConfig{
           .extension_id = std::move(extension_id),
           .team_id = std::move(team_id),
           .hosts = std::move(hosts),
+          .urls = std::move(urls),
       };
     });
   }
@@ -171,8 +188,8 @@ std::optional<std::vector<std::string>> ParseHostnames(
 
   const CFArrayRef array = base::apple::CFCast<CFArrayRef>(hostnames_prop);
   if (!array) {
-    LOG_POLICY(WARNING, EXTENSIBLE_SSO) << "Failed to parse SSO extension MDM "
-                                           "payload: hosts is not an array.";
+    LOG_POLICY(WARNING, EXTENSIBLE_SSO)
+        << "Hosts entry in the SSO extension MDM payload is not an array.";
     return std::nullopt;
   }
 
@@ -190,14 +207,79 @@ std::optional<std::vector<std::string>> ParseHostnames(
   return hostnames;
 }
 
+std::optional<std::vector<GURL>> ParseUrls(CFPropertyListRef urls_prop) {
+  if (!urls_prop) {
+    return std::nullopt;
+  }
+
+  const CFArrayRef array = base::apple::CFCast<CFArrayRef>(urls_prop);
+  if (!array) {
+    LOG_POLICY(WARNING, EXTENSIBLE_SSO)
+        << "URLs entry in the SSO extension MDM payload is not an array.";
+    return std::nullopt;
+  }
+
+  const CFIndex size = CFArrayGetCount(array);
+  std::vector<GURL> urls;
+  urls.reserve(size);
+  for (CFIndex i = 0; i < size; ++i) {
+    std::optional<std::string> url_str =
+        ParseCfString(CFArrayGetValueAtIndex(array, i));
+    if (!url_str.has_value() || url_str->empty()) {
+      continue;
+    }
+
+    // This normalises the url - it must ever only be compared to another GURL.
+    GURL url(std::move(url_str).value());
+
+    // Only allow valid HTTP or HTTPS urls without query params, refs or
+    // credentials.
+    if (url.is_valid() && url.SchemeIsHTTPOrHTTPS() && !url.has_query() &&
+        !url.has_ref() && !url.has_username() && !url.has_password()) {
+      urls.push_back(std::move(url));
+    }
+  }
+
+  return urls;
+}
+
+std::string OptionalListToString(
+    const std::optional<std::vector<std::string>>& list) {
+  if (!list.has_value()) {
+    return "<missing>";
+  }
+  return base::StrCat({"[", base::JoinString(list.value(), ", "), "]"});
+}
+
+std::string ConfigToString(const Config& config) {
+  std::optional<std::vector<std::string>> url_specs;
+  if (config.urls.has_value()) {
+    url_specs.emplace();
+    url_specs->reserve(config.urls->size());
+    for (const GURL& url : config.urls.value()) {
+      url_specs->push_back(url.spec());
+    }
+  }
+
+  return base::StrCat({"{extension_id: ", config.extension_id,
+                       ", team_id: ", config.team_id,
+                       ", hosts: ", OptionalListToString(config.hosts),
+                       ", urls: ", OptionalListToString(url_specs), "}"});
+}
+
 }  // namespace
 
 ExtensibleEnterpriseSSOPrefsHandler::ExtensibleEnterpriseSSOPrefsHandler(
     PrefService* local_state)
     : cf_preferences_observer_(CreateCfPreferencesObserver()),
-      local_state_(local_state) {
+      local_state_(local_state),
+      read_config_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
+          {base::MayBlock(), base::TaskPriority::USER_VISIBLE})) {
   CHECK(cf_preferences_observer_, base::NotFatalUntil::M161);
   CHECK(local_state_, base::NotFatalUntil::M161);
+  CHECK(!g_instance);
+  g_instance = this;
+
   auto callback =
       base::BindRepeating(&ExtensibleEnterpriseSSOPrefsHandler::UpdatePrefs,
                           weak_ptr_factory_.GetWeakPtr());
@@ -207,22 +289,36 @@ ExtensibleEnterpriseSSOPrefsHandler::ExtensibleEnterpriseSSOPrefsHandler(
 }
 
 ExtensibleEnterpriseSSOPrefsHandler::~ExtensibleEnterpriseSSOPrefsHandler() {
+  CHECK_EQ(g_instance, this);
+  g_instance = nullptr;
+
   CHECK(cf_preferences_observer_, base::NotFatalUntil::M161);
   cf_preferences_observer_->Unsubscribe();
+}
+
+// static
+std::optional<ExtensibleEnterpriseSSOPrefsHandler::Config>
+ExtensibleEnterpriseSSOPrefsHandler::GetCurrentConfig() {
+  if (!g_instance) {
+    return std::nullopt;
+  }
+
+  DCHECK_CALLED_ON_VALID_SEQUENCE(g_instance->sequence_checker_);
+  return g_instance->current_config_;
 }
 
 void ExtensibleEnterpriseSSOPrefsHandler::UpdatePrefs() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(local_state_, base::NotFatalUntil::M161);
 
-  // Read and parse config on the thread pool, the result is sent back to the
-  // main thread and handled by OnConfigRead.
+  // Read and parse config on a background sequence, the result is sent back to
+  // the main thread and handled by OnConfigRead.
   auto parse_callback = base::BindOnce(&ParseConfig);
   auto on_config_parsed =
       base::BindOnce(&ExtensibleEnterpriseSSOPrefsHandler::OnConfigRead,
                      weak_ptr_factory_.GetWeakPtr());
-  base::ThreadPool::PostTaskAndReplyWithResult(
-      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+  read_config_task_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE,
       cf_preferences_observer_->GetReadConfigCallback().Then(
           std::move(parse_callback)),
       std::move(on_config_parsed));
@@ -231,17 +327,24 @@ void ExtensibleEnterpriseSSOPrefsHandler::UpdatePrefs() {
 void ExtensibleEnterpriseSSOPrefsHandler::OnConfigRead(
     std::optional<Config> config) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!config.has_value() || !config->hosts.has_value()) {
+
+  current_config_ = std::move(config);
+
+  if (current_config_.has_value()) {
+    VLOG_POLICY(1, EXTENSIBLE_SSO) << "Parsed SSO extension MDM payload: "
+                                   << ConfigToString(current_config_.value());
+  }
+
+  // TODO(b/573090861): Deprecate kExtensibleEnterpriseSSOConfiguredHosts in
+  // favour of using GetCurrentConfig().
+  if (!current_config_.has_value() || !current_config_->hosts.has_value()) {
     local_state_->SetList(prefs::kExtensibleEnterpriseSSOConfiguredHosts, {});
     return;
   }
 
-  VLOG_POLICY(1, EXTENSIBLE_SSO)
-      << "Successfully parsed SSO extension MDM payload.";
-
   base::ListValue hosts;
-  hosts.reserve(config->hosts->size());
-  for (const std::string& host : config->hosts.value()) {
+  hosts.reserve(current_config_->hosts->size());
+  for (const std::string& host : current_config_->hosts.value()) {
     hosts.Append(host);
   }
   local_state_->SetList(prefs::kExtensibleEnterpriseSSOConfiguredHosts,
@@ -296,10 +399,13 @@ ExtensibleEnterpriseSSOPrefsHandler::ParseConfig(
   std::optional<std::vector<std::string>> hostnames =
       ParseHostnames(config.hosts.get());
 
+  std::optional<std::vector<GURL>> urls = ParseUrls(config.urls.get());
+
   return ExtensibleEnterpriseSSOPrefsHandler::Config{
       .extension_id = std::move(extension_id).value(),
       .team_id = std::move(team_id).value(),
       .hosts = std::move(hostnames),
+      .urls = std::move(urls),
   };
 }
 

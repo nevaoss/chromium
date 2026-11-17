@@ -219,6 +219,7 @@ source_set("tabs_impl") {
     "//chrome/browser/sync_tab_context",
     "//chrome/browser/tab_contents",
     "//chrome/browser/task_manager",
+    "//chrome/browser/task_manager/common",
     "//chrome/browser/translate",
     "//chrome/browser/trusted_vault",
     "//chrome/browser/ui:recently_audible_helper",
@@ -1234,6 +1235,7 @@ source_set("unit_tests") {
     "customtabs/tab_interaction_recorder_android_unittest.cc",
     "foreign_session_helper_unittest.cc",
     "framebust_intervention/framebust_blocked_delegate_android_unittest.cc",
+    "history/browsing_history_bridge_unittest.cc",
     "history/history_deletion_bridge_unittest.cc",
     "metrics/android_atoms_logger_unittest.cc",
     "metrics/android_session_durations_service_unittest.cc",
@@ -1274,6 +1276,9 @@ source_set("unit_tests") {
     "//chrome/browser/autocomplete",
     "//chrome/browser/content_settings:content_settings_factory",
     "//chrome/browser/flags:flags_android",
+    "//chrome/browser/history",
+    "//chrome/browser/keyboard_accessory/android:impl",
+    "//chrome/browser/password_manager/factories",
     "//chrome/browser/permissions",
     "//chrome/browser/persisted_state_db",
     "//chrome/browser/prefs:util",
@@ -1296,6 +1301,7 @@ source_set("unit_tests") {
     "//components/blocked_content",
     "//components/content_settings/browser",
     "//components/content_settings/browser:test_support",
+    "//components/history/core/browser",
     "//components/javascript_dialogs",
     "//components/lens",
     "//components/leveldb_proto:test_support",
@@ -1305,6 +1311,9 @@ source_set("unit_tests") {
     "//components/omnibox/common",
     "//components/os_crypt/async/browser",
     "//components/os_crypt/async/browser:test_support",
+    "//components/password_manager/content/browser",
+    "//components/password_manager/core/browser:test_support",
+    "//components/password_manager/core/browser/password_store:test_support",
     "//components/pdf/common:constants",
     "//components/search_engines",
     "//components/sessions",
@@ -1329,6 +1338,14 @@ source_set("unit_tests") {
     "//ui/menus",
     "//url",
   ]
+
+  if (enable_webui_tabstrip_ntb) {
+    sources += [ "compositor/tab_strip_ntb_webui_host_unittest.cc" ]
+    deps += [
+      "//chrome/browser/profiles:profile_manager",
+      "//chrome/browser/ui/android/tab_model:test_support",
+    ]
+  }
 }
 
 source_set("android_browsertests") {

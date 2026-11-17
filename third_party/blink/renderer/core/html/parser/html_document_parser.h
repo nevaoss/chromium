@@ -28,6 +28,7 @@
 
 #include <memory>
 
+#include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/task/sequenced_task_runner.h"
@@ -164,6 +165,17 @@ class CORE_EXPORT HTMLDocumentParser : public ScriptableDocumentParser,
   void ExecuteScriptsWaitingForPrerenderActivation() override;
 
   void SetPatchScope(ContainerNode* scope);
+
+  // https://html.spec.whatwg.org/C/#abort-a-fragment-parser
+  // Stops and detaches a fragment parser that is fed by an HTMLStream. If the
+  // parser is currently running (e.g. the abort comes from a streamed inline
+  // script or a custom element reaction while the parser resumes after a
+  // parser-blocking script), the abort is deferred until the current run
+  // returns, so that the rest of the current chunk is still parsed and the
+  // stack of open elements is not popped in the middle of inserting a node.
+  void AbortFragmentParser();
+
+  void SetCloseCallback(base::OnceClosure callback);
 
  protected:
   void insert(const String&) final;
@@ -339,6 +351,16 @@ class CORE_EXPORT HTMLDocumentParser : public ScriptableDocumentParser,
   // performance.mark() as a resuming signal is called.
   bool is_waiting_for_user_timing_ = false;
   base::TimeTicks time_waiting_for_user_timing_;
+
+  // https://html.spec.whatwg.org/C/#fragment-parser-abort-requested
+  // Set by AbortFragmentParser() while the parser is running; acted upon when
+  // the outermost PumpTokenizerIfPossible() returns.
+  bool fragment_parser_abort_requested_ = false;
+
+  // Invoked when the parser is done.
+  // This is used by stream*HTML methods, to resolve
+  // the stream's close promise.
+  base::OnceClosure close_callback_;
 };
 
 }  // namespace blink

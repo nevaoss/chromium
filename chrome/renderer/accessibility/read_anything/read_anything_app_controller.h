@@ -304,7 +304,6 @@ class ReadAnythingAppController
   bool IsSuperscript(ui::AXNodeID ax_node_id) const;
   bool IsSubscript(ui::AXNodeID ax_node_id) const;
   bool IsLeafNode(ui::AXNodeID ax_node_id) const;
-  bool IsReadAnythingPinned() const;
   void OnConnected();
   void OnCopy() const;
   void OnScroll(bool on_selection) const;
@@ -469,6 +468,7 @@ class ReadAnythingAppController
 
   void DrawSelection();
   void DrawEmptyState();
+  void DrawReadabilityContent();
 
   // Helper function that restarts the distillation logging timer and triggers a
   // new distillation if the tree is ready.

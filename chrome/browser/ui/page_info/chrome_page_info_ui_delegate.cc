@@ -144,7 +144,7 @@ ChromePageInfoUiDelegate::GetAboutThisSiteInfo() {
 void ChromePageInfoUiDelegate::OpenMoreAboutThisPageUrl(
     const GURL& url,
     const ui::Event& event) {
-  DCHECK(page_info::IsAboutThisSiteFeatureEnabled());
+  CHECK(page_info::IsAboutThisSiteFeatureEnabled(), base::NotFatalUntil::M162);
   ShowAboutThisSiteSidePanel(web_contents_, url);
 }
 #endif
@@ -246,9 +246,9 @@ bool ChromePageInfoUiDelegate::ShouldShowSettingsLinkForPermission(
             AppShimRegistry::Get()->GetNotificationPermissionStatusForApp(
                 *app_id);
         if (system_permission_status ==
-                mac_notifications::mojom::PermissionStatus::kGranted ||
+                AppShimRegistry::NotificationPermissionStatus::kGranted ||
             system_permission_status ==
-                mac_notifications::mojom::PermissionStatus::kNotDetermined) {
+                AppShimRegistry::NotificationPermissionStatus::kNotDetermined) {
           return false;
         }
         *text_id = IDS_PAGE_INFO_NOTIFICATIONS_SYSTEM_SETTINGS_DESCRIPTION;
@@ -320,7 +320,7 @@ ChromePageInfoUiDelegate::GetEmbargoResult(ContentSettingsType type) {
 
 #if !BUILDFLAG(IS_ANDROID)
 void ChromePageInfoUiDelegate::OpenMerchantTrustSidePanel(const GURL& url) {
-  DCHECK(page_info::IsMerchantTrustFeatureEnabled());
+  CHECK(page_info::IsMerchantTrustFeatureEnabled(), base::NotFatalUntil::M162);
   ShowMerchantTrustSidePanel(web_contents_, url);
 }
 #endif

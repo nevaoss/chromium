@@ -35,10 +35,12 @@ export class ActorOverlayAppElement extends CrLitElement {
   static override get properties() {
     return {
       borderGlowVisible_: {type: Boolean},
+      cursorChipText_: {type: String},
     };
   }
 
   protected accessor borderGlowVisible_: boolean = false;
+  protected accessor cursorChipText_: string = '';
 
   private eventTracker_: EventTracker = new EventTracker();
   private listenerIds_: number[] = [];
@@ -86,20 +88,22 @@ export class ActorOverlayAppElement extends CrLitElement {
     this.listenerIds_ = [
       // Background scrim
       proxy.callbackRouter.setScrimBackground.addListener(
-          this.setScrimBackground.bind(this)),
+          this.onSetScrimBackground_.bind(this)),
       // Border Glow
       proxy.callbackRouter.setBorderGlowVisibility.addListener(
-          this.setBorderGlowVisibility.bind(this)),
+          this.onSetBorderGlowVisibility_.bind(this)),
       // Magic Cursor
       proxy.callbackRouter.moveCursorTo.addListener(
-          this.moveCursorTo.bind(this)),
+          this.onMoveCursorTo_.bind(this)),
       proxy.callbackRouter.triggerClickAnimation.addListener(
-          this.triggerClickAnimation.bind(this)),
+          this.onTriggerClickAnimation_.bind(this)),
+      proxy.callbackRouter.setCursorChip.addListener(
+          this.onSetCursorChip_.bind(this)),
       // Theme
-      proxy.callbackRouter.setTheme.addListener(this.setTheme.bind(this)),
+      proxy.callbackRouter.setTheme.addListener(this.onSetTheme_.bind(this)),
     ];
     proxy.handler.getCurrentBorderGlowVisibility().then(
-        ({isVisible}) => this.setBorderGlowVisibility(isVisible));
+        ({isVisible}) => this.onSetBorderGlowVisibility_(isVisible));
   }
 
   override disconnectedCallback() {
@@ -142,16 +146,20 @@ export class ActorOverlayAppElement extends CrLitElement {
     }, 250);
   }
 
-  private setScrimBackground(isVisible: boolean) {
+  private onSetScrimBackground_(isVisible: boolean) {
     isVisible ? this.classList.add('background-visible') :
                 this.classList.remove('background-visible');
   }
 
-  private setBorderGlowVisibility(isVisible: boolean) {
+  private onSetBorderGlowVisibility_(isVisible: boolean) {
     this.borderGlowVisible_ = isVisible;
   }
 
-  private setTheme(theme: Theme) {
+  private onSetCursorChip_(text: string) {
+    this.cursorChipText_ = text;
+  }
+
+  private onSetTheme_(theme: Theme) {
     this.style.setProperty(
         '--actor-border-color', skColorToRgba(theme.borderColor));
     this.style.setProperty(
@@ -181,7 +189,7 @@ export class ActorOverlayAppElement extends CrLitElement {
     }
   }
 
-  private async triggerClickAnimation(): Promise<void> {
+  private async onTriggerClickAnimation_(): Promise<void> {
     const cursor = this.$.magicCursor;
     if (!cursor || !this.shouldShowCursor_ || !this.isCursorInitialized_) {
       return Promise.resolve();
@@ -208,7 +216,7 @@ export class ActorOverlayAppElement extends CrLitElement {
     return Promise.resolve();
   }
 
-  private moveCursorTo(point: Point): Promise<void> {
+  private onMoveCursorTo_(point: Point): Promise<void> {
     if (!this.$.magicCursor || !this.shouldShowCursor_) {
       return Promise.resolve();
     }

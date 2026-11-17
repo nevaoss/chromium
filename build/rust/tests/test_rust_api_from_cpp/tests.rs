@@ -13,6 +13,8 @@ chromium::import! {
         as self_contained_target;
     "//build/rust/tests/test_rust_api_from_cpp:target_depending_on_another_rs_api"
         as target_depending_on_another;
+    "//build/rust/tests/test_rust_api_from_cpp:test_browsing_instance_id_rs_api"
+        as test_browsing_instance_id;
     "//build/rust/tests/test_rust_api_from_cpp:test_extra_rust_sources_mod_rs_api"
         as test_extra_rust_sources_mod;
     "//build/rust/tests/test_rust_api_from_cpp:test_std_types_rs_api"
@@ -112,4 +114,42 @@ fn test_std_optional_field() {
     let s = ::test_std_types::CreateStructWithOptionalField(123);
     let value: ::cc_std::std::trivial_optional<i32> = s.value;
     assert_eq!(Option::from(value), Some(123));
+}
+
+#[gtest(TestRustApiFromCpp, StdUniquePtr)]
+fn test_std_unique_ptr() {
+    use ::cc_std::std::unique_ptr;
+    use ::test_std_types::{CreateUniquePtr, GetValueFromUniquePtr};
+
+    // `std::unique_ptr<int>` uses a layout-compatible type from `cc_std`.
+    let mut ptr: unique_ptr<i32> = CreateUniquePtr(123);
+    assert_eq!(*ptr.as_mut(), 123);
+    assert_eq!(GetValueFromUniquePtr(ptr), 123);
+
+    // Ownership can move between C++ and Rust.  (Both sides allocate and free
+    // through C++ `operator new` and `operator delete`, because Rust code uses
+    // `cc_std::std::Allocator`.)
+    //
+    // Memory allocated by C++ can be freed by Rust.
+    let boxed = unique_ptr::into_box(CreateUniquePtr(456));
+    assert_eq!(*boxed, 456);
+
+    // Memory allocated by Rust can be freed by C++.
+    assert_eq!(GetValueFromUniquePtr(unique_ptr::new(789)), 789);
+}
+
+#[gtest(TestRustApiFromCpp, TemplateInstantiation)]
+fn test_template_instantiation() {
+    use ::test_browsing_instance_id::{
+        CreateTestBrowsingInstanceId, GetTestBrowsingInstanceIdValue, TestBrowsingInstanceId,
+    };
+
+    // `TestBrowsingInstanceId` is a type alias for a class template
+    // specialization: `base::IdType32<TestBrowsingInstanceIdTag>`.
+    let id: TestBrowsingInstanceId = CreateTestBrowsingInstanceId(123);
+    assert_eq!(GetTestBrowsingInstanceIdValue(id), 123);
+
+    // `Default` comes from the default constructor of the class template.
+    let null_id = TestBrowsingInstanceId::default();
+    assert_eq!(GetTestBrowsingInstanceIdValue(null_id), 0);
 }

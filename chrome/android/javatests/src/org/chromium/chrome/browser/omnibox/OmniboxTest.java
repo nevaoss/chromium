@@ -13,6 +13,8 @@ import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static org.hamcrest.Matchers.allOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import static org.chromium.ui.test.util.ViewUtils.onViewWaiting;
@@ -29,7 +31,6 @@ import androidx.test.filters.SmallTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import org.hamcrest.Matchers;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -41,7 +42,6 @@ import org.chromium.base.test.util.CallbackHelper;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.Criteria;
 import org.chromium.base.test.util.CriteriaHelper;
-import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.EnormousTest;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -61,8 +61,6 @@ import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabObserver;
-import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabObserver;
-import org.chromium.chrome.browser.theme.ThemeColorProvider.ThemeColorObserver;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.chrome.test.transit.ChromeTransitTestRules;
 import org.chromium.chrome.test.transit.FreshCtaTransitTestRule;
@@ -137,7 +135,7 @@ public class OmniboxTest {
         final UrlBar urlBar = (UrlBar) mActivityTestRule.getActivity().findViewById(R.id.url_bar);
 
         // Omnibox on NTP shows the hint text.
-        Assert.assertNotNull(urlBar);
+        assertNotNull(urlBar);
         assertEquals("Location bar has text.", "", urlBar.getText().toString());
 
         @StringRes
@@ -182,7 +180,7 @@ public class OmniboxTest {
         omnibox.sendKey(KeyEvent.KEYCODE_ENTER, KeyEvent.META_ALT_ON);
 
         Tab resultTab = mActivityTestRule.getActivityTab();
-        Assert.assertNotEquals(
+        assertNotEquals(
                 "The result should be loaded in a new tab that is brought to the foreground.",
                 currentTab,
                 resultTab);
@@ -461,7 +459,7 @@ public class OmniboxTest {
                         }
                     }
 
-                    Assert.assertNotNull(notDefault);
+                    assertNotNull(notDefault);
 
                     templateUrlService.setSearchEngine(notDefault.getKeyword());
                 });
@@ -473,137 +471,6 @@ public class OmniboxTest {
                         TemplateUrlServiceFactory.getForProfile(
                                         ProfileManager.getLastUsedRegularProfile())
                                 .setSearchEngine(mDefaultSearchEngineKeyword));
-    }
-
-    /** Test whether the color of the Location bar is correct for HTTPS scheme. */
-    @Test
-    @SmallTest
-    @SkipCommandLineParameterization
-    @DisableFeatures({ChromeFeatureList.ANDROID_PAGE_INFO_AS_APP_MENU_ITEM})
-    @DisabledTest(message = "Page theme color never arrives on the CQ AVD. crbug.com/556414361")
-    public void testHttpsLocationBarColor() throws Exception {
-        mActivityTestRule.startOnBlankPage();
-        EmbeddedTestServer testServer =
-                EmbeddedTestServer.createAndStartHTTPSServer(
-                        InstrumentationRegistry.getInstrumentation().getContext(),
-                        ServerCertificate.CERT_OK);
-        CallbackHelper didThemeColorChangedCallbackHelper = new CallbackHelper();
-        CallbackHelper onSSLStateUpdatedCallbackHelper = new CallbackHelper();
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    new TabModelSelectorTabObserver(
-                            mActivityTestRule.getActivity().getTabModelSelector()) {
-                        @Override
-                        public void onSSLStateUpdated(Tab tab) {
-                            onSSLStateUpdatedCallbackHelper.notifyCalled();
-                        }
-                    };
-
-                    mActivityTestRule
-                            .getActivity()
-                            .getRootUiCoordinatorForTesting()
-                            .getTopUiThemeColorProvider()
-                            .addThemeColorObserver(
-                                    new ThemeColorObserver() {
-                                        @Override
-                                        public void onThemeColorChanged(
-                                                int color, boolean shouldAnimate) {
-                                            didThemeColorChangedCallbackHelper.notifyCalled();
-                                        }
-                                    });
-                });
-
-        final String testHttpsUrl =
-                testServer.getURL("/chrome/test/data/android/theme_color_test.html");
-        ImageView securityView =
-                (ImageView)
-                        mActivityTestRule.getActivity().findViewById(R.id.location_bar_status_icon);
-        mActivityTestRule.loadUrl(testHttpsUrl);
-        // Tablets don't have website theme colors.
-        if (!mActivityTestRule.getActivity().isTablet()) {
-            didThemeColorChangedCallbackHelper.waitForCallback(0);
-        }
-        onSSLStateUpdatedCallbackHelper.waitForCallback(0);
-        LocationBarLayout locationBarLayout =
-                (LocationBarLayout) mActivityTestRule.getActivity().findViewById(R.id.location_bar);
-        boolean securityIcon =
-                locationBarLayout.getStatusCoordinatorForTesting().isSecurityViewShown();
-        assertTrue("Omnibox should have a Security icon", securityIcon);
-        assertEquals(
-                "location_bar_status_icon with wrong resource-id",
-                R.id.location_bar_status_icon,
-                securityView.getId());
-        if (mActivityTestRule.getActivity().isTablet()) {
-            assertTrue(
-                    mActivityTestRule
-                            .getActivity()
-                            .getToolbarManager()
-                            .getLocationBarModelForTesting()
-                            .shouldEmphasizeHttpsScheme());
-        } else {
-            assertFalse(
-                    mActivityTestRule
-                            .getActivity()
-                            .getToolbarManager()
-                            .getLocationBarModelForTesting()
-                            .shouldEmphasizeHttpsScheme());
-        }
-    }
-
-    @Test
-    @SmallTest
-    @SkipCommandLineParameterization
-    @EnableFeatures({ChromeFeatureList.ANDROID_PAGE_INFO_AS_APP_MENU_ITEM})
-    @DisabledTest(message = "Page theme color never arrives on the CQ AVD. crbug.com/556408574")
-    public void testHttpsLocationBarColor_PageInfoAsAppMenuItemFlagEnabled() throws Exception {
-        mActivityTestRule.startOnBlankPage();
-        EmbeddedTestServer testServer =
-                EmbeddedTestServer.createAndStartHTTPSServer(
-                        InstrumentationRegistry.getInstrumentation().getContext(),
-                        ServerCertificate.CERT_OK);
-        CallbackHelper didThemeColorChangedCallbackHelper = new CallbackHelper();
-        CallbackHelper onSSLStateUpdatedCallbackHelper = new CallbackHelper();
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    new TabModelSelectorTabObserver(
-                            mActivityTestRule.getActivity().getTabModelSelector()) {
-                        @Override
-                        public void onSSLStateUpdated(Tab tab) {
-                            onSSLStateUpdatedCallbackHelper.notifyCalled();
-                        }
-                    };
-
-                    mActivityTestRule
-                            .getActivity()
-                            .getRootUiCoordinatorForTesting()
-                            .getTopUiThemeColorProvider()
-                            .addThemeColorObserver(
-                                    new ThemeColorObserver() {
-                                        @Override
-                                        public void onThemeColorChanged(
-                                                int color, boolean shouldAnimate) {
-                                            didThemeColorChangedCallbackHelper.notifyCalled();
-                                        }
-                                    });
-                });
-
-        final String testHttpsUrl =
-                testServer.getURL("/chrome/test/data/android/theme_color_test.html");
-        mActivityTestRule.loadUrl(testHttpsUrl);
-        if (!mActivityTestRule.getActivity().isTablet()) {
-            didThemeColorChangedCallbackHelper.waitForCallback(0);
-        }
-        onSSLStateUpdatedCallbackHelper.waitForCallback(0);
-        LocationBarLayout locationBarLayout =
-                mActivityTestRule.getActivity().findViewById(R.id.location_bar);
-        boolean securityIcon =
-                locationBarLayout.getStatusCoordinatorForTesting().isSecurityViewShown();
-
-        if (mActivityTestRule.getActivity().isTablet()) {
-            assertTrue("Omnibox should have a Security icon", securityIcon);
-        } else {
-            assertFalse("Omnibox should not have a Security icon", securityIcon);
-        }
     }
 
     @Test

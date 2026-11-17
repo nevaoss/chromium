@@ -736,9 +736,10 @@ void PrerenderHost::ReadyToCommitNavigation(
           blink::mojom::WebFeature::kPrerender2CrossOriginIframes);
     }
 
-    if (IsPrerenderActivationBeaconEnabled(
+    if (GetPrerenderActivationBeaconFeatureState(
             navigation_request->GetURL(),
-            navigation_request->GetResponseHeaders())) {
+            navigation_request->GetResponseHeaders()) ==
+        PreloadActivationBeaconFeatureState::kEnabled) {
       activation_beacon_url_ = FindActivationBeaconURL(*navigation_request);
     }
   }
@@ -833,7 +834,8 @@ std::unique_ptr<StoredPage> PrerenderHost::Activate(
         PreloadActivationReportManager::GetOrCreateForBrowserContext(
             web_contents_->GetBrowserContext());
     manager->ReportActivation(activation_beacon_url_,
-                              GetFrameTree()->root()->current_frame_host());
+                              GetFrameTree()->root()->current_frame_host(),
+                              PreloadActivationReportType::kPrerender);
     GetContentClient()->browser()->LogWebFeatureForCurrentPage(
         GetFrameTree()->root()->current_frame_host(),
         blink::mojom::WebFeature::kPrefetchAndPrerenderActivationBeacon);

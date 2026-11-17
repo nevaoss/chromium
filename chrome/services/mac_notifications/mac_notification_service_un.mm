@@ -4,6 +4,7 @@
 
 #import "chrome/services/mac_notifications/mac_notification_service_un.h"
 
+#import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import <UserNotifications/UserNotifications.h>
@@ -148,6 +149,19 @@ MacNotificationServiceUN::MacNotificationServiceUN(
   // Query current notification settings and authorization status.
   SynchronizePermissionStatus(/*log_result=*/true);
 
+  // Re-query the authorization status whenever the app becomes active, as the
+  // user might have changed it in System Settings while the app was inactive.
+  base::RepeatingCallback<void(NSNotification*)> on_did_become_active =
+      base::IgnoreArgs<NSNotification*>(
+          base::BindPostTaskToCurrentDefault(base::BindRepeating(
+              &MacNotificationServiceUN::OnApplicationDidBecomeActive,
+              weak_factory_.GetWeakPtr())));
+  did_become_active_observer_ = [NSNotificationCenter.defaultCenter
+      addObserverForName:NSApplicationDidBecomeActiveNotification
+                  object:nil
+                   queue:nil
+              usingBlock:base::CallbackToBlock(on_did_become_active)];
+
   // Schedule a timer to regularly check for any closed notifications and
   // updates to the current notification settings.
   ScheduleSynchronizeNotifications();
@@ -161,6 +175,8 @@ MacNotificationServiceUN::MacNotificationServiceUN(
 }
 
 MacNotificationServiceUN::~MacNotificationServiceUN() {
+  [NSNotificationCenter.defaultCenter
+      removeObserver:did_become_active_observer_];
   [notification_center_ setDelegate:nil];
 }
 
@@ -513,7 +529,6 @@ void MacNotificationServiceUN::RequestPermission(
       return;
     }
     DCHECK_CALLED_ON_VALID_SEQUENCE(service->sequence_checker_);
-    service->OnGotAuthorizationStatus(status);
     switch (status) {
       case UNAuthorizationStatusDenied:
         service->ReportRequestPermissionResult(
@@ -538,6 +553,7 @@ void MacNotificationServiceUN::RequestPermission(
 void MacNotificationServiceUN::ReportRequestPermissionResult(
     mojom::RequestPermissionResult result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  is_permission_prompt_pending_ = false;
   LogUNNotificationRequestPermissionResult(result);
   std::vector<RequestPermissionCallback> callbacks = std::exchange(
       pending_permission_requests_, std::vector<RequestPermissionCallback>());
@@ -561,6 +577,10 @@ void MacNotificationServiceUN::ReportRequestPermissionResult(
 }
 
 void MacNotificationServiceUN::DoRequestPermission() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  is_permission_prompt_pending_ = true;
+  OnGotAuthorizationStatus(UNAuthorizationStatusNotDetermined);
+
   __block auto block_callback = base::BindPostTaskToCurrentDefault(
       base::BindOnce(&MacNotificationServiceUN::ReportRequestPermissionResult,
                      weak_factory_.GetWeakPtr()));
@@ -717,6 +737,11 @@ void MacNotificationServiceUN::SynchronizePermissionStatus(bool log_result) {
   }];
 }
 
+void MacNotificationServiceUN::OnApplicationDidBecomeActive() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  SynchronizePermissionStatus(/*log_result=*/false);
+}
+
 void MacNotificationServiceUN::OnNotificationAction(
     mojom::NotificationActionInfoPtr action) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -752,7 +777,7 @@ void MacNotificationServiceUN::OnGotAuthorizationStatus(
       break;
   }
   if (mojo_status != mojom::PermissionStatus::kGranted &&
-      !pending_permission_requests_.empty()) {
+      is_permission_prompt_pending_) {
     mojo_status = mojom::PermissionStatus::kPromptPending;
   }
   if (mojo_status == last_permission_status_) {

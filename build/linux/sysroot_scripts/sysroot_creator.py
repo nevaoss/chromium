@@ -42,7 +42,7 @@ GCC_VERSIONS = {
 # This number is appended to the sysroot key to cause full rebuilds.  It
 # should be incremented when removing packages or patching existing packages.
 # It should not be incremented when adding packages.
-SYSROOT_RELEASE = 2
+SYSROOT_RELEASE = 3
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -111,7 +111,6 @@ RELEASE_FILE_GPG = "Release.gpg"
 # List of development packages. Dependencies are automatically included.
 DEBIAN_PACKAGES = [
     "libasound2-dev",
-    "libavformat-dev",
     "libbluetooth-dev",
     "libc6-dev",
     "libcap-dev",
@@ -152,7 +151,6 @@ DEBIAN_PACKAGES = [
     "libtiff-dev",
     "libutempter-dev",
     "libva-dev",
-    "libvpx-dev",
     "libwayland-egl-backend-dev",
     "libwebp-dev",
     "libx11-xcb-dev",

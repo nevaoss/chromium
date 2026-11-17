@@ -1650,14 +1650,15 @@ TEST_F(RenderViewContextMenuPrefsTest,
     scoped_command_line.GetProcessCommandLine()->AppendSwitch(
         indigo::kForceIndigoSwitch);
 
-    UserEducationServiceFactory::GetForBrowserContext(profile())
-        ->user_education_storage_service()
-        .set_profile_creation_time_for_testing(base::Time::Now() -
-                                               base::Days(100));
-    auto* const user_education_controller =
-        UserEducationServiceFactory::GetForBrowserContext(profile())
-            ->new_badge_controller();
-    user_education_controller->InitData();
+    auto* const user_education_service =
+        UserEducationServiceFactory::GetForBrowserContext(profile());
+    if (auto* const user_education_controller =
+            user_education_service->new_badge_controller()) {
+      user_education_service->user_education_storage_service()
+          .set_profile_creation_time_for_testing(base::Time::Now() -
+                                                 base::Days(100));
+      user_education_controller->InitData();
+    }
 
     base::HistogramTester histogram_tester;
 
@@ -1669,7 +1670,8 @@ TEST_F(RenderViewContextMenuPrefsTest,
 
     auto item = image_menu.GetMenuModelAndItemIndex(IDC_CONTENT_CONTEXT_INDIGO);
     ASSERT_TRUE(item.has_value());
-    EXPECT_TRUE(item->first->IsNewFeatureAt(item->second));
+    EXPECT_EQ(item->first->IsNewFeatureAt(item->second),
+              user_education_service->new_badge_controller() != nullptr);
 
     TestRenderViewContextMenu page_menu(*web_contents()->GetPrimaryMainFrame(),
                                         page_params);
@@ -2792,6 +2794,7 @@ TEST_F(RenderViewContextMenuMenuSimplificationTest, LinkAndSelectionLayout) {
   EXPECT_FALSE(menu.IsItemPresent(IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE));
 }
 
+#if !BUILDFLAG(IS_CHROMEOS)
 TEST_F(RenderViewContextMenuMenuSimplificationTest,
        TranslateSelectionOnlyOnce_NonEditable) {
   auto reset_ignore_missing_key = SetUpTranslateClient();
@@ -2842,6 +2845,105 @@ TEST_F(RenderViewContextMenuMenuSimplificationTest,
   ASSERT_TRUE(index.has_value());
   EXPECT_EQ(l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_V2),
             menu->menu_model().GetLabelAt(index.value()));
+}
+
+TEST_F(RenderViewContextMenuMenuSimplificationTest,
+       PartialTranslateHiddenWhenDefaultSearchProviderNotGoogle) {
+  auto reset_ignore_missing_key = SetUpTranslateClient();
+  SetUserSelectedDefaultSearchProvider("https://www.bing.com", false);
+
+  content::ContextMenuParams params;
+  params.selection_text = u"hello world";
+  params.is_editable = false;
+
+  auto menu = std::make_unique<TestRenderViewContextMenu>(
+      *web_contents()->GetPrimaryMainFrame(), params);
+  menu->SetBrowser(GetBrowser());
+  menu->Init();
+
+  EXPECT_FALSE(menu->IsItemPresent(IDC_CONTENT_CONTEXT_PARTIAL_TRANSLATE));
+}
+
+TEST_F(RenderViewContextMenuMenuSimplificationTest,
+       PartialTranslateHiddenWhenCanTranslateFalse) {
+  auto reset_ignore_missing_key = SetUpTranslateClient();
+  // Navigating to about:blank disables translation because the URL is not
+  // translatable.
+  NavigateAndCommit(GURL("about:blank"));
+
+  content::ContextMenuParams params;
+  params.selection_text = u"hello world";
+  params.is_editable = false;
+
+  auto menu = std::make_unique<TestRenderViewContextMenu>(
+      *web_contents()->GetPrimaryMainFrame(), params);
+  menu->SetBrowser(GetBrowser());
+  menu->Init();
+
+  EXPECT_FALSE(menu->IsItemPresent(IDC_CONTENT_CONTEXT_PARTIAL_TRANSLATE));
+}
+#else
+TEST_F(RenderViewContextMenuMenuSimplificationTest,
+       PartialTranslateNotPresentOnChromeOS) {
+  auto reset_ignore_missing_key = SetUpTranslateClient();
+
+  content::ContextMenuParams params;
+  params.selection_text = u"hello world";
+  params.is_editable = false;
+
+  auto menu = std::make_unique<TestRenderViewContextMenu>(
+      *web_contents()->GetPrimaryMainFrame(), params);
+  menu->SetBrowser(GetBrowser());
+  menu->Init();
+
+  EXPECT_FALSE(menu->IsItemPresent(IDC_CONTENT_CONTEXT_PARTIAL_TRANSLATE));
+}
+#endif  // !BUILDFLAG(IS_CHROMEOS)
+
+TEST_F(
+    RenderViewContextMenuMenuSimplificationTest,
+    ReadAnythingOnlyOnceWhenMenuSimplificationAndShuffleExperimentPlaceAtBottom) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeaturesAndParameters(
+      {{features::kReadAnythingMenuShuffleExperiment,
+        {{"read_anything_menu_shuffle_group_name",
+          "MenuShufflePlaceAtBottom"}}}},
+      {});
+
+  content::ContextMenuParams params = CreateParams(MenuItem::PAGE);
+  auto menu = std::make_unique<TestRenderViewContextMenu>(
+      *web_contents()->GetPrimaryMainFrame(), params);
+  menu->SetBrowser(GetBrowser());
+  menu->Init();
+
+  EXPECT_TRUE(menu->IsItemPresent(IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE));
+  EXPECT_EQ(1,
+            CountOccurrences(*menu, IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE));
+}
+
+TEST_F(
+    RenderViewContextMenuPrefsTest,
+    ReadAnythingNotDuplicatedInEditableWithSelectionWhenMenuSimplificationDisabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(features::kMenuSimplification);
+
+  content::ContextMenuParams params;
+  params.selection_text = u"editable selection";
+  params.is_editable = true;
+
+  auto menu = std::make_unique<TestRenderViewContextMenu>(
+      *web_contents()->GetPrimaryMainFrame(), params);
+  menu->SetBrowser(GetBrowser());
+  menu->Init();
+
+  int count = 0;
+  for (size_t i = 0; i < menu->menu_model().GetItemCount(); ++i) {
+    if (menu->menu_model().GetCommandIdAt(i) ==
+        IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE) {
+      count++;
+    }
+  }
+  EXPECT_LE(count, 1);
 }
 
 class RenderViewContextMenuSendTabToSelfPageTest

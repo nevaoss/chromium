@@ -118,6 +118,7 @@
 <translation id="1195558154361252544">तुम्ही अनुमती दिलेली साइट वगळता सर्व साइटसाठी सूचना आपोआप ब्लॉक केल्या आहेत</translation>
 <translation id="1197088940767939838">नारिंगी</translation>
 <translation id="1198412233443148072"><ph name="MEMBER_FIRST_NAME" /> यांनी “<ph name="WEBSITE_TITLE" />” हा टॅब काढून टाकला आहे</translation>
+<translation id="119944043368869598">सर्व साफ करा</translation>
 <translation id="1201402288615127009">पुढील</translation>
 <translation id="1201895884277373915">या साइटकडून अधिक</translation>
 <translation id="1204184165594298176">{0,plural, =1{फाइल कॉपी करण्यापासून ब्लॉक केली आहे}other{<ph name="FILE_COUNT" /> फाइल कॉपी करण्यापासून ब्लॉक केल्या आहेत}}</translation>
@@ -618,7 +619,6 @@
 <translation id="2059166748188874810">नगरपालिका</translation>
 <translation id="2059202684901022309">22 x 34 in</translation>
 <translation id="2063929825539050431">हे पेज दुसऱ्या डिव्हाइसवर झटपट पाठवण्यासाठी, अ‍ॅड्रेस बारला स्पर्श करून धरून ठेवा</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{1 सूचना}other{# सूचना}}</translation>
 <translation id="2066969741541525119">पुढील साइट तुमच्या संस्थेद्वारे ब्लॉक केलेली आहे</translation>
 <translation id="2071156619270205202">हे कार्ड व्हर्च्युअल कार्ड नंबरसाठी पात्र नाही.</translation>
 <translation id="2071852865256799872">तुमची संस्था तुमचा ब्राउझर व्यवस्थापित करते आणि <ph name="PROFILE_DOMAIN" />तुमची प्रोफाइल व्यवस्थापित करते</translation>
@@ -665,6 +665,7 @@
 <translation id="2126374524350484896">पीडीएफ निर्माता:</translation>
 <translation id="2127090458081644412">पासवर्ड या डिव्हाइसवर सेव्ह केला आहे</translation>
 <translation id="2127747486437921899">तिरपे</translation>
+<translation id="2129163794581571479">पर्सनल इंटेलिजन्स सह Gemini द्वारे सक्षम केलेले. वर्धित ऑटोफिलमध्ये सुधारणा करण्यासाठी तुमच्या विनंत्या, पेजची शीर्षके आणि URLs यांचे पुनरावलोकन केले जाऊ शकते. <ph name="BEGIN_LINK" />सेटिंग्ज व्यवस्थापित करणे<ph name="END_LINK" /></translation>
 <translation id="2130448033692577677">DnsOverHttpsMode धोरण सेट केले नसल्यामुळे तुम्ही नमूद केलेली टेम्पलेट कदाचित लागू केली जाऊ शकत नाहीत.</translation>
 <translation id="2130699163006053678">A3x7</translation>
 <translation id="2131006834960167560">पेमेंट ऑटोफिल सुरू करा हे पूर्ण उंचीवर उघडले आहे.</translation>
@@ -710,7 +711,6 @@
 <translation id="2188375229972301266">मल्टिपल पंच बॉटम</translation>
 <translation id="218940509700321686">स्वल्पविरामाने विभक्त केलेली मूल्ये</translation>
 <translation id="2190094353033916816">या धोरणामध्ये मशीन आणि वापरकर्ता या पातळ्यांवर वेगवेगळी मूल्ये लागू केली आहेत. धोरण अपेक्षेप्रमाणे काम करत आहे.</translation>
-<translation id="219061769324072544">क्रेडिट,कार्ड,डेबिट</translation>
 <translation id="2191980191135734720">तुम्ही पुढील पायरीमध्ये साधारणपणे तुमची फिंगरप्रिंट वापरून तुमची स्क्रीन अनलॉक करा. तुम्ही <ph name="LINK_TEXT" /> देखील करू शकता.</translation>
 <translation id="2194856509914051091">विचार करण्याच्या गोष्टी</translation>
 <translation id="2195729137168608510">ईमेल संरक्षण</translation>
@@ -1081,6 +1081,7 @@
 <translation id="2807052079800581569">इमेज Y स्थिती</translation>
 <translation id="2808278141522721006">तुम्ही <ph name="SETTINGS" /> मध्ये Windows Hello सुरू किंवा बंद करू शकता</translation>
 <translation id="2820957248982571256">स्कॅन होत आहे...</translation>
+<translation id="282457273878278063">संपर्क माहिती व्यवस्थापित करा</translation>
 <translation id="2824775600643448204">पत्ता आणि शोध बार</translation>
 <translation id="2826760142808435982">कनेक्शन <ph name="CIPHER" /> वापरून आणि महत्त्वाचे एक्स्चेंज तंत्र म्हणून <ph name="KX" /> वापर एंक्रिप्ट आणि ऑथेंटिकेट केले आहे.</translation>
 <translation id="2828797285817981634">मोशन सेन्सरना सध्यासाठी अनुमती आहे</translation>
@@ -1574,6 +1575,7 @@
 <translation id="3655670868607891010">तुम्ही हे वारंवार पहात असल्यास, हे वापरून पहा <ph name="HELP_LINK" />.</translation>
 <translation id="3658742229777143148">पुनरावृत्ती</translation>
 <translation id="3659521826520353662">अ‍ॅडमिनिस्ट्रेटरने परिभाषित केलेल्या कोणत्या वेबसाइटना भेट दिली आहे आणि कधी: <ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3663760610864720538">पर्सनल इंटेलिजन्स सह Gemini द्वारे सक्षम केलेले. <ph name="BEGIN_LINK" />सेटिंग्ज व्यवस्थापित करणे<ph name="END_LINK" /></translation>
 <translation id="3664479564786885722">या उत्पादनाची विक्री करणाऱ्या इतर स्टोअरवरून खरेदीचे आणखी पर्याय शोधा.</translation>
 <translation id="3664782872746246217">कीवर्ड:</translation>
 <translation id="3670030362669914947">नंबर</translation>
@@ -1594,6 +1596,7 @@
 <translation id="3693516565203081475">पेमेंट पद्धत निवडा</translation>
 <translation id="3698353241727597930">तुमच्या अ‍ॅडमिनिस्ट्रेटरने तुमच्या एंटरप्राइझद्वारे व्यवस्थापित केल्या जाणाऱ्या <ph name="CLOUD_STORAGE" /> मध्ये <ph name="FILES" /> सेव्ह करण्यासाठी कॉन्फिगर केले आहे. तुम्ही या फाइल हटवता, तेव्हा त्यांचे नियंत्रण, ऑडिट केले जाऊ शकते आणि त्या स्टोअर केल्या जाऊ शकतात.</translation>
 <translation id="3698629142018988477">साइट तयार करा बटण, Google Sites मध्ये नवीन साइट झटपट तयार करण्यासाठी ॲक्टिव्हेट करा</translation>
+<translation id="3698708128812719147">अधिक माहिती शोधण्यासाठी आणि भरण्यासाठी वेबवर कुठेही दोनदा कंट्रोल प्रेस करा</translation>
 <translation id="3700094625653511150">नंतर पेमेंट करण्याचे पर्याय लपवण्यासाठी, <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /> वर जा</translation>
 <translation id="3700966190175650601">पासवर्ड भरण्यासाठी तुम्ही तुमचे फिंगरप्रिंट वापरत आहात</translation>
 <translation id="3701427423622901115">रीसेट करण्याची नोंद घेतली आहे.</translation>
@@ -1861,7 +1864,6 @@
 <translation id="4121428309786185360">रोजी कालबाह्य होत आहे</translation>
 <translation id="4123572138124678573">ट्रिपल पंच बॉटम</translation>
 <translation id="412601465078863288">अपलोड करणे टाइम आउट झाले</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{अन्य 1}other{अन्य #}}</translation>
 <translation id="4129810348470013900">काहीतरी चुकले. तुमचे इंटरनेट कनेक्शन तपासा आणि पुन्हा प्रयत्न करा.</translation>
 <translation id="4130226655945681476">नेटवर्क केबल, मोडेम आणि राउटर तपासत आहे</translation>
 <translation id="4132448310531350254">"<ph name="POLICY_IDS_LIST" />". अ‍ॅप्सद्वारे संदर्भ दिलेल्या file_extension "<ph name="FILE_EXTENSION" />" साठी डुप्लिकेट हँडलर.</translation>
@@ -1897,6 +1899,7 @@
 <translation id="4185037616931963178">रिड्रेस नंबर सुरक्षितपणे अपडेट करा</translation>
 <translation id="4186035307311647330">किमतीचा बंद ठेवणे बंद करा</translation>
 <translation id="4191334393248735295">लांबी</translation>
+<translation id="4192770747482479191">अधिक माहिती शोधण्यासाठी आणि भरण्यासाठी वेबवर कुठेही दोनदा ⌘ प्रेस करा</translation>
 <translation id="4195459680867822611">Chrome शी संबंधित टिपा पहा बटण, Chrome च्या वैशिष्‍ट्यांविषयी जाणून घेण्यासाठी अ‍ॅक्टिव्हेट करा</translation>
 <translation id="4195643157523330669">नवीन टॅबमध्ये उघडा</translation>
 <translation id="4196861286325780578">&amp;हलवा पुन्हा करा</translation>
@@ -2214,7 +2217,6 @@
 <translation id="4725766358270333890">Microsoft OneDrive वर <ph name="COUNT" /> फाइल अपलोड करत आहे</translation>
 <translation id="4726672564094551039">धोरणे रीलोड करा</translation>
 <translation id="4728558894243024398">प्लॅटफॉर्म</translation>
-<translation id="4730773064303503917">Wallet वापरून मित्रमैत्रिणींना आणि व्यवसायांना Pix पाठवा</translation>
 <translation id="4730977633786878901">परीक्षणे</translation>
 <translation id="4731638775147756694">तुमच्या अ‍ॅडमिनिस्ट्रेटरने हे अ‍ॅप्लिकेशन ब्लॉक केले आहे</translation>
 <translation id="4732860731866514038"><ph name="LANGUAGE" /> भाषा पॅक डाउनलोड करत आहे... <ph name="PERCENT" />%</translation>
@@ -2845,6 +2847,7 @@
 <translation id="573974402615125334">टॅब गटांमध्ये शेअर करण्यासाठी, सामील होण्यासाठी आणि सहयोग करण्यासाठी, तुमचा इतिहास व टॅब सिंक करा</translation>
 <translation id="5740911612628596808">एन्व्हलप सी९</translation>
 <translation id="574392208103952083">मध्यम</translation>
+<translation id="5744350700955456407">वर्धित ऑटोफिल आता Gmail आणि Photos यांसारख्या ॲप्समधून ऑर्डर नंबर व फ्लाइट कन्फर्मेशन कोड यांसारखी माहिती शोधू शकते आणि भरू शकते</translation>
 <translation id="5745586894920491759">Chrome हे क्लाउडमध्ये पेजची शीर्षके आणि URLs वर प्रक्रिया करते</translation>
 <translation id="5745733273847572235">तुमच्या स्थानाची विनंती करू शकते</translation>
 <translation id="5750869797196646528">हँड ट्रॅकिंग</translation>
@@ -3227,7 +3230,6 @@
 <translation id="638289054711715023">श्रींक फॉइल</translation>
 <translation id="6383221683286411806">पुढे संभाव्य शुल्क आहे.</translation>
 <translation id="6384448607821972818">रिकव्हरी पासवर्ड दाखवला आहे</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{1 अन्य सूचना}other{# अन्य सूचना}}</translation>
 <translation id="6386565501269869892">एन्व्हलप यू ४</translation>
 <translation id="6387645831795005740">हल्लेखोर काहीवेळा URL मध्ये छोटे व पाहण्यासाठी कठीण असलेले बदल करून बनावट साइट बनवतात.</translation>
 <translation id="6389470377220713856">कार्डवरील नाव</translation>
@@ -4836,7 +4838,6 @@
 <translation id="9168814207360376865">तुम्ही पेमेंट पद्धती सेव्ह केल्या आहेत का हे तपासण्याची साइटला परवानगी द्या</translation>
 <translation id="9169931577761441333"><ph name="APP_NAME" /> ला होम स्क्रीनवर जोडा</translation>
 <translation id="9170848237812810038">&amp;पूर्ववत करा</translation>
-<translation id="9170906125144697215">अ‍ॅप्स स्विच न करता Pix वापरून पेमेंट करा</translation>
 <translation id="9171296965991013597">ॲप सोडायचे?</translation>
 <translation id="9173282814238175921">एक दस्तऐवज/नवीन शीट</translation>
 <translation id="9173995187295789444">ब्लूटूथ डिव्हाइससाठी स्कॅन करत आहे...</translation>

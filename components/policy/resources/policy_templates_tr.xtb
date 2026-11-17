@@ -3815,8 +3815,6 @@ Microsoft Outlook kartının kullanılabilmesi için ek yönetici yapılandırma
       Politika Devre Dışı değerine ayarlanırsa kayıtlı cihazlar kiosk oturumuyla ilgili bilgileri rapor etmez.</translation>
 <translation id="3303770131697159224">Varsayılan pencere yönetimi izni ayarı</translation>
 <translation id="3303911765031636277">OnFileAttached Chrome Enterprise Bağlayıcı için yapılandırma politikası</translation>
-<translation id="3305586786770047829">Bu politika 0 değerine ayarlanır veya ayarlanmadan bırakılırsa <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> politikası yalnızca ilişkili kullanıcılar için kullanıcı kapsamına uygulanır.
-Bu politika 1 değerine ayarlanırsa <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> politikası, ilişkili olmayan kullanıcılar için bile kullanıcı kapsamına uygulanır.</translation>
 <translation id="3307744348419745296"><ph name="PRODUCT_OS_NAME" /> cihazlar ve bağlı Android telefon arasında kablosuz ağ yapılandırmalarının senkronize edilmesine izin verme</translation>
 <translation id="3308724602356134956">Bu politikayı ayarlarsanız <ph name="PRODUCT_OS_NAME" />
 
@@ -6701,19 +6699,6 @@ Bu politika, web içeriğinin yeni davranışa geçirilmesi için zaman tanıyan
 <translation id="5120168808610189805">İlk çalıştırmada ana sayfanın içe aktarılmasını etkinleştir</translation>
 <translation id="5124321040285474825">Otomatik doldurmadaki üretken yapay zeka özellikleriyle ilgili ayarlar</translation>
 <translation id="5124368997194894978">AC'de (alternatif akım) başlat özeliğini etkinleştir</translation>
-<translation id="5124652340668722849"><ph name="PRODUCT_NAME" /> tarafından proxy yapılandırmalarını dinamik olarak getirmek için kullanılacak olan temel hazırlık alanlarının (PvD'ler) listesini yapılandırır.
-
-Bu politika, RFC 8801'de ("Discovering Provisioning Domain Names and Data") tanımlandığı şekliyle temel hazırlık alanlarını temsil eden alan adlarının veya kaynak URI'lerinin bir listesinin belirtilmesine olanak tanır. Tarayıcı, her PvD için "https://[<ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />]/.well-known/pvd" şeklindeki iyi bilinen uç nokta yoluna bir HTTPS isteği göndererek ilgili JSON yapılandırmasını çözümler.
-
-Listedeki her giriş şunları belirtir:
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />: Temel hazırlık alanının tanımlayıcısı (alan adı).
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_AUTH_CONFIG" />: İsteğe bağlı kimlik doğrulama yapılandırması. Yapılandırılmazsa veya "none" değerine ayarlanırsa kimlik doğrulama yapılmaz. "profile_bearer_token" olarak ayarlandığında tarayıcı, oturum açılmış ana hesap için belirtilen kapsamda bir OAuth2 erişim jetonu alır ve bunu "Authorization" başlığına "Bearer" jetonu olarak ekler.
-
-* <ph name="PROXY_PROVISIONING_DOMAINS_EXTRA_HEADERS" />: PvD uç noktası sorgulanırken dahil edilecek isteğe bağlı özel HTTP başlıkları listesi. Cihazdaki tarayıcı profilinin sabit ve benzersiz bir tanımlayıcısını temsil ederek profil bazında yapılandırma hedeflemeyi sağlayan "profile_id" veya tarayıcının tercih edilen dillerini temsil eden "accept_language" gibi dinamik değerler yerleştirilebilir.
-
-Getirilen yapılandırmalar, RFC 8801 şemasına göre ayrıştırılır. PvD'nin JSON yükünden yalnızca proxy yapılandırmasıyla ilgili yönlendirme kuralları ve proxy'ler uygulanır. Bu politika ayarlanmazsa hiçbir temel hazırlık alanı sorgulanmaz veya proxy yapılandırmalarını getirmek için kullanılmaz.</translation>
 <translation id="5130213897914754028">Sitelerin SharedArrayBuffers kullanmasını engelle</translation>
 <translation id="5130935469849337738">Her zaman çeviri öner</translation>
 <translation id="513314432051760916"><ph name="PRIVACY_SANDBOX_NAME" /> reklam ölçümü ayarının kullanıcılarınız için devre dışı bırakılıp bırakılamayacağını kontrol eden bir politika.
@@ -8781,17 +8766,6 @@ Not: Bu politika yalnızca uzantıları destekleyen platformlarda geçerlidir.</
       Politikanın False (Yanlış) değerine ayarlanması, İmzalanmış HTTP Takası içeriğinin yüklenmesini önler.</translation>
 <translation id="6368011194414932347">Ana sayfa URL'sini yapılandır</translation>
 <translation id="6368403635025849609">Bu sitelerde JavaScript'e izin ver</translation>
-<translation id="6368652917086795891"><ph name="PRODUCT_NAME" /> hizmetinde <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> için bağlantı ayarlarını yapılandırır.
-
-Bu politika, <ph name="GEMINI_ENTERPRISE_URL_POLICY_NAME" /> politikasının yerini alacak. İkisi de ayarlanırsa <ph name="GEMINI_ENTERPRISE_URL_POLICY_NAME" /> öncelikli olur.
-
-Politika, <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> web uygulaması URL'sini <ph name="GEMINI_ENTERPRISE_SETTINGS_URL_POLICY_VALUE" /> aracılığıyla yapılandırır. Bu URL, https şemasını kullanan, <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> alan adına işaret eden ve kullanıcı adı veya şifre içermeyen geçerli bir URL olmalıdır. Bu koşullar karşılanmazsa politika yoksayılır ve <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> yapılandırılmadan bırakılır.
-
-Bu politika ayarlanırsa <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" />, yönetilen bir hesap veya yönetilen tarayıcıyla oturum açan kullanıcılar için yapılandırılır.
-
-Bu politika ayarlanmazsa <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> yapılandırılmaz.
-
-Bu politikanın, <ph name="GOOGLE_GEMINI_PRODUCT_NAME" /> entegrasyonunu kontrol etmediğini unutmayın. Söz konusu entegrasyon <ph name="GEMINI_SETTINGS_POLICY_NAME" /> politikası tarafından yönetilebilir.</translation>
 <translation id="6368671810229507360">WebRTC</translation>
 <translation id="6370742079247037704">Yerleşik yapay zeka API'lerinin kullanılmasına izin verme.</translation>
 <translation id="6371005337713685988">İlgili Web Sitesi Grupları Ayarları</translation>
@@ -9607,15 +9581,6 @@ yeni başlatılan oluşturucu işlemleri yansıtır.</translation>
 <translation id="6833988859168635883">Başlangıç, Ana sayfa ve Yeni Sekme sayfası</translation>
 <translation id="6835254082476223414">Linux sanal makine yedekleme ve geri yükleme özelliğini etkinleştir</translation>
 <translation id="6835883744948188639">Kullanıcıya yeniden başlatmanın önerildiğini belirten yinelenen bir istem gösterme</translation>
-<translation id="683688607121170501">Bu ayar, kullanıcıların <ph name="PRODUCT_OS_NAME" /> cihazlarında oturum açtıktan sonra tarayıcı pencerelerinin içerik alanındaki Google Hesapları arasında geçiş yapmalarına olanak tanır.
-
-      Bu politika yanlış (false) değerine ayarlanırsa gizli modda olmayan tarayıcı içerik alanından ve Android uygulamalarından farklı bir Google Hesabı'nda oturum açılmasına izin verilmez.
-
-      Bu politika ayarlanmazsa veya doğru (true) değerine ayarlanırsa varsayılan davranış kullanılır: Tarayıcı içerik alanından ve Android uygulamalarından farklı bir Google Hesabında oturum açılmasına izin verilir ancak çocukların hesaplarında gizli modda olmayan içerik alanından farklı bir hesapta oturum açılamaz.
-
-      Gizli mod kullanılarak farklı bir hesapta oturum açılmasına izin verilmemesi halinde IncognitoModeAvailability politikasını kullanarak ilgili modu engelleme seçeneğini değerlendirebilirsiniz.
-
-       Kullanıcıların, çerezleri engelleyerek kimlik doğrulaması yapmadan Google hizmetlerine erişebileceğini unutmayın.</translation>
 <translation id="6841254611279513739">Politika ayarlanırsa yazdırma yalnızca renkli, yalnızca tek renk veya renk modu kısıtlaması yok değerine ayarlanır. Politika ayarlanmadan bırakılırsa hiçbir kısıtlama uygulanmaz.</translation>
 <translation id="6843008643303282259">İstenen yükleme hızı (kbit/sn. olarak).</translation>
 <translation id="6843296367238757293">Bu politika kullanımdan kaldırılmıştır. Kullanılması önerilmez. Daha fazla bilgiyi https://support.google.com/chrome/a/answer/7643500 adresinde bulabilirsiniz</translation>
@@ -10747,7 +10712,6 @@ bırakılırsa sesli okuma etkinleştirilir.</translation>
 <translation id="7491720878670299691">Ağ verilerinin etkinlikler için sorgulanma ve kontrol edilme hızı. İzin verilen minimum sıklık 1 dakikadır.
 
       Ayarlanmazsa 1 dakikalık varsayılan süre geçerli olur.</translation>
-<translation id="7496284563199466390"><ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> politikasını hangi yönetilen kullanıcı hesaplarının ayarlayabileceğini kontrol eder.</translation>
 <translation id="7498595166686106721">
       Görüntü yakalama izinleri politikası, https://www.w3.org/TR/screen-capture/#feature-policy-integration spesifikasyonuna göre getDisplayMedia() işlevine erişim sağlar. Ancak bu politika devre dışı ise bu şart zorunlu kılınmaz ve normalde yasaklanacak bağlamlardan kaynaklanan getDisplayMedia() işlevine izin verilir. Bu kurumsal politika geçici olup <ph name="PRODUCT_NAME" /> 100 sürümünden sonra kaldırılması planlanmaktadır. Uygulaması spesifikasyonlarla uyumlu olmayan ancak uygulamanın düzeltilmesi için zaman gereken Kurumsal kullanıcıların engelinin kaldırılması amaçlanmaktadır.
 

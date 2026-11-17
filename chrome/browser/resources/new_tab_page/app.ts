@@ -34,6 +34,7 @@ import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import type {FuseboxAction} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
 import {SearchboxOverride} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
 import type {PageCallbackRouter as SearchboxPageCallbackRouter} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {ModelMode, ToolMode} from 'chrome://resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import type {SkColor} from 'chrome://resources/mojo/skia/public/mojom/skcolor.mojom-webui.js';
 
 import type {ActionChipClickDetail} from './action_chips/action_chips.js';
@@ -355,7 +356,7 @@ export class AppElement extends AppElementBase {
        */
       enableThreadsRail_: {type: Boolean},
 
-      rhsWrapper_: {type: Object},
+      rhsWidth_: {type: Number},
 
       // =======================================================================
       // Private properties
@@ -502,7 +503,7 @@ export class AppElement extends AppElementBase {
   protected contextMenuAnimationLimitingEnabled_: boolean =
       loadTimeData.getBoolean('contextMenuAnimationLimitingEnabled');
   protected accessor searchboxCallbackRouter_: SearchboxPageCallbackRouter;
-  protected accessor rhsWrapper_: HTMLElement|null = null;
+  protected accessor rhsWidth_: number|null = null;
 
   private voiceSearchActivatedByKeyboard_: boolean = false;
   private accessor selectedCustomizeDialogPage_: string|null = null;
@@ -825,8 +826,6 @@ export class AppElement extends AppElementBase {
           {fixed: true});
     }
 
-    this.rhsWrapper_ = this.$.rhsWrapper;
-
     if (this.enableThreadsRail_) {
       this.observeRhsWrapperWidth_();
     }
@@ -960,9 +959,10 @@ export class AppElement extends AppElementBase {
 
   private observeRhsWrapperWidth_() {
     if (!this.rhsWrapperResizeObserver_) {
-      this.rhsWrapperResizeObserver_ = new ResizeObserver(entries => {
-        this.realboxCanShowSecondarySide = entries[0]!.contentRect.width >=
-            REALBOX_SECONDARY_SIDE_MIN_WIDTH_PX;
+      this.rhsWrapperResizeObserver_ = new ResizeObserver(() => {
+        this.rhsWidth_ = this.$.rhsWrapper.clientWidth;
+        this.realboxCanShowSecondarySide =
+            this.rhsWidth_ >= REALBOX_SECONDARY_SIDE_MIN_WIDTH_PX;
       });
     }
     this.rhsWrapperResizeObserver_.observe(this.$.rhsWrapper);
@@ -1022,7 +1022,7 @@ export class AppElement extends AppElementBase {
     return action.searchboxOverride === SearchboxOverride.kUnspecified;
   }
 
-  protected onOpenComposebox_(e: CustomEvent<ComposeboxState>) {
+  protected onOpenComposebox_(e: CustomEvent<ComposeboxState|null>) {
     this.openComposebox_(e.detail);
   }
 
@@ -1041,14 +1041,25 @@ export class AppElement extends AppElementBase {
     this.pageHandler_.onContextualSearchIPHEngaged();
   }
 
-  protected openComposebox_(state: ComposeboxState) {
-    this.composeboxState_ = state;
+  protected openComposebox_(state: ComposeboxState|null = null) {
+    this.composeboxState_ = state ?? {
+      text: '',
+      files: [],
+      mode: ToolMode.kUnspecified,
+      model: ModelMode.kUnspecified,
+      // <if expr="not is_android">
+      smartTabSharingActive: false,
+      // </if>
+    };
     this.ensureComposeboxOpen_();
   }
 
   private ensureComposeboxOpen_() {
     if (!this.showComposebox_) {
       this.showComposebox_ = true;
+    } else {
+      this.shadowRoot.querySelector<NtpComposeboxElement>('#composebox')
+          ?.focusInput();
     }
     if (!this.wasComposeboxOpened_) {
       recordLoadDuration(

@@ -6,19 +6,21 @@ import 'chrome://contextual-tasks/strings.m.js';
 import 'chrome://resources/cr_components/composebox/contextual_action_menu.js';
 import 'chrome://resources/cr_components/composebox/composebox_favicon_group.js';
 
-import {SmartTabSharingSurface} from 'chrome://resources/cr_components/composebox/common.js';
+import {SingleTabMenuItemAction, SingleTabType, SmartTabSharingSurface} from 'chrome://resources/cr_components/composebox/common.js';
 import type {ComposeboxFaviconGroupElement} from 'chrome://resources/cr_components/composebox/composebox_favicon_group.js';
 import type {ContextualActionMenuElement} from 'chrome://resources/cr_components/composebox/contextual_action_menu.js';
 import {DEFAULT_FLYOUT_WIDTH_PX, DEFAULT_MAX_MENU_HEIGHT_PX, MIN_MENU_HEIGHT_PX, SHARE_TABS_FLYOUT_GAP_PX, SHARE_TABS_FLYOUT_MAX_HEIGHT_PX, VIEWPORT_BUFFER_PX} from 'chrome://resources/cr_components/composebox/contextual_action_menu.js';
+import {MojoPluralStringProxy} from 'chrome://resources/cr_components/search/mojo_plural_string_proxy.js';
 import {AnchorAlignment} from 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import type {CrIconsetElement} from 'chrome://resources/cr_elements/cr_icon/cr_iconset.js';
 import {IconsetMap} from 'chrome://resources/cr_elements/cr_icon/iconset_map.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import {PluralStringProxyImpl} from 'chrome://resources/js/plural_string_proxy.js';
 import type {TabInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {InputState} from 'chrome://resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import {InputType, ModelMode, ToolMode} from 'chrome://resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
+import type {MetricsTracker} from 'chrome://webui-test/metrics_test_support.js';
+import {fakeMetricsPrivate} from 'chrome://webui-test/metrics_test_support.js';
 import {TestPluralStringProxy} from 'chrome://webui-test/test_plural_string_proxy.js';
 import {$$, eventToPromise, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
@@ -89,7 +91,7 @@ suite('ContextualActionMenu', () => {
     });
 
     const pluralStringProxy = new TestPluralStringProxy();
-    PluralStringProxyImpl.setInstance(pluralStringProxy);
+    MojoPluralStringProxy.setInstance(pluralStringProxy);
 
     actionMenu = document.createElement('cr-composebox-contextual-action-menu');
     Object.assign(actionMenu, {
@@ -2493,34 +2495,6 @@ suite('ContextualActionMenu', () => {
         assertTrue(tabButton2.disabled);
       });
 
-  test('Recent tab suffix disabled state', async () => {
-    actionMenu.remove();
-    actionMenu = document.createElement('cr-composebox-contextual-action-menu');
-    actionMenu.contextManagementInComposeboxEnabled = true;
-    const tabInfo = createTabSuggestion({
-      tabId: 1,
-      title: 'Recent Tab',
-    });
-    actionMenu.tabSuggestions = [tabInfo];
-    actionMenu.recentTabId = tabInfo.tabId;
-    actionMenu.inputState = new MockInputState({
-      allowedInputTypes: [InputType.kBrowserTab],
-      disabledInputTypes: [InputType.kBrowserTab],
-    });
-    document.body.appendChild(actionMenu);
-    await microtasksFinished();
-
-    actionMenu.showAt(actionMenu);
-    await microtasksFinished();
-
-    actionMenu.shareTabsFlyoutOpen = true;
-    await actionMenu.updateComplete;
-
-    const suffix = $$(actionMenu, '.recent-tabs-suffix');
-    assertTrue(isVisible(suffix));
-    assertTrue(suffix!.hasAttribute('disabled'));
-  });
-
   test('Share tabs trigger disabled when tab upload disabled', async () => {
     actionMenu.remove();
     actionMenu = document.createElement('cr-composebox-contextual-action-menu');
@@ -2748,133 +2722,13 @@ suite('ContextualActionMenu', () => {
         assertTrue(actionMenu.$.menu.open);
       });
 
-  test(
-      'Recent tab suffix follows the correct tab after reordering',
-      async () => {
-        const tab1 = createTabSuggestion({
-          tabId: 1,
-          title: 'Tab 1',
-          url: 'about:blank/1',
-        });
-        const tab2 = createTabSuggestion({
-          tabId: 2,
-          title: 'Tab 2',
-          url: 'about:blank/2',
-        });
-
-        loadTimeData.overrideValues({
-          composeboxContextMenuEnableMultiTabSelection: true,
-        });
-        actionMenu.remove();
-        actionMenu =
-            document.createElement('cr-composebox-contextual-action-menu');
-        actionMenu.contextManagementInComposeboxEnabled = true;
-
-        actionMenu.inputState = new MockInputState({
-          allowedInputTypes: [InputType.kBrowserTab],
-          toolsSectionConfig: {header: ''},
-          modelSectionConfig: {header: ''},
-        });
-
-        // Backend initially provides Tab 1 as the first (most recent) item.
-        actionMenu.tabSuggestions = [tab1, tab2];
-        actionMenu.recentTabId = tab1.tabId;
-        document.body.appendChild(actionMenu);
-
-        actionMenu.showAt(actionMenu);
-        await microtasksFinished();
-        await actionMenu.updateComplete;
-
-        // Precisely target only the tab items inside the Flyout.
-        const getFlyoutItems = () => {
-          return actionMenu.shadowRoot.querySelectorAll(
-              '.share-tabs-flyout .dropdown-item');
-        };
-
-        let items = getFlyoutItems();
-        assertEquals(2, items.length, 'The flyout menu should render 2 tabs');
-
-        // Verify Tab 1 (index 0 in flyout) has the suffix and Tab 2 (index 1)
-        // does not.
-        assertTrue(
-            !!items[0]?.querySelector('.recent-tabs-suffix'),
-            'Tab 1 should have a suffix initially');
-        assertFalse(
-            !!items[1]?.querySelector('.recent-tabs-suffix'),
-            'Tab 2 should not have a suffix initially');
-
-        // Simulate frontend re-sorting (Tab 2 moved to index 0)
-        actionMenu.tabSuggestions = [tab2, tab1];
-
-        actionMenu.requestUpdate();
-        await microtasksFinished();
-        await actionMenu.updateComplete;
-
-        // Allow a small amount of time for the Lit render tree to sync.
-        await new Promise(resolve => setTimeout(resolve, 0));
-
-        // Re-fetch the latest items inside the Flyout.
-        items = getFlyoutItems();
-        assertEquals(2, items.length);
-
-        // The new index 0 (Tab 2) should NOT have the suffix.
-        assertFalse(
-            !!items[0]?.querySelector('.recent-tabs-suffix'),
-            'Tab 2 should not have a suffix after reordering');
-
-        // The suffix should still be on Tab 1, now at index 1.
-        assertTrue(
-            !!items[1]?.querySelector('.recent-tabs-suffix'),
-            'Tab 1 should retain the suffix after reordering');
-      });
-
-  test(
-      'Dynamic suffix shows Current Tab only in Side Panel Contextual Tasks',
-      async () => {
-        actionMenu.remove();
-        actionMenu =
-            document.createElement('cr-composebox-contextual-action-menu');
-        actionMenu.contextManagementInComposeboxEnabled = true;
-
-        const tabInfo = createTabSuggestion({
-          tabId: 1,
-          title: 'Google Docs',
-        });
-        actionMenu.tabSuggestions = [tabInfo];
-        actionMenu.recentTabId = tabInfo.tabId;
-        actionMenu.inputState = new MockInputState({
-          allowedInputTypes: [InputType.kBrowserTab],
-        });
-
-        document.body.appendChild(actionMenu);
-        await microtasksFinished();
-
-        actionMenu.showAt(actionMenu);
-        await microtasksFinished();
-
-        const trigger = $$(actionMenu, '#shareTabsTrigger') as HTMLElement;
-        trigger.dispatchEvent(new PointerEvent('pointerenter'));
-        await microtasksFinished();
-
-        const suffix = $$(actionMenu, '.recent-tabs-suffix') as HTMLElement;
-        assertTrue(isVisible(suffix), 'Suffix should be visible');
-
-        actionMenu.isSidePanel = true;
-        await microtasksFinished();
-        assertEquals(
-            `· ${actionMenu.i18n('currentTabSuffix')}`,
-            suffix.textContent.trim(),
-            'Should render "Current tab" in side panel contextual tasks');
-
-        actionMenu.isSidePanel = false;
-        await microtasksFinished();
-        assertEquals(
-            `· ${actionMenu.i18n('recentTabsSuffix')}`,
-            suffix.textContent.trim(),
-            'Should fall back to "Recent tab" on the NTP');
-      });
-
   suite('SingleTabMenuItem', () => {
+    let metrics: MetricsTracker;
+
+    setup(() => {
+      metrics = fakeMetricsPrivate();
+    });
+
     const recentTab = createTabSuggestion({
       tabId: 1,
       title: 'Recent Tab',
@@ -2931,8 +2785,6 @@ suite('ContextualActionMenu', () => {
       assertEquals(
           recentTab.title,
           item.querySelector('.tab-title')!.textContent.trim());
-      // No "Recent"/"Current tab" suffix on the standalone row.
-      assertFalse(!!item.querySelector('.recent-tabs-suffix'));
       assertFalse(!!item.querySelector('.share-tabs-check'));
       const favicon = item.querySelector('cr-composebox-tab-favicon');
       assertTrue(!!favicon);
@@ -2950,7 +2802,6 @@ suite('ContextualActionMenu', () => {
       const flyoutItems = actionMenu.shadowRoot.querySelectorAll(
           '.share-tabs-flyout .dropdown-item');
       assertEquals(2, flyoutItems.length);
-      assertTrue(!!flyoutItems[0]!.querySelector('.recent-tabs-suffix'));
     });
 
     test('Item hidden when the recent tab is not a suggestion', async () => {
@@ -2982,21 +2833,33 @@ suite('ContextualActionMenu', () => {
 
     test('Click adds the tab as context', async () => {
       await createMenu(/*enabled=*/ true);
+      asInternal(actionMenu).metricsSource_ = 'NewTabPage';
       const item = $$(actionMenu, '#singleTabItem') as HTMLButtonElement;
-      const whenAdded =
-          eventToPromise<CustomEvent<{id: number, title: string, url: string}>>(
-              'add-tab-context', actionMenu);
+      const whenAdded = eventToPromise<CustomEvent<{
+        id: number,
+        title: string,
+        url: string,
+        singleTabType?: SingleTabType,
+      }>>('add-tab-context', actionMenu);
       item.click();
       const event = await whenAdded;
       assertEquals(recentTab.tabId, event.detail.id);
       assertEquals(recentTab.title, event.detail.title);
       assertEquals(recentTab.url, event.detail.url);
+      assertEquals(SingleTabType.RECENT_TAB, event.detail.singleTabType);
+
+      assertEquals(
+          1,
+          metrics.count(
+              'ContextualSearch.SingleTabMenuItem.Action.NewTabPage',
+              SingleTabMenuItemAction.RECENT_TAB_SELECTED));
     });
 
     test('Shows checkmark and deselects when already selected', async () => {
       await createMenu(/*enabled=*/ true, {
         selectedTabIds: new Map([[recentTab.tabId, 'some-token']]),
       });
+      asInternal(actionMenu).metricsSource_ = 'NewTabPage';
       const item = $$(actionMenu, '#singleTabItem') as HTMLButtonElement;
       assertEquals('true', item.getAttribute('aria-checked'));
       assertTrue(!!item.querySelector('.share-tabs-check'));
@@ -3006,7 +2869,66 @@ suite('ContextualActionMenu', () => {
       item.click();
       const event = await whenDeleted;
       assertEquals(recentTab.tabId, event.detail.tabId);
+
+      assertEquals(
+          1,
+          metrics.count(
+              'ContextualSearch.SingleTabMenuItem.Action.NewTabPage',
+              SingleTabMenuItemAction.RECENT_TAB_DESELECTED));
     });
+
+    test('Records CurrentTab slice when clicked in side panel', async () => {
+      await createMenu(/*enabled=*/ true, {isSidePanel: true});
+      asInternal(actionMenu).metricsSource_ = 'ContextualTasks';
+      const item = $$(actionMenu, '#singleTabItem') as HTMLButtonElement;
+      const whenAdded = eventToPromise<CustomEvent<{
+        singleTabType?: SingleTabType,
+      }>>('add-tab-context', actionMenu);
+      item.click();
+      const event = await whenAdded;
+      assertEquals(SingleTabType.CURRENT_TAB, event.detail.singleTabType);
+
+      assertEquals(
+          1,
+          metrics.count(
+              'ContextualSearch.SingleTabMenuItem.Action.ContextualTasks',
+              SingleTabMenuItemAction.CURRENT_TAB_SELECTED));
+
+      actionMenu.selectedTabIds = new Map([[recentTab.tabId, 'token']]);
+      await microtasksFinished();
+      item.click();
+      assertEquals(
+          1,
+          metrics.count(
+              'ContextualSearch.SingleTabMenuItem.Action.ContextualTasks',
+              SingleTabMenuItemAction.CURRENT_TAB_DESELECTED));
+    });
+
+    test(
+        'Flyout tab click does not record SingleTabMenuItem metrics',
+        async () => {
+          await createMenu(/*enabled=*/ true);
+          asInternal(actionMenu).metricsSource_ = 'NewTabPage';
+          const trigger = $$(actionMenu, '#shareTabsTrigger') as HTMLElement;
+          trigger.dispatchEvent(new PointerEvent('pointerenter'));
+          await microtasksFinished();
+
+          const flyoutItem =
+              actionMenu.shadowRoot.querySelector<HTMLButtonElement>(
+                  '.share-tabs-flyout .dropdown-item');
+          assertTrue(!!flyoutItem);
+
+          const whenAdded =
+              eventToPromise<CustomEvent<{singleTabType?: SingleTabType}>>(
+                  'add-tab-context', actionMenu);
+          flyoutItem.click();
+          const event = await whenAdded;
+          assertEquals(undefined, event.detail.singleTabType);
+          assertEquals(
+              0,
+              metrics.count(
+                  'ContextualSearch.SingleTabMenuItem.Action.NewTabPage'));
+        });
 
     test('Disabled when tab upload is disabled', async () => {
       await createMenu(/*enabled=*/ true, {

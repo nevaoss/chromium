@@ -415,6 +415,9 @@ BASE_FEATURE(kUpdateRequestForCorsRedirect, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAvoidCorsURLLoaderRestartOnRedirect,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kAllowSameOriginCredentialsWithDisableWebSecurity,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // https://github.com/patcg-individual-drafts/topics
 // Kill switch for the Topics API.
 BASE_FEATURE(kBrowsingTopics, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -563,5 +566,7 @@ BASE_FEATURE(kBindURLLoaderFactoryToHighPriorityTaskRunner,
 BASE_FEATURE(kEnforceIsolatedWorldOriginLock, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kForwardProxyAuthWithoutPrompt, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kPrewarmCryptbase, base::FEATURE_ENABLED_BY_DEFAULT);
 
 }  // namespace network::features

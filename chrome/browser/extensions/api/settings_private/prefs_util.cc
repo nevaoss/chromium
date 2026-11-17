@@ -466,6 +466,8 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[::prefs::kSafeBrowsingScoutReportingEnabled] =
       settings_api::PrefType::kBoolean;
+  (*s_allowlist)[::prefs::kSafeBrowsingNoProtectionDisabledPermanently] =
+      settings_api::PrefType::kBoolean;
   (*s_allowlist)[::safe_browsing::kGeneratedSafeBrowsingPref] =
       settings_api::PrefType::kNumber;
   (*s_allowlist)[::prefs::kHttpsOnlyModeEnabled] =
@@ -1285,6 +1287,8 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
   (*s_allowlist)[ash::prefs::kAccessibilityScreenMagnifierEnabled] =
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[ash::prefs::kAccessibilitySelectToSpeakEnabled] =
+      settings_api::PrefType::kBoolean;
+  (*s_allowlist)[ash::prefs::kAccessibilityShakeToLocateEnabled] =
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[ash::prefs::kAccessibilitySpokenFeedbackEnabled] =
       settings_api::PrefType::kBoolean;

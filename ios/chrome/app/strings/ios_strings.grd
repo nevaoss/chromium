@@ -362,6 +362,36 @@
       <message name="IDS_IOS_ACTOR_WORKLOG_CHIP_WAITING" desc="Worklog chip label indicating the actor is waiting. [iOS only]">
         Waiting
       </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_SUGGESTIONS_ADDRESS_TITLE" desc="Title of worklog card prompting the user to select an address. [iOS only]">
+        Select address
+      </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_SUGGESTIONS_ALLOW_BUTTON" desc="Primary button label allowing Gemini to fill the selected form suggestion. [iOS only]">
+        Allow
+      </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_SUGGESTIONS_CONTACT_TITLE" desc="Title of worklog card prompting the user to select personal info. [iOS only]">
+        Select personal info
+      </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_SUGGESTIONS_CREDENTIAL_MANUAL_FILL_BUTTON" desc="Button label allowing the user to manually sign in instead of letting Gemini autofill the form. [iOS only]">
+        Manual sign in
+      </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_SUGGESTIONS_CREDENTIAL_SUBTITLE" desc="Subtitle of worklog card explaining that Gemini can use Google Password Manager to sign in. [iOS only]">
+        Gemini can use Google Password Manager to sign in for you
+      </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_SUGGESTIONS_CREDENTIAL_TITLE" desc="Title of worklog card prompting the user to sign in. [iOS only]">
+        Sign in
+      </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_SUGGESTIONS_CREDENTIAL_TITLE_WITH_SITE" desc="Title of worklog card prompting the user to sign in to a specific site. [iOS only]">
+        Sign in to <ph name="SITE_DOMAIN">$1<ex>camera.com</ex></ph>
+      </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_SUGGESTIONS_MANUAL_FILL_BUTTON" desc="Secondary button label allowing the user to manually enter form info. [iOS only]">
+        Manually enter
+      </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_SUGGESTIONS_PAYMENT_SUBTITLE" desc="Subtitle of worklog card explaining that Gemini can ask Google Wallet to fill payment info. [iOS only]">
+        To continue the task, Gemini can ask Google Wallet to fill out your credit card info
+      </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_SUGGESTIONS_PAYMENT_TITLE" desc="Title of worklog card prompting the user to fill payment info. [iOS only]">
+        Filling payment info
+      </message>
       <message name="IDS_IOS_ADDRESSES_NOT_ENCRYPTED_DIALOG_TEXT" desc="Text of a dialog shown to users when they turn on the ability to use and save addresses in their Google Account. This is shown to users who encrypt their data with their own passphrase in order to explain that addresses they will save in the future will not be encrypted. [iOS only]">
         Addresses aren't encrypted with your passphrase. This lets you use them in other Google services.
       </message>
@@ -8404,9 +8434,6 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_SIGNIN_SNACKBAR_UNDO" desc="This string is found on a button that signs the user out when the user taps it. It is on a confirmation message that users see when they sign in to Chrome with their Google Account. This text is a verb and is short for the longer phrase 'Undo my sign-in.' The tone should be informative. [Length: 15em] [iOS only]">
         Undo
       </message>
-      <message name="IDS_IOS_SIGNOUT_AND_DISALLOW_SIGNIN_CLOSES_TABS_AND_CLEARS_DATA_MESSAGE_WITH_MANAGED_ACCOUNT" desc="Text to inform the managed user about why their their device data is being cleared on signout. [iOS only]">
-        After you sign out, tabs will be closed and unsaved account data will be deleted from this device. This could include passwords, history, and more.
-      </message>
       <message name="IDS_IOS_SIGNOUT_DIALOG_CLEAR_DATA_BUTTON" desc="This button signs the user out and delete all the data from the user device. The data remain in their Google account. Related to IDS_IOS_SIGNOUT_DIALOG_TITLE [iOS only].">
         Clear data
       </message>
@@ -9781,8 +9808,8 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_SIGNIN_ACCOUNT_PICKER_BOTTOM_SHEET_SUBTITLE_ON_ALL_DEVICES_SAVED_INFO" desc="This string is the subtitle of a promotional bottom sheet about signing in to Chrome with the user's Google Account. It explains the user benefit of signing in to get data on all devices.">
         Sign in to get your saved info and more on all your devices
       </message>
-      <message name="IDS_SIGNIN_DEVICE_TYPE_LAPTOP" desc="Device type string to be inserted as a placeholder into sign-in promo and web sign-in subtitle messages.">
-        your laptop
+      <message name="IDS_SIGNIN_DEVICE_TYPE_COMPUTER" desc="Device type string to be inserted as a placeholder into sign-in promo and web sign-in subtitle messages.">
+        your computer
       </message>
       <message name="IDS_SIGNIN_DEVICE_TYPE_PHONE" desc="Device type string to be inserted as a placeholder into sign-in promo and web sign-in subtitle messages.">
         your phone

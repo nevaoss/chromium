@@ -28,6 +28,7 @@ import java.lang.annotation.RetentionPolicy;
     FeatureConstants.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_VOICE_SEARCH_FEATURE,
     FeatureConstants.ADAPTIVE_BUTTON_PIN_GLIC_TOOLBAR_BUTTON_FEATURE,
     FeatureConstants.AIM_ACTIVATION_HINT,
+    FeatureConstants.ANDROID_BOTTOM_BAR_EDUCATION,
     FeatureConstants.ANDROID_BOTTOM_BAR_GLIC,
     FeatureConstants.ANDROID_BOTTOM_BAR_NEW_TAB,
     FeatureConstants.ANDROID_BOTTOM_BAR_PROMO_DIALOG,
@@ -138,6 +139,7 @@ import java.lang.annotation.RetentionPolicy;
     FeatureConstants.TAB_GROUP_SHARE_UPDATE_FEATURE,
     FeatureConstants.TAB_GROUP_SHARE_VERSION_UPDATE_FEATURE,
     FeatureConstants.TAB_GROUP_SYNC_ON_STRIP_FEATURE,
+    FeatureConstants.TAB_PICKER_SELECT_TABS_FEATURE,
     FeatureConstants.TAB_SWITCHER_ADD_TO_GROUP,
     FeatureConstants.TAB_SWITCHER_BUTTON_FEATURE,
     FeatureConstants.TAB_SWITCHER_BUTTON_SWITCH_INCOGNITO,
@@ -178,6 +180,9 @@ public @interface FeatureConstants {
 
     /** A hint to activate AI Mode on Android Desktop via keystrokes. */
     String AIM_ACTIVATION_HINT = "IPH_AimActivationHint";
+
+    /** Bottom bar education bubble and tooltips. */
+    String ANDROID_BOTTOM_BAR_EDUCATION = "IPH_AndroidBottomBarEducation";
 
     /** Describes the GLIC button on the new bottom bar. */
     String ANDROID_BOTTOM_BAR_GLIC = "IPH_AndroidBottomBarGlic";
@@ -507,6 +512,9 @@ public @interface FeatureConstants {
 
     /** An IPH feature to show when tab group is synced across devices. */
     String TAB_GROUP_SYNC_ON_STRIP_FEATURE = "IPH_TabGroupSyncOnStrip";
+
+    /** An IPH feature to prompt users in the Tab Picker to select tabs for search. */
+    String TAB_PICKER_SELECT_TABS_FEATURE = "IPH_TabPickerSelectTabs";
 
     /**
      * An IPH feature to prompt users to select the 'Add to group' option in the Tab Switcher 3-Dot

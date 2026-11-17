@@ -40,7 +40,6 @@ BASE_FEATURE(kHideToolbar, base::FEATURE_DISABLED_BY_DEFAULT);
 bool IsHideToolbarEnabled() {
   return base::FeatureList::IsEnabled(kHideToolbar);
 }
-BASE_FEATURE(kHideFuseboxVoiceLensActions, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSharedHighlightingIOS, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1253,4 +1252,31 @@ bool IsFiveButtonAppBarLayoutEnabled() {
     return false;
   }
   return base::FeatureList::IsEnabled(kFiveButtonAppBarLayout);
+}
+
+BASE_FEATURE(kClearRootViewControllerAfterSceneDisconnect,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+bool IsClearRootViewControllerAfterSceneDisconnectEnabled() {
+  return base::FeatureList::IsEnabled(
+      kClearRootViewControllerAfterSceneDisconnect);
+}
+
+BASE_FEATURE(kLocationBarPerformanceImprovements,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsLocationBarPerformanceImprovementsEnabled() {
+  return base::FeatureList::IsEnabled(kLocationBarPerformanceImprovements);
+}
+
+BASE_FEATURE(kAppBarStaticSymbolWhenHidden, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsAppBarStaticSymbolWhenHiddenEnabled() {
+  return base::FeatureList::IsEnabled(kAppBarStaticSymbolWhenHidden);
+}
+
+BASE_FEATURE(kAppBarDisableLongPress, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsAppBarDisableLongPressEnabled() {
+  return base::FeatureList::IsEnabled(kAppBarDisableLongPress);
 }

@@ -26,24 +26,6 @@ chromium-metrics-reviews@google.com.
 
 <enums>
 
-<!-- LINT.IfChange(ChromeRelativePosition) -->
-
-<enum name="ChromeRelativePosition">
-  <int value="0" label="Above Left"/>
-  <int value="1" label="Center Left"/>
-  <int value="2" label="Below Left"/>
-  <int value="3" label="Above Center"/>
-  <int value="4" label="Overlap"/>
-  <int value="5" label="Below Center"/>
-  <int value="6" label="Above Right"/>
-  <int value="7" label="Center Right"/>
-  <int value="8" label="Below Right"/>
-  <int value="9" label="Chrome window on other display"/>
-  <int value="10" label="No Visible Chrome Browser"/>
-</enum>
-
-<!-- LINT.ThenChange(//chrome/browser/glic/glic_metrics.h:ChromeRelativePosition) -->
-
 <!-- LINT.IfChange(CopyFromSurfaceError) -->
 
 <enum name="CopyFromSurfaceError">
@@ -57,23 +39,6 @@ chromium-metrics-reviews@google.com.
 </enum>
 
 <!-- LINT.ThenChange(//content/public/browser/render_widget_host_view.h:CopyFromSurfaceError) -->
-
-<!-- LINT.IfChange(DisplayPosition) -->
-
-<enum name="DisplayPosition">
-  <int value="0" label="Top Left"/>
-  <int value="1" label="Center Left"/>
-  <int value="2" label="Bottom Left"/>
-  <int value="3" label="Top Center"/>
-  <int value="4" label="Center Center"/>
-  <int value="5" label="Bottom Center"/>
-  <int value="6" label="Top Right"/>
-  <int value="7" label="Center Right"/>
-  <int value="8" label="Bottom Right"/>
-  <int value="9" label="Unknown"/>
-</enum>
-
-<!-- LINT.ThenChange(//chrome/browser/glic/glic_metrics.h:DisplayPosition) -->
 
 <!-- LINT.IfChange(GeicCloseAuthTabResult) -->
 
@@ -161,19 +126,6 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//chrome/browser/glic/public/glic_enabling.h:AnchoredDespiteEligibilityReason) -->
 
-<!-- LINT.IfChange(GlicBrowserActiveState) -->
-
-<enum name="GlicBrowserActiveState">
-  <int value="0" label="Browser active"/>
-  <int value="1" label="Browser recently active 1 to 5s"/>
-  <int value="2" label="Browser recently active 5 to 10s"/>
-  <int value="3" label="Browser recently active 10 to 30s"/>
-  <int value="4" label="Browser inactive"/>
-  <int value="5" label="Browser hidden"/>
-</enum>
-
-<!-- LINT.ThenChange(//chrome/browser/glic/glic_metrics.cc:BrowserActiveState) -->
-
 <!-- LINT.IfChange(GlicCheckAuthBeforeLoadOutcome) -->
 
 <enum name="GlicCheckAuthBeforeLoadOutcome">
@@ -211,6 +163,7 @@ chromium-metrics-reviews@google.com.
   <int value="4" label="Nudge"/>
   <int value="5" label="Iph"/>
   <int value="6" label="MemoryPressureRecovery"/>
+  <int value="7" label="SelectionOverlay"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/host/glic_web_contents_warming_pool.h:GlicContainerCreationReason) -->
@@ -665,6 +618,7 @@ chromium-metrics-reviews@google.com.
   <int value="52" label="WebUI State Ineligible Account"/>
   <int value="53" label="Client Ready"/>
   <int value="54" label="Tab Context Requested"/>
+  <int value="55" label="Opt-In Impression"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/service/metrics/metrics_types.h:GlicInstanceEvent) -->
@@ -738,6 +692,7 @@ chromium-metrics-reviews@google.com.
   <int value="46" label="Context menu link"/>
   <int value="47" label="Context menu page"/>
   <int value="48" label="Context menu text selection"/>
+  <int value="49" label="From a actor GeminiPanelTool"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/common/glic_enums.mojom:InvocationSource) -->
@@ -802,17 +757,6 @@ chromium-metrics-reviews@google.com.
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/service/glic_invoke_task.h:GlicTaskType) -->
-
-<!-- LINT.IfChange(GlicResponseError) -->
-
-<enum name="GlicMetricsError">
-  <int value="0" label="Response start without input."/>
-  <int value="1" label="Response stop without input."/>
-  <int value="2" label="Response start while hiding or hidden."/>
-  <int value="3" label="Window close without window open."/>
-</enum>
-
-<!-- LINT.ThenChange(//chrome/browser/glic/glic_metrics.h:Error) -->
 
 <!-- LINT.IfChange(GlicMultiInstanceSessionEndReason) -->
 
@@ -1268,6 +1212,10 @@ chromium-metrics-reviews@google.com.
   <int value="194" label="Context menu text selection, attached, audio mode."/>
   <int value="195" label="Context menu text selection, detached, text mode."/>
   <int value="196" label="Context menu text selection, detached, audio mode."/>
+  <int value="197" label="From actor GeminiPanelTool, attached, text mode."/>
+  <int value="198" label="From actor GeminiPanelTool, attached, audio mode."/>
+  <int value="199" label="From actor GeminiPanelTool, detached, text mode."/>
+  <int value="200" label="From actor GeminiPanelTool, detached, audio mode."/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/service/metrics/metrics_types.h:ResponseSegmentation) -->
@@ -1554,13 +1502,14 @@ chromium-metrics-reviews@google.com.
 <!-- LINT.IfChange(ScreenshotCaptureStatus) -->
 
 <enum name="ScreenshotCaptureStatus">
-  <int value="0" label="Success"/>
-  <int value="1" label="No view or surface"/>
-  <int value="2" label="CopyFromSurface error"/>
-  <int value="3" label="Paint preview error"/>
-  <int value="4" label="Timeout"/>
-  <int value="5" label="Redaction error"/>
-  <int value="6" label="Encoding error"/>
+  <int value="0" label="Unknown"/>
+  <int value="1" label="Success"/>
+  <int value="2" label="No view or surface"/>
+  <int value="3" label="CopyFromSurface error"/>
+  <int value="4" label="Paint preview error"/>
+  <int value="5" label="Timeout"/>
+  <int value="6" label="Redaction error"/>
+  <int value="7" label="Encoding error"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/page_content_annotations/content/page_context_fetcher_metrics.h:ScreenshotCaptureStatus) -->

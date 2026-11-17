@@ -109,6 +109,7 @@
 #include "chrome/browser/sync/sessions/sync_sessions_web_contents_router_factory.h"
 #include "chrome/browser/sync_tab_context/tab_context_decryption_token_tab_helper.h"
 #include "chrome/browser/tab_contents/navigation_metrics_recorder.h"
+#include "chrome/browser/task_manager/common/task_manager_features.h"
 #include "chrome/browser/task_manager/web_contents_tags.h"
 #include "chrome/browser/translate/chrome_translate_client.h"
 #include "chrome/browser/trusted_vault/trusted_vault_encryption_keys_tab_helper.h"
@@ -163,6 +164,7 @@
 #include "components/page_content_annotations/core/page_content_extraction_types.h"
 #include "components/payments/core/features.h"
 #include "components/performance_manager/embedder/performance_manager_registry.h"
+#include "components/performance_manager/public/performance_manager.h"
 #include "components/permissions/permission_recovery_success_rate_tracker.h"
 #include "components/permissions/permission_request_manager.h"
 #include "components/search/ntp_features.h"
@@ -610,7 +612,12 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
       GetUserDataFactory().CreateInstance<ChainedBackNavigationTracker>(
           *tab, *tab, web_contents);
 
-  task_manager::WebContentsTags::CreateForTabContents(web_contents);
+  // On Clank, Task Manager is not active on mobile phone/tablet form factors.
+  // Only attach WebContentsTags if the Clank task manager feature is enabled
+  // or if running on desktop form factors (e.g. desktop windowing / Dex).
+  if (features::IsTaskManagerClankEnabled()) {
+    task_manager::WebContentsTags::CreateForTabContents(web_contents);
+  }
 
   media_state_observer_ = std::make_unique<MediaStateObserver>(web_contents);
 
@@ -800,15 +807,25 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
         web_contents, HistoryTabHelper::FromWebContents(web_contents));
   }
 
-  if (!blocked_content::PopupBlockerTabHelper::FromWebContents(web_contents)) {
-    if (auto* pm_registry =
-            performance_manager::PerformanceManagerRegistry::GetInstance()) {
+  if (auto* pm_registry =
+          performance_manager::PerformanceManagerRegistry::GetInstance()) {
+    // A WebContents reparented into a new TabAndroid already has its PageType
+    // set to kTab, and PageNodeImpl::SetType CHECKs that SetPageType is only
+    // called once per WebContents.
+    base::WeakPtr<performance_manager::PageNode> page_node =
+        performance_manager::PerformanceManager::
+            GetPrimaryPageNodeForWebContents(web_contents);
+    if (page_node &&
+        page_node->GetType() != performance_manager::PageType::kTab) {
       pm_registry->SetPageType(web_contents,
                                performance_manager::PageType::kTab);
     }
   }
 
-  blocked_content::PopupBlockerTabHelper::CreateForWebContents(web_contents);
+  popup_blocker_tab_helper_ =
+      GetUserDataFactory()
+          .CreateInstance<blocked_content::PopupBlockerTabHelper>(*tab, *tab,
+                                                                  web_contents);
 
   RequestDesktopSiteWebContentsObserverAndroid::CreateForWebContents(
       web_contents);

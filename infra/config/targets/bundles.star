@@ -1397,7 +1397,7 @@ targets.bundle(
         ),
         "browser_tests": targets.mixin(
             swarming = targets.swarming(
-                shards = 8,
+                shards = 16,
                 dimensions = {
                     "cores": "8",
                 },
@@ -1420,7 +1420,7 @@ targets.bundle(
         ),
         "interactive_ui_tests": targets.mixin(
             swarming = targets.swarming(
-                shards = 3,
+                shards = 6,
                 dimensions = {
                     "cores": "8",
                 },
@@ -3452,6 +3452,7 @@ targets.bundle(
                 ],
             ),
             "skia_gold_test",
+            "skia_gold_bypass",
         ],
     },
 )
@@ -3473,6 +3474,7 @@ targets.bundle(
         ),
         "gl_unittests": [
             "skia_gold_test",
+            "skia_gold_bypass",
         ],
     },
 )
@@ -3510,6 +3512,7 @@ targets.bundle(
                 ],
             ),
             "skia_gold_test",
+            "skia_gold_bypass",
         ],
     },
 )
@@ -5928,6 +5931,7 @@ targets.bundle(
     name = "mac_specific_isolated_scripts",
     targets = [
         "mac_signing_tests",
+        "views_examples_mac_signing_tests",
     ],
 )
 
@@ -6056,6 +6060,7 @@ targets.bundle(
     per_test_modifications = {
         "views_examples_unittests": [
             "skia_gold_test",
+            "skia_gold_bypass",
         ],
     },
 )

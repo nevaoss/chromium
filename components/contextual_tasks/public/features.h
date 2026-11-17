@@ -24,8 +24,10 @@ BASE_DECLARE_FEATURE(kContextualTasksUpdatedEntryPoints);
 BASE_DECLARE_FEATURE(kContextualTasksExtraOauthScopes);
 BASE_DECLARE_FEATURE(kContextualTasksDriveOAuthScope);
 BASE_DECLARE_FEATURE(kEnableContextualTasksPinButtonInToolbar);
+BASE_DECLARE_FEATURE(kEnableContextualTasksPinButtonOnSrp);
 BASE_DECLARE_FEATURE(kEphemeralPinningVisibleWhenPermanentlyPinned);
 BASE_DECLARE_FEATURE(kContextualTasksEphemeralButtonContextMenu);
+BASE_DECLARE_FEATURE(kContextualTasksEphemeralButtonAutoDismiss);
 BASE_DECLARE_FEATURE(kContextualTasksContext);
 BASE_DECLARE_FEATURE(kContextualTasksSearchQuery);
 BASE_DECLARE_FEATURE(kContextualTasksContextMultiTurnTabRelevance);
@@ -161,6 +163,19 @@ extern const base::FeatureParam<bool> kOpenNewTabOnSidePanelLinkClick;
 // Returns whether clicking links in the contextual tasks side panel should
 // always open a new tab instead of focusing an existing affiliated tab.
 bool ShouldOpenNewTabOnSidePanelLinkClick();
+
+// Controls whether closing the contextual tasks side panel only applies to the
+// tab where the user closed it, instead of all tabs affiliated with the same
+// task.
+extern const base::FeatureParam<bool> kScopeSidePanelStateToTab;
+
+// Returns whether closing the contextual tasks side panel should only apply to
+// the tab where the user closed it.
+bool ShouldScopeSidePanelStateToTab();
+
+// Enables emitting attached tab context tokens in OnSuggestInputsChanged for
+// tab-based query suggestions.
+BASE_DECLARE_FEATURE(kContextualTasksTabBasedSuggestions);
 
 // When enabled, allows AIM search URLs to be created and navigated immediately
 // upon starting contextual input uploads without waiting for background
@@ -336,6 +351,22 @@ extern bool GetEnableRightHandContextualTasksEphemeralButton();
 // circular button with drop shadow next to the battery saver button.
 BASE_DECLARE_FEATURE_PARAM(bool,
                            kEnableCircularEphemeralButtonNextToBatterySaver);
+
+// Controls whether the ephemeral contextual tasks toolbar button context menu
+// displays "Close side panel" instead of "Hide side panel".
+extern const base::FeatureParam<bool>
+    kContextualTasksEphemeralButtonContextMenuCloseSidePanel;
+
+bool ShouldUseCloseSidePanelForEphemeralButtonContextMenu();
+
+// Duration in minutes after closing the contextual tasks side panel before the
+// ephemeral toolbar button is automatically dismissed and its task
+// disassociated. Defaults to 120 minutes (2 hours).
+extern const base::FeatureParam<int>
+    kContextualTasksEphemeralButtonAutoDismissTimeMinutes;
+
+bool IsContextualTasksEphemeralButtonAutoDismissEnabled();
+int GetContextualTasksEphemeralButtonAutoDismissTimeMinutes();
 
 // UI Options to expand the contextual tasks side panel to tab.
 extern const base::FeatureParam<ExpandButtonOption, true> kExpandButtonOptions;
@@ -543,6 +574,9 @@ extern bool IsRoundedClipPathEnabled();
 // Returns whether the pin button in toolbar is enabled.
 extern bool IsContextualTasksPinButtonInToolbarEnabled();
 
+// Returns whether the pin button in the side panel header is enabled on SRP.
+extern bool IsContextualTasksPinButtonOnSrpEnabled();
+
 // Returns the number of sessions after onboarding before triggering the pinning
 // IPH.
 extern int GetContextualTasksNumSessionsBeforeRequestPinPromo();
@@ -553,6 +587,7 @@ extern bool GetIsWebpageApcComparisonEnabled();
 extern bool IsContextualTasksRearchitectureEnabled();
 extern bool IsContextualTasksSidePanelRearchitectureEnabled();
 extern bool IsContextualTasksClobberActiveTabEnabled();
+extern bool IsContextualTasksTabBasedSuggestionsEnabled();
 extern bool IsContextualTasksUnboundedMenuEnabled();
 
 inline constexpr char kContextualTasksSearchCapabilitiesHeaderName[] =
@@ -594,6 +629,8 @@ extern const char kContextualTasksCookiePrefetchName[];
 extern const char kContextualTasksCookiePrefetchDescription[];
 extern const char kEnableContextualTasksPinButtonInToolbarName[];
 extern const char kEnableContextualTasksPinButtonInToolbarDescription[];
+extern const char kEnableContextualTasksPinButtonOnSrpName[];
+extern const char kEnableContextualTasksPinButtonOnSrpDescription[];
 extern const char kContextualTasksHideMenuOnAiPageName[];
 extern const char kContextualTasksHideMenuOnAiPageDescription[];
 extern const char kContextualTasksEnableSpatialModelToolbarLayoutName[];
@@ -608,12 +645,16 @@ extern const char kContextualTasksSidePanelRearchitectureName[];
 extern const char kContextualTasksSidePanelRearchitectureDescription[];
 extern const char kContextualTasksClobberActiveTabName[];
 extern const char kContextualTasksClobberActiveTabDescription[];
+extern const char kContextualTasksTabBasedSuggestionsName[];
+extern const char kContextualTasksTabBasedSuggestionsDescription[];
 extern const char kContextualTasksBypassDismissedCapName[];
 extern const char kContextualTasksBypassDismissedCapDescription[];
 extern const char kEphemeralPinningVisibleWhenPermanentlyPinnedName[];
 extern const char kEphemeralPinningVisibleWhenPermanentlyPinnedDescription[];
 extern const char kContextualTasksEphemeralButtonContextMenuName[];
 extern const char kContextualTasksEphemeralButtonContextMenuDescription[];
+extern const char kContextualTasksEphemeralButtonAutoDismissName[];
+extern const char kContextualTasksEphemeralButtonAutoDismissDescription[];
 extern const char kABASearchJourneysName[];
 extern const char kABASearchJourneysDescription[];
 extern const char kAllowSignedOutUserInDesktopAndroidName[];

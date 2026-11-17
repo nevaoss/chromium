@@ -5,15 +5,18 @@
 #include "components/autofill/core/browser/data_manager/autofill_ai/entity_suppression_sync_bridge.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <memory>
 #include <optional>
 #include <ranges>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/barrier_closure.h"
 #include "base/check.h"
 #include "base/containers/map_util.h"
+#include "base/containers/span.h"
 #include "base/containers/to_vector.h"
 #include "base/functional/bind.h"
 #include "base/location.h"
@@ -38,6 +41,10 @@
 namespace autofill {
 
 namespace {
+
+// The maximum number of suppression records. When exceeded, the oldest
+// records are deleted from local storage and Sync.
+constexpr size_t kMaxSuppressions = 1000;
 
 // Encrypts `AutofillEntitySuppressionSpecifics` into an encrypted string for
 // disk storage. This can't fail because the bridge only keeps encryptors for
@@ -126,7 +133,9 @@ bool EntitySuppressionSyncBridge::Suppress(
   std::string guid = base::Uuid::GenerateRandomV4().AsLowercaseString();
   base::Time creation_time = base::Time::Now();
   sync_pb::AutofillEntitySuppressionSpecifics specifics =
-      CreateSpecificsFromEntitySuppressionEntry(guid, entry, creation_time);
+      CreateSpecificsFromEntitySuppressionEntry(
+          guid, entry, creation_time,
+          GetPossiblyTrimmedEntitySuppressionSpecifics(guid));
 
   const std::string encrypted_value =
       EncryptSuppressionSpecifics(specifics, *encryptor_);
@@ -140,6 +149,7 @@ bool EntitySuppressionSyncBridge::Suppress(
   change_processor()->Put(
       guid, CreateEntityDataFromEntitySuppressionSpecifics(specifics),
       batch->GetMetadataChangeList());
+  DeleteOldestSuppressionsAboveLimit(*batch);
 
   store_->CommitWriteBatch(
       std::move(batch),
@@ -320,6 +330,45 @@ bool EntitySuppressionSyncBridge::ApplyRemoteEntry(
   return false;
 }
 
+bool EntitySuppressionSyncBridge::DeleteOldestSuppressionsAboveLimit(
+    syncer::DataTypeStore::WriteBatch& batch) {
+  if (metadata_by_entry_.size() <= kMaxSuppressions) {
+    return false;
+  }
+
+  // Orders from oldest to newest. For equal creation times, larger GUIDs come
+  // first, so that smaller ones are kept.
+  auto compare_creation_time = [](const EntryMetadata* a,
+                                  const EntryMetadata* b) {
+    return a->creation_time != b->creation_time
+               ? a->creation_time < b->creation_time
+               : a->guid > b->guid;
+  };
+  // Moves the oldest `delete_count` suppressions to the front.
+  const size_t delete_count = metadata_by_entry_.size() - kMaxSuppressions;
+  std::vector<const EntryMetadata*> metadata = base::ToVector(
+      metadata_by_entry_, [](const auto& pair) { return &pair.second; });
+  std::ranges::partial_sort(metadata, metadata.begin() + delete_count,
+                            compare_creation_time);
+  const base::flat_set<std::string> guids_to_delete =
+      base::MakeFlatSet<std::string>(base::span(metadata).first(delete_count),
+                                     {}, &EntryMetadata::guid);
+
+  base::EraseIf(metadata_by_entry_, [&](const auto& pair) {
+    const std::string& guid = pair.second.guid;
+    if (!guids_to_delete.contains(guid)) {
+      return false;
+    }
+    batch.DeleteData(guid);
+    // This is a no-op for local-only keys during `MergeFullSyncData()` and
+    // before the initial sync, since the change processor doesn't track them.
+    change_processor()->Delete(guid, syncer::DeletionOrigin::Unspecified(),
+                               batch.GetMetadataChangeList());
+    return true;
+  });
+  return true;
+}
+
 std::optional<syncer::ModelError>
 EntitySuppressionSyncBridge::MergeFullSyncData(
     std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
@@ -327,7 +376,6 @@ EntitySuppressionSyncBridge::MergeFullSyncData(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(IsLoaded());
   // TODO(crbug.com/501036619): Consider schema_version when merging.
-  // TODO(crbug.com/501036619): Limit the maximum number of suppressions.
   std::unique_ptr<syncer::DataTypeStore::WriteBatch> batch =
       store_->CreateWriteBatch(std::move(metadata_change_list));
 
@@ -349,14 +397,20 @@ EntitySuppressionSyncBridge::MergeFullSyncData(
     }
   }
 
+  // Clients without the limit might have synced more suppressions. This
+  // happens before the upload below, so deleted local entries aren't uploaded.
+  const bool deleted_suppressions = DeleteOldestSuppressionsAboveLimit(*batch);
+
   // Upload local-only entries to Sync (including any local entries that won
   // conflict resolution against remote duplicates).
   for (const auto& [entry, metadata] : metadata_by_entry_) {
     if (!synced_remote_guids.contains(metadata.guid)) {
-      change_processor()->Put(metadata.guid,
-                              CreateEntityDataFromEntitySuppressionEntry(
-                                  metadata.guid, entry, metadata.creation_time),
-                              batch->GetMetadataChangeList());
+      change_processor()->Put(
+          metadata.guid,
+          CreateEntityDataFromEntitySuppressionEntry(
+              metadata.guid, entry, metadata.creation_time,
+              GetPossiblyTrimmedEntitySuppressionSpecifics(metadata.guid)),
+          batch->GetMetadataChangeList());
     }
   }
 
@@ -365,7 +419,7 @@ EntitySuppressionSyncBridge::MergeFullSyncData(
       base::BindOnce(&EntitySuppressionSyncBridge::ReportErrorIfSet,
                      weak_ptr_factory_.GetWeakPtr()));
 
-  if (added_remote_suppressions) {
+  if (added_remote_suppressions || deleted_suppressions) {
     NotifySuppressionsChanged();
   }
 
@@ -415,6 +469,11 @@ EntitySuppressionSyncBridge::ApplyIncrementalSyncChanges(
     }
   }
 
+  // Clients without the limit might have added more suppressions.
+  if (DeleteOldestSuppressionsAboveLimit(*batch)) {
+    suppressions_changed = true;
+  }
+
   store_->CommitWriteBatch(
       std::move(batch),
       base::BindOnce(&EntitySuppressionSyncBridge::ReportErrorIfSet,
@@ -450,11 +509,21 @@ EntitySuppressionSyncBridge::GetAllData() {
   CHECK(IsLoaded());
   auto batch = std::make_unique<syncer::MutableDataBatch>();
   for (const auto& [entry, metadata] : metadata_by_entry_) {
-    batch->Put(metadata.guid,
-               CreateEntityDataFromEntitySuppressionEntry(
-                   metadata.guid, entry, metadata.creation_time));
+    batch->Put(
+        metadata.guid,
+        CreateEntityDataFromEntitySuppressionEntry(
+            metadata.guid, entry, metadata.creation_time,
+            GetPossiblyTrimmedEntitySuppressionSpecifics(metadata.guid)));
   }
   return batch;
+}
+
+const sync_pb::AutofillEntitySuppressionSpecifics&
+EntitySuppressionSyncBridge::GetPossiblyTrimmedEntitySuppressionSpecifics(
+    const std::string& storage_key) const {
+  return change_processor()
+      ->GetPossiblyTrimmedRemoteSpecifics(storage_key)
+      .autofill_entity_suppression();
 }
 
 std::unique_ptr<syncer::DataBatch>
@@ -499,7 +568,22 @@ bool EntitySuppressionSyncBridge::IsEntityDataValid(
 sync_pb::EntitySpecifics
 EntitySuppressionSyncBridge::TrimAllSupportedFieldsFromRemoteSpecifics(
     const sync_pb::EntitySpecifics& entity_specifics) const {
-  return sync_pb::EntitySpecifics();
+  sync_pb::AutofillEntitySuppressionSpecifics
+      trimmed_entity_suppression_specifics =
+          TrimAutofillEntitySuppressionSpecificsDataForCaching(
+              entity_specifics.autofill_entity_suppression());
+
+  // If all fields are cleared from the entity suppression specifics, return a
+  // fresh EntitySpecifics to avoid caching a few residual bytes.
+  if (trimmed_entity_suppression_specifics.ByteSizeLong() == 0u) {
+    return sync_pb::EntitySpecifics();
+  }
+
+  sync_pb::EntitySpecifics trimmed_entity_specifics;
+  *trimmed_entity_specifics.mutable_autofill_entity_suppression() =
+      std::move(trimmed_entity_suppression_specifics);
+
+  return trimmed_entity_specifics;
 }
 
 void EntitySuppressionSyncBridge::OnStoreCreated(
@@ -583,6 +667,16 @@ void EntitySuppressionSyncBridge::OnReadAllDataAndMetadata(
 
   is_loaded_ = true;
   change_processor()->ModelReadyToSync(std::move(metadata_batch));
+
+  // Builds without the limit might have stored more suppressions.
+  std::unique_ptr<syncer::DataTypeStore::WriteBatch> batch =
+      store_->CreateWriteBatch();
+  if (DeleteOldestSuppressionsAboveLimit(*batch)) {
+    store_->CommitWriteBatch(
+        std::move(batch),
+        base::BindOnce(&EntitySuppressionSyncBridge::ReportErrorIfSet,
+                       weak_ptr_factory_.GetWeakPtr()));
+  }
 
   NotifySuppressionsChanged();
 }

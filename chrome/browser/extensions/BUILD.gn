@@ -21,6 +21,7 @@ import("//rlz/buildflags/buildflags.gni")
 import("//services/screen_ai/buildflags/features.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 import("//third_party/protobuf/proto_library.gni")
+import("//ui/webui/webui_features.gni")
 
 assert(enable_extensions_core)
 assert(enable_supervised_users)
@@ -284,8 +285,6 @@ source_set("extensions") {
     "extension_action_dispatcher.h",
     "extension_action_runner.cc",
     "extension_action_runner.h",
-    "extension_action_storage_manager.cc",
-    "extension_action_storage_manager.h",
     "extension_allowlist_factory.cc",
     "extension_allowlist_factory.h",
     "extension_browser_window_helper.cc",
@@ -677,6 +676,13 @@ source_set("extensions") {
   }
   if (enable_spellcheck) {
     deps += [ "//chrome/browser/spellchecker" ]
+  }
+  deps += [ "//ui/webui:buildflags" ]
+  if (enable_webui_ntp) {
+    deps += [
+      "//chrome/browser/resources/new_tab_page_extension:resources",
+      "//components/search",
+    ]
   }
   if (is_android) {
     sources += [
@@ -1380,7 +1386,6 @@ source_set("extensions") {
       "//chrome/browser/ash/settings",
       "//chrome/browser/ash/system_logs",
       "//chrome/browser/ash/system_web_apps/apps",
-      "//chrome/browser/chromeos/app_mode",
       "//chrome/browser/chromeos/drivefs",
       "//chrome/browser/chromeos/drivefs:native_message_host_origins",
       "//chrome/browser/chromeos/extensions/desk_api",
@@ -1537,7 +1542,6 @@ source_set("extensions") {
       "//chrome/browser/ash/system_web_apps/apps",
       "//chrome/browser/ui/ash/shelf/app_service",
       "//chrome/browser/ui/webui/ash/settings/pages/a11y",
-      "//chrome/browser/chromeos/app_mode",
       "//chrome/browser/chromeos/extensions/component_extension_content_settings",
       "//chrome/browser/chromeos/extensions/desk_api",
       "//chrome/browser/chromeos/extensions/login_screen/login/cleanup",
@@ -2163,7 +2167,12 @@ source_set("unit_tests") {
     "//ui/base/accelerators/global_accelerator_listener",
     "//ui/display:test_support",
     "//ui/menus",
+    "//ui/webui:buildflags",
   ]
+
+  if (enable_webui_ntp) {
+    deps += [ "//components/search" ]
+  }
 
   if (!is_chromeos) {
     sources += [ "preinstalled_extensions_unittest.cc" ]
@@ -2942,7 +2951,6 @@ source_set("browser_tests") {
       "api/declarative/declarative_apitest.cc",
       "api/dictation_private/dictation_private_apitest.cc",
       "api/extension_action/browser_action_apitest.cc",
-      "api/extension_action/browser_action_browsertest.cc",
       "api/extension_action/page_action_apitest.cc",
       "api/extension_action/page_action_browsertest.cc",
       "api/feedback_private/feedback_browsertest.cc",
@@ -2959,6 +2967,7 @@ source_set("browser_tests") {
       "api/permissions/permissions_api_browsertest.cc",
       "api/printer_provider/printer_provider_apitest.cc",
       "api/protocol_handlers/protocol_handlers_manager_browsertest.cc",
+      "api/proxy_override_rules/proxy_override_rules_private_apitest.cc",
       "api/resources_private/resources_private_apitest.cc",
       "api/safe_browsing_private/safe_browsing_private_api_browsertest.cc",
       "api/settings_private/settings_private_apitest.cc",
@@ -3091,7 +3100,6 @@ source_set("browser_tests") {
         "//chrome/browser/ui/views/web_apps/file_handler_launch_dialog_browsertest.cc",
         "api/experimental_actor/experimental_actor_apitest.cc",
         "api/experimental_ai_data/experimental_ai_data_apitest.cc",
-        "api/proxy_override_rules/proxy_override_rules_private_apitest.cc",
         "api/web_authentication_proxy/web_authentication_proxy_apitest.cc",
       ]
 

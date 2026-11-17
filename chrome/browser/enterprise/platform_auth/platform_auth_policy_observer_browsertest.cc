@@ -27,11 +27,6 @@
 #include "components/policy/core/common/management/scoped_management_service_override_for_testing.h"
 #endif  //  BUILDFLAG(IS_MAC)
 
-#if BUILDFLAG(IS_ANDROID)
-#include "base/test/scoped_feature_list.h"
-#include "chrome/browser/enterprise/platform_auth/platform_auth_features.h"
-#endif  //  BUILDFLAG(IS_ANDROID)
-
 namespace {
 
 #if BUILDFLAG(IS_WIN)
@@ -44,6 +39,9 @@ const char* kPolicyKey = policy::key::kAndroidEntraSsoEnabled;
 
 }  // namespace
 
+// The `PlatformAuthPolicyObserver` under test is the one owned by
+// `ChromeBrowserMainParts`, so any state it depends on (features, management
+// state) has to be set up before the browser starts.
 class PlatformAuthPolicyObserverTest : public PlatformBrowserTest {
  public:
   void SetUp() override {
@@ -58,7 +56,6 @@ class PlatformAuthPolicyObserverTest : public PlatformBrowserTest {
  protected:
   PlatformAuthPolicyObserverTest() = default;
 
-  std::optional<PlatformAuthPolicyObserver> platform_auth_policy_observer_;
   testing::NiceMock<policy::MockConfigurationPolicyProvider> policy_provider_;
 #if BUILDFLAG(IS_MAC)
   base::test::ScopedFeatureList feature_list_{
@@ -67,18 +64,12 @@ class PlatformAuthPolicyObserverTest : public PlatformBrowserTest {
       policy::ManagementServiceFactory::GetForPlatform(),
       policy::EnterpriseManagementAuthority::COMPUTER_LOCAL};
 #endif  //  BUILDFLAG(IS_MAC)
-#if BUILDFLAG(IS_ANDROID)
-  base::test::ScopedFeatureList feature_list_{
-      enterprise_auth::kAndroidEntraSSO};
-#endif
 };
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID)
 IN_PROC_BROWSER_TEST_F(PlatformAuthPolicyObserverTest, EnableThenDisable) {
-  // Initialize the policy handler.
   PrefService* prefs = g_browser_process->local_state();
-  if (prefs)
-    platform_auth_policy_observer_.emplace(prefs);
+  ASSERT_TRUE(prefs);
 
   auto& manager = enterprise_auth::PlatformAuthProviderManager::GetInstance();
   // The manager should be disabled by default since the policy is disabled.
@@ -111,15 +102,11 @@ IN_PROC_BROWSER_TEST_F(PlatformAuthPolicyObserverTest, EnableThenDisable) {
 
   // The manager should now be disabled.
   ASSERT_FALSE(manager.IsEnabled());
-
-  platform_auth_policy_observer_.reset();
 }
 
 IN_PROC_BROWSER_TEST_F(PlatformAuthPolicyObserverTest, EnableThenUnset) {
-  // Initialize the policy handler.
   PrefService* prefs = g_browser_process->local_state();
-  if (prefs)
-    platform_auth_policy_observer_.emplace(prefs);
+  ASSERT_TRUE(prefs);
 
   auto& manager = enterprise_auth::PlatformAuthProviderManager::GetInstance();
   // The manager should be disabled by default since the policy is disabled.
@@ -150,17 +137,13 @@ IN_PROC_BROWSER_TEST_F(PlatformAuthPolicyObserverTest, EnableThenUnset) {
 
   // The manager should now be disabled.
   ASSERT_FALSE(manager.IsEnabled());
-
-  platform_auth_policy_observer_.reset();
 }
 #elif BUILDFLAG(IS_MAC)
 
 IN_PROC_BROWSER_TEST_F(PlatformAuthPolicyObserverTest, DisableThenEnable) {
-  // Initialize the policy handler.
   PrefService* prefs = g_browser_process->local_state();
-  if (prefs) {
-    platform_auth_policy_observer_.emplace(prefs);
-  }
+  ASSERT_TRUE(prefs);
+
   auto& manager = enterprise_auth::PlatformAuthProviderManager::GetInstance();
   // The manager should be enabled by default since the policy is enabled.
   ASSERT_TRUE(manager.IsEnabled());
@@ -202,16 +185,12 @@ IN_PROC_BROWSER_TEST_F(PlatformAuthPolicyObserverTest, DisableThenEnable) {
 
   // The manager should now be enabled.
   ASSERT_TRUE(manager.IsEnabled());
-
-  platform_auth_policy_observer_.reset();
 }
 
 IN_PROC_BROWSER_TEST_F(PlatformAuthPolicyObserverTest, DisableThenUnset) {
-  // Initialize the policy handler.
   PrefService* prefs = g_browser_process->local_state();
-  if (prefs) {
-    platform_auth_policy_observer_.emplace(prefs);
-  }
+  ASSERT_TRUE(prefs);
+
   auto& manager = enterprise_auth::PlatformAuthProviderManager::GetInstance();
   // The manager should be enabled by default since the policy is enabled.
   ASSERT_TRUE(manager.IsEnabled());
@@ -250,24 +229,24 @@ IN_PROC_BROWSER_TEST_F(PlatformAuthPolicyObserverTest, DisableThenUnset) {
 
   // The manager should now be disabled.
   ASSERT_TRUE(manager.IsEnabled());
-
-  platform_auth_policy_observer_.reset();
 }
 
-IN_PROC_BROWSER_TEST_F(PlatformAuthPolicyObserverTest, UnmanagedDevice) {
-  policy::ScopedManagementServiceOverrideForTesting platform_management(
+// Simulates an unmanaged device. The override is a member so that it takes
+// effect before the browser-owned `PlatformAuthPolicyObserver` is created, and
+// it is declared after the base fixture's override so it takes precedence.
+class PlatformAuthPolicyObserverUnmanagedTest
+    : public PlatformAuthPolicyObserverTest {
+ protected:
+  policy::ScopedManagementServiceOverrideForTesting unmanaged_platform_{
       policy::ManagementServiceFactory::GetForPlatform(),
-      policy::EnterpriseManagementAuthority::NONE);
-  // Initialize the policy handler.
-  PrefService* prefs = g_browser_process->local_state();
-  if (prefs) {
-    platform_auth_policy_observer_.emplace(prefs);
-  }
+      policy::EnterpriseManagementAuthority::NONE};
+};
+
+IN_PROC_BROWSER_TEST_F(PlatformAuthPolicyObserverUnmanagedTest,
+                       UnmanagedDevice) {
   auto& manager = enterprise_auth::PlatformAuthProviderManager::GetInstance();
   // The manager should be disabled by default since we are on an unmanaged
   // device.
   ASSERT_FALSE(manager.IsEnabled());
-
-  platform_auth_policy_observer_.reset();
 }
 #endif  //  BUILDFLAG(IS_WIN)

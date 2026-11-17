@@ -271,6 +271,7 @@ class SharedImageProviderImpl final : public cc::SharedImageProvider {
       ERRORSTATE_SET_GL_ERROR(error_state_, GL_INVALID_OPERATION,
                               "SharedImageProviderImpl::OpenSharedImageForRead",
                               "Couldn't create output SkImage.");
+      scoped_read_access->ApplyBackendSurfaceEndState();
       error = Error::kSkImageCreationFailed;
       return nullptr;
     }
@@ -1089,8 +1090,9 @@ void RasterDecoderImpl::Destroy(bool have_context) {
 
 // Make this decoder's GL context current.
 bool RasterDecoderImpl::MakeCurrent() {
-  if (!shared_context_state_->GrContextIsGL())
+  if (!shared_context_state_->IsUsingGL()) {
     return true;
+  }
 
   if (context_lost_) {
     LOG(ERROR) << "  RasterDecoderImpl: Trying to make lost context current.";
@@ -1133,8 +1135,6 @@ Capabilities RasterDecoderImpl::GetCapabilities() {
       feature_info()->feature_flags().disable_mac_swangle_rgbx;
   caps.texture_rg = feature_info()->feature_flags().ext_texture_rg;
   caps.max_texture_size = shared_context_state_->GetMaxTextureSize();
-  caps.using_vulkan_context =
-      shared_context_state_->GrContextIsVulkan() ? true : false;
 
   caps.texture_format_etc1_npot =
       feature_info()->feature_flags().oes_compressed_etc1_rgb8_texture &&
@@ -2042,6 +2042,7 @@ void RasterDecoderImpl::DoWritePixelsINTERNAL(GLint x_offset,
     if (!result) {
       LOCAL_SET_GL_ERROR(GL_INVALID_OPERATION, "glWritePixels",
                          "Unable to obtain write access to dest shared image.");
+      dest_scoped_access->ApplyBackendSurfaceEndState();
       return;
     }
   }
@@ -2052,6 +2053,7 @@ void RasterDecoderImpl::DoWritePixelsINTERNAL(GLint x_offset,
   if (!written) {
     LOCAL_SET_GL_ERROR(GL_INVALID_OPERATION, "glWritePixels",
                        "Failed to write pixels to SkCanvas");
+    dest_scoped_access->ApplyBackendSurfaceEndState();
     return;
   }
 

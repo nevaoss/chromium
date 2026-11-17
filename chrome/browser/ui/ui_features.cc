@@ -39,8 +39,6 @@ BASE_FEATURE(kFastFaviconDisplay, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kImportExportFlags, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kInfoBarInlineLinks, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kInfoBarQueuedCountPill, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Kill switch for crbug.com/559656985. When enabled, the press-and-hold Esc
@@ -369,6 +367,11 @@ BASE_FEATURE(kMigrateManagementPageToWebUIOnMobile,
 BASE_FEATURE(kViewsJSAppModalDialog, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
+#if BUILDFLAG(IS_MAC)
+BASE_FEATURE(kMacDeferInputContextUntilFirstPaint,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
+
 BASE_FEATURE(kPageSpecificDataDialogRelatedInstalledAppsSection,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -563,6 +566,11 @@ BASE_FEATURE_PARAM(bool,
                    kAiOverlayDialogPageTools,
                    &kAiOverlayDialog,
                    "enable_page_tools",
+                   false);
+BASE_FEATURE_PARAM(bool,
+                   kAiOverlayDialogNext,
+                   &kAiOverlayDialog,
+                   "enable_next",
                    false);
 BASE_FEATURE(kAiOverlayDisableNavigationContext,
              base::FEATURE_DISABLED_BY_DEFAULT);

@@ -118,6 +118,7 @@
 <translation id="1195558154361252544">除您允许的网站外，已自动阻止所有其他网站显示通知</translation>
 <translation id="1197088940767939838">橙色</translation>
 <translation id="1198412233443148072"><ph name="MEMBER_FIRST_NAME" />移除了标签页“<ph name="WEBSITE_TITLE" />”</translation>
+<translation id="119944043368869598">全部清除</translation>
 <translation id="1201402288615127009">下一步</translation>
 <translation id="1201895884277373915">来自该网站的更多内容</translation>
 <translation id="1204184165594298176">{0,plural, =1{此文件已被禁止复制}other{<ph name="FILE_COUNT" /> 个文件已被禁止复制}}</translation>
@@ -618,7 +619,6 @@
 <translation id="2059166748188874810">自治市</translation>
 <translation id="2059202684901022309">22 x 34 英寸</translation>
 <translation id="2063929825539050431">如需将此页面快速发送到其他设备，请轻触并按住地址栏</translation>
-<translation id="2064691555167957331">{COUNT,plural, =1{1 条建议}other{# 条建议}}</translation>
 <translation id="2066969741541525119">您要访问的网站已被贵组织屏蔽</translation>
 <translation id="2071156619270205202">这张卡的卡号无法用作虚拟卡号。</translation>
 <translation id="2071852865256799872">您的浏览器由您的组织管理，您的个人资料由 <ph name="PROFILE_DOMAIN" /> 管理</translation>
@@ -665,6 +665,7 @@
 <translation id="2126374524350484896">PDF 制作工具：</translation>
 <translation id="2127090458081644412">密码已保存到此设备</translation>
 <translation id="2127747486437921899">斜体</translation>
+<translation id="2129163794581571479">由 Gemini 中的个性化智能服务提供支持。为改进增强型自动填充功能，我们可能会审核您的请求、网页标题和网址。<ph name="BEGIN_LINK" />管理设置<ph name="END_LINK" /></translation>
 <translation id="2130448033692577677">您指定的模板未必会被应用，因为 DnsOverHttpsMode 政策未设置。</translation>
 <translation id="2130699163006053678">A3x7</translation>
 <translation id="2131006834960167560">“启用支付信息自动填充”底部动作条已以最大高度显示。</translation>
@@ -710,7 +711,6 @@
 <translation id="2188375229972301266">多孔（底部）</translation>
 <translation id="218940509700321686">CSV</translation>
 <translation id="2190094353033916816">此政策在计算机级别和用户级别应用了不同的值。政策运行正常。</translation>
-<translation id="219061769324072544">信用卡, 卡, 借记卡, Credit, Card, Debit</translation>
 <translation id="2191980191135734720">请在下一步中解锁屏幕，通常使用指纹解锁。您也可以<ph name="LINK_TEXT" />。</translation>
 <translation id="2194856509914051091">注意事项</translation>
 <translation id="2195729137168608510">电子邮件保护</translation>
@@ -1081,6 +1081,7 @@
 <translation id="2807052079800581569">图片 Y 轴位置</translation>
 <translation id="2808278141522721006">您可在“<ph name="SETTINGS" />”中开启或关闭 Windows Hello</translation>
 <translation id="2820957248982571256">正在扫描…</translation>
+<translation id="282457273878278063">管理联系信息</translation>
 <translation id="2824775600643448204">地址和搜索栏</translation>
 <translation id="2826760142808435982">该连接使用 <ph name="CIPHER" /> 进行加密和身份验证，并使用 <ph name="KX" /> 作为密钥交换机制。</translation>
 <translation id="2828797285817981634">目前允许使用移动传感器</translation>
@@ -1571,6 +1572,7 @@
 <translation id="3655670868607891010">如果您频繁遇到此问题，请尝试这些<ph name="HELP_LINK" />。</translation>
 <translation id="3658742229777143148">修订版本</translation>
 <translation id="3659521826520353662">访问了哪些管理员定义的网站以及访问时间：<ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3663760610864720538">由 Gemini 中的个性化智能服务提供支持。<ph name="BEGIN_LINK" />管理设置<ph name="END_LINK" /></translation>
 <translation id="3664479564786885722">搜索销售此商品的其他商店的更多购买选项。</translation>
 <translation id="3664782872746246217">关键字：</translation>
 <translation id="3670030362669914947">号码</translation>
@@ -1591,6 +1593,7 @@
 <translation id="3693516565203081475">选择支付方式</translation>
 <translation id="3698353241727597930">您的管理员已将<ph name="FILES" />的保存位置配置为由企业管理的 <ph name="CLOUD_STORAGE" /> 存储空间。即使您删除这些文件，企业仍可能会监控、审核和保留这些文件。</translation>
 <translation id="3698629142018988477">“创建网站”按钮，激活它即可在 Google 协作平台中快速创建新网站</translation>
+<translation id="3698708128812719147">在网页上的任意位置按两次 Ctrl 键，即可查找并填写更多信息</translation>
 <translation id="3700094625653511150">如要隐藏先买后付选项，请前往<ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /></translation>
 <translation id="3700966190175650601">您正在使用指纹填充密码</translation>
 <translation id="3701427423622901115">已确认要重置。</translation>
@@ -1858,7 +1861,6 @@
 <translation id="4121428309786185360">截止日期</translation>
 <translation id="4123572138124678573">三孔（底部）</translation>
 <translation id="412601465078863288">上传超时</translation>
-<translation id="4129401438321186435">{COUNT,plural, =1{1 项其他内容}other{# 项其他内容}}</translation>
 <translation id="4129810348470013900">出了点问题。请检查网络连接情况，然后重试。</translation>
 <translation id="4130226655945681476">检查网线、调制解调器和路由器</translation>
 <translation id="4132448310531350254">“<ph name="POLICY_IDS_LIST" />”政策中指定的应用所引用的文件扩展名“<ph name="FILE_EXTENSION" />”被分配了多个处理程序。</translation>
@@ -1894,6 +1896,7 @@
 <translation id="4185037616931963178">安全地更新身份纠正识别号</translation>
 <translation id="4186035307311647330">取消跟踪价格</translation>
 <translation id="4191334393248735295">长度</translation>
+<translation id="4192770747482479191">在网页上的任意位置按两次 ⌘ 键，即可查找并填写更多信息</translation>
 <translation id="4195459680867822611">“查看 Chrome 提示”按钮，激活它即可了解各项 Chrome 功能</translation>
 <translation id="4195643157523330669">在新标签页中打开</translation>
 <translation id="4196861286325780578">恢复移动(&amp;R)</translation>
@@ -2211,7 +2214,6 @@
 <translation id="4725766358270333890">正在将 <ph name="COUNT" /> 个文件上传到 Microsoft OneDrive</translation>
 <translation id="4726672564094551039">重新加载政策</translation>
 <translation id="4728558894243024398">平台</translation>
-<translation id="4730773064303503917">通过钱包使用 Pix 向好友和商家付款</translation>
 <translation id="4730977633786878901">评价</translation>
 <translation id="4731638775147756694">您的管理员已禁用此应用</translation>
 <translation id="4732860731866514038">正在下载<ph name="LANGUAGE" />语言包…<ph name="PERCENT" />%</translation>
@@ -2842,6 +2844,7 @@
 <translation id="573974402615125334">如需分享、加入标签页分组并在其中协作，请同步历史记录和标签页</translation>
 <translation id="5740911612628596808">C9 信封</translation>
 <translation id="574392208103952083">中等</translation>
+<translation id="5744350700955456407">增强型自动填充功能现在可以从 Gmail 和 Google 相册等应用中查找和填充订单号和航班确认码等信息</translation>
 <translation id="5745586894920491759">Chrome 会在云端处理网页标题和网址</translation>
 <translation id="5745733273847572235">可以询问能否获取您的位置信息</translation>
 <translation id="5750869797196646528">手部追踪</translation>
@@ -3222,7 +3225,6 @@
 <translation id="638289054711715023">收缩箔</translation>
 <translation id="6383221683286411806">可能产生费用。</translation>
 <translation id="6384448607821972818">已显示恢复密码</translation>
-<translation id="6386120369904791316">{COUNT,plural, =1{1 条其他建议}other{# 条其他建议}}</translation>
 <translation id="6386565501269869892">You 4 信封</translation>
 <translation id="6387645831795005740">攻击者有时会对网址做些令人难以觉察的细微更改来仿冒网站。</translation>
 <translation id="6389470377220713856">持卡人姓名</translation>
@@ -4831,7 +4833,6 @@
 <translation id="9168814207360376865">允许网站检查您是否已保存付款方式</translation>
 <translation id="9169931577761441333">将“<ph name="APP_NAME" />”添加到主屏幕</translation>
 <translation id="9170848237812810038">撤消(&amp;U)</translation>
-<translation id="9170906125144697215">使用 Pix 付款，无需切换应用</translation>
 <translation id="9171296965991013597">要退出应用吗？</translation>
 <translation id="9173282814238175921">单一文档/新工作表</translation>
 <translation id="9173995187295789444">正在扫描蓝牙设备…</translation>

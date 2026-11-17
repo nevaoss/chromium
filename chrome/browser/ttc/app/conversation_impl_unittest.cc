@@ -4,6 +4,7 @@
 
 #include "chrome/browser/ttc/app/conversation_impl.h"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -17,12 +18,10 @@
 #include "base/test/run_until.h"
 #include "chrome/browser/ttc/app/audio_controller_impl.h"
 #include "chrome/browser/ttc/core/session_controller.h"
-#include "chrome/browser/ttc/core/session_journal.h"
 #include "chrome/browser/ttc/core/states.h"
 #include "chrome/test/base/testing_profile.h"
-#include "components/actor/core/aggregated_journal.h"
-#include "components/actor/core/task_id.h"
 #include "components/ttc/app/public/error_codes.h"
+#include "components/ttc/app/public/session_journal.h"
 #include "components/ttc/app/test_utils.h"
 #include "components/ttc/app/ttc_backend.h"
 #include "content/public/test/browser_task_environment.h"
@@ -40,6 +39,14 @@
 namespace ttc {
 
 namespace {
+
+class FakeSessionJournal : public SessionJournal {
+ public:
+  void Log(std::string_view event_name,
+           std::vector<actor::mojom::JournalDetailsPtr> details,
+           Track track) override {}
+  void HandleServerJournalEvent(const ServerJournalEvent& event) override {}
+};
 
 class FakeSessionController : public SessionController {
  public:
@@ -68,7 +75,9 @@ class FakeSessionController : public SessionController {
     }
     return tools;
   }
-  void UserAudioLevelUpdate(float audio_level) override {}
+  void UserAudioLevelUpdate(float audio_level) override {
+    last_audio_level_ = audio_level;
+  }
   void AddObserver(Observer* observer) override {}
   void RemoveObserver(Observer* observer) override {}
   void SendTextInput(const std::string& text) override {}
@@ -89,6 +98,7 @@ class FakeSessionController : public SessionController {
   void EndSessionAsync() override { ++end_session_count_; }
 
   const ToolRequest& last_request() const { return last_request_; }
+  std::optional<float> last_audio_level() const { return last_audio_level_; }
   std::optional<ErrorCode> last_error() const { return last_error_; }
   int error_count() const { return error_count_; }
   int end_session_count() const { return end_session_count_; }
@@ -111,6 +121,7 @@ class FakeSessionController : public SessionController {
  private:
   raw_ptr<Profile> profile_;
   ToolRequest last_request_;
+  std::optional<float> last_audio_level_;
   std::optional<ErrorCode> last_error_;
   int error_count_ = 0;
   int end_session_count_ = 0;
@@ -121,8 +132,7 @@ class FakeSessionController : public SessionController {
   std::string last_output_transcription_;
   std::vector<ToolDefinition> tools_;
   SessionLifecycle session_lifecycle_ = SessionLifecycle::kInitializing;
-  actor::AggregatedJournal journal_;
-  SessionJournal session_journal_{journal_, actor::TaskId()};
+  FakeSessionJournal session_journal_;
 };
 
 }  // namespace
@@ -307,6 +317,25 @@ TEST_F(ConversationImplTest, CapturedAudioRoutedToBackend) {
   }
   audio_controller().Capture(bus.get(), base::TimeTicks::Now(), {}, 1.0);
   run_loop.Run();
+}
+
+TEST_F(ConversationImplTest, CapturedAudioLevelReportedToSession) {
+  ConversationImpl& conversation = CreateConversation();
+  conversation.Start();
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(backend(), SendAudioChunk(testing::_)).WillOnce([&run_loop] {
+    run_loop.Quit();
+  });
+
+  auto bus = media::AudioBus::Create(1, 1600);
+  constexpr float kAmplitude = 0.25f;
+  std::ranges::fill(bus->channel(0), kAmplitude);
+  audio_controller().Capture(bus.get(), base::TimeTicks::Now(), {}, 1.0);
+  run_loop.Run();
+
+  ASSERT_TRUE(session_controller_.last_audio_level().has_value());
+  EXPECT_FLOAT_EQ(*session_controller_.last_audio_level(), kAmplitude);
 }
 
 TEST_F(ConversationImplTest, OnPlaybackCompletedReportsStatus) {

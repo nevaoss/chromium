@@ -2635,7 +2635,8 @@ public class LocationBarMediator
 
     /**
      * Makes the scrim opaque when the current input uses an unconventional request type and there
-     * are no suggestions to show; otherwise restores the default scrim appearance.
+     * are no suggestions to show; otherwise restores the default scrim appearance. The opaque scrim
+     * is never used in incognito contexts or on tablets.
      *
      * @param hasSuggestions Whether any suggestions are currently present.
      */
@@ -2643,6 +2644,8 @@ public class LocationBarMediator
         if (mScrimHandler == null) return;
         boolean useOpaqueScrim =
                 mCurrentInput != null
+                        && !mIsTablet
+                        && !mLocationBarDataProvider.isIncognitoBranded()
                         && !mCurrentInput.isConventionalRequestType()
                         && !hasSuggestions;
         mScrimHandler.setUseOpaqueScrim(useOpaqueScrim);
@@ -3088,7 +3091,10 @@ public class LocationBarMediator
 
         // Guard against resetting active user text when a redundant beginInput() arrives
         // (e.g. from NTP load completion, fakebox touch, or keyboard focus transitions).
-        if (mCurrentInput == state.getAutocompleteInput() && userTextDiffersFromInitial()) {
+        // Exclude DRAFTING_NO_FOCUS so NTP AIM/fakebox taps focus the omnibox (and use new input).
+        if (mCurrentInput == state.getAutocompleteInput()
+                && !displayStateEquals(DisplayState.DRAFTING_NO_FOCUS)
+                && userTextDiffersFromInitial()) {
             String newText = input.getUserText();
             if (TextUtils.isEmpty(newText)
                     || TextUtils.equals(newText, mCurrentInput.getUserText())) {

@@ -23,6 +23,8 @@ BASE_FEATURE(kGlicDragAndDropFileUploadAndroid,
 
 BASE_FEATURE(kGlicAndroidOffscreenRendering, base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kGlicChromeStatusIconWin, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kGlicOSIconVariant,
 #if BUILDFLAG(IS_MAC)
              base::FEATURE_ENABLED_BY_DEFAULT
@@ -96,9 +98,6 @@ BASE_FEATURE(kGlicLiveMode,
 );
 
 BASE_FEATURE(kGlicSummarizeVideoSuggestion, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kGlicFixTimeToFirstQueryKillSwitch,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicContextMenu, FEATURE_ENABLED_BY_DEFAULT_NON_ANDROID);
 const base::FeatureParam<std::string> kGlicContextMenuArm{&kGlicContextMenu,
@@ -217,8 +216,6 @@ const base::FeatureParam<int> kGlicMinLoadingTimeMs{
     &kGlicWebClientLoadTimes, "glic-min-loading-time-ms", 1000};
 const base::FeatureParam<int> kGlicMaxLoadingTimeMs{
     &kGlicWebClientLoadTimes, "glic-max-loading-time-ms", 20000};
-const base::FeatureParam<int> kGlicReloadMaxLoadingTimeMs{
-    &kGlicWebClientLoadTimes, "glic-reload-max-loading-time-ms", 30000};
 
 BASE_FEATURE(kGlicContextualCueingV2AutoSubmit,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -299,21 +296,6 @@ BASE_FEATURE(kGlicStructuredYieldMetadata, base::FEATURE_ENABLED_BY_DEFAULT);
 // Runs the glic client in a PrivilegedWebContents instead of a webview.
 // This is a work in progress. See b/534807813.
 BASE_FEATURE(kGlicNoWebview, base::FEATURE_DISABLED_BY_DEFAULT);
-// GEiC hosts its side panel inside GLiC on a PrivilegedWebContents, which
-// requires NoWebview mode. The GEiC enablement check is inlined here
-// rather than calling geic::IsGeicEnabled() because gemini_enterprise
-// depends on public:features, so calling back would create a GN dependency
-// cycle.
-//
-// TODO(b/565765301): This is interim. It enables NoWebview mode for every
-// profile whenever kGeic is on, rather than only for profiles that actually
-// have GEiC enabled, so a GEiC rollout also affects non-GEiC profiles. Once
-// the profile-scoped GEiC predicate exists on GlicEnabling, take a Profile*
-// here and return true only for GEiC-enabled profiles.
-bool IsGlicNoWebviewEnabled() {
-  return base::FeatureList::IsEnabled(kGlicNoWebview) ||
-         (base::FeatureList::IsEnabled(kGeic) && kGeicEnabledParam.Get());
-}
 BASE_FEATURE(kGlicSetAuthUser, FEATURE_ENABLED_BY_DEFAULT_ALL_PLATFORMS);
 // Whether to disallow webview communication directly with the glic host
 // (chrome/browser/resources/glic/glic_api_impl/host). When enabled, some
@@ -360,4 +342,8 @@ BASE_FEATURE(kGlicColdWarmingUsePerformanceManager,
 BASE_FEATURE(kGlicSsr, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicClientDataStorage, FEATURE_ENABLED_BY_DEFAULT_ALL_PLATFORMS);
+
+BASE_FEATURE(kGlicShowNotTellTutorials, base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<int> kGlicShowNotTellTutorialsArm{
+    &kGlicShowNotTellTutorials, "tutorials_arm", 0};
 }  // namespace features

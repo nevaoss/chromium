@@ -346,15 +346,18 @@ inline LayoutStateToolbarPassKey PassKey() {
               self, FullscreenBrowserAgent::FromBrowser(browser));
     }
 
-    _bottomLocationBarCoordinator =
-        [self createLocationBarCoordinatorActive:isToolbarAtBottom
-                                     topPosition:NO
-                                        textOnly:NO];
-    if (IsGlassToolbarEnabled()) {
-      _bottomTextOnlyLocationBarCoordinator =
+    if (!IsLocationBarPerformanceImprovementsEnabled() ||
+        IsBottomOmniboxAvailable()) {
+      _bottomLocationBarCoordinator =
           [self createLocationBarCoordinatorActive:isToolbarAtBottom
                                        topPosition:NO
-                                          textOnly:YES];
+                                          textOnly:NO];
+      if (IsGlassToolbarEnabled()) {
+        _bottomTextOnlyLocationBarCoordinator =
+            [self createLocationBarCoordinatorActive:isToolbarAtBottom
+                                         topPosition:NO
+                                            textOnly:YES];
+      }
     }
     _bottomToolbarMediator = [self createToolbarMediatorTopPosition:NO];
     _bottomToolbarViewController = [self
@@ -731,14 +734,8 @@ inline LayoutStateToolbarPassKey PassKey() {
     if ([self isToolbarPositionBottom]) {
       if (self.browser->GetSceneState().layoutState.appBarPosition ==
           AppBarPosition::kBottom) {
-        CGFloat safeAreaBottom = 0.0;
-        if (self.browser->GetSceneState().window) {
-          safeAreaBottom =
-              self.browser->GetSceneState().window.safeAreaInsets.bottom;
-        }
-        return ToolbarCollapsedHeight(self.traitEnvironment.traitCollection
-                                          .preferredContentSizeCategory) +
-               safeAreaBottom;
+        return ToolbarCollapsedHeight(
+            self.traitEnvironment.traitCollection.preferredContentSizeCategory);
       }
       if (IsGlassToolbarEnabled()) {
         return kGlassCollapsedHeight + 2 * kGlassFullscreenMargin;
@@ -1478,9 +1475,14 @@ inline LayoutStateToolbarPassKey PassKey() {
   LocationBarCoordinator* coordinator =
       [[LocationBarCoordinator alloc] initWithBrowser:self.browser
                                              textOnly:textOnly];
+  if (IsLocationBarPerformanceImprovementsEnabled()) {
+    [coordinator setLocationBarActive:active];
+  }
   [coordinator start];
   [coordinator setTopPosition:topPosition];
-  [coordinator setLocationBarActive:active];
+  if (!IsLocationBarPerformanceImprovementsEnabled()) {
+    [coordinator setLocationBarActive:active];
+  }
 
   return coordinator;
 }

@@ -17,12 +17,9 @@
 #include "base/timer/timer.h"
 #include "chrome/browser/ui/read_anything/read_anything_contents_wrapper.h"
 #include "chrome/browser/ui/read_anything/read_anything_enums.h"
-#include "chrome/browser/ui/read_anything/read_anything_hats_survey_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_immersive_activation_observer.h"
 #include "chrome/browser/ui/read_anything/read_anything_lifecycle_observer.h"
-#include "chrome/browser/ui/read_anything/read_anything_omnibox_controller.h"
 #include "chrome/browser/ui/side_panel/side_panel_enums.h"
-#include "chrome/browser/ui/side_panel/side_panel_registry.h"
 #include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/tabs/contents_observing_tab_feature.h"
 #include "chrome/common/read_anything/read_anything.mojom.h"
@@ -43,7 +40,10 @@ struct NativeWebKeyboardEvent;
 }  // namespace input
 
 class ReadAnythingController;
+class ReadAnythingHatsSurveyController;
+class ReadAnythingOmniboxController;
 class ReadAnythingSidePanelController;
+class SidePanelRegistry;
 
 #if BUILDFLAG(ENABLE_PDF)
 class GURL;
@@ -62,7 +62,6 @@ class WebContentsObserverInstance : public content::WebContentsObserver {
  public:
   WebContentsObserverInstance(
       content::WebContents* web_contents,
-      base::RepeatingClosure primary_page_changed_callback,
       base::RepeatingClosure renderer_crashed_callback,
       base::RepeatingCallback<void(content::Visibility)>
           visibility_changed_callback);
@@ -73,7 +72,6 @@ class WebContentsObserverInstance : public content::WebContentsObserver {
   ~WebContentsObserverInstance() override;
 
   // content::WebContentsObserver:
-  void PrimaryPageChanged(content::Page& page) override;
   void OnVisibilityChanged(content::Visibility visibility) override;
   void PrimaryMainFrameRenderProcessGone(
       base::TerminationStatus status) override;
@@ -81,7 +79,6 @@ class WebContentsObserverInstance : public content::WebContentsObserver {
       content::RenderProcessHost* render_process_host) override;
 
  private:
-  base::RepeatingClosure primary_page_changed_callback_;
   base::RepeatingClosure renderer_crashed_callback_;
   base::RepeatingCallback<void(content::Visibility)>
       visibility_changed_callback_;
@@ -286,7 +283,6 @@ class ReadAnythingController : public tabs::ContentsObservingTabFeature {
   SidePanelUI* GetSidePanelUI();
 
   raw_ptr<tabs::TabInterface> tab_ = nullptr;
-  raw_ptr<SidePanelRegistry> side_panel_registry_ = nullptr;
   ui::ScopedUnownedUserData<ReadAnythingController> scoped_unowned_user_data_;
 
   ReadAnythingContentsWrapper web_ui_wrapper_;

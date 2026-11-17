@@ -14,6 +14,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/test/icu_test_util.h"
 #include "base/test/run_until.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/test/with_feature_override.h"
 #include "base/threading/thread_restrictions.h"
 #include "build/build_config.h"
@@ -50,17 +51,25 @@
 #include "ui/shell_dialogs/select_file_dialog.h"
 #include "url/gurl.h"
 
+#if BUILDFLAG(IS_ANDROID)
+#include "ui/base/resource/resource_bundle_android.h"
+#endif
+
 class PDFExtensionJSTestBase : public PDFExtensionTestBase {
  protected:
   void SetUpOnMainThread() override {
     PDFExtensionTestBase::SetUpOnMainThread();
 
     // Load the pak file holding the resources served from chrome://webui-test.
+#if BUILDFLAG(IS_ANDROID)
+    ui::LoadPackFileFromApk("assets/browser_tests.pak", /*split_name=*/"");
+#else
     base::FilePath pak_path;
     ASSERT_TRUE(base::PathService::Get(base::DIR_ASSETS, &pak_path));
     pak_path = pak_path.AppendASCII("browser_tests.pak");
     ui::ResourceBundle::GetSharedInstance().AddDataPackFromPath(
         pak_path, ui::kScaleFactorNone);
+#endif
 
     // Register the chrome://webui-test data source.
     webui::CreateAndAddWebUITestDataSource(browser()->GetProfile());
@@ -122,8 +131,8 @@ class PDFExtensionJSTestBase : public PDFExtensionTestBase {
     if (coverage_handler_ && coverage_handler_->CoverageEnabled()) {
       const auto* test_info =
           ::testing::UnitTest::GetInstance()->current_test_info();
-      const std::string full_test_name = base::StrCat(
-          {test_info->test_suite_name(), test_info->name()});
+      const std::string full_test_name =
+          base::StrCat({test_info->test_suite_name(), test_info->name()});
       coverage_handler_->CollectCoverage(full_test_name);
     }
 
@@ -235,8 +244,7 @@ class PDFExtensionJSMochaTest : public WebUIMochaBrowserTest {
                     const std::string& pdf_filename) {
     GURL url(embedded_test_server()->GetURL("/pdf/" + pdf_filename));
     ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
-    content::WebContents* web_contents =
-        browser()->tab_strip_model()->GetActiveWebContents();
+    content::WebContents* web_contents = GetActiveWebContents();
     ASSERT_TRUE(web_contents);
     ASSERT_TRUE(pdf_extension_test_util::EnsurePDFHasLoaded(web_contents));
 
@@ -246,6 +254,10 @@ class PDFExtensionJSMochaTest : public WebUIMochaBrowserTest {
 
     ASSERT_TRUE(RunTestOnRenderFrameHost(extension_host, "pdf/" + filename,
                                          "mocha.run()"));
+  }
+
+  content::WebContents* GetActiveWebContents() {
+    return browser()->tab_strip_model()->GetActiveWebContents();
   }
 };
 
@@ -337,7 +349,7 @@ IN_PROC_BROWSER_TEST_P(PDFExtensionJSTest, ViewerAttachment) {
 IN_PROC_BROWSER_TEST_P(PDFExtensionJSTest, Fullscreen) {
 #if BUILDFLAG(IS_MAC)
   if (!UseOopif()) {
-      GTEST_SKIP() << "TODO(crbug.com/463783828): Test is flaky on Mac.";
+    GTEST_SKIP() << "TODO(crbug.com/463783828): Test is flaky on Mac.";
   }
 #endif
   // Use a PDF document with multiple pages, to exercise navigating between
@@ -774,6 +786,32 @@ IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2TextTest,
   // The window must be at least 960px to show the text side panel.
   GetActiveWebContents()->Resize({0, 0, 1200, 1000});
   RunTestsInJsModule("ink2_text_state_management_test.js", "test.pdf");
+}
+
+class PDFExtensionJSInk2SignaturesTest : public PDFExtensionJSMochaTest {
+ protected:
+  PDFExtensionJSInk2SignaturesTest() {
+    feature_list_.InitAndEnableFeatureWithParameters(
+        chrome_pdf::features::kPdfInk2,
+        {{chrome_pdf::features::kPdfInk2Signatures.name, "true"}});
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(PDFExtensionJSInk2SignaturesTest,
+                       Ink2SignaturesBottomToolbar) {
+  // The window must be smaller than 960px to show the bottom toolbar.
+  GetActiveWebContents()->Resize({0, 0, 959, 100});
+  RunMochaTest("ink2_signature_bottom_toolbar_test.js", "test.pdf");
+}
+
+IN_PROC_BROWSER_TEST_F(PDFExtensionJSInk2SignaturesTest,
+                       Ink2SignaturesSidePanel) {
+  // The window must be at least 960px to show the side panel.
+  GetActiveWebContents()->Resize({0, 0, 1200, 1000});
+  RunMochaTest("ink2_signature_side_panel_test.js", "test.pdf");
 }
 
 class PDFExtensionJSInk2BeforeUnloadTest : public PDFExtensionJSTestBase {

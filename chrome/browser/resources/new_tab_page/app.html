@@ -2,9 +2,11 @@
 import {SubmitButtonIconType} from '//resources/cr_components/composebox/composebox.js';
 #html_wrapper_imports_end -->
 <div id="content">
-  ${this.enableThreadsRail_ ?
-    html`<cr-left-hand-side id="lhsWrapper"></cr-left-hand-side>` :
-    ''}
+  ${this.enableThreadsRail_ ? html`
+    <cr-left-hand-side id="lhsWrapper"
+        .isDark="${this.theme_?.isDark}"
+        @open-composebox="${this.onOpenComposebox_}">
+    </cr-left-hand-side>` : ''}
   <div id="rhsWrapper">
     <div id="rhsContent" @scroll="${this.onRhsContentScroll_}">
       ${this.lazyRender_ && this.microsoftModuleEnabled_ ? html`
@@ -120,14 +122,14 @@ import {SubmitButtonIconType} from '//resources/cr_components/composebox/compose
               max-most-visited-tiles-in-expanded-state="${this.maxMostVisitedTilesInExpandedState_}"
               max-enterprise-shortcuts="${this.maxEnterpriseShortcuts_}"
               ?shortcuts-reorder-enabled="${this.shortcutsReorderEnabled_}"
-              .widthContainer="${this.enableThreadsRail_ ? this.rhsWrapper_ : null}"
+              .containerWidth="${this.rhsWidth_}"
               @most-visited-auto-removed="${this.onMostVisitedAutoRemoved_}">
           </cr-most-visited>
         ` : ''}
         ${this.modulesEnabled_ ? html`
           <ntp-modules id="modules"
               ?modules-shown-to-user="${this.modulesShownToUser}"
-              .widthContainer="${this.enableThreadsRail_ ? this.rhsWrapper_ : null}"
+              .containerWidth="${this.rhsWidth_}"
               @modules-shown-to-user-changed="${this.onModulesShownToUserChanged_}"
               @customize-module="${this.onCustomizeModule_}"
               @modules-loaded="${this.onModulesLoaded_}"

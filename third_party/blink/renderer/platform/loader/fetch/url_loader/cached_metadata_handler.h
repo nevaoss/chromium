@@ -8,7 +8,9 @@
 #include <stdint.h>
 
 #include "base/containers/span.h"
-#include "mojo/public/cpp/bindings/shared_remote.h"
+#include "base/memory/ref_counted.h"
+#include "base/memory/scoped_refptr.h"
+#include "mojo/public/cpp/bindings/pending_remote.h"
 #include "services/network/public/mojom/cache_storage_side_data_writer.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/loader/code_cache.mojom-blink-forward.h"
@@ -34,6 +36,13 @@ class ParkableString;
 class ResourceResponse;
 class WebProcessMemoryDump;
 
+// Ref-counted wrapper around a PendingRemote<CacheStorageSideDataWriter>.
+// This allows the one-shot writer to be shared across cloned responses
+// (ResourceResponse / FetchResponseData), so that whichever consumer uses it
+// first takes the underlying PendingRemote from `data`.
+using CacheStorageSideDataWriterHolder = base::RefCountedData<
+    mojo::PendingRemote<network::mojom::blink::CacheStorageSideDataWriter>>;
+
 // A callback for sending the serialized data of cached metadata to the
 // persistent storage.
 // TODO(pasko): rename this class to CachedMetadataPersister.
@@ -45,15 +54,6 @@ class PLATFORM_EXPORT CachedMetadataSender {
       const ResourceResponse&,
       mojom::blink::CodeCacheType,
       scoped_refptr<const SecurityOrigin> requestor_origin);
-
-  static void SendToCodeCacheHost(
-      CodeCacheHost*,
-      mojom::blink::CodeCacheType,
-      String,
-      base::Time,
-      const mojo::SharedRemote<
-          network::mojom::blink::CacheStorageSideDataWriter>&,
-      base::span<const uint8_t>);
 
   virtual ~CachedMetadataSender() = default;
   virtual void Send(CodeCacheHost* code_cache_host, mojo_base::BigBuffer) = 0;
@@ -204,6 +204,10 @@ class CachedMetadataHandler : public GarbageCollected<CachedMetadataHandler> {
   // Called when a code cache will eventually be generated. It won't necessarily
   // be generated immediately. Intended for logging.
   virtual void WillProduceCodeCache() {}
+
+  // Returns the sender used to persist cached metadata, transferring ownership
+  // to the caller. Subsequent calls return nullptr.
+  virtual std::unique_ptr<CachedMetadataSender> TakeSender() { return nullptr; }
 
  protected:
   CachedMetadataHandler() = default;

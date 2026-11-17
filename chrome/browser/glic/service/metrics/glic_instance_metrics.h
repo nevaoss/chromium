@@ -19,6 +19,7 @@
 #include "chrome/browser/glic/host/glic_webui.mojom.h"
 #include "chrome/browser/glic/public/glic_cui_tracker.h"
 #include "chrome/browser/glic/public/glic_instance_metrics_backwards_compatibility.h"
+#include "chrome/browser/glic/public/glic_provider_metrics.h"
 #include "chrome/browser/glic/service/glic_state_tracker.h"
 #include "chrome/browser/glic/service/glic_ui_types.h"
 #include "chrome/browser/glic/service/metrics/glic_metrics_session_manager.h"
@@ -72,9 +73,9 @@ class GlicInstanceMetrics : public GlicInstanceMetricsBackwardsCompatibility {
   // `GlicInstanceMetricsBackwardsCompatibility`:
   void OnUserInputSubmitted(mojom::WebClientMode mode,
                             mojom::PromptType prompt_type) override;
-  void OnResponseStarted() override;
-  void OnResponseStopped(mojom::ResponseStopCause cause) override;
 
+  void OnResponseStarted();
+  void OnResponseStopped(mojom::ResponseStopCause cause);
   void DidRequestContextFromFocusedTab();
   void DidRequestContextFromTab();
   void OnTurnCompleted(mojom::WebClientModel model, base::TimeDelta duration);
@@ -172,7 +173,9 @@ class GlicInstanceMetrics : public GlicInstanceMetricsBackwardsCompatibility {
 
   bool MarkShownAndCheckIfFirstTime(EmbedderKey key);
 
-  void ResetShownState(EmbedderKey key);
+  // Clears the shown state for `key` and returns true if `key` was previously
+  // marked as shown.
+  bool ResetShownState(EmbedderKey key);
 
   // Called when a tab that was bound to this instance is destroyed.
   void OnBoundTabDestroyed();
@@ -306,7 +309,8 @@ class GlicInstanceMetrics : public GlicInstanceMetricsBackwardsCompatibility {
   void OnSessionStarted();
   void OnSessionFinished();
 
-  void OnPinnedTabsChanged(const std::vector<tabs::TabInterface*>& pinned_tabs);
+  void OnPinnedTabsChanged(
+      const std::vector<raw_ptr<tabs::TabInterface>>& pinned_tabs);
 
   // Records the response latency (from user input submitted to response stop)
   // by the number of attached tabs.
@@ -389,6 +393,8 @@ class GlicInstanceMetrics : public GlicInstanceMetricsBackwardsCompatibility {
   std::unique_ptr<GlicStateTracker> activity_tracker_;
   std::unique_ptr<GlicStateTracker> visibility_tracker_;
 
+  // Must be declared before `session_manager_`, which copies it.
+  GlicMetricReporter metric_reporter_;
   GlicMetricsSessionManager session_manager_;
   base::TimeTicks last_session_end_time_;
   int session_count_ = 0;
@@ -399,6 +405,7 @@ class GlicInstanceMetrics : public GlicInstanceMetricsBackwardsCompatibility {
   bool is_client_ready_ = false;
   GuestActionableState guest_actionable_;
   bool is_opt_in_pending_ = false;
+  bool opt_in_impression_recorded_for_current_open_ = false;
   bool has_consented_ = false;
   OptInShownCallback opt_in_shown_callback_;
 

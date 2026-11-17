@@ -311,6 +311,10 @@ struct GlicButtonState {
   bool should_show = false;
   // Whether the context menu is currently visible.
   bool is_context_menu_visible = false;
+  // Whether the button background should match the toolbar instead of using
+  // the highlighted Glic chip background. Mirrors
+  // `glic::ToolbarGlicButton::UpdateStyle()`.
+  bool should_match_toolbar_style = false;
   // Dynamic nudge label to display in the button when a nudge is active, if
   // available. This string is for display only and must not be
   // programmatically parsed.
@@ -325,7 +329,7 @@ struct GlicButtonState {
 enum AppMenuIconType {
   kNone,
   kUpgradeNotification,
-  kGlobalError, // e.g. sign-in error.
+  kGlobalError,  // e.g. sign-in error.
 };
 
 // The severity level of the app menu icon (e.g., for updates or errors).
@@ -427,10 +431,10 @@ enum ContentSettingImageType {
   kStorageAccess = 19,
   // kMidi = 20, // Deprecated.
   kNotifications = 21,
-  [EnableIf=is_chromeos]
-  kSmartCard = 22,
-  [EnableIf=is_win]
-  kProtectedMediaIdentifier = 23,
+
+  [EnableIf=is_chromeos] kSmartCard = 22,
+
+  [EnableIf=is_win] kProtectedMediaIdentifier = 23,
 };
 
 // These fields correspond to the accessors of ContentSettingImageModel.
@@ -503,7 +507,9 @@ enum PageActionId {
   kActionShowPaymentsChurnedUsersBubble,
   kActionFakePageActionForDebug,
   kActionWalletReminderNotice,
+  kActionGmailOtpOptIn,
 };
+
 // LINT.ThenChange(//chrome/browser/ui/page_action/page_action_properties_provider.cc:kPageActionProperties,//chrome/browser/ui/page_action/action_ids.h:kActionIds)
 
 // The input modality that causes the page action to trigger: click, keyboard
@@ -689,41 +695,41 @@ struct SelectedKeywordState {
 
 // Enum of all supported pinned toolbar actions.
 enum PinnedToolbarAction {
- kUnspecified, // Unused; triggers assert if used.
- kNewIncognitoWindow,
- kShowPasswordsBubbleOrPage,
- kShowPaymentsBubbleOrPage,
- kShowAddressesBubbleOrPage,
- kSidePanelShowBookmarks,
- kSidePanelShowReadingList,
- kSidePanelShowHistoryCluster,
- kShowDownloads,
- kClearBrowsingData,
- kPrint,
- kSidePanelShowLensOverlayResults,
- kShowTranslate,
- kQrCodeGenerator,
- kRouteMedia,
- kSidePanelShowReadAnything,
- kCopyUrl,
- kSendTabToSelf,
- kTaskManager,
- kDevTools,
- kTabSearch,
- kSidePanelShowContextualTasks,
- kSidePanelShowLens,
- kSidePanelShowAboutThisSite,
- kSidePanelShowCustomizeChrome,
- kSidePanelShowShoppingInsights,
- kSidePanelShowMerchantTrust,
- kSendSharedTabGroupFeedback,
- kSidePanelShowComments,
- kShowAiOverlayDialog,
- kTtcToolbar,
- kSidePanelShowHistory,
- kShowChromeLabs,
- kSidePanelShowGlic,
- kDivider, // A divider; not a clickable action.
+  kUnspecified,  // Unused; triggers assert if used.
+  kNewIncognitoWindow,
+  kShowPasswordsBubbleOrPage,
+  kShowPaymentsBubbleOrPage,
+  kShowAddressesBubbleOrPage,
+  kSidePanelShowBookmarks,
+  kSidePanelShowReadingList,
+  kSidePanelShowHistoryCluster,
+  kShowDownloads,
+  kClearBrowsingData,
+  kPrint,
+  kSidePanelShowLensOverlayResults,
+  kShowTranslate,
+  kQrCodeGenerator,
+  kRouteMedia,
+  kSidePanelShowReadAnything,
+  kCopyUrl,
+  kSendTabToSelf,
+  kTaskManager,
+  kDevTools,
+  kTabSearch,
+  kSidePanelShowContextualTasks,
+  kSidePanelShowLens,
+  kSidePanelShowAboutThisSite,
+  kSidePanelShowCustomizeChrome,
+  kSidePanelShowShoppingInsights,
+  kSidePanelShowMerchantTrust,
+  kSendSharedTabGroupFeedback,
+  kSidePanelShowComments,
+  kShowAiOverlayDialog,
+  kTtcToolbar,
+  kSidePanelShowHistory,
+  kShowChromeLabs,
+  kSidePanelShowGlic,
+  kDivider,  // A divider; not a clickable action.
 };
 
 // The status of the progress ring drawn around a pinned toolbar action
@@ -955,6 +961,13 @@ struct ToolbarState {
 
   // State of the Glic button in the toolbar.
   GlicButtonState glic_button_state;
+
+  // True while toolbar button icons should use the inactive color because the
+  // browser window is inactive. Only ever true on platforms where
+  // views::PlatformStyle::kInactiveWidgetControlsAppearDisabled is set (Mac),
+  // matching native toolbar buttons, which use kColorToolbarButtonIconInactive
+  // in that case.
+  bool controls_appear_inactive = false;
 };
 
 enum FocusRequestTarget {

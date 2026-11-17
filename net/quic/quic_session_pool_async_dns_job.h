@@ -46,11 +46,12 @@ namespace net {
 //
 // The job holds a primary and a secondary connector slot. The slot a
 // connector occupies decides which address families the job hands it. While
-// the secondary slot is empty the primary connector may use both families and
-// prefers IPv6. The secondary slot is filled when the slow timer fires, and
-// from then on the primary takes IPv6 and the secondary takes IPv4 while DNS
-// is resolving. Once DNS resolution completes, connectors may attempt the
-// other family's remaining candidates when their preferred family is exhausted.
+// the secondary slot is empty the primary connector may use both families,
+// starting with IPv6 and alternating families on each failed attempt. The
+// secondary slot is filled when the slow timer fires, and from then on the
+// primary takes IPv6 and the secondary takes IPv4 while DNS is resolving. Once
+// DNS resolution completes, connectors may attempt the other family's remaining
+// candidates when their preferred family is exhausted.
 // The first connector to succeed settles the job, and the other one is
 // destroyed together with the attempt it had in flight.
 //
@@ -209,11 +210,14 @@ class QuicSessionPool::AsyncDnsJob
   std::optional<Candidate> TakeNextCandidate(
       const EndpointConnector& connector);
 
-  // Called by a connector every time one of its attempts failed. The job
-  // keeps the most recent failure and reports it when it runs out of
-  // candidates. The two connectors do not complete in the order their
-  // attempts failed, so the job records the failures itself.
-  void OnAttemptFailed(int rv, const NetErrorDetails& details);
+  // Called by a connector every time one of its attempts failed. Updates the
+  // state's preferred address family to alternate families while only one
+  // connector exists, and keeps the most recent failure to report when the job
+  // runs out of candidates. The two connectors do not complete in the order
+  // their attempts failed, so the job records the failures itself.
+  void OnAttemptFailed(const EndpointConnector& connector,
+                       int rv,
+                       const NetErrorDetails& details);
 
   // Called by `connector` when its attempt finished creating its session.
   // ERR_IO_PENDING means the session was created and its crypto handshake
@@ -256,6 +260,10 @@ class QuicSessionPool::AsyncDnsJob
     // Set once the slow timer was armed. The timer is armed at most once per
     // connection state.
     bool slow_timer_started = false;
+    // Whether the primary connector prefers IPv6 while the secondary slot is
+    // empty. Flipped to the opposite of the failed attempt's family on each
+    // failure so that a single connector alternates between IPv6 and IPv4.
+    bool prefer_ipv6 = true;
     // The connector that may use IPv6 once both slots are filled, and both
     // families while the secondary slot is empty. Created when the job first
     // has something to attempt.
@@ -319,6 +327,20 @@ class QuicSessionPool::AsyncDnsJob
   // True when a connector has an attempt in flight.
   bool HasAttemptInFlight() const;
 
+  // True when `require_dns_https_alpn_` is set and fresh crypto-ready DNS
+  // results are present but contain no usable QUIC endpoints. Once the HTTPS
+  // record has been evaluated without a matching ALPN, remaining A/AAAA
+  // queries cannot make any endpoint usable.
+  bool FreshEndpointsLackRequiredAlpn() const;
+
+  // Called when FreshEndpointsLackRequiredAlpn() is true and nothing is in
+  // flight while DNS is still resolving. Fires the pending host resolution and
+  // session creation signals with ERR_DNS_NO_MATCHING_SUPPORTED_ALPN so that
+  // callers stop waiting on this job, but does not complete the job. The job
+  // and its resolver request stay alive until DNS finishes, so that non-QUIC
+  // connection attempts can join the in-flight resolution. Only the first call
+  // has an effect.
+  void SignalNoMatchingAlpn();
 
   // Returns the result of the most recently failed attempt, or nothing while
   // no attempt failed.
@@ -374,6 +396,8 @@ class QuicSessionPool::AsyncDnsJob
   // Set when the one-shot session creation signal fired. Later creation
   // results are dropped.
   bool session_creation_notified_ = false;
+  // Set by SignalNoMatchingAlpn().
+  bool no_matching_alpn_signaled_ = false;
   // Cleared after the first IP pooling check that saw endpoints. Later
   // checks do not record negative metric entries.
   bool log_negative_ip_pool_result_ = true;
