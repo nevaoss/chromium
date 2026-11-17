@@ -261,7 +261,7 @@ void ExtensionTabUtil::DispatchTabsOnCreated(content::BrowserContext* context,
           ->GetTabHelper()
           ->GetWebContentsFromId(tab_id);
 
-  base::ListValue on_created_args;
+  auto on_created_args = base::MakeRefCounted<extensions::EventArgs>();;
   tabs::Tab tab_object;
   tab_object.id = tab_id;
   tab_object.window_id = tab_id;
@@ -273,7 +273,7 @@ void ExtensionTabUtil::DispatchTabsOnCreated(content::BrowserContext* context,
   tab_object.group_id = -1;
   tab_object.incognito = context->IsOffTheRecord();
   tab_object.highlighted = tab_object.active;
-  on_created_args.Append(tab_object.ToValue());
+  on_created_args->data.Append(tab_object.ToValue());
 
   const std::string event_name = tabs::OnCreated::kEventName;
   if (extensions::EventRouter::Get(context)->HasEventListener(event_name)) {
@@ -291,11 +291,11 @@ void ExtensionTabUtil::DispatchTabsOnActivated(content::BrowserContext* context,
     return;
   }
 
-  base::ListValue on_activated_args;
+  auto on_activated_args = base::MakeRefCounted<extensions::EventArgs>();
   base::DictValue details;
   details.Set(tabs_constants::kTabIdKey, static_cast<int>(tab_id));
   details.Set(tabs_constants::kWindowIdKey, static_cast<int>(tab_id));
-  on_activated_args.Append(std::move(details));
+  on_activated_args->data.Append(std::move(details));
 
   const std::string event_name = tabs::OnActivated::kEventName;
   if (extensions::EventRouter::Get(context)->HasEventListener(event_name)) {
@@ -344,10 +344,10 @@ void ExtensionTabUtil::DispatchTabsOnUpdated(content::BrowserContext* context,
   tab_object.incognito = context->IsOffTheRecord();
   tab_object.highlighted = tab_object.active;
 
-  base::ListValue on_updated_args;
-  on_updated_args.Append(static_cast<int>(tab_id));
-  on_updated_args.Append(std::move(details));
-  on_updated_args.Append(tab_object.ToValue());
+  auto on_updated_args = base::MakeRefCounted<extensions::EventArgs>();
+  on_updated_args->data.Append(static_cast<int>(tab_id));
+  on_updated_args->data.Append(std::move(details));
+  on_updated_args->data.Append(tab_object.ToValue());
 
   const std::string event_name = tabs::OnUpdated::kEventName;
   if (extensions::EventRouter::Get(context)->HasEventListener(event_name)) {
@@ -368,9 +368,9 @@ void ExtensionTabUtil::DispatchTabsOnRemoved(content::BrowserContext* context,
   details.Set(tabs_constants::kWindowIdKey, static_cast<int>(tab_id));
   details.Set(tabs_constants::kIsWindowClosingKey, false);
 
-  base::ListValue on_removed_args;
-  on_removed_args.Append(static_cast<int>(tab_id));
-  on_removed_args.Append(std::move(details));
+  auto on_removed_args = base::MakeRefCounted<extensions::EventArgs>();
+  on_removed_args->data.Append(static_cast<int>(tab_id));
+  on_removed_args->data.Append(std::move(details));
 
   const std::string event_name = tabs::OnRemoved::kEventName;
   if (extensions::EventRouter::Get(context)->HasEventListener(event_name)) {
@@ -388,8 +388,8 @@ void ExtensionTabUtil::DispatchWindowsOnCreated(
     return;
   }
 
-  base::ListValue args;
-  args.Append(CreateWindowValueForExtension(tab_id, true));
+  auto args = base::MakeRefCounted<extensions::EventArgs>();
+  args->data.Append(CreateWindowValueForExtension(tab_id, true));
 
   const std::string event_name = windows::OnCreated::kEventName;
   if (extensions::EventRouter::Get(context)->HasEventListener(event_name)) {
@@ -407,8 +407,8 @@ void ExtensionTabUtil::DispatchWindowsOnFocusChanged(
     return;
   }
 
-  base::ListValue args;
-  args.Append(static_cast<int>(tab_id));
+  auto args = base::MakeRefCounted<extensions::EventArgs>();
+  args->data.Append(static_cast<int>(tab_id));
 
   const std::string event_name = windows::OnFocusChanged::kEventName;
   if (extensions::EventRouter::Get(context)->HasEventListener(event_name)) {
@@ -426,8 +426,8 @@ void ExtensionTabUtil::DispatchWindowsOnRemoved(
     return;
   }
 
-  base::ListValue args;
-  args.Append(static_cast<int>(tab_id));
+  auto args = base::MakeRefCounted<extensions::EventArgs>();
+  args->data.Append(static_cast<int>(tab_id));
 
   const std::string event_name = windows::OnRemoved::kEventName;
   if (extensions::EventRouter::Get(context)->HasEventListener(event_name)) {
