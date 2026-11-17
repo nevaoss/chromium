@@ -16,6 +16,7 @@
 
 #include "neva/user_agent/common/user_agent.h"
 
+#include "base/build/build_config.h"
 #include "base/command_line.h"
 #include "base/logging.h"
 #include "components/embedder_support/user_agent_utils.h"
@@ -43,7 +44,18 @@ std::string GetDefaultUserAgent() {
   }
 
   std::string product = GetProduct();
-  return embedder_support::BuildUserAgentFromProduct(product);
+  // embedder_support::BuildUserAgentFromProduct() is no longer exposed in the
+  // public header; reconstruct its os_info from the public helpers it used
+  // internally: the platform prefix plus the OS/CPU info.
+  std::string os_info;
+#if BUILDFLAG(IS_WEBOS)
+  os_info = "Web0S; ";
+#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+  os_info = "X11; ";
+#endif
+  os_info += embedder_support::BuildOSCpuInfoFromOSVersionAndCpuType(
+      /*os_version=*/std::string(), /*cpu_type=*/std::string());
+  return embedder_support::BuildUserAgentFromOSAndProduct(os_info, product);
 }
 
 bool IsUserAgentClientHintsEnabled() {
