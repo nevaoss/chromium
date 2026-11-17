@@ -134,7 +134,7 @@ class NevaExtensionsBrowserClient : public extensions::ExtensionsBrowserClient {
   void BroadcastEventToRenderers(
       extensions::events::HistogramValue histogram_value,
       const std::string& event_name,
-      base::ListValue args,
+      scoped_refptr<const extensions::EventArgs> args,
       bool dispatch_to_off_the_record_profiles) override;
   extensions::ExtensionCache* GetExtensionCache() override;
   bool IsBackgroundUpdateAllowed() override;
