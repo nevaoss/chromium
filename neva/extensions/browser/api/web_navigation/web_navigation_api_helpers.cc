@@ -88,10 +88,12 @@ void DispatchOnBeforeNavigate(content::NavigationHandle* navigation_handle) {
           navigation_handle);
   details.time_stamp = base::Time::Now().InMillisecondsFSinceUnixEpoch();
 
+  auto event_args = base::MakeRefCounted<extensions::EventArgs>(
+         web_navigation::OnBeforeNavigate::Create(details));
   auto event = std::make_unique<extensions::Event>(
       extensions::events::WEB_NAVIGATION_ON_BEFORE_NAVIGATE,
       web_navigation::OnBeforeNavigate::kEventName,
-      web_navigation::OnBeforeNavigate::Create(details),
+      std::move(event_args),
       navigation_handle->GetWebContents()->GetBrowserContext());
 
   extensions::mojom::EventFilteringInfoPtr info =
@@ -113,7 +115,7 @@ void DispatchOnCommitted(extensions::events::HistogramValue histogram_value,
       navigation_handle->GetRenderFrameHost();
   ui::PageTransition transition_type = navigation_handle->GetPageTransition();
 
-  base::ListValue args;
+  auto args = base::MakeRefCounted<EventArgs>();
   base::DictValue dict;
   int tab_id = static_cast<int>(NevaExtensionsServiceFactory::GetService(
                                     web_contents->GetBrowserContext())
@@ -177,7 +179,7 @@ void DispatchOnCommitted(extensions::events::HistogramValue histogram_value,
            std::move(qualifiers));
   dict.Set(web_navigation_api_constants::kTimeStampKey,
            base::Time::Now().InMillisecondsFSinceUnixEpoch());
-  args.Append(std::move(dict));
+  args->data.Append(std::move(dict));
 
   content::BrowserContext* browser_context =
       navigation_handle->GetWebContents()->GetBrowserContext();
@@ -214,11 +216,13 @@ void DispatchOnDOMContentLoaded(content::WebContents* web_contents,
   details.document_lifecycle =
       extensions::ExtensionApiFrameIdMap::GetDocumentLifecycle(frame_host);
   details.time_stamp = base::Time::Now().InMillisecondsFSinceUnixEpoch();
+  auto event_args = base::MakeRefCounted<extensions::EventArgs>(
+         web_navigation::OnDOMContentLoaded::Create(details));
 
   auto event = std::make_unique<extensions::Event>(
       extensions::events::WEB_NAVIGATION_ON_DOM_CONTENT_LOADED,
       web_navigation::OnDOMContentLoaded::kEventName,
-      web_navigation::OnDOMContentLoaded::Create(details), browser_context);
+      std::move(event_args), browser_context);
   DispatchEvent(browser_context, std::move(event), url);
 }
 
@@ -250,11 +254,13 @@ void DispatchOnCompleted(content::WebContents* web_contents,
   details.document_lifecycle =
       extensions::ExtensionApiFrameIdMap::GetDocumentLifecycle(frame_host);
   details.time_stamp = base::Time::Now().InMillisecondsFSinceUnixEpoch();
+  auto event_args = base::MakeRefCounted<extensions::EventArgs>(
+         web_navigation::OnCompleted::Create(details));
 
   auto event = std::make_unique<extensions::Event>(
       extensions::events::WEB_NAVIGATION_ON_COMPLETED,
       web_navigation::OnCompleted::kEventName,
-      web_navigation::OnCompleted::Create(details), browser_context);
+      std::move(event_args), browser_context);
   DispatchEvent(browser_context, std::move(event), url);
 }
 
@@ -275,12 +281,13 @@ void DispatchOnCreatedNavigationTarget(
                        ->GetTabHelper()
                        ->GetIdFromWebContents(target_web_contents);
   details.time_stamp = base::Time::Now().InMillisecondsFSinceUnixEpoch();
+  auto event_args = base::MakeRefCounted<extensions::EventArgs>(
+         web_navigation::OnCreatedNavigationTarget::Create(details));
 
   auto event = std::make_unique<extensions::Event>(
       extensions::events::WEB_NAVIGATION_ON_CREATED_NAVIGATION_TARGET,
       web_navigation::OnCreatedNavigationTarget::kEventName,
-      web_navigation::OnCreatedNavigationTarget::Create(details),
-      browser_context);
+      std::move(event_args), browser_context);
   DispatchEvent(browser_context, std::move(event), target_url);
 }
 
@@ -314,11 +321,13 @@ void DispatchOnErrorOccurred(content::WebContents* web_contents,
   details.document_lifecycle =
       extensions::ExtensionApiFrameIdMap::GetDocumentLifecycle(frame_host);
   details.time_stamp = base::Time::Now().InMillisecondsFSinceUnixEpoch();
+  auto event_args = base::MakeRefCounted<extensions::EventArgs>(
+         web_navigation::OnErrorOccurred::Create(details));
 
   auto event = std::make_unique<extensions::Event>(
       extensions::events::WEB_NAVIGATION_ON_ERROR_OCCURRED,
       web_navigation::OnErrorOccurred::kEventName,
-      web_navigation::OnErrorOccurred::Create(details), browser_context);
+      std::move(event_args), browser_context);
   DispatchEvent(browser_context, std::move(event), url);
 }
 
@@ -355,11 +364,13 @@ void DispatchOnErrorOccurred(content::NavigationHandle* navigation_handle) {
       extensions::ExtensionApiFrameIdMap::GetDocumentLifecycle(
           navigation_handle);
   details.time_stamp = base::Time::Now().InMillisecondsFSinceUnixEpoch();
+  auto event_args = base::MakeRefCounted<extensions::EventArgs>(
+         web_navigation::OnErrorOccurred::Create(details));
 
   auto event = std::make_unique<extensions::Event>(
       extensions::events::WEB_NAVIGATION_ON_ERROR_OCCURRED,
       web_navigation::OnErrorOccurred::kEventName,
-      web_navigation::OnErrorOccurred::Create(details), browser_context);
+      std::move(event_args), browser_context);
   DispatchEvent(browser_context, std::move(event), navigation_handle->GetURL());
 }
 
