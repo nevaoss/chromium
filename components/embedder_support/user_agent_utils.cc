@@ -440,15 +440,6 @@ std::string BuildOSCpuInfo(
       BuildCpuInfo());
 }
 
-std::string BuildUserAgentFromProduct(const std::string& product) {
-  std::string os_info;
-  base::StringAppendF(&os_info, "%s%s", GetUserAgentPlatform().c_str(),
-                      BuildOSCpuInfo(IncludeAndroidBuildNumber::Exclude,
-                                     IncludeAndroidModel::Include)
-                          .c_str());
-  return BuildUserAgentFromOSAndProduct(os_info, product);
-}
-
 // Internal function to handle return the full or "reduced" user agent string,
 // depending on the Reduce User-Agent reduction phase features.
 std::string GetUserAgentInternal() {
@@ -469,6 +460,15 @@ std::string GetUserAgentInternal() {
 }
 
 }  // namespace
+
+std::string BuildUserAgentFromProduct(const std::string& product) {
+  std::string os_info;
+  base::StringAppendF(&os_info, "%s%s", GetUserAgentPlatform().c_str(),
+                      BuildOSCpuInfo(IncludeAndroidBuildNumber::Exclude,
+                                     IncludeAndroidModel::Include)
+                          .c_str());
+  return BuildUserAgentFromOSAndProduct(os_info, product);
+}
 
 std::string GetProductAndVersion() {
   return base::FeatureList::IsEnabled(
