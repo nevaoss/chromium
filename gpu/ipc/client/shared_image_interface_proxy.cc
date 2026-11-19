@@ -6,6 +6,7 @@
 
 #include <bit>
 
+#include "base/debug/crash_logging.h"
 #include "base/feature_list.h"
 #include "base/logging.h"
 #include "build/build_config.h"
@@ -260,6 +261,22 @@ Mailbox SharedImageInterfaceProxy::CreateSharedImage(
   // TODO(kylechar): Verify buffer_handle works for size+format.
   auto mailbox = Mailbox::Generate();
 
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)
+  if (host_->client_type() == viz::mojom::GpuClientType::kRenderer) {
+    // Only valid client from renderer on ChromeOS and Linux is VideoCapture,
+    // that supposed to produce linear buffers.
+    if (buffer_handle.type == gfx::GpuMemoryBufferType::NATIVE_PIXMAP) {
+      auto modifier = buffer_handle.native_pixmap_handle().modifier;
+      if (modifier != gfx::NativePixmapHandle::kNoModifier &&
+          modifier != gfx::NativePixmapHandle::kLinearModifier) {
+        base::AutoLock lock(lock_);
+        SCOPED_CRASH_KEY_NUMBER("shared-image", "modifier", modifier);
+        NOTREACHED(base::NotFatalUntil::M158);
+      }
+    }
+  }
+#endif
+
   auto params = mojom::CreateSharedImageWithBufferParams::New();
   params->mailbox = mailbox;
   params->si_info = CreateSharedImageInfo(si_info);
@@ -281,10 +298,10 @@ Mailbox SharedImageInterfaceProxy::CreateSharedImage(
 }
 
 void SharedImageInterfaceProxy::CopyToGpuMemoryBuffer(
-    const SyncToken& sync_token,
+    std::vector<SyncToken> sync_tokens,
     const Mailbox& mailbox) {
   std::vector<SyncToken> dependencies =
-      GenerateDependenciesFromSyncToken(std::move(sync_token), host_);
+      GenerateDependenciesFromSyncTokens(std::move(sync_tokens), host_);
   {
     base::AutoLock lock(lock_);
     last_flush_id_ = host_->EnqueueDeferredMessage(

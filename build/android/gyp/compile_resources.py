@@ -64,6 +64,11 @@ def _ParseArgs(args):
         '--aapt2-path', required=True, help='Path to the Android aapt2 tool.'
     )
     input_opts.add_argument(
+        '--linux-aapt2-path',
+        help='Path to the Linux aapt2, used instead of --aapt2-path when '
+        'running on Linux.',
+    )
+    input_opts.add_argument(
         '--android-manifest', required=True, help='AndroidManifest.xml path.'
     )
     input_opts.add_argument(
@@ -204,6 +209,9 @@ def _ParseArgs(args):
 
     diff_utils.AddCommandLineFlags(parser)
     options = parser.parse_args(args)
+
+    if options.linux_aapt2_path and sys.platform == 'linux':
+        options.aapt2_path = options.linux_aapt2_path
 
     options.include_resources = action_helpers.parse_gn_list(
         options.include_resources
@@ -590,6 +598,9 @@ def _PackageApk(options, build):
     link_command = [
         options.aapt2_path,
         'link',
+        # Use faster (level 1) compression. Shipped artifacts are built from
+        # app bundles, where bundletool handles compression.
+        '-Othroughput',
         '--auto-add-overlay',
         '--no-version-vectors',
         '--no-xml-namespaces',
@@ -660,6 +671,7 @@ def _PackageApk(options, build):
         stderr_filter = _FilterAapt2Warnings
     build_utils.CheckOutput(
         link_command,
+        env=resource_utils.Aapt2Env(),
         before_join_callback=before_join,
         stderr_filter=stderr_filter,
     )
@@ -685,12 +697,14 @@ def _PackageApk(options, build):
             [
                 options.aapt2_path,
                 'convert',
+                '-Othroughput',
                 '--output-format',
                 'proto',
                 '-o',
                 build.proto_path,
                 build.arsc_path,
-            ]
+            ],
+            env=resource_utils.Aapt2Env(),
         )
 
     # Sanity check that the created resources have the expected package ID.

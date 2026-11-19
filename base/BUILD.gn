@@ -1144,7 +1144,6 @@ component("base") {
   configs += [
     "//build/config:precompiled_headers",
     "//build/config/compiler:prevent_unsafe_narrowing",
-    "//build/config/compiler:wexit_time_destructors",
     "//build/config/compiler:wglobal_constructors",
   ]
 
@@ -2728,10 +2727,7 @@ source_set("dcheck_is_on") {
 # build config for ":base".
 source_set("simdutf_shim") {
   visibility = [ ":base" ]
-  configs += [
-    "//build/config/compiler:wexit_time_destructors",
-    "//build/config/compiler:wglobal_constructors",
-  ]
+  configs += [ "//build/config/compiler:wglobal_constructors" ]
   if (!is_win) {
     # Generates -Werror,-Wsign-conversion
     configs += [ "//build/config/compiler:prevent_unsafe_narrowing" ]
@@ -3321,7 +3317,6 @@ component("i18n") {
     "i18n/utf8_validator_tables.h",
   ]
   defines = [ "BASE_I18N_IMPLEMENTATION" ]
-  configs += [ "//build/config/compiler:wexit_time_destructors" ]
   public_deps = [
     ":base",
     "//base/i18n:base_i18n_export",
@@ -5831,8 +5826,15 @@ if (is_android) {
     sources = [ "android/java/src/org/chromium/base/ContentUriUtils.java" ]
   }
 
+  java_cpp_enum("content_uri_owner_enum_srcjar") {
+    sources = [ "android/content_uri_utils.h" ]
+  }
+
   android_library("content_uri_utils_java") {
-    srcjar_deps = [ ":content_uri_utils_jni" ]
+    srcjar_deps = [
+      ":content_uri_owner_enum_srcjar",
+      ":content_uri_utils_jni",
+    ]
     deps = [
       ":base_java",
       ":log_java",

@@ -75,6 +75,7 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/features.h"
+#include "third_party/blink/public/common/web_preferences/web_preferences.h"
 #include "ui/base/mojom/window_show_state.mojom.h"
 #include "ui/base/window_open_disposition.h"
 #include "url/gurl.h"
@@ -295,6 +296,29 @@ IN_PROC_BROWSER_TEST_F(InitialWebUINavigationBrowserTest,
   EXPECT_TRUE(initial_webui_web_contents->GetPrimaryMainFrame()
                   ->GetProcess()
                   ->IsForTopChromeWebUI());
+
+  // Non-Initial WebUI populates default web-content generic font family maps
+  // (e.g. "Times New Roman"), whereas Initial WebUI clears them to avoid
+  // prewarming or loading unused default web fonts during startup.
+  const blink::web_pref::WebPreferences& non_initial_prefs =
+      non_initial_webui_web_contents->GetOrCreateWebPreferences();
+  EXPECT_FALSE(non_initial_prefs.standard_font_family_map.empty());
+  EXPECT_FALSE(non_initial_prefs.serif_font_family_map.empty());
+
+  const blink::web_pref::WebPreferences& initial_prefs =
+      initial_webui_web_contents->GetOrCreateWebPreferences();
+  EXPECT_TRUE(initial_prefs.standard_font_family_map.empty());
+  EXPECT_TRUE(initial_prefs.fixed_font_family_map.empty());
+  EXPECT_TRUE(initial_prefs.serif_font_family_map.empty());
+  EXPECT_TRUE(initial_prefs.sans_serif_font_family_map.empty());
+  EXPECT_TRUE(initial_prefs.cursive_font_family_map.empty());
+  EXPECT_TRUE(initial_prefs.fantasy_font_family_map.empty());
+  EXPECT_TRUE(initial_prefs.math_font_family_map.empty());
+
+  EXPECT_EQ("flex",
+            content::EvalJs(initial_webui_web_contents.get(),
+                            "getComputedStyle(document.querySelector("
+                            "'toolbar-app')).display"));
 }
 
 // Initial WebUI process should not be shared with non-Initial WebUI per
@@ -646,7 +670,7 @@ IN_PROC_BROWSER_TEST_F(InitialWebUIWindowCreationSourceBrowserTest,
                        MoveTabsToNewWindow) {
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL(url::kAboutBlankURL),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
   ASSERT_EQ(browser()->tab_strip_model()->count(), 2);
 

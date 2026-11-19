@@ -8,6 +8,7 @@
 #include "base/component_export.h"
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
+#include "base/time/time.h"
 #include "build/build_config.h"
 #include "components/signin/public/base/signin_buildflags.h"
 #include "extensions/buildflags/buildflags.h"
@@ -255,6 +256,15 @@ extern const base::FeatureParam<std::string> kCrossDeviceSigninFromDesktopUrl;
 // Param to control if the "New" badge should be shown.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 extern const base::FeatureParam<bool> kCrossDeviceSigninFromDesktopNewBadge;
+
+// Feature flag to enable follow-up entry points for the cross-device sign-in
+// promo.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kCrossDeviceSigninFromDesktopFollowup);
+// Param to control if the cross-device sign-in QR code bubble is enabled from
+// the What's New page.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+extern const base::FeatureParam<bool> kCrossDeviceSigninFromDesktopWhatsNew;
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
@@ -377,6 +387,11 @@ BASE_DECLARE_FEATURE(kEnableAccountPreviewPreferredAccountFollowup);
 // Experience (FRE).
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnableAccountPreviewPreferredAccountFRE);
+// Maximum duration the FRE waits for an ongoing preferred account computation
+// to update the selected account.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE_PARAM(base::TimeDelta,
+                           kAccountPreviewPreferredAccountFREFetchTimeout);
 #endif
 
 // Controls whether storing and exposing the preferred account when offering

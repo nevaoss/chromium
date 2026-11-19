@@ -618,8 +618,10 @@ void WebUIToolbarWebView::RemovedFromWidget() {
 
 void WebUIToolbarWebView::OnThemeChanged() {
   views::View::OnThemeChanged();
-  UpdateProfileThemeColors(browser_, GetColorProvider());
-  avatar_control_.UpdateIcon();
+  if (features::IsWebUIAvatarButtonEnabled()) {
+    UpdateProfileThemeColors(browser_, GetColorProvider());
+    avatar_control_.UpdateIcon();
+  }
   if (location_bar_) {
     location_bar_->OnThemeChanged();
   }
@@ -1323,10 +1325,10 @@ void WebUIToolbarWebView::OverflowButtonClicked(
   // For better or for worse, ignoring modifiers and instead doing everything in
   // the current tab matches the Views overflow menu behavior.
   if (identifier == kToolbarForwardButtonElementId) {
-    browser_controls_adapter_->Forward(WindowOpenDisposition::CURRENT_TAB);
+    browser_controls_adapter_->Forward(WindowOpenDisposition::kCurrentTab);
     return;
   } else if (identifier == kToolbarHomeButtonElementId) {
-    browser_controls_adapter_->NavigateHome(WindowOpenDisposition::CURRENT_TAB);
+    browser_controls_adapter_->NavigateHome(WindowOpenDisposition::kCurrentTab);
     return;
   } else if (identifier == kToolbarSplitTabsToolbarButtonElementId) {
     split_tabs_control_.HandleContextMenuOverflowClick();
@@ -1338,7 +1340,9 @@ void WebUIToolbarWebView::OverflowButtonClicked(
     media_control_.OnClicked();
     return;
   } else if (identifier == kToolbarAvatarButtonElementId) {
-    // TODO(crbug.com/556290451): Make buttons work with overflow menu clicks.
+    // ButtonPressed() makes the button visible before showing any bubble
+    // anchored to it.
+    avatar_control_.ButtonPressed(/*is_source_accelerator=*/false);
     return;
   }
   NOTREACHED();
@@ -1546,7 +1550,7 @@ void WebUIToolbarWebView::OnHomeButtonDropText(const std::string& text) {
 
 void WebUIToolbarWebView::OnToolbarDropFile(const gfx::PointF& drop_position) {
   if (std::optional<GURL> url = web_view_->ConsumeDroppedUrl(drop_position)) {
-    browser_->OpenGURL(*url, WindowOpenDisposition::CURRENT_TAB);
+    browser_->OpenGURL(*url, WindowOpenDisposition::kCurrentTab);
   }
 }
 

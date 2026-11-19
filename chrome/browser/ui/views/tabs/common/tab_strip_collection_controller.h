@@ -67,6 +67,11 @@ class TabStripCollectionController : public TabContextMenuController::Delegate {
 
   void ShiftTabNext(const tabs::TabInterface* tab_interface);
   void ShiftTabPrevious(const tabs::TabInterface* tab_interface);
+  void ExtendSelectionNext(const tabs::TabInterface* tab_interface,
+                           const TabStripUserGestureDetails& gesture_detail);
+  void ExtendSelectionPrevious(
+      const tabs::TabInterface* tab_interface,
+      const TabStripUserGestureDetails& gesture_detail);
   void ShiftGroupUp(const tab_groups::TabGroupId& group);
   void ShiftGroupDown(const tab_groups::TabGroupId& group);
   void MoveTabFirst(const tabs::TabInterface* tab_interface);
@@ -146,6 +151,10 @@ class TabStripCollectionController : public TabContextMenuController::Delegate {
   void SetTabStripInitialized() { has_tab_strip_initialized_ = true; }
   bool IsAnimationAllowed() const;
 
+  void SetIsWidgetUserResizing(bool user_widget_resizing) {
+    user_widget_resizing_ = user_widget_resizing;
+  }
+
  private:
   // TabContextMenuController::Delegate:
   bool IsContextMenuCommandChecked(
@@ -166,7 +175,13 @@ class TabStripCollectionController : public TabContextMenuController::Delegate {
   void RecordMetricsOnTabSelectionChange(
       std::optional<tab_groups::TabGroupId> group);
 
+  void ExpandCollapsedGroupsInSelectionRange(int target_index);
+
   void ShiftTabRelative(const tabs::TabInterface* tab_interface, int offset);
+  void ExtendSelectionRelative(
+      const tabs::TabInterface* tab_interface,
+      bool leading,
+      const TabStripUserGestureDetails& gesture_detail);
   void ShiftGroupRelative(const tab_groups::TabGroupId& group, int offset);
 
   void AnnounceTabAddedToGroup(tab_groups::TabGroupId group_id);
@@ -185,6 +200,8 @@ class TabStripCollectionController : public TabContextMenuController::Delegate {
       animation_coordinator_;
 
   bool has_tab_strip_initialized_ = false;
+
+  bool user_widget_resizing_ = false;
 
   std::unique_ptr<HorizontalTabClosingHelper> tab_closing_helper_;
 

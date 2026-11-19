@@ -77,6 +77,10 @@ BASE_FEATURE(kAndroidSystemFontPrewarming, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Opens PDFs in iframe in standalone tabs on Android.
 BASE_FEATURE(kAndroidHandlePdfInIframe, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables keyboard-triggered web context menus (Shift+F10 and Context Menu key)
+// on Android.
+BASE_FEATURE(kAndroidKeyboardContextMenu, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 // Avoids copying ResourceRequest::TrustedParams when possible.
@@ -2042,18 +2046,6 @@ BASE_FEATURE(kSetIntervalWithoutClamp, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSetSelectionForAccessibilityHandlingInputEvent,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kSharedStorageWorkletSharedBackingThreadImplementation,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kSharedStorageCreateWorkletCustomDataOrigin,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kSharedStorageSelectURLSavedQueries,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kSharedStorageAPIEnableWALForDatabase,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 const char kSkipTouchEventFilterTypeParamName[] = "type";
 const char kSkipTouchEventFilterTypeParamValueDiscrete[] = "discrete";
 const char kSkipTouchEventFilterTypeParamValueAll[] = "all";
@@ -2311,6 +2303,9 @@ BASE_FEATURE(kUnframedIwa, base::FEATURE_ENABLED_BY_DEFAULT);
 // If enabled, the usage of unload handlers causes a blocklisted reason for
 // BFCache. The purpose is to capture their source location.
 BASE_FEATURE(kUnloadBlocklisted, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kUpdateCompositorMemoryPolicyOnScreenChange,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When BeginMainFrame() is throttled, whether input-related BeginMainFrame()s
 // are marked urgent, and thus unthtrottled.

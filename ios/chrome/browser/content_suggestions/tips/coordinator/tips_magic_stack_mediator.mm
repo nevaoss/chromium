@@ -160,7 +160,7 @@ using segmentation_platform::TipIdentifier;
 
   if (identifier == TipIdentifier::kNTPTheme &&
       segmentation_platform::features::
-          IsMagicStackTipsV2IosActionableEnabled()) {
+          IsMagicStackNTPThemeTipIosActionableEnabled()) {
     _actionableConfig = [[NTPThemeActionableTipConfig alloc] init];
     _actionableConfig.audience = self;
     _actionableConfig.colorPalettes = [self buildNTPThemeColorPalettes];
@@ -247,6 +247,11 @@ using segmentation_platform::TipIdentifier;
         GURL(background.attribution_action_url()), background.collection_id());
   }
   _backgroundCustomizationService->StoreCurrentTheme();
+}
+
+- (void)didToggleTipsNotificationsSwitch:(BOOL)enabled {
+  [self.delegate logMagicStackEngagementForType:self.activeConfig.type];
+  [self.presentationAudience didToggleTipsNotificationsSwitch:enabled];
 }
 
 #pragma mark - Private

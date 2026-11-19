@@ -41,7 +41,7 @@ class ShapeResultTest : public FontTestBase {
   enum FontType {
     kLatinFont = 0,
     kArabicFont = 1,
-    kCJKFont = 2,
+    kCjkFont = 2,
   };
 
  protected:
@@ -448,6 +448,41 @@ TEST_F(ShapeResultTest, CompactRunsForceFullPositionData) {
   EXPECT_EQ(kNumCharacters, PositionDataSize(*result));
 }
 
+TEST_F(ShapeResultTest, CompactPositionDataWithGapsMatchesFullStorage) {
+  constexpr unsigned kStartIndex = 5;
+  constexpr unsigned kNumCharacters = 24;
+  for (TextDirection direction : {TextDirection::kLtr, TextDirection::kRtl}) {
+    SCOPED_TRACE(direction);
+    ShapeResult* full_result = MakeGarbageCollected<ShapeResult>(
+        kStartIndex, kNumCharacters, direction);
+    ShapeResult* compact_result = MakeGarbageCollected<ShapeResult>(
+        kStartIndex, kNumCharacters, direction);
+    for (ShapeResult* result : {full_result, compact_result}) {
+      InsertConstantAdvanceRun(result, kStartIndex + 2, 8,
+                               TextRunLayoutUnit(10),
+                               /*compact=*/result == compact_result);
+      InsertConstantAdvanceRun(result, kStartIndex + 13, 8,
+                               TextRunLayoutUnit(20),
+                               /*compact=*/result == compact_result);
+      result->EnsurePositionData(/*allow_compaction=*/false);
+      ASSERT_EQ(kNumCharacters, PositionDataSize(*result));
+    }
+
+    for (unsigned offset = kStartIndex; offset < kStartIndex + kNumCharacters;
+         ++offset) {
+      SCOPED_TRACE(offset);
+      const ShapeResultCharacterData& expected =
+          full_result->CharacterData(offset);
+      const ShapeResultCharacterData& actual =
+          compact_result->CharacterData(offset);
+      EXPECT_EQ(expected.x_position, actual.x_position);
+      EXPECT_EQ(expected.is_cluster_base, actual.is_cluster_base);
+      EXPECT_EQ(expected.safe_to_break_before, actual.safe_to_break_before);
+    }
+    EXPECT_EQ(full_result->Width(), compact_result->Width());
+  }
+}
+
 TEST_F(ShapeResultTest, ComputeInkBoundsWithZeroOffset) {
   String string(u"abc");
   HarfBuzzShaper shaper(string);
@@ -753,7 +788,7 @@ struct CaretPositionForOffsetTestData {
 #else
      {0, 12, 24, 36, 48, 60, 110, 150, 210, 234},
 #endif
-     ShapeResultTest::kCJKFont,
+     ShapeResultTest::kCjkFont,
      AdjustMidCluster::kToStart},
 
     // 13
@@ -765,7 +800,7 @@ struct CaretPositionForOffsetTestData {
 #else
      {0, 12, 24, 36, 48, 60, 110, 150, 210, 234},
 #endif
-     ShapeResultTest::kCJKFont,
+     ShapeResultTest::kCjkFont,
      AdjustMidCluster::kToEnd},
 
     // 14
@@ -777,7 +812,7 @@ struct CaretPositionForOffsetTestData {
 #else
      {234, 222, 210, 198, 186, 174, 124, 84, 24, 0},
 #endif
-     ShapeResultTest::kCJKFont,
+     ShapeResultTest::kCjkFont,
      AdjustMidCluster::kToStart},
 
     // 15
@@ -789,7 +824,7 @@ struct CaretPositionForOffsetTestData {
 #else
      {234, 222, 210, 198, 186, 174, 124, 84, 24, 0},
 #endif
-     ShapeResultTest::kCJKFont,
+     ShapeResultTest::kCjkFont,
      AdjustMidCluster::kToEnd},
 };
 class CaretPositionForOffsetTest
@@ -899,7 +934,7 @@ struct CaretOffsetForHitTestTestData {
       55, 66, 67, 78, 79, 90, 91, 99, 100, 102},
      {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9},
 #endif
-     ShapeResultTest::kCJKFont},
+     ShapeResultTest::kCjkFont},
 
     {u"楽しいドライブ、0",
      TextDirection::kRtl,
@@ -912,7 +947,7 @@ struct CaretOffsetForHitTestTestData {
       50, 61, 62, 73, 74, 85, 86, 97, 98, 102},
      {9, 9, 8, 8, 7, 7, 6, 6, 5, 5, 4, 4, 3, 3, 2, 2, 1, 1, 0, 0},
 #endif
-     ShapeResultTest::kCJKFont},
+     ShapeResultTest::kCjkFont},
 };
 class CaretOffsetForHitTestTest
     : public ShapeResultTest,

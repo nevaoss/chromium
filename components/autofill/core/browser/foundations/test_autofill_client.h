@@ -304,7 +304,7 @@ class TestAutofillClientTemplate : public T {
   }
 
   const signin::IdentityManager* GetIdentityManager() const override {
-    return identity_test_env_.identity_manager();
+    return identity_test_environment().identity_manager();
   }
 
   metrics::ProfileMetricsService* GetProfileMetricsService() override {
@@ -566,8 +566,6 @@ class TestAutofillClientTemplate : public T {
     return format_for_large_keyboard_accessory_;
   }
 
-  bool SupportsDeviceReauth() const override { return supports_device_reauth_; }
-
   std::unique_ptr<device_reauth::DeviceAuthenticator> GetDeviceAuthenticator(
       std::string histogram) const override {
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID) || \
@@ -581,9 +579,6 @@ class TestAutofillClientTemplate : public T {
 
   std::unique_ptr<device_reauth::DeviceAuthAvailabilityChecker>
   GetDeviceAuthAvailabilityChecker() const override {
-    if (device_auth_availability_checker_) {
-      return std::move(device_auth_availability_checker_);
-    }
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID) || \
     BUILDFLAG(IS_CHROMEOS)
     return std::make_unique<device_reauth::MockDeviceAuthAvailabilityChecker>();
@@ -591,13 +586,6 @@ class TestAutofillClientTemplate : public T {
     return nullptr;
 #endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID) ||
         // BUILDFLAG(IS_CHROMEOS)
-  }
-
-  // Sets the `DeviceAuthAvailabilityChecker` to return on the next call to
-  // `GetDeviceAuthAvailabilityChecker()`.
-  void set_device_auth_availability_checker(
-      std::unique_ptr<device_reauth::DeviceAuthAvailabilityChecker> checker) {
-    device_auth_availability_checker_ = std::move(checker);
   }
 
 #if BUILDFLAG(IS_IOS)
@@ -823,10 +811,6 @@ class TestAutofillClientTemplate : public T {
     is_credit_card_upload_enabled_ = is_credit_card_upload_enabled;
   }
 
-  void set_supports_device_reauth(bool supports_device_reauth) {
-    supports_device_reauth_ = supports_device_reauth;
-  }
-
   void set_crowdsourcing_manager(
       std::unique_ptr<AutofillCrowdsourcingManager> crowdsourcing_manager) {
     crowdsourcing_manager_ = std::move(crowdsourcing_manager);
@@ -874,7 +858,15 @@ class TestAutofillClientTemplate : public T {
   }
 
   signin::IdentityTestEnvironment& identity_test_environment() {
-    return identity_test_env_;
+    return const_cast<signin::IdentityTestEnvironment&>(
+        std::as_const(*this).identity_test_environment());
+  }
+
+  const signin::IdentityTestEnvironment& identity_test_environment() const {
+    if (!identity_test_env_) {
+      identity_test_env_.emplace();
+    }
+    return *identity_test_env_;
   }
 
   one_time_tokens::SmsOtpService* GetSmsOtpService() const override {
@@ -926,7 +918,13 @@ class TestAutofillClientTemplate : public T {
 
  private:
   ukm::TestAutoSetUkmRecorder test_ukm_recorder_;
-  signin::IdentityTestEnvironment identity_test_env_;
+  // Lazily initialized: `IdentityTestEnvironment` has platform-specific test
+  // dependencies (`TestNetworkConnectionTracker` on ChromeOS and
+  // `signin_java_test_support` on Android) that `content::ContentBrowserTest`
+  // does not set up by default. Lazy initialization allows
+  // `content::ContentBrowserTest` to use `TestAutofillClientTemplate` without
+  // those dependencies as long as `IdentityManager` is not used.
+  mutable std::optional<signin::IdentityTestEnvironment> identity_test_env_;
   metrics::ProfileMetricsService test_profile_metrics_service_{
       metrics::ProfileMetricsContext(1)};
   raw_ptr<syncer::SyncService> test_sync_service_ = nullptr;
@@ -1014,11 +1012,6 @@ class TestAutofillClientTemplate : public T {
   bool is_cvc_saving_supported_ = true;
 
   bool is_credit_card_upload_enabled_ = true;
-
-  bool supports_device_reauth_ = true;
-
-  mutable std::unique_ptr<device_reauth::DeviceAuthAvailabilityChecker>
-      device_auth_availability_checker_;
 
   bool is_tab_in_actor_mode_ = false;
 

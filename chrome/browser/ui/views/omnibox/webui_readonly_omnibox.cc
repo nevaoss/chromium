@@ -381,7 +381,7 @@ void WebUIReadOnlyOmnibox::OnRevertTemporaryText(
 }
 
 void WebUIReadOnlyOmnibox::OnBeforePossibleChange() {
-  state_before_change_ = GetState();
+  state_before_change_ = GetStateWithoutInlineSuggestion();
 
   // User is editing or traversing the text, as opposed to moving
   // through suggestions. Clear the accessibility label
@@ -391,7 +391,7 @@ void WebUIReadOnlyOmnibox::OnBeforePossibleChange() {
 }
 
 bool WebUIReadOnlyOmnibox::OnAfterPossibleChange(bool allow_keyword_ui_change) {
-  State new_state = GetState();
+  State new_state = GetStateWithoutInlineSuggestion();
   OmniboxView::StateChanges state_changes =
       GetStateChanges(state_before_change_, new_state);
 
@@ -633,6 +633,22 @@ void WebUIReadOnlyOmnibox::ResetBrowserVersion() {
   ui_version_ = 0;
 }
 
+OmniboxView::State WebUIReadOnlyOmnibox::GetStateWithoutInlineSuggestion() {
+  auto state = GetState();
+  // GetState() fills in the text field of state with GetText(), which needs
+  // to include inline suggestion when handling Ctrl+K. The state handed to
+  // OnAfterPossibleChange should not include the inline suggestion, since
+  // it can make it look like like the selection got accepted.
+  //
+  // In views, this happens automatically because typing with an inline
+  // suggestion deletes that suggestion, and then it gets re-applied, but
+  // doing that in WebUI would be very flickery.
+  //
+  // See crbug.com/571658273
+  state.text = text_;
+  return state;
+}
+
 bool WebUIReadOnlyOmnibox::IsWebViewFocused() {
   // `toolbar_delegate_` is null in some tests.
   if (!toolbar_delegate_) {
@@ -810,7 +826,9 @@ WebUIReadOnlyOmnibox::OnTextInput(
     bool unelide_ok = controller()->edit_model()->Unelide();
     CHECK(unelide_ok, base::NotFatalUntil::M162);
     // It should produce the same text (the 'formatted full URL').
-    CHECK_EQ(text_, text_input.text, base::NotFatalUntil::M162);
+    // TODO(crbug.com/574837774): CHECK-exclusion: Convert to a CHECK once we
+    // are confident it won't be triggered.
+    DCHECK_EQ(text_, text_input.text);
 
     // Unelide() calls SetWindowTextAndCaretPos() and SelectAll(), which reset
     // browser_version_ and selection_. Since this unelision was initiated by
@@ -955,7 +973,7 @@ WebUIReadOnlyOmnibox::OnKey(
               OmniboxPopupSelection(
                   OmniboxPopupSelection::kNoMatch,
                   OmniboxPopupSelection::LineState::kFocusedButtonAim),
-              base::TimeTicks::Now(), WindowOpenDisposition::CURRENT_TAB,
+              base::TimeTicks::Now(), WindowOpenDisposition::kCurrentTab,
               /*via_keyboard=*/true);
         }
         return base::ok(std::monostate());
@@ -974,7 +992,7 @@ WebUIReadOnlyOmnibox::OnKey(
         if (selection.IsButtonFocused()) {
           controller()->edit_model()->OpenSelection(
               selection, base::TimeTicks::Now(),
-              WindowOpenDisposition::CURRENT_TAB, /*via_keyboard=*/true);
+              WindowOpenDisposition::kCurrentTab, /*via_keyboard=*/true);
         }
       }
       break;
@@ -1026,7 +1044,7 @@ WebUIReadOnlyOmnibox::OnPointer(
             omnibox::kWebUIOmniboxFullPopupDoubleClick) &&
         location_bar_) {
       location_bar_->GetOmniboxPopupView()->SyncNativeStateToWebUI(
-          start_zero_suggest);
+          start_zero_suggest, /*show_full_url=*/false);
     }
   }
   return base::ok(std::monostate());

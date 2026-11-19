@@ -733,8 +733,6 @@ if (!is_robolectric && enable_java_templates) {
   #     merged into apks that directly or indirectly depend on this target.
   #   android_manifest_dep: Target that generates AndroidManifest (if applicable)
   #   custom_package: java package for generated .java files.
-  #   allow_missing_resources: Do not fail if a resource exists in a directory
-  #      but is not listed in sources.
   #   shared_resources: If true make a resource package that can be loaded by a
   #     different application at runtime to access the package's resources.
   #   resource_overlay: Whether the resources in 'sources' should override
@@ -834,12 +832,34 @@ if (!is_robolectric && enable_java_templates) {
       }
     }
 
-    prepare_resources(target_name) {
+    _prepare_target_name = "${target_name}__prepare"
+
+    prepare_resources(_prepare_target_name) {
       forward_variables_from(invoker,
                              [
-                               "allow_missing_resources",
                                "public_deps",
                                "strip_drawables",
+                             ])
+
+      # Only depend on non-java targets that might generate input resource
+      # files.
+      deps = filter_exclude(_deps, java_target_patterns)
+
+      res_sources_path = _res_sources_path
+      sources = _resource_files
+
+      resources_zip = _resources_zip
+      rtxt_out_path = _rtxt_out_path
+
+      if (defined(invoker.rtxt_file)) {
+        rtxt_in_path = invoker.rtxt_file
+      }
+    }
+
+    group(target_name) {
+      forward_variables_from(invoker,
+                             [
+                               "public_deps",
                                "visibility",
                              ])
       _lib_deps = filter_exclude(filter_include(_deps, java_library_patterns),
@@ -854,22 +874,18 @@ if (!is_robolectric && enable_java_templates) {
                    "target=${target_name}, public_deps=${public_deps}")
       }
 
-      # Depend on non-library deps and on __assetres subtargets of library deps.
-      deps = filter_exclude(_deps, _lib_deps) + [ _android_sdk_dep ]
+      # Depend on non-library deps and on __assetres subtargets of library deps
+      # so that downstream generate_r_java and compile_resources steps wait for
+      # transitive resource targets without making prepare_resources.py wait for
+      # them.
+      deps = [
+               ":$_prepare_target_name",
+               _android_sdk_dep,
+             ] + filter_exclude(_deps, _lib_deps)
       foreach(_lib_dep, _lib_deps) {
         # Expand //foo/java -> //foo/java:java
         _lib_dep = get_label_info(_lib_dep, "label_no_toolchain")
         deps += [ "${_lib_dep}__assetres" ]
-      }
-
-      res_sources_path = _res_sources_path
-      sources = _resource_files
-
-      resources_zip = _resources_zip
-      rtxt_out_path = _rtxt_out_path
-
-      if (defined(invoker.rtxt_file)) {
-        rtxt_in_path = invoker.rtxt_file
       }
     }
   }
@@ -1339,6 +1355,27 @@ if (!is_robolectric && enable_java_templates) {
       }
     }
 
+    if (build_with_chromium && generate_location_tags) {
+      # Used by test_runner.py to map test classes to source file locations.
+      _size_info_target = "${target_name}__size_info"
+
+      create_size_info_files(_size_info_target) {
+        name = invoker.target_name
+        build_config =
+            "$target_gen_dir/${invoker.target_name}.build_config.json"
+
+        # Tests can be in the binary's own sources, which are not part of
+        # javac_full_classpath (that only covers deps).
+        unprocessed_jar_path =
+            "$target_out_dir/${invoker.target_name}.javac.jar"
+        deps = [
+          ":$_build_config_target_name",
+          ":${_java_binary_target_name}__host",
+          ":${invoker.target_name}__compile_java",
+        ]
+      }
+    }
+
     test_runner_script(target_name) {
       forward_variables_from(invoker,
                              [
@@ -1364,8 +1401,13 @@ if (!is_robolectric && enable_java_templates) {
       if (_enable_resources) {
         deps += [ ":$_apkbuilder_target_name" ]
       }
+      data_deps = []
       if (defined(invoker.shared_libraries)) {
-        data_deps = invoker.shared_libraries
+        data_deps += invoker.shared_libraries
+      }
+      if (build_with_chromium && generate_location_tags) {
+        data = [ "//testing/location_tags.json" ]
+        data_deps += [ ":${invoker.target_name}__size_info" ]
       }
 
       # Add non-libary deps, since the __host target does not depend on them.
@@ -2048,6 +2090,9 @@ if (!is_robolectric && enable_java_templates) {
           "_APK_ASSETS_SUFFIX=${invoker.apk_assets_suffix}",
         ]
       }
+      if (defined(invoker.locales_java_list)) {
+        defines += [ "_LOCALES=${invoker.locales_java_list}" ]
+      }
       if (defined(invoker.proguard_enabled) && invoker.proguard_enabled) {
         defines += [ "_IS_PROGUARD_ENABLED" ]
       }
@@ -2085,42 +2130,6 @@ if (!is_robolectric && enable_java_templates) {
       if (defined(invoker.disable_strict_mode_context) &&
           invoker.disable_strict_mode_context) {
         defines += [ "_DISABLE_STRICT_MODE_CONTEXT" ]
-      }
-    }
-  }
-
-  # Creates ProductConfig.java, a file containing product-specific
-  # configuration.
-  #
-  # Currently, this includes the list of locales, both in their compressed and
-  # uncompressed format, as well as library loading
-  #
-  # Variables:
-  #   build_config: Path to build_config used for locale lists.
-  #   java_package: Java package for the generated class.
-  #   use_chromium_linker:
-  template("generate_product_config_srcjar") {
-    java_cpp_template(target_name) {
-      defines = []
-      _use_final =
-          defined(invoker.build_config) ||
-          defined(invoker.use_chromium_linker) || defined(invoker.is_bundle)
-      if (_use_final) {
-        defines += [ "USE_FINAL" ]
-      }
-
-      sources = [ "//build/android/java/templates/ProductConfig.template" ]
-      defines += [ "PACKAGE=${invoker.java_package}" ]
-
-      _use_chromium_linker =
-          defined(invoker.use_chromium_linker) && invoker.use_chromium_linker
-      defines += [ "USE_CHROMIUM_LINKER_VALUE=$_use_chromium_linker" ]
-      if (defined(invoker.build_config)) {
-        forward_variables_from(invoker, TESTONLY_AND_VISIBILITY + [ "deps" ])
-        _rebased_build_config =
-            rebase_path(invoker.build_config, root_build_dir)
-        defines +=
-            [ "LOCALE_LIST=@FileArg($_rebased_build_config:locales_java_list)" ]
       }
     }
   }
@@ -2203,8 +2212,6 @@ if (!is_robolectric && enable_java_templates) {
   #   require_native_mocks: Enforce that any native calls using
   #     org.chromium.base.annotations.NativeMethods must have a mock set
   #     (optional).
-  #   product_config_java_packages: Optional list of java packages. If given, a
-  #     ProductConfig.java file will be generated for each package.
   #   enable_proguard_checks: Turns on -checkdiscard directives and missing
   #     symbols check in the proguard step (default=true).
   #   disallowed_library_classes: List of Android SDK classes (e.g.
@@ -2329,9 +2336,6 @@ if (!is_robolectric && enable_java_templates) {
     _use_chromium_linker =
         defined(invoker.use_chromium_linker) && invoker.use_chromium_linker
     _rebased_build_config = rebase_path(_build_config, root_build_dir)
-
-    _generate_productconfig_java =
-        defined(invoker.product_config_java_packages) && !_omit_dex
 
     _proguard_enabled =
         defined(invoker.proguard_enabled) && invoker.proguard_enabled
@@ -2691,9 +2695,11 @@ if (!is_robolectric && enable_java_templates) {
         min_sdk_version = _min_sdk_version
         write_clang_profiling_data =
             use_clang_coverage && _generate_native_libraries_java
+        deps = [ ":$_build_config_target" ]
+        inputs = [ _build_config ]
+        locales_java_list =
+            "@FileArg(${_rebased_build_config}:locales_java_list)"
         if (defined(invoker.suffix_apk_assets_used_by)) {
-          deps = [ ":$_build_config_target" ]
-          inputs = [ _build_config ]
           apk_assets_suffixed_list =
               "@FileArg(${_rebased_build_config}:apk_assets_suffixed_list)"
           apk_assets_suffix =
@@ -2701,21 +2707,6 @@ if (!is_robolectric && enable_java_templates) {
         }
       }
       _srcjar_deps += [ ":${_template_name}__build_config_srcjar" ]
-    }
-
-    if (_generate_productconfig_java) {
-      foreach(_package, invoker.product_config_java_packages) {
-        _locale_target_name =
-            "${_template_name}_${_package}__product_config_srcjar"
-
-        generate_product_config_srcjar("$_locale_target_name") {
-          build_config = _build_config
-          java_package = _package
-          use_chromium_linker = _use_chromium_linker
-          deps = [ ":$_build_config_target" ]
-        }
-        _srcjar_deps += [ ":$_locale_target_name" ]
-      }
     }
 
     if (_is_bundle_module) {
@@ -2760,7 +2751,7 @@ if (!is_robolectric && enable_java_templates) {
                                "suffix_apk_assets_used_by",
                                "uses_split",
                              ])
-      if (_generate_productconfig_java) {
+      if (_generate_buildconfig_java) {
         create_locales_java_list = true
       }
       version_code = _version_code
@@ -2917,6 +2908,7 @@ if (!is_robolectric && enable_java_templates) {
               # library .dex files were created with.
               input_dex_filearg =
                   "@FileArg(${_rebased_build_config}:all_dex_files)"
+              include_global_synthetics = true
 
               # Pure dex-merge.
               enable_desugar = false
@@ -3307,7 +3299,6 @@ if (!is_robolectric && enable_java_templates) {
             "manifest_package",
             "max_sdk_version",
             "mergeable_android_manifests",
-            "product_config_java_packages",
             "min_sdk_version",
             "native_lib_placeholders",
             "omit_dex",
@@ -3439,7 +3430,6 @@ if (!is_robolectric && enable_java_templates) {
             "jar_excluded_patterns",
             "javac_args",
             "loadable_modules",
-            "product_config_java_packages",
             "manifest_package",
             "max_sdk_version",
             "min_sdk_version",
@@ -4846,6 +4836,7 @@ if (!is_robolectric && enable_java_templates) {
           # This will be a pure dex-merge.
           input_dex_filearg = "@FileArg($_rebased_build_config:modules:${_module.name}:all_dex_files)"
           enable_desugar = false
+          include_global_synthetics = _module.name == "base"
 
           deps = [
             ":${_module_target_name}__java",

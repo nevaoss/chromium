@@ -52,7 +52,7 @@
 #include "chrome/browser/ui/views/tabs/shared/tab_strip_observer.h"
 #include "chrome/browser/ui/views/tabs/shared/tab_strip_types.h"
 #include "chrome/browser/ui/views/tabs/tab.h"
-#include "chrome/browser/ui/views/tabs/tab_container_impl.h"
+#include "chrome/browser/ui/views/tabs/tab_container.h"
 #include "chrome/browser/ui/views/tabs/tab_group_header.h"
 #include "chrome/browser/ui/views/tabs/tab_group_highlight.h"
 #include "chrome/browser/ui/views/tabs/tab_group_underline.h"
@@ -125,9 +125,9 @@ std::unique_ptr<TabContainer> MakeTabContainer(
     TabStrip* tab_strip,
     TabHoverCardController* hover_card_controller,
     TabDragContext* drag_context) {
-  return std::make_unique<TabContainerImpl>(
-      *tab_strip, hover_card_controller, drag_context->GetPositioningDelegate(),
-      *tab_strip);
+  return std::make_unique<TabContainer>(*tab_strip, hover_card_controller,
+                                        drag_context->GetPositioningDelegate(),
+                                        *tab_strip);
 }
 
 void UpdateDragEventSourceCrashKey(
@@ -1736,6 +1736,14 @@ bool TabStrip::IsGroupCollapsed(const tab_groups::TabGroupId& group) const {
 
 std::optional<tab_groups::TabGroupId> TabStrip::GetFocusedGroup() const {
   return controller_->GetFocusedGroup();
+}
+
+void TabStrip::EnterFocusMode(const tab_groups::TabGroupId& group) {
+  controller_->EnterFocusMode(group);
+}
+
+void TabStrip::ExitFocusMode(std::optional<TabGroupFocusExitReason> reason) {
+  controller_->ExitFocusMode(reason);
 }
 
 ui::ListSelectionModel TabStrip::GetSelectionModel() const {

@@ -57,6 +57,7 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/web_applications/web_app_launch_utils.h"
 #include "chrome/common/webui_url_constants.h"
+#include "components/contextual_tasks/public/contextual_task.h"
 #include "components/saved_tab_groups/public/tab_group_sync_service.h"
 #include "components/search_engines/ai_mode_button_config.h"
 #include "components/search_engines/ai_mode_button_service.h"
@@ -106,7 +107,6 @@
 #include "chrome/browser/ui/autofill/payments/virtual_card_enroll_bubble_controller_impl.h"
 #include "chrome/browser/ui/autofill/payments/wallet_reminder_notice_bubble_controller.h"
 #include "chrome/browser/ui/bookmarks/bookmark_utils.h"
-#include "chrome/browser/ui/browser_action_prefs_listener.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
@@ -194,6 +194,7 @@
 #include "chrome/common/url_constants.h"
 #include "chrome/grit/branded_strings.h"
 #include "chrome/grit/generated_resources.h"
+#include "chrome/grit/theme_resources.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
 #include "components/bookmarks/common/bookmark_bar_visibility_state.h"
@@ -246,6 +247,7 @@
 #include "ui/actions/actions.h"
 #include "ui/base/accelerators/menu_label_accelerator_util.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/resource/resource_bundle.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/gfx/text_utils.h"
 #include "ui/gfx/vector_icon_types.h"
@@ -406,7 +408,6 @@ BrowserActions::BrowserActions(BrowserWindowInterface* bwi)
       scoped_unowned_user_data_(bwi->GetUnownedUserDataHost(), *this) {}
 
 BrowserActions::~BrowserActions() {
-  browser_action_prefs_listener_.reset();
   // Extract the root and destruct it after the raw_ptr to avoid a dangling
   // pointer scenario.
   if (root_action_item_) {
@@ -426,13 +427,6 @@ void BrowserActions::InitializeBrowserActions() {
   InitializeToolbarAndMiscActions();
   InitializeNavigationActions();
   InitializeSubmenuActions();
-
-  AddListeners();
-}
-
-actions::ActionItem* BrowserActions::RegisterAction(
-    std::unique_ptr<actions::ActionItem> action_item) {
-  return root_action_item_->AddChild(std::move(action_item));
 }
 
 void BrowserActions::InitializeSidePanelActions() {
@@ -472,6 +466,18 @@ void BrowserActions::InitializeSidePanelActions() {
                                                         : kReadingListOldIcon,
                       kActionSidePanelShowReadingList, bwi, true)
           .Build());
+  if (profile->IsRegularProfile() &&
+      base::FeatureList::IsEnabled(features::kTabsFromOtherDevicesSidePanel)) {
+    root_action_item_->AddChild(
+        SidePanelAction(SidePanelEntryId::kTabsFromOtherDevices,
+                        IDS_SIDE_PANEL_TABS_FROM_OTHER_DEVICES_TITLE,
+                        IDS_SIDE_PANEL_TABS_FROM_OTHER_DEVICES_TITLE,
+                        features::IsRoundedIconsEnabled()
+                            ? kDevicesIcon
+                            : kDevicesChromeRefreshOldIcon,
+                        kActionSidePanelShowTabsFromOtherDevices, bwi, true)
+            .Build());
+  }
   root_action_item_->AddChild(
       SidePanelAction(SidePanelEntryId::kAboutThisSite,
                       IDS_PAGE_INFO_ABOUT_THIS_PAGE_TITLE,
@@ -668,6 +674,20 @@ void BrowserActions::InitializeSidePanelActions() {
   }
 
   if (contextual_tasks::IsContextualTasksUIEnabled()) {
+    ui::ImageModel contextual_tasks_image = ui::ImageModel::FromVectorIcon(
+        features::IsRoundedIconsEnabled() ? omnibox::kSearchSparkIcon
+                                          : omnibox::kSearchSparkOldIcon,
+        ui::kColorIcon);
+    if (contextual_tasks::ShouldUseSuperGIconForPinButtons()) {
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+      contextual_tasks_image = ui::ImageModel::FromImageSkia(
+          *ui::ResourceBundle::GetSharedInstance().GetImageSkiaNamed(
+              IDR_GOOGLE_G_GRADIENT_16_ALT));
+#else
+      contextual_tasks_image = ui::ImageModel::FromVectorIcon(
+          vector_icons::kGoogleColorIcon, ui::kColorIcon);
+#endif
+    }
     root_action_item_->AddChild(
         actions::ActionItem::Builder(
             base::BindRepeating(
@@ -690,6 +710,40 @@ void BrowserActions::InitializeSidePanelActions() {
                                   "OpenSidePanel";
                     base::RecordAction(base::UserMetricsAction(user_action));
                     base::UmaHistogramBoolean(user_action, true);
+                    if (contextual_tasks::IsContextualTasksPinningV2Enabled()) {
+                      const char* aggregate_action =
+                          is_open ? "ContextualTasks.ToolbarButton.UserAction."
+                                    "CloseSidePanel"
+                                  : "ContextualTasks.ToolbarButton.UserAction."
+                                    "OpenSidePanel";
+                      base::RecordAction(
+                          base::UserMetricsAction(aggregate_action));
+                      base::UmaHistogramBoolean(aggregate_action, true);
+                      if (!is_open) {
+                        const bool has_current_task =
+                            controller->GetCurrentTask().has_value();
+                        const char* thread_action =
+                            has_current_task
+                                ? "ContextualTasks.PermanentToolbarButton."
+                                  "UserAction.OpenSidePanel.ContinueThread"
+                                : "ContextualTasks.PermanentToolbarButton."
+                                  "UserAction.OpenSidePanel.NewThread";
+                        base::RecordAction(
+                            base::UserMetricsAction(thread_action));
+                        base::UmaHistogramEnumeration(
+                            "ContextualTasks.PermanentToolbarButton."
+                            "UserAction.OpenSidePanel.ThreadAction",
+                            has_current_task
+                                ? contextual_tasks::
+                                      ContextualTasksPanelController::
+                                          PermanentToolbarButtonThreadAction::
+                                              kContinueThread
+                                : contextual_tasks::
+                                      ContextualTasksPanelController::
+                                          PermanentToolbarButtonThreadAction::
+                                              kNewThread);
+                      }
+                    }
                   }
                   if (contextual_tasks::
                           IsContextualTasksPinButtonInToolbarEnabled() &&
@@ -712,11 +766,7 @@ void BrowserActions::InitializeSidePanelActions() {
                     profile)
                     ? IDS_ASK_GOOGLE_ABOUT_THIS_PAGE
                     : IDS_CONTEXTUAL_TASKS_CUSTOMIZE_CHROME_LABEL))
-            .SetImage(ui::ImageModel::FromVectorIcon(
-                features::IsRoundedIconsEnabled()
-                    ? omnibox::kSearchSparkIcon
-                    : omnibox::kSearchSparkOldIcon,
-                ui::kColorIcon))
+            .SetImage(contextual_tasks_image)
             .SetProperty(
                 actions::kActionItemPinnableKey,
                 static_cast<
@@ -2333,7 +2383,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           .Build());
 
   if (glic::GlicEnabling::IsProfileEligible(profile) &&
-      base::FeatureList::IsEnabled(features::kAiOverlayDialog)) {
+      ttc::AiOverlayDialogController::IsEnabledForProfile(profile)) {
     std::unique_ptr<actions::ActionItem> item =
         actions::ActionItem::Builder(
             base::BindRepeating(
@@ -2526,7 +2576,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                     return;
                   }
                   auto* controller =
-                      tab->GetTabFeatures()->contextual_cueing_controller();
+                      contextual_cueing::ContextualCueingController::From(tab);
                   if (controller) {
                     controller->OnActionInvoked();
                   }
@@ -3668,17 +3718,6 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           .SetTooltipText(l10n_util::GetStringUTF16(IDS_TOOLTIP_ZOOM))
           .SetImage(ui::ImageModel::FromVectorIcon(
               features::IsRoundedIconsEnabled() ? kZoomInIcon : kZoomInOldIcon))
-          .Build());
-
-  root_action_item_->AddChild(
-      actions::ActionItem::Builder(
-          base::BindRepeating(
-              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
-                 actions::ActionInvocationContext context) {
-                chrome::ToggleBookmarkBarWhenVisible(bwi->GetProfile());
-              },
-              bwi))
-          .SetActionId(kActionBookmarkBarAlwaysShow)
           .Build());
 
   root_action_item_->AddChild(
@@ -5493,9 +5532,4 @@ void BrowserActions::InitializeSubmenuActions() {
           contextual_tasks_submenu_icon,
           /*is_pinnable=*/false)
           .Build());
-}
-
-void BrowserActions::AddListeners() {
-  browser_action_prefs_listener_ = std::make_unique<BrowserActionPrefsListener>(
-      base::to_address(profile_), this);
 }

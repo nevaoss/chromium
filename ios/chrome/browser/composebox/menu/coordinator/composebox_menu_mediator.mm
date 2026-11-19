@@ -10,6 +10,7 @@
 #import "ios/chrome/browser/composebox/public/features.h"
 #import "ios/chrome/browser/composebox/shared/coordinator/composebox_picker_drive_result.h"
 #import "ios/chrome/browser/composebox/shared/metrics/composebox_metrics_recorder.h"
+#import "ios/chrome/browser/composebox/ui/composebox_model_item.h"
 #import "ios/chrome/browser/composebox/ui/composebox_ui_input_state.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_utils.h"
@@ -190,35 +191,10 @@
       [self.delegate composeboxMenuMediator:self
                                  didTapTool:ComposeboxMode::kCanvas];
       break;
-    case ComposeboxMenuItemType::kModelRegular:
-      [self.delegate composeboxMenuMediator:self
-                                didTapModel:ComposeboxModelOption::kRegular];
-      break;
-    case ComposeboxMenuItemType::kModelAuto:
-      [self.delegate composeboxMenuMediator:self
-                                didTapModel:ComposeboxModelOption::kAuto];
-      break;
-    case ComposeboxMenuItemType::kModelThinking:
-      [self.delegate composeboxMenuMediator:self
-                                didTapModel:ComposeboxModelOption::kThinking];
-      break;
     case ComposeboxMenuItemType::kCurrentTab: {
       [self processCurrentTab];
       break;
     }
-    case ComposeboxMenuItemType::kModelThinkingNoGenUI:
-      [self.delegate
-          composeboxMenuMediator:self
-                     didTapModel:ComposeboxModelOption::kThinkingNoGenUI];
-      break;
-    case ComposeboxMenuItemType::kModelFlash:
-      [self.delegate composeboxMenuMediator:self
-                                didTapModel:ComposeboxModelOption::kFlash];
-      break;
-    case ComposeboxMenuItemType::kModelProLatest:
-      [self.delegate composeboxMenuMediator:self
-                                didTapModel:ComposeboxModelOption::kProLatest];
-      break;
     case ComposeboxMenuItemType::kAttachmentSharedTabs:
       [self.delegate composeboxMenuMediatorDidRequestSharedTabs:self];
       break;
@@ -238,10 +214,16 @@
       CHECK(IsComposeboxDriveOptionEnabled());
       [self.delegate composeboxMenuMediatorDidRequestDriveFileSelection:self];
       break;
+    case ComposeboxMenuItemType::kModel:
+      // Models are handled by `-selectModelItem:`.
     case ComposeboxMenuItemType::kMoreOptionsSubmenu:
     case ComposeboxMenuItemType::kUnknown:
       break;
   }
+}
+
+- (void)selectModelItem:(ComposeboxModelItem*)item {
+  [self.delegate composeboxMenuMediator:self didTapModel:item.modelMode];
 }
 
 - (std::set<web::WebStateID>)allAttachedWebStateIDs {

@@ -51,8 +51,6 @@ BASE_FEATURE(kAmbientModeDevUseProdFeature,
 // Adds support for allowing or disabling APN modification by policy.
 BASE_FEATURE(kAllowApnModificationPolicy, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kApnRevamp, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Controls whether proxy settings from policy or extensions are applied
 // verbatim without appending implicit bypass rules for simple hostnames.
 BASE_FEATURE(kApplyManagedProxyBypassListVerbatim,
@@ -378,10 +376,6 @@ BASE_FEATURE(kConchLargeModel, base::FEATURE_DISABLED_BY_DEFAULT);
 // If enabled, conch will use microphone to capture system audio.
 BASE_FEATURE(kConchSystemAudioFromMic, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables a smooth overview mode transition based on the gesture position.
-BASE_FEATURE(kContinuousOverviewScrollAnimation,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Controls enabling/disabling the coral feature.
 BASE_FEATURE(kCoralFeature, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -406,6 +400,10 @@ BASE_FEATURE(kCrosPrivacyHub, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables cros safety service for trust and safety filtering for the text/image
 // output of on-device gen ai models.
 BASE_FEATURE(kCrosSafetyService, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Uses cross-fade animation instead of bounds animation when animating a
+// window to a different size via `WindowState::SetBoundsDirectAnimated()`.
+BASE_FEATURE(kCrossFadeBoundsChangeAnimation, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables syncing attestation certificates to cryptauth for use by Cross Device
 // features, including Eche and Phone Hub.
@@ -497,10 +495,6 @@ BASE_FEATURE(kDiacriticsOnPhysicalKeyboardLongpressDefaultOn,
 BASE_FEATURE(kDisableBruschettaInstallChecks,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-
-// Enables indicators to hint where displays are connected.
-BASE_FEATURE(kDisplayAlignAssist, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // If enabled, DriveFS will be used for Drive sync.
 BASE_FEATURE(kDriveFs, "DriveFS", base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -514,9 +508,6 @@ BASE_FEATURE(kFeatureManagementDriveFsBulkPinning,
 
 // Enables authenticating to Wi-Fi networks using EAP-GTC.
 BASE_FEATURE(kEapGtcWifiAuthentication, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables the System Web App (SWA) version of Eche.
-BASE_FEATURE(kEcheSWA, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables the Debug Mode of Eche.
 BASE_FEATURE(kEcheSWADebugMode, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -594,9 +585,6 @@ BASE_FEATURE(kFastPairBleRotation, base::FEATURE_ENABLED_BY_DEFAULT);
 // Sets mode to DEBUG when fetching metadata from the Nearby server, allowing
 // debug devices to trigger Fast Pair notifications.
 BASE_FEATURE(kFastPairDebugMetadata, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables prototype support for Fast Pair for keyboards.
-BASE_FEATURE(kFastPairKeyboards, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // The amount of minutes we should wait before allowing notifications for a
 // recently lost device.
@@ -997,6 +985,20 @@ BASE_FEATURE(kIppFirstSetupForUsbPrinters, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables Romaji/Kana mode switch for Japanese VK.
 BASE_FEATURE(kJapaneseInputModeSwitchInVK, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Reboots the device when a Kiosk app does not create its window within a
+// specified timeout. The app is assumed to be hung in this scenario.
+// Intended only for legacy Rooms Devices (CfMs).
+BASE_FEATURE(kKioskAppLaunchWatchdog, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// How long to wait for the Kiosk app window after the app was launched.
+const base::FeatureParam<base::TimeDelta> kKioskAppLaunchWatchdogTimeout{
+    &kKioskAppLaunchWatchdog, "Timeout", base::Seconds(60)};
+
+// Number of consecutive OS reboots before the watchdog gives up and leaves
+// the device in the broken state without further reboots.
+const base::FeatureParam<int> kKioskAppLaunchWatchdogMaxOsReboots{
+    &kKioskAppLaunchWatchdog, "MaxOsReboots", 3};
+
 // Enables automatic downloading and installing fonts via language packs, based
 // on the user's preferences.
 BASE_FEATURE(kLanguagePacksFonts, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1113,18 +1115,6 @@ BASE_FEATURE(kModifierSplit, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables to split left and right modifiers in settings.
 BASE_FEATURE(kMouseImposterCheck, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Time limit before re-attempting a background connection to check if the
-// network is suitable.
-const base::FeatureParam<base::TimeDelta>
-    kEcheBackgroundConnectionAttemptThrottleTimeout{
-        &kEcheSWA,
-        "EcheBackgroundConnectionAttemptThrottleTimeout", base::Seconds(10)};
-
-// Time limit before requiring a new connection check to show apps UI.
-const base::FeatureParam<base::TimeDelta> kEcheConnectionStatusResetTimeout{
-    &kEcheSWA, "EcheConnectionStatusResetTimeout",
-    base::Minutes(10)};
 
 BASE_FEATURE(kEcheShorterScanningDutyCycle, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1704,11 +1694,6 @@ BASE_FEATURE(kVcSegmentationModel,
 // conferencing face retouch models.
 BASE_FEATURE(kVcRetouchInferenceBackend, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables or disables mic indicator inside VC tray title header
-BASE_FEATURE(kVcTrayMicIndicator,
-             "VCTrayMicIndicator",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enables or disables web API support for ChromeOS video conferencing.
 BASE_FEATURE(kVcWebApi, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1935,14 +1920,6 @@ bool IsAllowApnModificationPolicyEnabled() {
   return base::FeatureList::IsEnabled(kAllowApnModificationPolicy);
 }
 
-bool IsApnRevampAndAllowApnModificationPolicyEnabled() {
-  return IsApnRevampEnabled() && IsAllowApnModificationPolicyEnabled();
-}
-
-bool IsApnRevampEnabled() {
-  return base::FeatureList::IsEnabled(kApnRevamp);
-}
-
 bool IsApplyManagedProxyBypassListVerbatimEnabled() {
   return base::FeatureList::IsEnabled(kApplyManagedProxyBypassListVerbatim);
 }
@@ -2096,10 +2073,6 @@ bool IsClipboardHistoryPolicyEnabled() {
   return base::FeatureList::IsEnabled(kClipboardHistoryPolicy);
 }
 
-bool IsContinuousOverviewScrollAnimationEnabled() {
-  return base::FeatureList::IsEnabled(kContinuousOverviewScrollAnimation);
-}
-
 bool IsCoralFeatureEnabled() {
   return base::FeatureList::IsEnabled(kCoralFeature) &&
          base::FeatureList::IsEnabled(kCoralFeatureAllowed);
@@ -2131,6 +2104,10 @@ bool IsCrossDeviceFeatureSuiteAllowed() {
   return base::FeatureList::IsEnabled(kAllowCrossDeviceFeatureSuite);
 }
 
+bool IsCrossFadeBoundsChangeAnimationEnabled() {
+  return base::FeatureList::IsEnabled(kCrossFadeBoundsChangeAnimation);
+}
+
 bool IsDemoModeAppResetWindowContainerEnable() {
   return base::FeatureList::IsEnabled(kDemoModeAppResetWindowContainer);
 }
@@ -2157,10 +2134,6 @@ bool IsDeviceMoveConfigSaveEnabled() {
 
 bool IsDisplayPerformanceModeEnabled() {
   return base::FeatureList::IsEnabled(kDisplayPerformanceMode);
-}
-
-bool IsDisplayAlignmentAssistanceEnabled() {
-  return base::FeatureList::IsEnabled(kDisplayAlignAssist);
 }
 
 bool IsDoNotDisturbShortcutEnabled() {
@@ -2191,10 +2164,6 @@ bool IsDemoModeSecondaryGoogleAccountSigninAllowedFalse() {
 
 bool IsSendDeviceInfoToDemoServerEnabled() {
   return base::FeatureList::IsEnabled(kSendDeviceInfoToDemoServer);
-}
-
-bool IsEcheSWAEnabled() {
-  return base::FeatureList::IsEnabled(kEcheSWA);
 }
 
 bool IsEcheSWADebugModeEnabled() {
@@ -2231,10 +2200,6 @@ bool IsFastPairBleRotationEnabled() {
 
 bool IsFastPairDebugMetadataEnabled() {
   return base::FeatureList::IsEnabled(kFastPairDebugMetadata);
-}
-
-bool IsFastPairKeyboardsEnabled() {
-  return base::FeatureList::IsEnabled(kFastPairKeyboards);
 }
 
 bool IsFastPairPwaCompanionEnabled() {
@@ -2440,6 +2405,10 @@ bool IsInternalServerSideSpeechRecognitionEnabledByFinch() {
 #else
   return false;
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
+}
+
+bool IsKioskAppLaunchWatchdogEnabled() {
+  return base::FeatureList::IsEnabled(kKioskAppLaunchWatchdog);
 }
 
 bool IsLobsterEnabled() {
@@ -2830,10 +2799,6 @@ bool IsVcPortraitRelightEnabled() {
 
 bool IsVcControlsUiFakeEffectsEnabled() {
   return base::FeatureList::IsEnabled(kVcControlsUiFakeEffects);
-}
-
-bool IsVcTrayMicIndicatorEnabled() {
-  return base::FeatureList::IsEnabled(kVcTrayMicIndicator);
 }
 
 bool IsVcWebApiEnabled() {

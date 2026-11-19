@@ -42,9 +42,9 @@ import org.chromium.chrome.browser.browsing_data.ClearBrowsingDataFragment;
 import org.chromium.chrome.browser.commerce.PriceNotificationSettingsFragment;
 import org.chromium.chrome.browser.contextualsearch.ContextualSearchSettingsFragment;
 import org.chromium.chrome.browser.download.settings.DownloadSettings;
-import org.chromium.chrome.browser.glic.GlicActorLoginPermissionsFragment;
-import org.chromium.chrome.browser.glic.GlicNavigationUtils;
-import org.chromium.chrome.browser.glic.GlicSettings;
+import org.chromium.chrome.browser.glic.actor_login.GlicActorLoginPermissionsFragment;
+import org.chromium.chrome.browser.glic.settings.GlicNavigationUtils;
+import org.chromium.chrome.browser.glic.settings.GlicSettings;
 import org.chromium.chrome.browser.homepage.settings.HomepageSettings;
 import org.chromium.chrome.browser.image_descriptions.ImageDescriptionsSettings;
 import org.chromium.chrome.browser.language.settings.AlwaysTranslateListFragment;
@@ -67,7 +67,6 @@ import org.chromium.chrome.browser.safe_browsing.settings.EnhancedProtectionSett
 import org.chromium.chrome.browser.safe_browsing.settings.SafeBrowsingSettingsFragment;
 import org.chromium.chrome.browser.safe_browsing.settings.StandardProtectionSettingsFragment;
 import org.chromium.chrome.browser.safety_hub.SafetyHubFragment;
-import org.chromium.chrome.browser.safety_hub.SafetyHubNotificationsFragment;
 import org.chromium.chrome.browser.safety_hub.SafetyHubPermissionsFragment;
 import org.chromium.chrome.browser.search_engines.settings.SearchEngineSettings;
 import org.chromium.chrome.browser.search_engines.settings.SiteSearchSettings;
@@ -318,7 +317,6 @@ public class SettingsFragmentRegistry {
         // Safety Check / Safety Hub
         registerMapping("/safetyCheck", SafetyHubFragment.class);
         registerMapping("/safetyCheck/permissions", SafetyHubPermissionsFragment.class);
-        registerMapping("/safetyCheck/notifications", SafetyHubNotificationsFragment.class);
 
         // Autofill & Passwords
         registerMapping("/autofill", AutofillAndPasswordsFragment.class);

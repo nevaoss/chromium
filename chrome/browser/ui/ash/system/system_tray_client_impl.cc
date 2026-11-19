@@ -266,13 +266,13 @@ class SystemTrayClientImpl::EnterpriseAccountObserver
   }
 
   void UpdateProfile() {
-    user_manager::User* user =
-        user_manager::UserManager::Get()->GetActiveUser();
+    const session_manager::Session* session =
+        SessionManager::Get()->GetActiveSession();
     Profile* profile =
-        user ? Profile::FromBrowserContext(
-                   ash::BrowserContextHelper::Get()->GetBrowserContextByUser(
-                       user))
-             : nullptr;
+        session ? Profile::FromBrowserContext(
+                      ash::BrowserContextHelper::Get()
+                          ->GetBrowserContextByAccountId(session->account_id()))
+                : nullptr;
     if (profile == profile_) {
       return;
     }
@@ -319,13 +319,13 @@ SystemTrayClientImpl::SystemTrayClientImpl(
 
   system_tray_->SetClient(this);
 
-  DCHECK(!g_system_tray_client_instance);
+  CHECK(!g_system_tray_client_instance, base::NotFatalUntil::M162);
   g_system_tray_client_instance = this;
   UpgradeDetector::GetInstance()->AddObserver(this);
 }
 
 SystemTrayClientImpl::~SystemTrayClientImpl() {
-  DCHECK_EQ(this, g_system_tray_client_instance);
+  CHECK_EQ(this, g_system_tray_client_instance, base::NotFatalUntil::M162);
   g_system_tray_client_instance = nullptr;
 
   // This can happen when mocking this class in tests.
@@ -389,8 +389,13 @@ void SystemTrayClientImpl::SetShowEolNotice(bool show,
 void SystemTrayClientImpl::ShowSettings(int64_t display_id) {
   // TODO(jamescook): Use different metric for OS settings.
   base::RecordAction(base::UserMetricsAction("ShowOptions"));
+  // TODO(crbug.com/278643115): Take the account_id from the callers.
+  const session_manager::Session* session =
+      SessionManager::Get()->GetActiveSession();
+  CHECK(session);
   ash::SettingsAppManager::Get()->Open(
-      CHECK_DEREF(user_manager::UserManager::Get()->GetActiveUser()),
+      CHECK_DEREF(
+          user_manager::UserManager::Get()->FindUser(session->account_id())),
       {.display_id = display_id});
 }
 
@@ -590,7 +595,7 @@ void SystemTrayClientImpl::ShowNetworkConfigure(const std::string& network_id) {
     return;
   }
 
-  DCHECK(ash::NetworkHandler::IsInitialized());
+  CHECK(ash::NetworkHandler::IsInitialized(), base::NotFatalUntil::M162);
   const ash::NetworkState* network_state = GetNetworkState(network_id);
   if (!network_state) {
     LOG(ERROR) << "Network not found: " << network_id;
@@ -656,15 +661,15 @@ void SystemTrayClientImpl::ShowArcVpnCreate(const std::string& app_id) {
 void SystemTrayClientImpl::ShowSettingsSimUnlock() {
   // TODO(crbug.com/40134918) Add metrics action recorder.
   SessionManager* const session_manager = SessionManager::Get();
-  DCHECK(session_manager->IsSessionStarted());
-  DCHECK(!session_manager->IsInSecondaryLoginScreen());
+  CHECK(session_manager->IsSessionStarted(), base::NotFatalUntil::M162);
+  CHECK(!session_manager->IsInSecondaryLoginScreen(),
+        base::NotFatalUntil::M162);
   std::string page = chromeos::settings::mojom::kCellularNetworksSubpagePath;
   page += "&showSimLockDialog=true";
   ShowSettingsSubPageForActiveUser(page);
 }
 
 void SystemTrayClientImpl::ShowApnSubpage(const std::string& network_id) {
-  CHECK(ash::features::IsApnRevampEnabled());
   std::string page = chromeos::settings::mojom::kApnSubpagePath +
                      std::string("?guid=") +
                      base::EscapeUrlEncodedData(network_id, /*use_plus=*/true);
@@ -928,7 +933,7 @@ bool SystemTrayClientImpl::IsUserFeedbackEnabled() {
   }
   PrefService* signin_prefs =
       ProfileManager::GetActiveUserProfile()->GetPrefs();
-  DCHECK(signin_prefs);
+  CHECK(signin_prefs, base::NotFatalUntil::M162);
   return signin_prefs->GetBoolean(ash::chrome_prefs::kUserFeedbackAllowed);
 }
 

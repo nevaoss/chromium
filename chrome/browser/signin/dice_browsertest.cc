@@ -27,10 +27,11 @@
 #include "base/task/current_thread.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/test/bind.h"
+#include "base/test/metrics/histogram_tester.h"
+#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "base/test/test_mock_time_task_runner.h"
-#include "base/test/with_feature_override.h"
 #include "base/time/time.h"
 #include "base/values.h"
 #include "build/build_config.h"
@@ -67,9 +68,8 @@
 #include "chrome/browser/ui/views/profiles/dice_web_signin_interception_bubble_view.h"
 #include "chrome/browser/ui/webui/signin/history_sync_optin_service.h"
 #include "chrome/browser/ui/webui/signin/history_sync_optin_service_factory.h"
-#include "chrome/browser/ui/webui/signin/login_ui_service.h"
-#include "chrome/browser/ui/webui/signin/login_ui_service_factory.h"
 #include "chrome/browser/ui/webui/signin/login_ui_test_utils.h"
+#include "chrome/browser/ui/webui/signin/signin_ui_error.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
@@ -1409,14 +1409,6 @@ IN_PROC_BROWSER_TEST_F(DiceBrowserTest, SignInAfterToken) {
   // Check that the tab was navigated to the NTP.
   ntp_run_loop.Run();
 
-  // Wait for the Sync confirmation UI and click through. This is only needed
-  // when `syncer::kReplaceSyncPromosWithSignInPromos` is disabled, because
-  // otherwise it is a sign-in flow without involving the Sync confirmation
-  // dialog.
-  if (!syncer::IsReplaceSyncPromosWithSignInPromosEnabled()) {
-    EXPECT_TRUE(login_ui_test_utils::ConfirmSyncConfirmationDialog(browser()));
-  }
-
   // Expect that metrics related to the browser signin stage are recorded.
   histogram_tester.ExpectBucketCount(
       "Signin.SigninManager.SetPrimaryAccountSigninInStage",
@@ -1441,7 +1433,7 @@ IN_PROC_BROWSER_TEST_F(DiceBrowserTest, SignInAfterToken) {
 }
 
 // Tests that the account is signed in if the ENABLE_SYNC response is received
-// before the refresh token, and the Sync/history sync opt-in is offered.
+// before the refresh token, and the history sync opt-in is offered.
 // https://crbug.com/40692152
 IN_PROC_BROWSER_TEST_F(DiceBrowserTest, ProfileSignInBeforeToken) {
   base::HistogramTester histogram_tester;
@@ -1495,18 +1487,16 @@ IN_PROC_BROWSER_TEST_F(DiceBrowserTest, ProfileSignInBeforeToken) {
                          client_id.c_str(), GetDeviceId().c_str()),
       dice_request_header_);
 
-  // Wait for the Sync confirmation UI and click through. This is only needed
-  // when `syncer::kReplaceSyncPromosWithSignInPromos` is disabled, because
-  // otherwise it is a sign-in flow without involving the Sync confirmation
-  // dialog.
-  if (syncer::IsReplaceSyncPromosWithSignInPromosEnabled()) {
-    EXPECT_EQ(signin::ConsentLevel::kSignin,
-              signin::GetPrimaryAccountConsentLevel(GetIdentityManager()));
-  } else {
-    EXPECT_TRUE(login_ui_test_utils::ConfirmSyncConfirmationDialog(browser()));
-    EXPECT_EQ(signin::ConsentLevel::kSync,
-              signin::GetPrimaryAccountConsentLevel(GetIdentityManager()));
-  }
+  ASSERT_TRUE(base::test::RunUntil([&] {
+    return SigninViewController::From(browser())->ShowsModalDialog();
+  }));
+  EXPECT_TRUE(login_ui_test_utils::ConfirmHistorySyncOptinDialog(browser()));
+  EXPECT_EQ(signin::ConsentLevel::kSignin,
+            signin::GetPrimaryAccountConsentLevel(GetIdentityManager()));
+  EXPECT_TRUE(SyncServiceFactory::GetForProfile(browser()->GetProfile())
+                  ->GetUserSettings()
+                  ->GetSelectedTypes()
+                  .Has(syncer::UserSelectableType::kHistory));
 
   // The interception bubble should not have been shown.
   histogram_tester.ExpectBucketCount(
@@ -1519,54 +1509,6 @@ IN_PROC_BROWSER_TEST_F(DiceBrowserTest, ProfileSignInBeforeToken) {
   // recorded.
   histogram_tester.ExpectTotalCount(
       "Signin.SigninManager.SyncHeaderArrivalTimeWindowAfterLst", 1);
-}
-
-class DiceBrowserTestWithoutReplaceSyncPromosWithSignInPromos
-    : public DiceBrowserTest {
- public:
-  DiceBrowserTestWithoutReplaceSyncPromosWithSignInPromos() {
-    feature_list_.InitWithFeatures(
-        /*enabled_features=*/{},
-        /*disabled_features=*/{
-            syncer::kReplaceSyncPromosWithSignInPromos,
-            syncer::kReplaceSyncPromosWithSigninPromosNewSignin});
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
-// Verifies that Chrome doesn't crash on browser window close when the sync
-// confirmation dialog is waiting for its size.
-// Regression test for https://crbug.com/40826319.
-IN_PROC_BROWSER_TEST_F(DiceBrowserTestWithoutReplaceSyncPromosWithSignInPromos,
-                       CloseBrowserWhileInitializingSyncConfirmation) {
-  content::TestNavigationObserver sync_confirmation_url_observer(
-      GURL("chrome://sync-confirmation?style=0&is_sync_promo=true"));
-  sync_confirmation_url_observer.StartWatchingNewWebContents();
-
-  // Signin using the Chrome Sync endpoint.
-  SigninViewController::From(browser())->ShowDiceEnableSyncTab(
-      signin_metrics::AccessPoint::kProfileMenuPrimaryButton,
-      signin_metrics::PromoAction::PROMO_ACTION_NEW_ACCOUNT_NO_EXISTING_ACCOUNT,
-      /*email_hint=*/std::string());
-
-  // Receive token.
-  SendRefreshTokenResponse();
-  // Receive ENABLE_SYNC.
-  SendEnableSyncResponse();
-
-  WaitForSigninSucceeded();
-  EXPECT_EQ(GetMainAccountID(), GetIdentityManager()->GetPrimaryAccountId(
-                                    signin::ConsentLevel::kSignin));
-
-  // Wait until the sync confirmation webUI is created but not fully loaded
-  // yet. The native dialog is not displayed yet since it waits until the webUI
-  // passes the dialog height back to native.
-  sync_confirmation_url_observer.WaitForNavigationFinished();
-
-  // This should not crash.
-  CloseBrowser();
 }
 
 class DiceBrowserSiginInInterceptionInteractiveTest
@@ -1819,7 +1761,7 @@ IN_PROC_BROWSER_TEST_F(DiceBrowserSigninInterceptionWithAccountPreviewTest,
   // ENABLE_SYNC header.
   ui_test_utils::NavigateToURLWithDisposition(
       browser(), https_server_.GetURL(kChromeSyncEndpointURL),
-      WindowOpenDisposition::CURRENT_TAB, ui_test_utils::BROWSER_TEST_NO_WAIT);
+      WindowOpenDisposition::kCurrentTab, ui_test_utils::BROWSER_TEST_NO_WAIT);
   ASSERT_FALSE(DiceTabHelper::FromWebContents(
       browser()->tab_strip_model()->GetActiveWebContents()));
 
@@ -1933,9 +1875,9 @@ IN_PROC_BROWSER_TEST_F(DiceBrowserTestWithSyncOptinScreen,
   EXPECT_EQ(1, reconcilor_started_count_);
 
   // Wait until the next modal screen (history sync optin) is present.
-  base::test::RunUntil([&] {
+  ASSERT_TRUE(base::test::RunUntil([&] {
     return SigninViewController::From(browser())->ShowsModalDialog();
-  });
+  }));
 
   // Dismiss the History Sync Optin UI.
   EXPECT_TRUE(login_ui_test_utils::ConfirmHistorySyncOptinDialog(browser()));
@@ -2031,11 +1973,11 @@ IN_PROC_BROWSER_TEST_F(DiceBrowserTestWithSyncOptinScreen,
 
   // The history sync screen should not be shown, the history and tabs syncing
   // is auto-enabled post-signin.
-  base::test::RunUntil([&] {
+  ASSERT_TRUE(base::test::RunUntil([&] {
     return HistorySyncOptinServiceFactory::GetForProfile(
                browser()->GetProfile())
                ->GetHistorySyncOptinHelperForTesting() == nullptr;
-  });
+  }));
   EXPECT_TRUE(sync_service->GetUserSettings()->GetSelectedTypes().Has(
       syncer::UserSelectableType::kHistory));
   EXPECT_TRUE(sync_service->GetUserSettings()->GetSelectedTypes().Has(

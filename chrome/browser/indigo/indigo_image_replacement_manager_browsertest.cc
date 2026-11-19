@@ -1313,7 +1313,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
 
   // Setup Tab 2 with an image replacement.
   ui_test_utils::NavigateToURLWithDisposition(
-      browser(), test_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      browser(), test_url, WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
   content::WebContents* web_contents2 =
       browser()->GetTabStripModel()->GetActiveWebContents();
@@ -1672,6 +1672,14 @@ IN_PROC_BROWSER_TEST_P(IndigoImageReplacementManagerBrowserTestWithParam,
   manager->RegisterImageReplacement(receiver.BindNewPipeAndPassRemote(),
                                     /*is_primary=*/true);
   mock_replacement.WaitForStartReplacement();
+
+  // An initial 0x0 frame size notification before the replacement has rendered
+  // should be ignored.
+  content::RenderFrameHost* initial_subframe =
+      content::ChildFrameAt(main_rfh.get(), 0);
+  ASSERT_TRUE(initial_subframe);
+  controller->FrameSizeChanged(initial_subframe, gfx::Size(0, 0));
+
   mock_replacement.WaitForRenderReplacement();
 
   // Find the subframe.
@@ -1704,7 +1712,8 @@ IN_PROC_BROWSER_TEST_P(IndigoImageReplacementManagerBrowserTestWithParam,
 INSTANTIATE_TEST_SUITE_P(All,
                          IndigoImageReplacementManagerBrowserTestWithParam,
                          ::testing::Values(gfx::Size(100, 100),
-                                           gfx::Size(200, 0)));
+                                           gfx::Size(200, 0),
+                                           gfx::Size(0, 0)));
 
 IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest, ObjectFit) {
   GURL test_url = embedded_test_server()->GetURL("/empty.html");
@@ -2004,7 +2013,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
 
   // Open a second tab in the same profile.
   ui_test_utils::NavigateToURLWithDisposition(
-      browser(), test_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      browser(), test_url, WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
   content::WebContents* web_contents2 =
       browser()->GetTabStripModel()->GetActiveWebContents();
@@ -2052,7 +2061,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   // Open a second tab in the same profile and trigger photo deletion while Tab
   // 1's Generate request is in flight.
   ui_test_utils::NavigateToURLWithDisposition(
-      browser(), test_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      browser(), test_url, WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
   content::WebContents* web_contents2 =
       browser()->GetTabStripModel()->GetActiveWebContents();

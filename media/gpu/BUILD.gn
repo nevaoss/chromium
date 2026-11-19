@@ -83,10 +83,7 @@ component("gpu") {
     "gpu_video_encode_accelerator_factory.h",
   ]
 
-  configs += [
-    "//build/config/compiler:wexit_time_destructors",
-    "//build/config/compiler:wglobal_constructors",
-  ]
+  configs += [ "//build/config/compiler:wglobal_constructors" ]
 
   public_deps = [
     ":buildflags",
@@ -385,10 +382,7 @@ source_set("common") {
     ]
   }
 
-  configs += [
-    "//build/config/compiler:wexit_time_destructors",
-    "//build/config/compiler:wglobal_constructors",
-  ]
+  configs += [ "//build/config/compiler:wglobal_constructors" ]
 
   visibility = [
     ":gpu",
@@ -471,10 +465,7 @@ source_set("command_buffer_helper") {
     "command_buffer_helper.h",
   ]
 
-  configs += [
-    "//build/config/compiler:wexit_time_destructors",
-    "//build/config/compiler:wglobal_constructors",
-  ]
+  configs += [ "//build/config/compiler:wglobal_constructors" ]
 
   public_deps = [
     "//base",
@@ -512,10 +503,7 @@ if (use_linux_video_acceleration || use_webos_codec) {
       "video_frame_mapper_factory.h",
     ]
 
-    configs += [
-      "//build/config/compiler:wexit_time_destructors",
-      "//build/config/compiler:wglobal_constructors",
-    ]
+    configs += [ "//build/config/compiler:wglobal_constructors" ]
 
     public_deps = [
       ":buildflags",

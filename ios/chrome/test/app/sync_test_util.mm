@@ -26,7 +26,6 @@
 #import "components/gcm_driver/gcm_profile_service.h"
 #import "components/gcm_driver/instance_id/fake_gcm_driver_for_instance_id.h"
 #import "components/history/core/browser/history_service.h"
-#import "components/keyed_service/core/service_access_type.h"
 #import "components/metrics/demographics/demographic_metrics_test_utils.h"
 #import "components/saved_tab_groups/internal/saved_tab_group_sync_bridge.h"
 #import "components/saved_tab_groups/internal/shared_tab_group_data_sync_bridge.h"
@@ -111,7 +110,8 @@ class FakeSyncServerContext : public ProfileManagerObserverIOS {
       : server_(std::make_unique<fake_server::FakeServer>(base_path)),
         invalidation_sender_(
             std::make_unique<fake_server::FakeServerSyncInvalidationSender>(
-                server_.get())) {
+                server_.get(),
+                base_path)) {
     // Ensure the active scene's initial profile has finished loading before
     // attaching the observer and overriding sync network.
     CHECK(chrome_test_util::GetOriginalProfile());
@@ -564,8 +564,7 @@ BOOL VerifyHistoryOnSyncServer(const std::multiset<GURL>& expected_urls,
 void AddTypedURLToClient(const GURL& url, base::Time visitTimestamp) {
   ProfileIOS* profile = chrome_test_util::GetOriginalProfile();
   history::HistoryService* historyService =
-      ios::HistoryServiceFactory::GetForProfile(
-          profile, ServiceAccessType::EXPLICIT_ACCESS);
+      ios::HistoryServiceFactory::GetForProfile(profile);
 
   historyService->AddPage(url, visitTimestamp, 0, 1, GURL(),
                           history::RedirectList(), ui::PAGE_TRANSITION_TYPED,
@@ -576,8 +575,7 @@ void AddTypedURLToClient(const GURL& url, base::Time visitTimestamp) {
 void SetPageTitle(const GURL& url, const std::u16string& title) {
   ProfileIOS* profile = chrome_test_util::GetOriginalProfile();
   history::HistoryService* historyService =
-      ios::HistoryServiceFactory::GetForProfile(
-          profile, ServiceAccessType::EXPLICIT_ACCESS);
+      ios::HistoryServiceFactory::GetForProfile(profile);
   historyService->SetPageTitle(url, title);
 }
 
@@ -649,7 +647,7 @@ std::string AddSendTabToSelfEntryToFakeSyncServer(
   }
 
   std::string guid = builder.guid();
-  GetFakeServer()->InjectEntity(builder.Build(GetFakeServer()));
+  GetFakeServer()->InjectEntity(builder.Build(*GetFakeServer()));
   return guid;
 }
 
@@ -659,8 +657,7 @@ BOOL IsUrlPresentOnClient(const GURL& url,
   // Call the history service.
   ProfileIOS* profile = chrome_test_util::GetOriginalProfile();
   history::HistoryService* history_service =
-      ios::HistoryServiceFactory::GetForProfile(
-          profile, ServiceAccessType::EXPLICIT_ACCESS);
+      ios::HistoryServiceFactory::GetForProfile(profile);
 
   const GURL block_safe_url(url);
   std::set<GURL> origins;
@@ -706,8 +703,7 @@ BOOL IsUrlPresentOnClient(const GURL& url,
 void DeleteTypedUrlFromClient(const GURL& url) {
   ProfileIOS* profile = chrome_test_util::GetOriginalProfile();
   history::HistoryService* history_service =
-      ios::HistoryServiceFactory::GetForProfile(
-          profile, ServiceAccessType::EXPLICIT_ACCESS);
+      ios::HistoryServiceFactory::GetForProfile(profile);
 
   history_service->DeleteURLs({url});
 }

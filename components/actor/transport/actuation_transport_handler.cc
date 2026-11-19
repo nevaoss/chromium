@@ -4,6 +4,7 @@
 
 #include "components/actor/transport/actuation_transport_handler.h"
 
+#include <optional>
 #include <tuple>
 #include <utility>
 
@@ -14,11 +15,23 @@
 #include "base/notimplemented.h"
 #include "base/strings/string_number_conversions.h"
 #include "components/actor/core/task_id.h"
+#include "components/actor/public/mojom/actor_types.mojom.h"
 #include "components/actor/transport/proto/actuation_transport.pb.h"
 #include "components/browser_actuator/public/common.h"
 #include "components/browser_actuator/public/transport_session.h"
 
 namespace actor {
+namespace {
+
+std::optional<TaskId> ParseTaskId(std::string_view task_id_str) {
+  int task_id_value = 0;
+  if (!base::StringToInt(task_id_str, &task_id_value) || task_id_value <= 0) {
+    return std::nullopt;
+  }
+  return TaskId(task_id_value);
+}
+
+}  // namespace
 
 ActuationTransportHandler::ActuationTransportHandler(
     browser_actuator::TransportSession* session,
@@ -30,8 +43,10 @@ ActuationTransportHandler::ActuationTransportHandler(
 }
 
 ActuationTransportHandler::~ActuationTransportHandler() {
+  proto::StopTaskRequest stop_request;
+  stop_request.set_reason(proto::StopTaskRequest::REASON_UNSPECIFIED);
   for (TaskId task_id : active_tasks_) {
-    delegate_->StopTask(task_id, base::DoNothing());
+    delegate_->StopTask(task_id, stop_request, base::DoNothing());
   }
 }
 
@@ -52,10 +67,12 @@ void ActuationTransportHandler::OnMessage(
       HandleStartTask(message.request_id(), message.start_task());
       break;
     case proto::ServerToBrowserPayload::kPerformActions:
+      HandlePerformActions(message.request_id(), message.task_id(),
+                           message.perform_actions());
+      break;
     case proto::ServerToBrowserPayload::kStopTask:
-      // TODO(crbug.com/574548021): Route perform actions and stop task
-      // payloads.
-      NOTIMPLEMENTED();
+      HandleStopTask(message.request_id(), message.task_id(),
+                     message.stop_task());
       break;
     case proto::ServerToBrowserPayload::kPauseTask:
     case proto::ServerToBrowserPayload::kResumeTask:
@@ -86,6 +103,67 @@ void ActuationTransportHandler::OnStartTaskComplete(
     upstream.set_task_id(base::NumberToString(task_id.value()));
   }
   *upstream.mutable_start_task() = std::move(response);
+  std::ignore =
+      SendUpstreamMessage(browser_actuator::PayloadType::kActuation, upstream);
+}
+
+void ActuationTransportHandler::HandleStopTask(
+    const std::string& request_id,
+    std::string_view task_id_str,
+    const proto::StopTaskRequest& request) {
+  std::optional<TaskId> task_id = ParseTaskId(task_id_str);
+  if (!task_id || active_tasks_.erase(*task_id) == 0) {
+    OnStopTaskComplete(request_id, std::string(task_id_str), false);
+    return;
+  }
+  delegate_->StopTask(
+      *task_id, request,
+      base::BindOnce(&ActuationTransportHandler::OnStopTaskComplete,
+                     weak_ptr_factory_.GetWeakPtr(), request_id,
+                     std::string(task_id_str)));
+}
+
+void ActuationTransportHandler::OnStopTaskComplete(
+    const std::string& request_id,
+    const std::string& task_id_str,
+    bool success) {
+  proto::BrowserToServerPayload upstream;
+  upstream.set_task_id(task_id_str);
+  upstream.set_request_id(request_id);
+  upstream.mutable_stop_task()->set_status(
+      success ? proto::StopTaskResponse::STATUS_OK
+              : proto::StopTaskResponse::STATUS_FAILED);
+  std::ignore =
+      SendUpstreamMessage(browser_actuator::PayloadType::kActuation, upstream);
+}
+
+void ActuationTransportHandler::HandlePerformActions(
+    const std::string& request_id,
+    std::string_view task_id_str,
+    const proto::PerformActionsRequest& request) {
+  std::optional<TaskId> task_id = ParseTaskId(task_id_str);
+  if (!task_id || !active_tasks_.contains(*task_id)) {
+    proto::PerformActionsResponse response;
+    response.set_status(proto::PerformActionsResponse::STATUS_TAB_DISCONNECTED);
+    response.set_action_status_code(
+        static_cast<int32_t>(mojom::ActionResultCode::kTaskWentAway));
+    OnActComplete(request_id, std::string(task_id_str), std::move(response));
+    return;
+  }
+  delegate_->Act(*task_id, request,
+                 base::BindOnce(&ActuationTransportHandler::OnActComplete,
+                                weak_ptr_factory_.GetWeakPtr(), request_id,
+                                std::string(task_id_str)));
+}
+
+void ActuationTransportHandler::OnActComplete(
+    const std::string& request_id,
+    const std::string& task_id_str,
+    proto::PerformActionsResponse response) {
+  proto::BrowserToServerPayload upstream;
+  upstream.set_task_id(task_id_str);
+  upstream.set_request_id(request_id);
+  *upstream.mutable_perform_actions() = std::move(response);
   std::ignore =
       SendUpstreamMessage(browser_actuator::PayloadType::kActuation, upstream);
 }

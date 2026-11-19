@@ -575,6 +575,33 @@ suite('TopicsFeedback', () => {
     assertEquals(TopicRating.kLiked, card.feedback!.rating);
   });
 
+  test('deletes the feedback on topics that are no longer shown', async () => {
+    const liked = (id: string): TopicFeedback => ({
+      ...createEmptyTopicFeedback(toTopicItem(createTopic({id}))),
+      rating: TopicRating.kLiked,
+    });
+    await createView([liked('old-topic'), liked('topic-1')]);
+
+    assertDeepEquals(['old-topic'], handler.getArgs('deleteTopicFeedback'));
+    assertEquals(TopicRating.kLiked, card.feedback!.rating);
+  });
+
+  test('keeps the feedback when there are no topics', async () => {
+    handler.setResultFor('getTopics', Promise.resolve({topics: []}));
+    handler.setResultFor('getTopicFeedbacks', Promise.resolve({
+      feedbacks: [{
+        ...createEmptyTopicFeedback(toTopicItem(createTopic())),
+        rating: TopicRating.kLiked,
+      }],
+    }));
+    view = document.createElement('topics-view');
+    document.body.appendChild(view);
+    await microtasksFinished();
+
+    assertTrue(!!view.shadowRoot.querySelector('#emptyState'));
+    assertEquals(0, handler.getCallCount('deleteTopicFeedback'));
+  });
+
   test('thumbs up saves a liked rating with a snapshot', async () => {
     await createView();
     await click('#thumbsUp');
@@ -943,6 +970,40 @@ suite('TopicFeedbackExportDialog', () => {
     assertTrue(
         queryAll<CrCheckboxElement>('.url-checkbox')
             .every(checkbox => checkbox.disabled && !checkbox.checked));
+  });
+
+  test('shows the sites right after the history window', async () => {
+    await openDialog();
+    assertEquals(
+        'redactionSection', query('#windowSection')!.nextElementSibling!.id);
+  });
+
+  test('keeps the site list off the next section when short', async () => {
+    const domains: TopicsFeedbackExportPreview['domains'] = [];
+    for (let i = 0; i < 30; i++) {
+      domains.push({
+        domain: `site${i}.example.com`,
+        visitCount: 1,
+        defaultExcluded: false,
+        urls: [],
+      });
+    }
+    handler.setResultFor(
+        'getTopicsFeedbackExportPreview',
+        Promise.resolve({preview: {...createPreview(), domains}}));
+    await openDialog();
+    const crDialog = dialog.$.dialog;
+    const wrapper =
+        crDialog.shadowRoot.querySelector<HTMLElement>('#content-wrapper')!;
+    wrapper.style.maxHeight = '400px';
+
+    const list = query('#domainList')!;
+    const listRect = list.getBoundingClientRect();
+    const nextRect = list.nextElementSibling!.getBoundingClientRect();
+    assertEquals(136, Math.round(listRect.height));
+    assertTrue(listRect.bottom <= nextRect.top);
+    const container = crDialog.shadowRoot.querySelector('#container')!;
+    assertTrue(container.scrollHeight > container.clientHeight);
   });
 
   // Thumbs-up feedback on the first `count` of the 4 topics.

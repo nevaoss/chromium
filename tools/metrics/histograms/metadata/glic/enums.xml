@@ -607,7 +607,7 @@ chromium-metrics-reviews@google.com.
   <int value="41" label="User Input Submitted"/>
   <int value="42" label="Focused Tab Context Requested"/>
   <int value="43" label="Response Started"/>
-  <int value="44" label="Response Stopped"/>
+  <int value="44" label="(Obsolete) Response Stopped"/>
   <int value="45" label="Turn Completed"/>
   <int value="46" label="Reaction Logged on Response"/>
   <int value="47" label="Shown"/>
@@ -619,6 +619,10 @@ chromium-metrics-reviews@google.com.
   <int value="53" label="Client Ready"/>
   <int value="54" label="Tab Context Requested"/>
   <int value="55" label="Opt-In Impression"/>
+  <int value="56" label="Response Stopped By User"/>
+  <int value="57" label="Response Stopped Other"/>
+  <int value="58" label="Response Stopped Success"/>
+  <int value="59" label="WebUI State Guest Loaded"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/service/metrics/metrics_types.h:GlicInstanceEvent) -->
@@ -1642,9 +1646,11 @@ chromium-metrics-reviews@google.com.
   <int value="13" label="Web contents is warmed"/>
   <int value="14" label="Glic is unavailable due to country location mismatch"/>
   <int value="15" label="Glic is unavailable due to account capabilities"/>
+  <int value="16"
+      label="Web view is displayed while waiting for web client or timeout"/>
 </enum>
 
-<!-- LINT.ThenChange(//chrome/browser/glic/host/glic.mojom:WebUiState) -->
+<!-- LINT.ThenChange(//chrome/browser/glic/host/glic_webui.mojom:WebUiState) -->
 
 <!-- LINT.IfChange(WebViewAutoPlayProgress) -->
 

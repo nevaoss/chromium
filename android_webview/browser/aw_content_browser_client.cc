@@ -45,6 +45,7 @@
 #include "android_webview/browser/safe_browsing/aw_advanced_protection_status_manager_bridge.h"
 #include "android_webview/browser/safe_browsing/aw_safe_browsing_navigation_throttle.h"
 #include "android_webview/browser/safe_browsing/aw_url_checker_delegate_impl.h"
+#include "android_webview/browser/signin/signin_url_loader_throttle.h"
 #include "android_webview/browser/supervised_user/aw_supervised_user_throttle.h"
 #include "android_webview/browser/supervised_user/aw_supervised_user_url_classifier.h"
 #include "android_webview/browser/tracing/aw_tracing_delegate.h"
@@ -53,7 +54,6 @@
 #include "android_webview/common/aw_features.h"
 #include "android_webview/common/aw_paths.h"
 #include "android_webview/common/aw_switches.h"
-#include "android_webview/common/url_constants.h"
 #include "base/android/yield_to_looper_checker.h"
 #include "base/base_paths_android.h"
 #include "base/base_switches.h"
@@ -450,19 +450,23 @@ bool AwContentBrowserClient::IsHandledURL(const GURL& url) {
       url::kWsScheme,           url::kWssScheme,
 #endif  // BUILDFLAG(ENABLE_WEBSOCKETS)
       url::kDataScheme,         url::kBlobScheme,    url::kFileSystemScheme,
-      content::kChromeUIScheme, url::kContentScheme,
+      content::kChromeUIScheme, url::kContentScheme, url::kFileScheme,
   };
-  if (scheme == url::kFileScheme) {
-    // Return false for the "special" file URLs, so they can be loaded
-    // even if access to file: scheme is not granted to the child process.
-    return !IsAndroidSpecialFileUrl(url);
-  }
   for (const char* supported_protocol : kProtocolList) {
     if (scheme == supported_protocol) {
       return true;
     }
   }
   return false;
+}
+
+bool AwContentBrowserClient::IsContentSchemeURLNavigationAllowed(
+    const GURL& url) {
+  // WebView allows content:// navigations unconditionally for compatibility.
+  // The embedding app decides whether to allow content:// access via
+  // WebSettings#setAllowContentAccess, and which URIs to load via
+  // WebViewClient#shouldOverrideUrlLoading.
+  return true;
 }
 
 bool AwContentBrowserClient::ForceSniffingFileUrlsForHtml() {
@@ -598,7 +602,7 @@ bool AwContentBrowserClient::IsSecurityLevelAcceptableForWebAuthn(
 
 base::OnceClosure AwContentBrowserClient::SelectClientCertificate(
     content::BrowserContext* browser_context,
-    int process_id,
+    content::ChildProcessId process_id,
     content::WebContents* web_contents,
     net::SSLCertRequestInfo* cert_request_info,
     net::ClientCertIdentityList client_certs,
@@ -858,6 +862,11 @@ AwContentBrowserClient::CreateURLLoaderThrottles(
       result.push_back(std::make_unique<AwURLLoaderThrottle>(
           static_cast<AwBrowserContext*>(browser_context)));
     }
+  }
+
+  if (auto signin_throttle =
+          SigninUrlLoaderThrottle::Create(browser_context, wc_getter)) {
+    result.push_back(std::move(signin_throttle));
   }
 
   return result;

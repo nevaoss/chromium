@@ -19,7 +19,6 @@ source_set("bloomfilter") {
     "//base",
     "//third_party/smhasher:murmurhash3",
   ]
-  configs += [ "//build/config/compiler:wexit_time_destructors" ]
 }
 
 static_library("filters") {
@@ -43,7 +42,6 @@ static_library("filters") {
     "//url",
   ]
   public_deps = [ ":bloomfilter" ]
-  configs += [ "//build/config/compiler:wexit_time_destructors" ]
   visibility = [ ":*" ]
 }
 
@@ -61,6 +59,7 @@ component("features") {
     # remote model execution / MQLS.
     "feature_registry/enterprise_policy_registry.cc",
     "feature_registry/enterprise_policy_registry.h",
+    "feature_registry/feature_keys.cc",
     "feature_registry/feature_keys.h",
     "feature_registry/feature_registration.cc",
     "feature_registry/feature_registration.h",
@@ -80,8 +79,6 @@ component("features") {
     "optimization_guide_enums.h",
     "optimization_guide_features.cc",
     "optimization_guide_features.h",
-    "optimization_guide_prefs.cc",
-    "optimization_guide_prefs.h",
   ]
   public_deps = [
     "//base",
@@ -101,7 +98,6 @@ component("features") {
   if (is_android) {
     deps += [ "//components/version_info/android:channel_getter" ]
   }
-  configs += [ "//build/config/compiler:wexit_time_destructors" ]
   defines = [ "IS_OPTIMIZATION_GUIDE_FEATURES_IMPL" ]
 }
 
@@ -552,7 +548,6 @@ static_library("prediction") {
     "//net/traffic_annotation",
     "//services/network/public/cpp",
   ]
-  configs += [ "//build/config/compiler:wexit_time_destructors" ]
 }
 
 source_set("page_content") {

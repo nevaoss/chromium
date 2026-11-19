@@ -399,14 +399,17 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="GPU.ANGLE.D3DShaderBlobSizeKB" units="KB"
-    expires_after="2025-01-05">
+    expires_after="2027-02-14">
   <owner>geofflang@chromium.org</owner>
   <owner>angle-team@google.com</owner>
-  <summary>The size of compiled D3D shader bytecode.</summary>
+  <summary>
+    The size of compiled D3D shader bytecode. NOTE: metric expired from
+    2025-01-05 to 2026-10-21.
+  </summary>
 </histogram>
 
 <histogram name="GPU.ANGLE.D3DShaderCompilationTimeUs" units="microseconds"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>geofflang@chromium.org</owner>
   <owner>angle-team@google.com</owner>
   <summary>
@@ -781,7 +784,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="GPU.DirectComposition.DCLayer.YUVOverlayCount"
-    units="overlays" expires_after="2027-02-14">
+    units="overlays" expires_after="2027-04-18">
   <owner>magchen@chromium.org</owner>
   <owner>zmo@chromium.org</owner>
   <summary>
@@ -1477,7 +1480,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="GPU.HardwareSupportsVulkan" enum="Boolean"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>kylechar@chromium.org</owner>
   <owner>chrome-gpu-metric-alerts@chromium.org</owner>
   <summary>
@@ -1870,7 +1873,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="GPU.Scheduler.PercentConcurrentTaskExecution{Priority}"
-    units="%" expires_after="2027-02-14">
+    units="%" expires_after="2027-04-18">
   <owner>magchen@chromium.org</owner>
   <owner>chrome-gpu-metric-alerts@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -1887,7 +1890,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="GPU.Scheduler.{Stage}{Priority}" units="microseconds"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>vikassoni@chromium.org</owner>
   <owner>chrome-gpu-metric-alerts@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -2008,7 +2011,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="GPU.SharedImage.SharedImageFormat" enum="SharedImageFormatUMA"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>hitawala@chromium.org</owner>
   <owner>chrome-gpu-metric-alerts@chromium.org</owner>
   <summary>
@@ -2408,7 +2411,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="GPU.{GraphiteDawnOrWebGPU}.{ShaderTiming}"
-    units="microseconds" expires_after="2027-02-14">
+    units="microseconds" expires_after="2027-04-18">
   <owner>hitawala@chromium.org</owner>
   <owner>mdb.webgpu-dev-team@google.com</owner>
   <summary>
@@ -2674,7 +2677,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Viz.DisplayCompositor.RootDamageRect.Overlay"
-    enum="BooleanOverlayDamageRect" expires_after="2027-02-14">
+    enum="BooleanOverlayDamageRect" expires_after="2027-04-18">
   <owner>magchen@chromium.org</owner>
   <owner>zmo@chromium.org</owner>
   <summary>
@@ -2711,6 +2714,19 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
+<histogram name="Viz.DisplayLink.DrainEventQueueUs" units="microseconds"
+    expires_after="2027-09-25">
+  <owner>magchen@chromium.org</owner>
+  <owner>chrome-gpu-metric-alerts@chromium.org</owner>
+  <summary>
+    The time elapsed to drain the WindowServer event queue in the
+    WindowServerEventPumpThread of the child (GPU) process. Recorded every time
+    messages arrive on the specific mach port and the pending display
+    reconfiguration and wake events are processed. Only reported on platforms
+    supporting high-resolution clocks.
+  </summary>
+</histogram>
+
 <histogram name="Viz.DisplayLink.IpcTimeFromNeedsBeginFramesToVSyncReceived"
     units="ms" expires_after="2027-06-28">
   <owner>magchen@chromium.org</owner>
@@ -2721,6 +2737,21 @@ chromium-metrics-reviews@google.com.
     process. This is recorded once per request cycle per display. This is
     recorded only when the CADisplayLinkInBrowser feature is enabled (which uses
     ExternalDisplayLink and VSyncProviderMac).
+  </summary>
+</histogram>
+
+<histogram name="Viz.DisplayLink.WindowServerEventPumpResult"
+    enum="WindowServerEventPumpResult" expires_after="2027-09-25">
+  <owner>magchen@chromium.org</owner>
+  <owner>chrome-gpu-metric-alerts@chromium.org</owner>
+  <summary>
+    The result of pumping WindowServer events on the WindowServerEventPumpThread
+    in the GPU process. Success is recorded once, after the WindowServer event
+    queue is drained for the first time. A failure reason is recorded once when
+    the thread fails to obtain the WindowServer connection or event port, or
+    when receiving from the event port fails; CADisplayLink creation is then
+    disabled and all root frame sinks fall back to a timer-based VSync source.
+    Only recorded when the CADisplayLinkInGpu feature is enabled.
   </summary>
 </histogram>
 
@@ -2735,7 +2766,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Viz.ExternalBeginFrameSourceMac.DisplayLink"
-    enum="DisplayLinkCreateResult" expires_after="2027-02-14">
+    enum="DisplayLinkCreateResult" expires_after="2027-04-18">
   <owner>magchen@chromium.org</owner>
   <owner>ccameron@chromium.org</owner>
   <owner>chrome-gpu-metric-alerts@chromium.org</owner>
@@ -2802,7 +2833,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Viz.FileDescriptorTracking.TimeToCompute" units="microseconds"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>jonross@chromium.org</owner>
   <owner>chrome-gpu-metric-alerts@chromium.org</owner>
   <summary>
@@ -2816,7 +2847,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Viz.FileDescriptorTracking.{FdStat}" units="units"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>jonross@chromium.org</owner>
   <owner>chrome-gpu-metric-alerts@chromium.org</owner>
   <summary>

@@ -170,8 +170,8 @@ cq_build_perf_builder(
         ),
     ),
     gn_args = {
-        "builtin": gn_args.config(configs = ["try/android-arm64-rel", "no_reclient"]),
-        "no_clang_modules": gn_args.config(configs = ["try/android-arm64-rel", "no_reclient", "no_clang_modules"]),
+        "builtin": gn_args.config(configs = ["try/android-arm64-rel"]),
+        "no_clang_modules": gn_args.config(configs = ["try/android-arm64-rel", "no_clang_modules"]),
     },
     os = os.LINUX_DEFAULT,
     console_view_entry = consoles.console_view_entry(
@@ -202,8 +202,8 @@ cq_build_perf_builder(
         ),
     ),
     gn_args = {
-        "builtin": gn_args.config(configs = ["try/linux-rel", "no_reclient"]),
-        "no_clang_modules": gn_args.config(configs = ["try/linux-rel", "no_reclient", "no_clang_modules"]),
+        "builtin": gn_args.config(configs = ["try/linux-rel"]),
+        "no_clang_modules": gn_args.config(configs = ["try/linux-rel", "no_clang_modules"]),
     },
     os = os.LINUX_DEFAULT,
     console_view_entry = consoles.console_view_entry(
@@ -234,8 +234,8 @@ cq_build_perf_builder(
         ),
     ),
     gn_args = {
-        "builtin": gn_args.config(configs = ["try/win-rel", "no_reclient"]),
-        "no_clang_modules": gn_args.config(configs = ["try/win-rel", "no_reclient", "no_clang_modules"]),
+        "builtin": gn_args.config(configs = ["try/win-rel"]),
+        "no_clang_modules": gn_args.config(configs = ["try/win-rel", "no_clang_modules"]),
     },
     os = os.WINDOWS_DEFAULT,
     console_view_entry = consoles.console_view_entry(
@@ -271,8 +271,8 @@ cq_build_perf_builder(
         ),
     ),
     gn_args = {
-        "builtin": gn_args.config(configs = ["try/linux-rel", "no_reclient"]),
-        "no_clang_modules": gn_args.config(configs = ["try/linux-rel", "no_reclient", "no_clang_modules"]),
+        "builtin": gn_args.config(configs = ["try/linux-rel"]),
+        "no_clang_modules": gn_args.config(configs = ["try/linux-rel", "no_clang_modules"]),
     },
     # The bot runs the noble image, since the jammy kernel soft-locks up under
     # siso's page-fault load on 384 vCPUs (http://b/574340805).
@@ -285,6 +285,10 @@ cq_build_perf_builder(
         # Only the baseline clean and incremental build times matter here.
         "enable_missing_deps_check": False,
     },
+    # On 384 vCPUs siso exhausts the Cloud Trace write quota within minutes,
+    # and the backed-up exporter then blocks every clog call behind its
+    # bundler mutex, which stalls the build (http://b/575633282).
+    siso_enable_cloud_trace = False,
     siso_profile_mode = "local",
 )
 
@@ -310,8 +314,8 @@ cq_build_perf_builder(
         ),
     ),
     gn_args = {
-        "builtin": gn_args.config(configs = ["try/win-rel", "no_reclient"]),
-        "no_clang_modules": gn_args.config(configs = ["try/win-rel", "no_reclient", "no_clang_modules"]),
+        "builtin": gn_args.config(configs = ["try/win-rel"]),
+        "no_clang_modules": gn_args.config(configs = ["try/win-rel", "no_clang_modules"]),
     },
     # The bot runs on Windows 11 (C4D VMs require UEFI images).
     os = os.WINDOWS_11,
@@ -319,6 +323,10 @@ cq_build_perf_builder(
         category = "build perf|windows",
         short_name = "svc",
     ),
+    properties = {
+        # Only the baseline clean and incremental build times matter here.
+        "enable_missing_deps_check": False,
+    },
     # Enabling local profiler hangs windows builders (http://b/476821630). So set cloud explicitly here.
     siso_profile_mode = "cloud",
 )
@@ -344,8 +352,8 @@ ci_build_perf_builder(
         ),
     ),
     gn_args = {
-        "builtin": gn_args.config(configs = ["ci/Win x64 Builder", "no_reclient"]),
-        "no_clang_modules": gn_args.config(configs = ["ci/Win x64 Builder", "no_reclient", "no_clang_modules"]),
+        "builtin": gn_args.config(configs = ["ci/Win x64 Builder"]),
+        "no_clang_modules": gn_args.config(configs = ["ci/Win x64 Builder", "no_clang_modules"]),
     },
     os = os.WINDOWS_DEFAULT,
     console_view_entry = consoles.console_view_entry(
@@ -382,8 +390,8 @@ cq_build_perf_builder(
         ),
     ),
     gn_args = {
-        "builtin": gn_args.config(configs = ["try/linux-chromeos-rel", "no_reclient"]),
-        "no_clang_modules": gn_args.config(configs = ["try/linux-chromeos-rel", "no_reclient", "no_clang_modules"]),
+        "builtin": gn_args.config(configs = ["try/linux-chromeos-rel"]),
+        "no_clang_modules": gn_args.config(configs = ["try/linux-chromeos-rel", "no_clang_modules"]),
     },
     os = os.LINUX_DEFAULT,
     console_view_entry = consoles.console_view_entry(
@@ -416,8 +424,8 @@ cq_build_perf_builder(
         ),
     ),
     gn_args = {
-        "builtin": gn_args.config(configs = ["try/mac-rel", "no_reclient"]),
-        "no_clang_modules": gn_args.config(configs = ["try/mac-rel", "no_reclient", "no_clang_modules"]),
+        "builtin": gn_args.config(configs = ["try/mac-rel"]),
+        "no_clang_modules": gn_args.config(configs = ["try/mac-rel", "no_clang_modules"]),
     },
     os = os.MAC_DEFAULT,
     cpu = cpu.ARM64,
@@ -453,8 +461,8 @@ cq_build_perf_builder(
         ),
     ),
     gn_args = {
-        "builtin": gn_args.config(configs = ["try/ios-simulator", "no_reclient"]),
-        "no_clang_modules": gn_args.config(configs = ["try/ios-simulator", "no_reclient", "no_clang_modules"]),
+        "builtin": gn_args.config(configs = ["try/ios-simulator"]),
+        "no_clang_modules": gn_args.config(configs = ["try/ios-simulator", "no_clang_modules"]),
     },
     os = os.MAC_DEFAULT,
     cpu = cpu.ARM64,
@@ -521,8 +529,8 @@ This builder measures build performance for Android developer builds, by simulat
     ),
     gn_args = {
         "ninja": gn_args.config(configs = ["android_developer", "remoteexec", "no_siso", "reclient"]),
-        "siso_native": gn_args.config(configs = ["android_developer", "remoteexec", "no_reclient"]),
-        "siso_no_clang_modules": gn_args.config(configs = ["android_developer", "remoteexec", "no_reclient", "no_clang_modules"]),
+        "siso_native": gn_args.config(configs = ["android_developer", "remoteexec"]),
+        "siso_no_clang_modules": gn_args.config(configs = ["android_developer", "remoteexec", "no_clang_modules"]),
     },
     os = os.LINUX_DEFAULT,
     console_view_entry = consoles.console_view_entry(
@@ -557,8 +565,8 @@ This builder measures build performance for Linux developer builds, by simulatin
     ),
     gn_args = {
         "ninja": gn_args.config(configs = ["developer", "remoteexec", "no_siso", "reclient", "linux", "x64"]),
-        "siso_native": gn_args.config(configs = ["developer", "remoteexec", "no_reclient", "linux", "x64"]),
-        "siso_no_clang_modules": gn_args.config(configs = ["developer", "remoteexec", "no_reclient", "linux", "x64", "no_clang_modules"]),
+        "siso_native": gn_args.config(configs = ["developer", "remoteexec", "linux", "x64"]),
+        "siso_no_clang_modules": gn_args.config(configs = ["developer", "remoteexec", "linux", "x64", "no_clang_modules"]),
     },
     os = os.LINUX_DEFAULT,
     console_view_entry = consoles.console_view_entry(
@@ -593,7 +601,7 @@ This builder measures build performance for Windows developer builds, by simulat
     ),
     gn_args = {
         "ninja": gn_args.config(configs = ["windows_developer", "remoteexec", "no_siso", "reclient"]),
-        "siso_native": gn_args.config(configs = ["windows_developer", "remoteexec", "no_reclient"]),
+        "siso_native": gn_args.config(configs = ["windows_developer", "remoteexec"]),
         # TODO(https://crbug.com/425537956): Add no clang modules build config after enabling clang modules on Windows.
     },
     os = os.WINDOWS_DEFAULT,
@@ -630,8 +638,8 @@ This builder measures build performance for Mac developer builds, by simulating 
     ),
     gn_args = {
         "ninja": gn_args.config(configs = ["mac_developer", "remoteexec", "no_siso", "reclient"]),
-        "siso_native": gn_args.config(configs = ["mac_developer", "remoteexec", "no_reclient"]),
-        "siso_no_clang_modules": gn_args.config(configs = ["mac_developer", "remoteexec", "no_reclient", "no_clang_modules"]),
+        "siso_native": gn_args.config(configs = ["mac_developer", "remoteexec"]),
+        "siso_no_clang_modules": gn_args.config(configs = ["mac_developer", "remoteexec", "no_clang_modules"]),
     },
     os = os.MAC_DEFAULT,
     cpu = cpu.ARM64,
@@ -671,8 +679,8 @@ This builder measures build performance for iOS developer builds, by simulating 
     ),
     gn_args = {
         "ninja": gn_args.config(configs = ["ios_developer", "remoteexec", "no_siso", "reclient", "arm64"]),
-        "siso_native": gn_args.config(configs = ["ios_developer", "remoteexec", "no_reclient", "arm64"]),
-        "siso_no_clang_modules": gn_args.config(configs = ["ios_developer", "remoteexec", "no_reclient", "arm64", "no_clang_modules"]),
+        "siso_native": gn_args.config(configs = ["ios_developer", "remoteexec", "arm64"]),
+        "siso_no_clang_modules": gn_args.config(configs = ["ios_developer", "remoteexec", "arm64", "no_clang_modules"]),
     },
     os = os.MAC_DEFAULT,
     cpu = cpu.ARM64,

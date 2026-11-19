@@ -4,6 +4,8 @@
 
 #import "ios/chrome/browser/cobrowse/model/ios_contextual_tasks_service_factory.h"
 
+#import <utility>
+
 #import "base/functional/bind.h"
 #import "components/contextual_tasks/internal/composite_context_decorator.h"
 #import "components/contextual_tasks/internal/contextual_tasks_service_impl.h"
@@ -57,8 +59,7 @@ IOSContextualTasksServiceFactory::BuildServiceInstanceFor(
       ios::FaviconServiceFactory::GetForProfile(
           profile, ServiceAccessType::EXPLICIT_ACCESS);
   history::HistoryService* history_service =
-      ios::HistoryServiceFactory::GetForProfile(
-          profile, ServiceAccessType::EXPLICIT_ACCESS);
+      ios::HistoryServiceFactory::GetForProfile(profile);
   signin::IdentityManager* identity_manager =
       IdentityManagerFactory::GetForProfile(profile);
 

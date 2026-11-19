@@ -114,6 +114,46 @@ void LogPersonalContextPrefetchEntitySourceCount(EntityType type,
       count);
 }
 
+void LogPersonalContextDeduplicationAgainstRecordType(
+    EntityType type,
+    std::optional<EntityInstance::RecordType> record_type) {
+  PersonalContextDeduplicationAgainstRecordType sample =
+      PersonalContextDeduplicationAgainstRecordType::kNotDeduplicated;
+  if (record_type) {
+    switch (*record_type) {
+      case EntityInstance::RecordType::kLocal:
+        sample = PersonalContextDeduplicationAgainstRecordType::kLocal;
+        break;
+      case EntityInstance::RecordType::kServerWallet:
+        sample = PersonalContextDeduplicationAgainstRecordType::kServerWallet;
+        break;
+      case EntityInstance::RecordType::kPersonalContext:
+        // Personal Context entities are not deduplicated against each other.
+        NOTREACHED();
+    }
+  }
+  base::UmaHistogramEnumeration(
+      "Autofill.Ai.PersonalContext.Deduplication.AgainstRecordType", sample);
+  base::UmaHistogramEnumeration(
+      base::StrCat(
+          {"Autofill.Ai.PersonalContext.Deduplication.AgainstRecordType.",
+           EntityTypeToMetricsString(type)}),
+      sample);
+}
+
+void LogPersonalContextPrefetchEntityFunnelOutcome(
+    std::optional<EntityType> type,
+    PersonalContextPrefetchEntityFunnelOutcome outcome) {
+  base::UmaHistogramEnumeration(
+      "Autofill.Ai.PersonalContext.Prefetch.EntityFunnel", outcome);
+  if (type) {
+    base::UmaHistogramEnumeration(
+        base::StrCat({"Autofill.Ai.PersonalContext.Prefetch.EntityFunnel.",
+                      EntityTypeToMetricsString(*type)}),
+        outcome);
+  }
+}
+
 void LogEntitySuppressionEntitiesFilteredPerPrefetch(size_t count) {
   base::UmaHistogramCounts100(
       "Autofill.Ai.Suppression.EntitiesFilteredPerPrefetch", count);

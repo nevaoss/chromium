@@ -130,6 +130,10 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kAndroidSystemFontPrewarming);
 
 // Opens PDFs in iframe in standalone tabs on Android.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kAndroidHandlePdfInIframe);
+
+// Enables keyboard-triggered web context menus (Shift+F10 and Context Menu key)
+// on Android.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kAndroidKeyboardContextMenu);
 #endif
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
@@ -1611,23 +1615,6 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kSetIntervalWithoutClamp);
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
     kSetSelectionForAccessibilityHandlingInputEvent);
 
-// If enabled, the shared storage worklet threads (on the same renderer process)
-// will share the same backing thread; otherwise, each will own a dedicated
-// backing thread.
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
-    kSharedStorageWorkletSharedBackingThreadImplementation);
-
-// For the Shared Storage API, allow custom data origins in `createWorklet`.
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
-    kSharedStorageCreateWorkletCustomDataOrigin);
-
-// For the Shared Storage API, allows saved queries in `selectURL()`.
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kSharedStorageSelectURLSavedQueries);
-
-// Enables WAL (write-ahead-logging) mode for the Shared Storage API SQLite
-// database backend.
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kSharedStorageAPIEnableWALForDatabase);
-
 // Parameters for blink::features::kSkipTouchEventFilter.
 // Which event types will be always forwarded is controlled by the "type"
 // FeatureParam, which can be either "discrete" (default) or "all".
@@ -1768,6 +1755,11 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
     kEmulateLoadStartedForInspectorOncePerResource);
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kUnloadBlocklisted);
+
+// When enabled, recompute the compositor's ManagedMemoryPolicy when the
+// original screen size or device scale factor changes.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
+    kUpdateCompositorMemoryPolicyOnScreenChange);
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kUrgentMainFrameForInput);
 

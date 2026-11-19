@@ -1,6 +1,7 @@
 {
   "gn_args": {
     "dcheck_always_on": true,
+    "enable_expensive_dchecks": false,
     "ffmpeg_branding": "Chrome",
     "is_component_build": false,
     "is_debug": false,
@@ -14,7 +15,6 @@
     "target_os": "linux",
     "use_bundled_mutter": true,
     "use_bundled_weston": true,
-    "use_reclient": false,
     "use_remoteexec": true,
     "use_siso": true
   }

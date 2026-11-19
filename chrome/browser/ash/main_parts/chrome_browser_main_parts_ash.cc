@@ -190,6 +190,7 @@
 #include "chrome/browser/first_run/first_run.h"
 #include "chrome/browser/global_features.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
+#include "chrome/browser/lifetime/browser_shutdown.h"
 #include "chrome/browser/lifetime/termination_notification.h"
 #include "chrome/browser/memory/oom_kills_monitor.h"
 #include "chrome/browser/metrics/chrome_feature_list_creator.h"
@@ -207,7 +208,6 @@
 #include "chrome/browser/ui/webui/ash/config/ash_web_ui_config_manager.h"
 #include "chrome/browser/ui/webui/ash/emoji/emoji_ui.h"
 #include "chrome/common/chrome_constants.h"
-#include "chrome/common/chrome_paths.h"
 #include "chrome/common/logging_chrome.h"
 #include "chrome/common/pref_names.h"
 #include "chromeos/ash/components/attestation/attestation_features.h"
@@ -744,11 +744,11 @@ int ChromeBrowserMainPartsAsh::PreEarlyInitialization() {
   DocumentScannerInstaller::GetInstance()->TriggerInstall();
 
   if (auto* fake_biod_client = FakeBiodClient::Get()) {
-    // The Fake biod saves the fake records to the chrome::DIR_USER_DATA
+    // The Fake biod saves the fake records to the ash::DIR_USER_DATA
     // directory, since we can't retrieve this path from chromeos
     // we have to pass it in this way.
     base::FilePath user_data_dir;
-    base::PathService::Get(chrome::DIR_USER_DATA, &user_data_dir);
+    base::PathService::Get(ash::DIR_USER_DATA, &user_data_dir);
     fake_biod_client->SetFakeUserDataDir(std::move(user_data_dir));
   }
 
@@ -766,7 +766,7 @@ int ChromeBrowserMainPartsAsh::PreEarlyInitialization() {
     }
 
     base::FilePath user_data_dir;
-    base::PathService::Get(chrome::DIR_USER_DATA, &user_data_dir);
+    base::PathService::Get(ash::DIR_USER_DATA, &user_data_dir);
     FakeUserDataAuthClient::Get()->SetUserDataDir(std::move(user_data_dir));
     // Set a default password factor when `--login-manager` is used in
     // non-testing mode.
@@ -867,7 +867,7 @@ int ChromeBrowserMainPartsAsh::PreMainMessageLoopRun() {
   // So, we'll use "${DIR_USER_DATA}/display_profiles" in linux-chromeos
   // then.
   base::FilePath user_data_dir;
-  base::PathService::Get(chrome::DIR_USER_DATA, &user_data_dir);
+  base::PathService::Get(ash::DIR_USER_DATA, &user_data_dir);
   CHECK(user_data_dir.IsAbsolute());
   CHECK(base::PathService::OverrideAndCreateIfNeeded(
       ash::DIR_DEVICE_DISPLAY_PROFILES,
@@ -888,10 +888,6 @@ int ChromeBrowserMainPartsAsh::PreMainMessageLoopRun() {
       CHECK_DEREF(g_browser_process->local_state()));
   system::StatisticsProvider::GetInstance()->StartLoadingMachineStatistics(
       load_oem_statistics);
-
-  base::FilePath downloads_directory;
-  CHECK(base::PathService::Get(chrome::DIR_DEFAULT_DOWNLOADS,
-                               &downloads_directory));
 
   DeviceOAuth2TokenServiceFactory::Initialize(
       g_browser_process->system_network_context_manager()
@@ -1107,10 +1103,8 @@ void ChromeBrowserMainPartsAsh::PreProfileInit() {
 
   kiosk_controller_ = std::make_unique<KioskControllerImpl>(
       g_browser_process->local_state(),
-      g_browser_process->platform_part()
-          ->browser_policy_connector_ash()
-          ->GetPolicyService(),
       g_browser_process->shared_url_loader_factory(),
+      g_browser_process->platform_part()->browser_policy_connector_ash(),
       user_manager::UserManager::Get());
 
   ambient_client_ = std::make_unique<AmbientClientImpl>();
@@ -1667,6 +1661,9 @@ void ChromeBrowserMainPartsAsh::PostBrowserStart() {
 // shutdown calls and test |pre_profile_init_called_| if necessary. See
 // crbug.com/40511182 for details.
 void ChromeBrowserMainPartsAsh::PostMainMessageLoopRun() {
+  browser_shutdown::SetShutdownPhase(
+      browser_shutdown::ShutdownPhase::kAshPreShell);
+
   video_conference_manager_client_.reset();
 
   arc_container_app_killer_.reset();
@@ -1849,7 +1846,12 @@ void ChromeBrowserMainPartsAsh::PostMainMessageLoopRun() {
   memory::OOMKillsMonitor::GetInstance().Shutdown();
 
   // NOTE: Closes ash and destroys `Shell`.
+  browser_shutdown::SetShutdownPhase(
+      browser_shutdown::ShutdownPhase::kAshShell);
   ChromeBrowserMainPartsLinux::PostMainMessageLoopRun();
+
+  browser_shutdown::SetShutdownPhase(
+      browser_shutdown::ShutdownPhase::kAshPostProfile);
 
   ash_web_ui_config_manager_.reset();
 
@@ -1927,9 +1929,15 @@ void ChromeBrowserMainPartsAsh::PostMainMessageLoopRun() {
   // after calling |PostMainMessageLoopRun()| and before calling
   // |PostDestroyThreads()|.
   mojo_service_manager_closer_.RunAndReset();
+
+  browser_shutdown::SetShutdownPhase(
+      browser_shutdown::ShutdownPhase::kStoppingThreads);
 }
 
 void ChromeBrowserMainPartsAsh::PostDestroyThreads() {
+  browser_shutdown::SetShutdownPhase(
+      browser_shutdown::ShutdownPhase::kPostDestroyThreads);
+
   network_change_manager_client_.reset();
   session_termination_manager_.reset();
 
@@ -1966,6 +1974,8 @@ void ChromeBrowserMainPartsAsh::PostDestroyThreads() {
   InstallAttributes::Shutdown();
   DeviceSettingsService::Shutdown();
   attestation::AttestationFeatures::Shutdown();
+
+  browser_shutdown::SetShutdownPhase(browser_shutdown::ShutdownPhase::kDone);
 }
 
 }  //  namespace ash

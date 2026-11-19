@@ -6,6 +6,8 @@
 #define UI_DECORATION_DECORATION_UTIL_H_
 
 #include <cstddef>
+#include <optional>
+#include <tuple>
 
 #include "base/component_export.h"
 #include "base/export_template.h"
@@ -57,8 +59,8 @@ void DrawHighlightBorder(gfx::Canvas* canvas,
                          const gfx::RoundedCornersF& rounded_corners,
                          const gfx::Rect& bounds);
 
-// Generator for highlight border decoration rendering and insets. The outer
-// ring sits outside the content and the inner ring overlaps its edge.
+// Generator for highlight border decoration rendering and insets. Both rings
+// sit inside the content.
 struct COMPONENT_EXPORT(UI_DECORATION) HighlightBorderGenerator {
   static gfx::Outsets GetMargins(const HighlightBorderValue& value);
 
@@ -81,6 +83,23 @@ using HighlightBorderDetails =
 // single highlight border details cache in component builds.
 extern template class EXPORT_TEMPLATE_DECLARE(COMPONENT_EXPORT(UI_DECORATION))
     internal::DecorationCache<HighlightBorderValue, HighlightBorderGenerator>;
+
+// Visual specification, generator, and cached ninebox details for a drop
+// shadow combined with a highlight border. The shadow is listed first so that
+// the highlight border is painted on top of it.
+using ShadowWithHighlightBorderValue =
+    CompositeValue<gfx::ShadowValues, HighlightBorderValue>;
+using ShadowWithHighlightBorderGenerator =
+    CompositeGenerator<ShadowDetails, HighlightBorderDetails>;
+using ShadowWithHighlightBorderDetails =
+    DecorationDetails<ShadowWithHighlightBorderValue,
+                      ShadowWithHighlightBorderGenerator>;
+
+// Instantiated in the ui/decoration component so that every module shares a
+// single shadow-with-highlight-border details cache in component builds.
+extern template class EXPORT_TEMPLATE_DECLARE(COMPONENT_EXPORT(UI_DECORATION))
+    internal::DecorationCache<ShadowWithHighlightBorderValue,
+                              ShadowWithHighlightBorderGenerator>;
 
 // Returns the insets required to accommodate the corner radii.
 //

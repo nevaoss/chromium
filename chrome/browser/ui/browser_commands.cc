@@ -152,6 +152,7 @@
 #include "components/browsing_data/content/browsing_data_helper.h"
 #include "components/commerce/core/commerce_utils.h"
 #include "components/commerce/core/pref_names.h"
+#include "components/contextual_tasks/public/contextual_task.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/embedder_support/user_agent_utils.h"
 #include "components/favicon/content/content_favicon_driver.h"
@@ -703,22 +704,22 @@ tabs::TabInterface* GetTabAndRevertIfNecessaryHelper(
   WebContents* current_contents = current_tab->GetContents();
 
   switch (disposition) {
-    case WindowOpenDisposition::NEW_FOREGROUND_TAB:
-    case WindowOpenDisposition::NEW_BACKGROUND_TAB: {
+    case WindowOpenDisposition::kNewForegroundTab:
+    case WindowOpenDisposition::kNewBackgroundTab: {
       std::unique_ptr<WebContents> new_tab = current_contents->Clone();
       WebContents* raw_new_tab = new_tab.get();
-      if (disposition == WindowOpenDisposition::NEW_BACKGROUND_TAB) {
+      if (disposition == WindowOpenDisposition::kNewBackgroundTab) {
         new_tab->WasHidden();
       }
       browser->GetTabStripModel()->AddWebContents(
           std::move(new_tab), -1, ui::PAGE_TRANSITION_LINK,
-          (disposition == WindowOpenDisposition::NEW_FOREGROUND_TAB)
+          (disposition == WindowOpenDisposition::kNewForegroundTab)
               ? AddTabTypes::ADD_ACTIVE
               : AddTabTypes::ADD_NONE,
           current_tab->GetGroup());
       return browser->GetTabStripModel()->GetTabForWebContents(raw_new_tab);
     }
-    case WindowOpenDisposition::NEW_WINDOW: {
+    case WindowOpenDisposition::kNewWindow: {
       std::unique_ptr<WebContents> new_tab = current_contents->Clone();
       WebContents* raw_new_tab = new_tab.get();
       BrowserWindowInterface* new_browser = CreateNewBrowser(browser, true);
@@ -1179,8 +1180,8 @@ void NavigateToIndexWithDisposition(BrowserWindowInterface* browser,
   WebContents* web_contents = tab->GetContents();
   CHECK(web_contents);
   NavigationController* controller = &web_contents->GetController();
-  DCHECK_GE(index, 0);
-  DCHECK_LT(index, controller->GetEntryCount());
+  CHECK_GE(index, 0, base::NotFatalUntil::M162);
+  CHECK_LT(index, controller->GetEntryCount(), base::NotFatalUntil::M162);
   controller->GoToIndex(index);
 }
 
@@ -1232,8 +1233,8 @@ void Home(BrowserWindowInterface* browser, WindowOpenDisposition disposition) {
     url = extensions::AppLaunchInfo::GetLaunchWebURL(extension);
   }
 
-  if (disposition == WindowOpenDisposition::CURRENT_TAB ||
-      disposition == WindowOpenDisposition::NEW_FOREGROUND_TAB) {
+  if (disposition == WindowOpenDisposition::kCurrentTab ||
+      disposition == WindowOpenDisposition::kNewForegroundTab) {
     extensions::MaybeShowExtensionControlledHomeNotification(
         browser, browser->GetTabStripModel()->GetActiveWebContents());
   }
@@ -1300,7 +1301,8 @@ base::WeakPtr<content::NavigationHandle> OpenCurrentURL(
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   Profile* profile = browser->GetProfile();
-  DCHECK(extensions::ExtensionSystem::Get(profile)->extension_service());
+  CHECK(extensions::ExtensionSystem::Get(profile)->extension_service(),
+        base::NotFatalUntil::M162);
   // TODO(crbug.com/40820294): Eliminate extra checks once source of
   //  bad pointer dereference is identified. See also TODO comment above.
   extensions::ExtensionRegistry* extension_registry =
@@ -1337,7 +1339,7 @@ void NewWindow(BrowserWindowInterface* browser) {
       launch_container = apps::LaunchContainer::kLaunchContainerTab;
     }
     apps::AppLaunchParams params = apps::AppLaunchParams(
-        app_id, launch_container, WindowOpenDisposition::NEW_WINDOW,
+        app_id, launch_container, WindowOpenDisposition::kNewWindow,
         apps::LaunchSource::kFromKeyboard);
     web_app::LaunchExtensionOrWebApp(profile, std::move(params),
                                      base::DoNothing());
@@ -1349,7 +1351,7 @@ void NewWindow(BrowserWindowInterface* browser) {
   const extensions::Extension* extension = GetExtensionForBrowser(browser);
   if (extension && extension->is_hosted_app()) {
     const auto app_launch_params = CreateAppLaunchParamsUserContainer(
-        profile, extension, WindowOpenDisposition::NEW_WINDOW,
+        profile, extension, WindowOpenDisposition::kNewWindow,
         apps::LaunchSource::kFromKeyboard);
     OpenApplicationWindow(
         profile, app_launch_params,
@@ -2249,7 +2251,7 @@ void ShowOffersAndRewardsForPage(BrowserWindowInterface* browser) {
   autofill::OfferNotificationBubbleControllerImpl* controller =
       autofill::OfferNotificationBubbleControllerImpl::FromWebContents(
           web_contents);
-  DCHECK(controller);
+  CHECK(controller, base::NotFatalUntil::M162);
   controller->ReshowBubble();
 }
 
@@ -2432,7 +2434,7 @@ void SavePage(BrowserWindowInterface* browser) {
   base::RecordAction(UserMetricsAction("SavePage"));
   WebContents* current_tab =
       browser->GetTabStripModel()->GetActiveWebContents();
-  DCHECK(current_tab);
+  CHECK(current_tab, base::NotFatalUntil::M162);
   if (current_tab->GetContentsMimeType() == "application/pdf") {
     base::RecordAction(UserMetricsAction("PDF.SavePage"));
 #if BUILDFLAG(ENABLE_PDF)
@@ -2527,7 +2529,7 @@ bool CanRouteMedia(BrowserWindowInterface* browser) {
 }
 
 void RouteMediaInvokedFromAppMenu(BrowserWindowInterface* browser) {
-  DCHECK(CanRouteMedia(browser));
+  CHECK(CanRouteMedia(browser), base::NotFatalUntil::M162);
 
   media_router::MediaRouterDialogController* dialog_controller =
       media_router::MediaRouterDialogController::GetOrCreateForWebContents(
@@ -2615,6 +2617,13 @@ void ToggleContextualTasksSidePanelZeroState(BrowserWindowInterface* browser) {
   CHECK(controller);
   if (controller->IsPanelOpenForContextualTask()) {
     controller->Close();
+  } else if (contextual_tasks::IsContextualTasksPinningV2Enabled() &&
+             controller->GetCurrentTask().has_value()) {
+    // If there is an active task, toggle the side panel.
+    controller->Show(
+        /*transition_from_tab=*/false,
+        omnibox::ChromeAimEntryPoint::
+            DESKTOP_CHROME_COBROWSE_PINNED_TOOLBAR_BUTTON);
   } else if (contextual_tasks::AreContextualTasksUpdatedEntryPointsEnabled(
                  browser ? browser->GetProfile() : nullptr)) {
     ExecAskGoogleAboutThisPage(
@@ -2935,7 +2944,7 @@ void ToggleRequestTabletSite(BrowserWindowInterface* browser) {
 }
 
 void SetAndroidOsForTabletSite(content::WebContents* current_tab) {
-  DCHECK(current_tab);
+  CHECK(current_tab, base::NotFatalUntil::M162);
   NavigationEntry* entry = current_tab->GetController().GetLastCommittedEntry();
   if (entry) {
     entry->SetIsOverridingUserAgent(true);
@@ -2956,7 +2965,7 @@ void SetAndroidOsForTabletSite(content::WebContents* current_tab) {
 
 void ToggleFullscreenMode(BrowserWindowInterface* browser,
                           bool user_initiated) {
-  DCHECK(browser);
+  CHECK(browser, base::NotFatalUntil::M162);
   ExclusiveAccessManager::From(browser)
       ->fullscreen_controller()
       ->ToggleBrowserFullscreenMode(user_initiated);

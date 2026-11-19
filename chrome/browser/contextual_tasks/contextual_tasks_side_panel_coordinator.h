@@ -142,15 +142,21 @@ class ContextualTasksSidePanelCoordinator
   void AddObserver(ContextualTasksPanelController::Observer* observer) override;
   void RemoveObserver(
       ContextualTasksPanelController::Observer* observer) override;
-  void Show(
-      bool transition_from_tab,
-      omnibox::ChromeAimEntryPoint entry_point,
-      bool use_no_animation = false,
-      std::optional<base::TimeTicks> open_time_ticks = std::nullopt) override;
+  void Show(bool transition_from_tab,
+            omnibox::ChromeAimEntryPoint entry_point,
+            bool use_no_animation = false,
+            std::optional<base::TimeTicks> open_time_ticks = std::nullopt,
+            std::optional<EntrySource> entry_source_override =
+                std::nullopt) override;
   void Close() override;
   void OpenInZeroState() override;
   void ShareTabsWithActiveOrNewThread(
       const std::vector<tabs::TabHandle>& tab_handles) override;
+  void ShareTabsWithExistingThread(
+      const base::Uuid& task_id,
+      const std::vector<tabs::TabHandle>& tab_handles,
+      omnibox::ChromeAimEntryPoint entry_point) override;
+  std::vector<RecentThreadInfo> GetRecentThreads() const override;
   bool IsPanelOpenForContextualTask() const override;
   ContextualTasksPanelController::EntrySource GetActiveEntrySource()
       const override;
@@ -275,6 +281,11 @@ class ContextualTasksSidePanelCoordinator
   // Disassociate the tab from the task if it's associated with it.
   void DisassociateTabFromTask(content::WebContents* web_contents);
 
+  // Returns whether the current task and its tab associations should be
+  // preserved when the side panel is closed so the user can resume it from the
+  // ephemeral toolbar button or the pinned toolbar button (under Pinning V2).
+  bool ShouldPreserveTaskOnClose() const;
+
   // Disassociate all tabs associated with the current task, or the active tab
   // if no current task exists. Under kToolbarEphemeralBranded mode, active
   // tasks with conversation threads are preserved on panel close to allow
@@ -305,8 +316,10 @@ class ContextualTasksSidePanelCoordinator
 
   // Closes any active Lens session on the given tab if it matches an
   // eligibility criteria.
-  void CloseLensSessionIfActive(tabs::TabInterface* tab_interface,
-                                omnibox::ChromeAimEntryPoint entry_point);
+  void CloseLensSessionIfActive(
+      tabs::TabInterface* tab_interface,
+      omnibox::ChromeAimEntryPoint entry_point,
+      ContextualTasksPanelController::EntrySource entry_source);
 
   // Notifies the ActiveTaskContextProvider about the current session state.
   // This checks both the panel and the active tab for a valid session handle.
@@ -367,6 +380,7 @@ class ContextualTasksSidePanelCoordinator
       scoped_unowned_user_data_;
 
   bool in_cobrowsing_session_ = false;
+  bool is_opening_in_zero_state_ = false;
 
   // When true, PrimaryPageChanged() will not auto-hide the panel on a
   // contextual tasks URL navigation. Set only by interactive tests that drive

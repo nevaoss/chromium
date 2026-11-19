@@ -131,6 +131,10 @@ class AXRelationCache {
   // relation present on source. This includes attributes on ElementInternals.
   void UpdateReverseOwnsRelations(Element& source);
 
+  // Return true if `attr_name` is tracked in `aria_other_relations_id_map_` /
+  // `aria_other_relations_node_map_`.
+  static bool IsOtherRelationAttribute(const QualifiedName& attr_name);
+
   // Update the target to source node mappings for any other ARIA
   // relation present on source. This includes attributes on ElementInternals.
   void UpdateReverseOtherRelations(Element& source);
@@ -164,6 +168,10 @@ class AXRelationCache {
   // of them.
   void ProcessUpdatesWithCleanLayout();
 
+  // Restores the natural parent (or prunes the subtree) of any formerly
+  // aria-owned children whose owners were removed during `RemoveSubtree()`.
+  void RestorePendingParents();
+
   // Determines the set of child nodes that this object owns due to aria-owns
   // (fully validating that the ownership is legal and free of cycles).
   // If that differs from the previously cached set of owned children,
@@ -176,6 +184,19 @@ class AXRelationCache {
   bool UpdateAriaOwnsWithCleanLayout(AXObject* owner, bool force = false);
   void QueueOwnerToUpdate(AXObject* owner);
 
+  // TODO(crbug.com/576036695): Move the rest of the usemap and image map
+  // ownership logic here so AXRelationCache manages all cases where an
+  // element's accessibility parent differs from its DOM or layout parent.
+  void MarkImageMapsDirty();
+  // Mark image maps dirty if |node| is a <map> or an <img> with usemap.
+  void MaybeMarkImageMapsDirty(const Node&);
+  // Detach stale <map> children and return the images whose map changed.
+  HeapVector<Member<Element>> DetachStaleImageMapsWithCleanLayout();
+  // Rebuild the children of the images returned by
+  // DetachStaleImageMapsWithCleanLayout().
+  void RebuildImageMapsWithCleanLayout(
+      const HeapVector<Member<Element>>& images);
+
   // Is there work to be done when layout becomes clean?
   bool IsDirty() const;
 
@@ -187,6 +208,12 @@ class AXRelationCache {
 #endif
 
  private:
+  // Detach stale <map> children from the images in |document| and append the
+  // images whose map changed to |images_with_changed_map|.
+  void DetachStaleImageMapsInDocument(
+      Document& document,
+      HeapVector<Member<Element>>& images_with_changed_map);
+
   // Check that the element has been previouslly processed.
   void CheckElementWasProcessed(Element&) const;
 
@@ -384,8 +411,18 @@ class AXRelationCache {
   // will be fired on all affected nodes.
   HashSet<DOMNodeId> owner_axids_to_update_;
 
+  // A set of formerly aria-owned child IDs whose owners were removed and whose
+  // natural parents need to be restored (or their subtrees pruned) once the
+  // removal finishes or in `ProcessUpdatesWithCleanLayout()`.
+  HashSet<DOMNodeId> child_axids_to_restore_parent_;
+
+  bool is_restoring_parents_ = false;
+
   // For each DOM node, the most recent id attribute value processed.
   HashMap<DOMNodeId, AtomicString> registered_id_attributes_;
+
+  // Whether a <map> or <img usemap> changed since the last update.
+  bool has_dirty_image_maps_ = false;
 
   FRIEND_TEST_ALL_PREFIXES(AccessibilityTest,
                            RegisteredIdAttributesAreRemovedOnDisconnection);
@@ -394,6 +431,13 @@ class AXRelationCache {
   FRIEND_TEST_ALL_PREFIXES(
       AccessibilityTest,
       RegisteredIdAttributesSurviveConnectedAXObjectRecreation);
+  FRIEND_TEST_ALL_PREFIXES(AccessibilityTest, ImageMapsNotDirtyOnInitialLoad);
+  FRIEND_TEST_ALL_PREFIXES(AccessibilityTest,
+                           ImageMapsNotDirtyWhenPlainImageInsertedOrRemoved);
+  FRIEND_TEST_ALL_PREFIXES(AccessibilityTest,
+                           ImageMapsNotDirtyOnOtherAttributeChanges);
+  FRIEND_TEST_ALL_PREFIXES(AccessibilityTest,
+                           ImageMapsDirtyOnMapOrUsemapChanges);
 
   // Helpers that call back into object cache
   AXObject* ObjectFromAXID(AXID) const;

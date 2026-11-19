@@ -434,6 +434,11 @@ BASE_FEATURE(kOmniboxSearchPrefetchOnEnterKeyDown, DISABLED);
 // suggestions in the Android Tab Search overlay.
 BASE_FEATURE(kAndroidTabSearchRecentTabs, DISABLED);
 
+// If enabled, shows a close button on open tab suggestions in the Android Tab
+// Search overlay, allowing users to close tabs directly from the suggestions
+// list.
+BASE_FEATURE(kAndroidTabSearchCloseTabButton, DISABLED);
+
 // Enables keyword-based site search functionality on Android devices.
 BASE_FEATURE(kOmniboxSiteSearch, DISABLED);
 
@@ -712,7 +717,8 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kOmniboxDisableTabsForCanvas,
       &kOmniboxSessionlessVoiceSearch,
       &kSuppressStatusIconDuringHttpNavigation,
-      &kZeroSuggestPrefetchOnPageLoadAndTabSwitch};
+      &kZeroSuggestPrefetchOnPageLoadAndTabSwitch,
+      &kAndroidTabSearchCloseTabButton};
   static base::NoDestructor<base::android::FeatureMap> kFeatureMap(
       kFeaturesExposedToJava);
   return reinterpret_cast<int64_t>(kFeatureMap.get());
@@ -792,6 +798,8 @@ const base::FeatureParam<bool> kAskGShowChip{
 const base::FeatureParam<bool> kAskGSuggestionSidePanelDescription{
     &kWebUIOmniboxAskGAboutThisPage,
     "Omnibox_AskGSuggestionSidePanelDescription", false};
+const base::FeatureParam<bool> kAskGLensIconIph{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGLensIconIph", false};
 
 // Note: no new flags beyond this point.
 

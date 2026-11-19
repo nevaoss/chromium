@@ -30,7 +30,9 @@
 
   border-radius: var(--cr-searchbox-border-radius);
   display: block;
+  font-family: var(--omnibox-primary-font-family);
   font-size: var(--cr-searchbox-font-size);
+  font-weight: var(--omnibox-primary-font-weight);
   margin-top: 0;
   margin-inline: auto;
   height: var(--cr-searchbox-height);
@@ -48,7 +50,14 @@
 
 /* TODO(b/504669359): Define other location bar border colors such as high contrast. */
 :host(:not([dropdown-is-visible])) {
-  --cr-searchbox-icon-right-position: 2px;
+  --cr-searchbox-icon-container-size: calc(
+      var(--location-bar-icon-size) +
+      var(--location-bar-page-info-icon-padding-start) +
+      var(--location-bar-page-info-icon-padding-end));
+  --cr-searchbox-icon-left-position:
+      var(--location-bar-leading-decoration-edge-padding);
+  --cr-searchbox-icon-right-position:
+      var(--location-bar-leading-decoration-inner-padding);
   --cr-searchbox-shadow: inset 0 0 0 1px var(--color-location-bar-border-on-mismatch);
   box-sizing: border-box;
   margin-top: var(--alignment-inset-top);
@@ -63,7 +72,11 @@
 :host(:not([dropdown-is-visible])) #inputWrapper:focus-within,
 :host([is-logically-focused_]:not([dropdown-is-visible])) #inputWrapper {
   --cr-searchbox-shadow: none;
-  box-shadow: 0 0 0 2px var(--cr-focus-outline-color);
+  /* Mirrors views::FocusRing's default halo (kDefaultHaloThickness = 2.0f,
+   * kDefaultHaloInset = kDefaultHaloThickness * -0.5f = -1.0f), which draws
+   * 1px outside and 1px inside the location bar boundary. */
+  box-shadow: 0 0 0 1px var(--cr-focus-outline-color),
+      inset 0 0 0 1px var(--cr-focus-outline-color);
 }
 
 /* The compose button takes the focus ring's place while it has focus. With
@@ -140,16 +153,28 @@ cr-searchbox-input::part(searchbox-input),
 cr-searchbox-input::part(mirror) {
   align-self: center;
   box-sizing: border-box;
+  font-weight: inherit;
   height: var(--cr-searchbox-input-height);
   padding-bottom: 2px;
   padding-inline: 0;
   padding-top: 0;
 }
 
-/* On the shared container, so the gap follows the UI direction, and the input
- * and #mirror (both dir="ltr" for URLs) keep the same box. */
-:host(:not([aim-button-visible_])) cr-searchbox-input::part(mirror-container) {
-  margin-inline-end: 18px;
+/* Pad the input and #mirror alike, rather than adding a margin outside the
+ * input, so that the gap is part of the input's hit area: like in the Views
+ * omnibox, a click in it places the caret. Uses physical sides keyed off the
+ * UI direction, since URLs are laid out LTR (the input and #mirror get
+ * dir="ltr"), so that the gap stays at the end of the field in RTL UIs. */
+:host(:not([aim-button-visible_]):dir(ltr))
+    cr-searchbox-input::part(searchbox-input),
+:host(:not([aim-button-visible_]):dir(ltr)) cr-searchbox-input::part(mirror) {
+  padding-right: 18px;
+}
+
+:host(:not([aim-button-visible_]):dir(rtl))
+    cr-searchbox-input::part(searchbox-input),
+:host(:not([aim-button-visible_]):dir(rtl)) cr-searchbox-input::part(mirror) {
+  padding-left: 18px;
 }
 
 /* When the window is inactive (top container has focus), the selection should
@@ -301,13 +326,17 @@ omnibox-popup-contextual-entrypoint {
 }
 
 #composeButton {
-  --cr-button-height: 24px;
+  --cr-button-height: var(--cr-searchbox-input-height);
   align-self: center;
 }
 
 #composeButton::part(glow-container) {
-  height: 24px;
-  margin-inline-end: 2px;
+  height: var(--cr-searchbox-input-height);
+  /* .glow-container in searchbox_compose_button.css adds
+   * padding-inline: 2px, so subtract 2px to place the button's edge at
+   * --location-bar-trailing-decoration-aim-edge-padding. */
+  margin-inline-end: calc(
+      var(--location-bar-trailing-decoration-aim-edge-padding) - 2px);
   top: 0;
 }
 
@@ -321,14 +350,15 @@ omnibox-popup-contextual-entrypoint {
   cursor: default;
   background-color: var(--color-sys-tonal-container);
   color: var(--color-sys-on-tonal-container);
-  font-size: 13px;
-  font-weight: 500;
-  padding-inline-end: 12.5px;
+  font-family: var(--omnibox-primary-body-3-emphasis-font-family);
+  font-size: var(--omnibox-primary-body-3-emphasis-font-size);
+  font-weight: var(--omnibox-primary-body-3-emphasis-font-weight);
+  padding-inline-end: 13px;
   padding-inline-start: 8px;
 }
 
 #composeButton[dynamic]::part(compose-button) {
-  padding-inline-end: 10.5px;
+  padding-inline-end: 11px;
 }
 
 :host([searchbox-dynamic-color-scheme_]) #composeButton::part(compose-button) {
@@ -353,8 +383,10 @@ omnibox-popup-contextual-entrypoint {
 }
 
 #composeButton::part(compose-icon) {
-  height: 15px;
-  max-width: 15px;
+  height: var(--location-bar-chip-icon-size);
+  max-width: var(--location-bar-chip-icon-size);
+  padding: 0;
+  width: var(--location-bar-chip-icon-size);
 }
 
 #composeButton[dynamic]::part(compose-icon) {
@@ -363,11 +395,6 @@ omnibox-popup-contextual-entrypoint {
 
 :host(:not([aim-button-icon-only_])) #composeButton[dynamic][has-user-input]::part(compose-icon) {
   max-width: 0;
-}
-
-#composeButton::part(compose-icon-favicon) {
-  height: 16px;
-  max-width: 16px;
 }
 
 #composeButton::part(label) {
@@ -379,7 +406,7 @@ omnibox-popup-contextual-entrypoint {
 }
 
 #composeButton[dynamic][has-user-input]::part(label) {
-  transform: translateX(-16px);
+  transform: translateX(calc(-1 * var(--location-bar-chip-icon-size)));
 }
 
 #composeButton::part(arrow-icon) {
@@ -394,7 +421,7 @@ omnibox-popup-contextual-entrypoint {
 :host([aim-button-icon-only_]) #composeButton::part(compose-button) {
   border-radius: 50%;
   padding: 0;
-  /* Match width to height (24px) for a 1:1 circular icon button. */
+  /* Match width to height for a 1:1 circular icon button. */
   min-width: var(--cr-button-height);
   width: var(--cr-button-height);
 }
@@ -406,11 +433,6 @@ omnibox-popup-contextual-entrypoint {
   scale: 1;
   transform: none;
   visibility: visible;
-  width: 15px;
-}
-
-:host([aim-button-icon-only_]) #composeButton::part(compose-icon-favicon) {
-  width: 16px;
 }
 
 :host([aim-button-icon-only_]) #composeButton::part(label),

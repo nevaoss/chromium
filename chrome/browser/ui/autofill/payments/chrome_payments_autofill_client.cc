@@ -16,7 +16,6 @@
 #include "chrome/browser/autofill/autofill_offer_manager_factory.h"
 #include "chrome/browser/feature_engagement/tracker_factory.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/autofill/payments/create_card_unmask_prompt_view.h"
 #include "chrome/browser/ui/autofill/payments/credit_card_scanner_controller.h"
 #include "chrome/browser/ui/autofill/payments/iban_bubble_controller_impl.h"
@@ -346,13 +345,13 @@ void ChromePaymentsAutofillClient::ShowSaveCreditCardToCloud(
     SaveCreditCardOptions options,
     UploadSaveCardPromptCallback callback) {
 #if BUILDFLAG(IS_ANDROID)
-  CHECK(options.show_prompt, base::NotFatalUntil::M162);
-  Profile* profile =
-      !web_contents()
-          ? nullptr
-          : Profile::FromBrowserContext(web_contents()->GetBrowserContext());
-  signin::IdentityManager* identity_manager =
-      IdentityManagerFactory::GetForProfile(profile);
+  // TODO(crbug.com/575133530): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(options.show_prompt);
+  signin::IdentityManager* identity_manager = client_->GetIdentityManager();
+  if (!identity_manager) {
+    return;
+  }
   AccountInfo account_info = identity_manager->FindExtendedAccountInfo(
       identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin));
   AutofillSaveCardUiInfo ui_info = AutofillSaveCardUiInfo::CreateForUploadSave(
@@ -927,20 +926,10 @@ AutofillOfferManager* ChromePaymentsAutofillClient::GetAutofillOfferManager() {
 void ChromePaymentsAutofillClient::UpdateOfferNotification(
     const AutofillOfferData& offer,
     const OfferNotificationOptions& options) {
-  const CreditCard* card = offer.GetEligibleInstrumentIds().empty()
-                               ? nullptr
-                               : client_->GetPersonalDataManager()
-                                     .payments_data_manager()
-                                     .GetCreditCardByInstrumentId(
-                                         offer.GetEligibleInstrumentIds()[0]);
-
-  if (offer.GetOfferType() ==
-          AutofillOfferData::OfferType::GPAY_CARD_LINKED_OFFER &&
-      !card) {
-    return;
-  }
-
 #if BUILDFLAG(IS_ANDROID)
+  // TODO(crbug.com/546252995): Support Wallet offers in the Android offer
+  // notification. It currently requires a linked card, so it is not shown for
+  // Wallet offers.
   if (options.notification_has_been_shown) {
     // For Android, if notification has been shown on this merchant, don't show
     // it again.
@@ -949,12 +938,12 @@ void ChromePaymentsAutofillClient::UpdateOfferNotification(
   OfferNotificationControllerAndroid::CreateForWebContents(web_contents());
   OfferNotificationControllerAndroid* controller =
       OfferNotificationControllerAndroid::FromWebContents(web_contents());
-  controller->ShowIfNecessary(&offer, card);
+  controller->ShowIfNecessary(&offer, /*card=*/nullptr);
 #else
   OfferNotificationBubbleControllerImpl::CreateForWebContents(web_contents());
   OfferNotificationBubbleControllerImpl* controller =
       OfferNotificationBubbleControllerImpl::FromWebContents(web_contents());
-  controller->ShowOfferNotificationIfApplicable(offer, card, options);
+  controller->ShowOfferNotificationIfApplicable(offer, options);
 #endif
 }
 
@@ -1480,16 +1469,7 @@ void ChromePaymentsAutofillClient::OnPaymentsDataChanged() {
 }
 
 std::u16string ChromePaymentsAutofillClient::GetAccountHolderName() const {
-  if (!web_contents()) {
-    return std::u16string();
-  }
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
-  if (!profile) {
-    return std::u16string();
-  }
-  signin::IdentityManager* identity_manager =
-      IdentityManagerFactory::GetForProfile(profile);
+  signin::IdentityManager* identity_manager = client_->GetIdentityManager();
   if (!identity_manager) {
     return std::u16string();
   }

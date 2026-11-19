@@ -35,7 +35,8 @@ class MockContextualTasksPanelController
               (bool,
                omnibox::ChromeAimEntryPoint,
                bool,
-               std::optional<base::TimeTicks>),
+               std::optional<base::TimeTicks>,
+               std::optional<EntrySource>),
               (override));
   MOCK_METHOD(void, Close, (), (override));
   MOCK_METHOD(void, OpenInZeroState, (), (override));
@@ -43,6 +44,16 @@ class MockContextualTasksPanelController
               ShareTabsWithActiveOrNewThread,
               (const std::vector<tabs::TabHandle>&),
               (override));
+  MOCK_METHOD(void,
+              ShareTabsWithExistingThread,
+              (const base::Uuid&,
+               const std::vector<tabs::TabHandle>&,
+               omnibox::ChromeAimEntryPoint),
+              (override));
+  MOCK_METHOD(std::vector<RecentThreadInfo>,
+              GetRecentThreads,
+              (),
+              (const, override));
   MOCK_METHOD(bool, IsPanelOpenForContextualTask, (), (const, override));
   MOCK_METHOD(ContextualTasksPanelController::EntrySource,
               GetActiveEntrySource,

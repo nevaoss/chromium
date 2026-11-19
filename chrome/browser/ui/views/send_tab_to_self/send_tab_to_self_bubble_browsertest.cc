@@ -2,8 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/callback_list.h"
+#include "base/functional/bind.h"
 #include "base/time/time.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/sync/send_tab_to_self_sync_service_factory.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_commands.h"
@@ -17,7 +20,10 @@
 #include "chrome/browser/ui/views/toolbar/pinned_action_test_accessor.h"
 #include "chrome/browser/ui/views/toolbar/pinned_toolbar_actions.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
+#include "components/keyed_service/content/browser_context_dependency_manager.h"
+#include "components/keyed_service/core/keyed_service.h"
 #include "components/send_tab_to_self/metrics_util.h"
+#include "components/send_tab_to_self/stub_send_tab_to_self_sync_service.h"
 #include "components/signin/public/base/signin_buildflags.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/sync_device_info/remote_device_info.h"
@@ -95,6 +101,23 @@ class SendTabToSelfBubbleTest : public DialogBrowserTest {
   SendTabToSelfBubbleTest(const SendTabToSelfBubbleTest&) = delete;
   SendTabToSelfBubbleTest& operator=(const SendTabToSelfBubbleTest&) = delete;
 
+  void SetUpInProcessBrowserTestFixture() override {
+    DialogBrowserTest::SetUpInProcessBrowserTestFixture();
+    create_services_subscription_ =
+        BrowserContextDependencyManager::GetInstance()
+            ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
+                &SendTabToSelfBubbleTest::OnWillCreateBrowserContextServices,
+                base::Unretained(this)));
+  }
+
+  void OnWillCreateBrowserContextServices(content::BrowserContext* context) {
+    SendTabToSelfSyncServiceFactory::GetInstance()->SetTestingFactory(
+        context, base::BindRepeating([](content::BrowserContext* context)
+                                         -> std::unique_ptr<KeyedService> {
+          return std::make_unique<StubSendTabToSelfSyncService>();
+        }));
+  }
+
   void SetUpOnMainThread() override {
     DialogBrowserTest::SetUpOnMainThread();
 
@@ -140,6 +163,7 @@ class SendTabToSelfBubbleTest : public DialogBrowserTest {
 
  protected:
   raw_ptr<StubSendTabToSelfBubbleController> controller_ = nullptr;
+  base::CallbackListSubscription create_services_subscription_;
 };
 
 // Verifies that the no-target-device promo bubble renders and matches the
@@ -210,6 +234,7 @@ IN_PROC_BROWSER_TEST_P(SendTabToSelfBubbleParameterizedTest,
   // Find the send tab to self button.
   PinnedActionTestAccessor accessor(browser(), kActionSendTabToSelf);
   EXPECT_TRUE(accessor.GetVisible());
+  EXPECT_TRUE(accessor.GetEnabled());
   ASSERT_TRUE(accessor.GetElement());
   EXPECT_EQ(accessor.GetElement()->identifier(),
             kPinnedToolbarActionSendTabToSelfElementId);

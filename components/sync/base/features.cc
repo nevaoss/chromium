@@ -39,19 +39,18 @@ BASE_FEATURE(kSyncAutofillEntitySuppression, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kUnoPhase2FollowUp, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_IOS)
 
+#if BUILDFLAG(IS_CHROMEOS)
 BASE_FEATURE(kSyncEnableContactInfoDataTypeForCustomPassphraseUsers,
-#if BUILDFLAG(IS_IOS) || BUILDFLAG(IS_ANDROID)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_CHROMEOS)
 
 bool IsContactInfoDataTypeForCustomPassphraseUsersEnabled() {
+#if BUILDFLAG(IS_CHROMEOS)
   return base::FeatureList::IsEnabled(
-             kSyncEnableContactInfoDataTypeForCustomPassphraseUsers) ||
-         base::FeatureList::IsEnabled(
-             kReplaceSyncPromosWithSigninPromosNewSignin);
+      kSyncEnableContactInfoDataTypeForCustomPassphraseUsers);
+#else
+  return true;
+#endif
 }
 
 BASE_FEATURE(kSyncEnableContactInfoDataTypeForDasherUsers,
@@ -68,18 +67,12 @@ BASE_FEATURE(kReplaceSyncPromosWithSignInPromos,
 #endif
 );
 
-BASE_FEATURE(kReplaceSyncPromosWithSigninPromosNewSignin,
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
-
 bool IsReplaceSyncPromosWithSignInPromosEnabled() {
-  return base::FeatureList::IsEnabled(kReplaceSyncPromosWithSignInPromos) ||
-         base::FeatureList::IsEnabled(
-             kReplaceSyncPromosWithSigninPromosNewSignin);
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+  return true;
+#else
+  return base::FeatureList::IsEnabled(kReplaceSyncPromosWithSignInPromos);
+#endif
 }
 
 // Like DECLARE_SYNC_AUTOFILL_AI_FEATURE but for the definition.
@@ -145,17 +138,9 @@ BASE_FEATURE(kSyncTrustedVaultInfobarMessageImprovements,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_IOS)
 
-BASE_FEATURE(kSyncPreferencesUseSelectedTypes,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kSyncEnableNewSyncDashboardUrl, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kSyncValidateAccessToken, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kSyncUsePropagatedAccessToken, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kSyncInvalidationsBypassScheduler,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kSyncSearchEnginesAndroidLFF, base::FEATURE_DISABLED_BY_DEFAULT);

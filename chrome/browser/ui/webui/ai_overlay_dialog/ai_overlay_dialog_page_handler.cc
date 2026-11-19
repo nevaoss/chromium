@@ -50,9 +50,14 @@
 #include "mojo/public/cpp/bindings/message.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/common/dom/dom_node_id.h"
+#include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/mojom/frame/user_activation_notification_type.mojom-shared.h"
 #include "ui/display/screen.h"
 #include "ui/gfx/codec/jpeg_codec.h"
+
+#if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/tab_list/tab_list_interface.h"
+#endif
 
 #if BUILDFLAG(IS_DESKTOP_ANDROID)
 #include "chrome/browser/ui/android/ai_overlay_dialog/ai_overlay_dialog_bridge.h"
@@ -77,9 +82,16 @@ namespace {
 content::WebContents* GetActiveWebContentsFromBrowser(
     BrowserWindowInterface* browser) {
 #if !BUILDFLAG(IS_ANDROID)
-  return browser->GetTabStripModel()->GetActiveWebContents();
+  return browser ? browser->GetTabStripModel()->GetActiveWebContents()
+                 : nullptr;
 #else
-  return nullptr;
+  if (!browser) {
+    return nullptr;
+  }
+
+  TabListInterface* tab_list = TabListInterface::From(browser);
+  tabs::TabInterface* tab = tab_list ? tab_list->GetActiveTab() : nullptr;
+  return tab ? tab->GetContents() : nullptr;
 #endif
 }
 
@@ -523,7 +535,7 @@ void AiOverlayDialogPageHandler::ExecuteWebMcpTool(
 
   auto invocation = actor::mojom::ToolInvocation::New();
   invocation->task_id = actor::TaskId();
-  invocation->execution_id = base::UnguessableToken::Create();
+  invocation->execution_id = blink::ToolInvocationToken();
   auto script_action = actor::mojom::ScriptToolAction::New();
   script_action->name = tool_name;
   script_action->input_arguments = std::move(arguments_json);

@@ -23,6 +23,8 @@
 
 #include "third_party/blink/renderer/core/html/html_image_element.h"
 
+#include "base/functional/bind.h"
+#include "base/task/single_thread_task_runner.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/loader/lcp_critical_path_predictor_util.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_image_bitmap_options.h"
@@ -301,6 +303,13 @@ void HTMLImageElement::SetBestFitURLAndDPRFromImageCandidate(
       intrinsic_sizing_viewport_dependent = true;
     }
     UseCounter::Count(GetDocument(), WebFeature::kSrcsetXDescriptor);
+  } else if (RuntimeEnabledFeatures::
+                 ImageSrcsetReselectionForSrcCandidateEnabled() &&
+             !FastGetAttribute(html_names::kSrcsetAttr).empty()) {
+    // The src attribute won as the implicit 1x candidate among the srcset
+    // candidates. A device pixel ratio change (e.g. page zoom) can make one of
+    // the srcset candidates a better fit, so keep listening for changes.
+    intrinsic_sizing_viewport_dependent = true;
   }
 
   if (auto* layout_image = DynamicTo<LayoutImage>(GetLayoutObject())) {
@@ -406,6 +415,19 @@ void HTMLImageElement::ParseAttribute(
       GetImageLoader().UpdateFromElement(
           ImageLoader::kUpdateIgnorePreviousError);
     }
+  } else if ((name == html_names::kWidthAttr ||
+              name == html_names::kHeightAttr) &&
+             RuntimeEnabledFeatures::SrcsetTwoDimensionalSizesEnabled()) {
+    HTMLElement::ParseAttribute(params);
+    // The width and height attributes determine the dimension attribute aspect
+    // ratio used for source selection, so changing them is a relevant
+    // mutation: https://html.spec.whatwg.org/#relevant-mutations
+    if (params.reason != AttributeModificationReason::kByParser &&
+        !best_fit_image_url_.empty() &&
+        (FastHasAttribute(html_names::kSrcsetAttr) ||
+         IsA<HTMLPictureElement>(parentNode()))) {
+      SelectSourceURL(ImageLoader::kUpdateSizeChanged);
+    }
   } else {
     HTMLElement::ParseAttribute(params);
   }
@@ -504,6 +526,26 @@ bool HTMLImageElement::IsUrlInCandidateSet(const AtomicString& url) const {
   return false;
 }
 
+// https://html.spec.whatwg.org/#dimension-attribute-aspect-ratio
+static std::optional<float> DimensionAttributeAspectRatio(
+    const Element& element) {
+  const AtomicString& width_attr =
+      element.FastGetAttribute(html_names::kWidthAttr);
+  const AtomicString& height_attr =
+      element.FastGetAttribute(html_names::kHeightAttr);
+  if (width_attr.IsNull() || height_attr.IsNull()) {
+    return std::nullopt;
+  }
+  HTMLDimension width;
+  HTMLDimension height;
+  if (!ParseDimensionValue(width_attr, width) || !width.IsAbsolute() ||
+      !ParseDimensionValue(height_attr, height) || !height.IsAbsolute() ||
+      width.Value() == 0 || height.Value() == 0) {
+    return std::nullopt;
+  }
+  return static_cast<float>(width.Value() / height.Value());
+}
+
 // http://picture.responsiveimages.org/#update-source-set
 ImageCandidate HTMLImageElement::FindBestFitImageFromPictureParent() {
   DCHECK(IsMainThread());
@@ -536,9 +578,20 @@ ImageCandidate HTMLImageElement::FindBestFitImageFromPictureParent() {
     if (!source->MediaQueryMatches())
       continue;
 
+    std::optional<float> default_aspect_ratio;
+    if (RuntimeEnabledFeatures::SrcsetTwoDimensionalSizesEnabled()) {
+      // Use the source's dimension attribute aspect ratio if it has a width or
+      // height attribute, and the img's otherwise.
+      bool source_has_dimension_attribute =
+          source->FastHasAttribute(html_names::kWidthAttr) ||
+          source->FastHasAttribute(html_names::kHeightAttr);
+      default_aspect_ratio = DimensionAttributeAspectRatio(
+          source_has_dimension_attribute ? static_cast<Element&>(*source)
+                                         : static_cast<Element&>(*this));
+    }
     ImageCandidate candidate = BestFitSourceForSrcsetAttribute(
         GetDocument().DevicePixelRatio(), SourceSize(*source),
-        /*default_aspect_ratio=*/std::nullopt, srcset, &GetDocument());
+        default_aspect_ratio, srcset, &GetDocument());
     if (candidate.IsEmpty())
       continue;
     source_ = source;
@@ -1057,7 +1110,31 @@ TargetBoxSize HTMLImageElement::SourceSize(Element& element) {
 }
 
 TargetBoxSize HTMLImageElement::AutoSizesSize() const {
-  return {static_cast<float>(LayoutBoxWidth())};
+  if (!RuntimeEnabledFeatures::SrcsetTwoDimensionalSizesEnabled()) {
+    return {static_cast<float>(LayoutBoxWidth())};
+  }
+  // https://html.spec.whatwg.org/#parsing-a-sizes-attribute
+  // Source selection maps the computed 'object-fit' to how the image is fit
+  // into the box; see SourceConcreteWidth().
+  const LayoutBox* box = GetLayoutBox();
+  return {static_cast<float>(LayoutBoxWidth()),
+          static_cast<float>(LayoutBoxHeight()),
+          box ? box->Style().GetObjectFit() : EObjectFit::kFill};
+}
+
+void HTMLImageElement::ObjectFitChanged() {
+  // A change in the computed 'object-fit' of an image that allows auto-sizes
+  // is a relevant mutation: https://html.spec.whatwg.org/#relevant-mutations
+  // This is called during style recalc, so re-run source selection in a task
+  // rather than synchronously.
+  if (!RuntimeEnabledFeatures::SrcsetTwoDimensionalSizesEnabled() ||
+      !is_auto_sized_ || !HasLazyLoadingAttribute()) {
+    return;
+  }
+  GetDocument()
+      .GetTaskRunner(TaskType::kDOMManipulation)
+      ->PostTask(FROM_HERE, BindOnce(&HTMLImageElement::OnResize,
+                                     WrapWeakPersistent(this)));
 }
 
 void HTMLImageElement::ForceReload() const {
@@ -1072,10 +1149,14 @@ void HTMLImageElement::SelectSourceURL(
   HTMLSourceElement* old_source = source_;
   ImageCandidate candidate = FindBestFitImageFromPictureParent();
   if (candidate.IsEmpty()) {
+    std::optional<float> default_aspect_ratio;
+    if (RuntimeEnabledFeatures::SrcsetTwoDimensionalSizesEnabled()) {
+      default_aspect_ratio = DimensionAttributeAspectRatio(*this);
+    }
+
     candidate = BestFitSourceForImageAttributes(
         GetDocument().DevicePixelRatio(), SourceSize(*this),
-        /*default_aspect_ratio=*/std::nullopt,
-        FastGetAttribute(html_names::kSrcAttr),
+        default_aspect_ratio, FastGetAttribute(html_names::kSrcAttr),
         FastGetAttribute(html_names::kSrcsetAttr), &GetDocument());
   }
   if (old_source != source_)
@@ -1090,9 +1171,8 @@ void HTMLImageElement::SelectSourceURL(
   if (behavior != HTMLImageLoader::kUpdateSizeChanged ||
       best_fit_image_url_ != old_url) {
     GetImageLoader().UpdateFromElement(behavior);
+    ResetLayoutDisposition();
   }
-
-  ResetLayoutDisposition();
 }
 
 void HTMLImageElement::StartLoadingImageDocument(

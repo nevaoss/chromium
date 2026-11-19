@@ -705,7 +705,22 @@ public class SingleWebsiteSettingsTest {
         // Open site settings and check that permissions are displayed.
         SettingsActivity activity = SiteSettingsTestUtils.startSingleWebsitePreferences(website);
         onView(withText("Some device")).check(matches(isDisplayed()));
+        onView(withContentDescription("Revoke device permission for Some device"))
+                .check(matches(isDisplayed()));
         onView(withText("A managed device")).check(matches(isDisplayed()));
+        onView(withContentDescription("Revoke device permission for A managed device"))
+                .check(doesNotExist());
+
+        SingleWebsiteSettings websitePreferences =
+                (SingleWebsiteSettings) activity.getMainFragment();
+        for (int i = 0; i < websitePreferences.getPreferenceScreen().getPreferenceCount(); i++) {
+            Preference preference = websitePreferences.getPreferenceScreen().getPreference(i);
+            if ("Some device".equals(preference.getTitle())
+                    || "A managed device".equals(preference.getTitle())) {
+                assertFalse(preference.isSelectable());
+                assertTrue(((ChromeImageViewPreference) preference).getButton().isClickable());
+            }
+        }
 
         // Reset permission and check that only the non-managed permission is removed.
         onView(withText(containsString("reset"))).perform(click());

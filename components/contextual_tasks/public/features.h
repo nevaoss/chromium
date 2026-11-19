@@ -25,6 +25,9 @@ BASE_DECLARE_FEATURE(kContextualTasksExtraOauthScopes);
 BASE_DECLARE_FEATURE(kContextualTasksDriveOAuthScope);
 BASE_DECLARE_FEATURE(kEnableContextualTasksPinButtonInToolbar);
 BASE_DECLARE_FEATURE(kEnableContextualTasksPinButtonOnSrp);
+BASE_DECLARE_FEATURE(kContextualTasksPinningV2);
+BASE_DECLARE_FEATURE(kContextualTasksPinnedButtonActiveIndicator);
+BASE_DECLARE_FEATURE(kContextualTasksUnifyPinButtonLogos);
 BASE_DECLARE_FEATURE(kEphemeralPinningVisibleWhenPermanentlyPinned);
 BASE_DECLARE_FEATURE(kContextualTasksEphemeralButtonContextMenu);
 BASE_DECLARE_FEATURE(kContextualTasksEphemeralButtonAutoDismiss);
@@ -237,8 +240,10 @@ bool GetContextualTasksSpatialModelToolbarLayoutNewThreadInOverflow();
 
 // Returns whether the Contextual Tasks side panel container, coordinator,
 // and supporting response services should be initialized.
-// Returns true if either full Contextual Tasks (`kContextualTasks`) or
-// infrastructure-only mode (`kContextualTasksSidePanel`) is enabled.
+// Returns true if full Contextual Tasks (`kContextualTasks`),
+// infrastructure-only mode (`kContextualTasksSidePanel`), or the Contextual
+// Tasks rearchitecture (`kContextualTasksRearchitecture` /
+// `kContextualTasksSidePanelRearchitecture`) is enabled.
 bool IsContextualTasksUIEnabled();
 
 bool IsStickyConversationEnabled();
@@ -367,6 +372,24 @@ extern const base::FeatureParam<int>
 
 bool IsContextualTasksEphemeralButtonAutoDismissEnabled();
 int GetContextualTasksEphemeralButtonAutoDismissTimeMinutes();
+
+// Logo option for unifying the SIC (Contextual Tasks) toolbar and ephemeral
+// pin buttons.
+enum class UnifyPinButtonLogoOption {
+  kSpark,
+  kSuperG,
+};
+
+extern const base::FeatureParam<UnifyPinButtonLogoOption>
+    kContextualTasksUnifyPinButtonLogoOption;
+
+// Returns whether both the toolbar and ephemeral pin buttons should be
+// unified to use the Spark logo.
+bool ShouldUseSparkIconForPinButtons();
+
+// Returns whether both the toolbar and ephemeral pin buttons should be
+// unified to use the Super G logo.
+bool ShouldUseSuperGIconForPinButtons();
 
 // UI Options to expand the contextual tasks side panel to tab.
 extern const base::FeatureParam<ExpandButtonOption, true> kExpandButtonOptions;
@@ -574,6 +597,14 @@ extern bool IsRoundedClipPathEnabled();
 // Returns whether the pin button in toolbar is enabled.
 extern bool IsContextualTasksPinButtonInToolbarEnabled();
 
+// Returns whether Pinning V2 behavior (consolidating the pinning and ephemeral
+// toolbar buttons for the right-hand Search in Chrome side panel) is enabled.
+extern bool IsContextualTasksPinningV2Enabled();
+
+// Returns whether the permanent pinned contextual tasks toolbar button should
+// show an active indicator when the active tab has an ongoing thread/session.
+extern bool IsContextualTasksPinnedButtonActiveIndicatorEnabled();
+
 // Returns whether the pin button in the side panel header is enabled on SRP.
 extern bool IsContextualTasksPinButtonOnSrpEnabled();
 
@@ -631,6 +662,10 @@ extern const char kEnableContextualTasksPinButtonInToolbarName[];
 extern const char kEnableContextualTasksPinButtonInToolbarDescription[];
 extern const char kEnableContextualTasksPinButtonOnSrpName[];
 extern const char kEnableContextualTasksPinButtonOnSrpDescription[];
+extern const char kContextualTasksPinningV2Name[];
+extern const char kContextualTasksPinningV2Description[];
+extern const char kContextualTasksPinnedButtonActiveIndicatorName[];
+extern const char kContextualTasksPinnedButtonActiveIndicatorDescription[];
 extern const char kContextualTasksHideMenuOnAiPageName[];
 extern const char kContextualTasksHideMenuOnAiPageDescription[];
 extern const char kContextualTasksEnableSpatialModelToolbarLayoutName[];
@@ -655,6 +690,8 @@ extern const char kContextualTasksEphemeralButtonContextMenuName[];
 extern const char kContextualTasksEphemeralButtonContextMenuDescription[];
 extern const char kContextualTasksEphemeralButtonAutoDismissName[];
 extern const char kContextualTasksEphemeralButtonAutoDismissDescription[];
+extern const char kContextualTasksUnifyPinButtonLogosName[];
+extern const char kContextualTasksUnifyPinButtonLogosDescription[];
 extern const char kABASearchJourneysName[];
 extern const char kABASearchJourneysDescription[];
 extern const char kAllowSignedOutUserInDesktopAndroidName[];

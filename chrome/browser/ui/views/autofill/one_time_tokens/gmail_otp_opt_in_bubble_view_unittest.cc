@@ -151,6 +151,8 @@ TEST_F(GmailOtpOptInBubbleViewTest, FormatsDescriptionAndOpensSettingsLink) {
 
   views::StyledLabel* styled_label = bubble()->GetDescriptionLabelForTesting();
   ASSERT_NE(styled_label, nullptr);
+  EXPECT_EQ(styled_label->GetProperty(views::kElementIdentifierKey),
+            GmailOtpOptInBubbleView::kDescriptionLabelId);
   const std::u16string link_text =
       l10n_util::GetStringUTF16(IDS_AUTOFILL_GMAIL_OTP_OPT_IN_LEARN_MORE_LINK);
   EXPECT_EQ(
@@ -173,7 +175,7 @@ TEST_F(GmailOtpOptInBubbleViewTest, FormatsDescriptionAndOpensSettingsLink) {
                      AllOf(Field(&content::OpenURLParams::url,
                                  GURL("chrome://settings/contactInfo")),
                            Field(&content::OpenURLParams::disposition,
-                                 WindowOpenDisposition::NEW_FOREGROUND_TAB)),
+                                 WindowOpenDisposition::kNewForegroundTab)),
                      _));
   link_view->OnKeyPressed(
       ui::KeyEvent(ui::EventType::kKeyPressed, ui::VKEY_SPACE, ui::EF_NONE));

@@ -22,7 +22,7 @@ import type {BigBuffer} from '//resources/mojo/mojo/public/mojom/base/big_buffer
 import type {UnguessableToken} from '//resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
 
-import {ComposeboxFile, ComposeboxFileValidationError, ComposeboxInputModel, ContextType, ContextualSearchInputStateDeletionType, FILE_VALIDATION_ERRORS_MAP, getLoadTimeBoolean, isContextUploadStatusTerminal, isValidTabId, ProcessFilesError, recordBoolean, recordContextAdditionMethod, recordContextualElementClickedMetric, recordEnumerationValue, recordInputTypeShown, recordModelModeSelection, recordModelModeShown, recordSingleTabMenuItemAction, recordToolModeSelection, recordToolModeShown, recordUserAction, SingleTabMenuItemAction, SingleTabType, TabSuggestionsState} from './common.js';
+import {ComposeboxFile, ComposeboxFileValidationError, ComposeboxInputModel, ContextType, ContextualSearchInputStateDeletionType, FILE_VALIDATION_ERRORS_MAP, getLoadTimeBoolean, isContextUploadStatusTerminal, isValidTabId, ProcessFilesError, recordBoolean, recordContextAdditionMethod, recordContextualElementClickedMetric, recordEnumerationValue, recordInputTypeShown, recordModelModeSelection, recordModelModeShown, recordRichImageSuggestClicked, recordSingleTabMenuItemAction, recordToolModeSelection, recordToolModeShown, recordUserAction, SingleTabMenuItemAction, SingleTabType, TabSuggestionsState} from './common.js';
 import type {BrowserFileUpload, ComposeboxFuseboxActionRequest, ComposeboxState, ContextualUpload, DriveUpload, TabUpload} from './common.js';
 import type {PageHandlerRemote} from './composebox.mojom-webui.js';
 import type {ComposeboxDropdownElement} from './composebox_dropdown.js';
@@ -1421,9 +1421,20 @@ export const ComposeboxEmbedderMixin =
         onModelClick(e: CustomEvent<{model: ModelMode}>) {
           recordModelModeSelection(
               e.detail.model, this.composeboxSource, 'AimPopup');
-          this.getSearchboxHandler().recordModelSelectionAction(e.detail.model);
+          this.selectModelMode(e.detail.model);
+        }
+
+        // Records and applies a tool the user selected.
+        selectToolMode(tool: ToolMode) {
+          this.getSearchboxHandler().recordToolSelectionAction(tool);
+          this.handleToolModeUpdate(tool);
+        }
+
+        // Records and applies a model the user selected.
+        selectModelMode(model: ModelMode) {
+          this.getSearchboxHandler().recordModelSelectionAction(model);
           this.getSearchboxHandler().setActiveModelMode(
-              e.detail.model, /*isSetByAim=*/ false);
+              model, /*isSetByAim=*/ false);
           this.updateInputPlaceholder();
         }
 
@@ -2490,6 +2501,11 @@ export const ComposeboxEmbedderMixin =
           if (!this.shouldHandleSuggestionFuseboxActions() || !action ||
               action.queryActionOverride === QueryActionOverride.kDefault) {
             return false;
+          }
+
+          if (this.richImageSuggestionsEnabled &&
+              match.suggestTemplate.style === SuggestStyle.kRichImage) {
+            recordRichImageSuggestClicked(this.composeboxSource);
           }
 
           const isHint =
@@ -3585,6 +3601,8 @@ export interface ComposeboxEmbedderMixinInterface extends I18nMixinLitInterface,
   handleToolClick(tool: ToolMode, allowToggleOff?: boolean): void;
   handleToolModeUpdate(newTool: ToolMode, isSetByAim?: boolean): void;
   onModelClick(e: CustomEvent<{model: ModelMode}>): void;
+  selectToolMode(tool: ToolMode): void;
+  selectModelMode(model: ModelMode): void;
   onOpenImageUpload(): void;
   onOpenFileUpload(): void;
   onOpenDriveUpload(): void;

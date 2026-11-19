@@ -1047,6 +1047,7 @@ chromium-metrics-reviews@google.com.
   <variant name=".tab-group-home"/>
   <variant name=".tab-search.top-chrome"/>
   <variant name=".tab-strip.top-chrome"/>
+  <variant name=".tabs-from-other-devices.top-chrome"/>
   <variant name=".tabstrip-ntb.top-chrome"/>
   <variant name=".terminal"/>
   <variant name=".terms"/>
@@ -1099,6 +1100,7 @@ chromium-metrics-reviews@google.com.
   <variant name=".ReloadButtonUI"/>
   <variant name=".ShoppingInsightsSidePanel"/>
   <variant name=".TabSearch"/>
+  <variant name=".TabsFromOtherDevicesSidePanel"/>
   <variant name=".UserEducation"/>
 </variants>
 
@@ -1813,7 +1815,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.CaptchaFrameActivation"
-    enum="CaptchaFrameAgentContext" expires_after="2027-04-04">
+    enum="CaptchaFrameAgentContext" expires_after="2027-10-20">
   <owner>ryankalla@google.com</owner>
   <owner>potassium-anti-fraud-team@google.com</owner>
   <summary>
@@ -1831,7 +1833,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.CaptchaFrameActivation.{CaptchaProvider}"
-    enum="CaptchaFrameAgentContext" expires_after="2026-12-01">
+    enum="CaptchaFrameAgentContext" expires_after="2027-10-20">
   <owner>ryankalla@google.com</owner>
   <owner>potassium-anti-fraud-team@google.com</owner>
   <summary>
@@ -1850,7 +1852,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.CaptchaFrameLoad"
-    enum="CaptchaFrameAgentContext" expires_after="2027-04-04">
+    enum="CaptchaFrameAgentContext" expires_after="2027-10-20">
   <owner>ryankalla@google.com</owner>
   <owner>potassium-anti-fraud-team@google.com</owner>
   <summary>
@@ -1867,7 +1869,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.CaptchaFrameLoad.{CaptchaProvider}"
-    enum="CaptchaFrameAgentContext" expires_after="2027-04-11">
+    enum="CaptchaFrameAgentContext" expires_after="2027-10-20">
   <owner>ryankalla@google.com</owner>
   <owner>potassium-anti-fraud-team@google.com</owner>
   <summary>
@@ -2021,7 +2023,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.FromGoogleSearch.{PageLoadClientsFromGoogleSearchTimingMetric}"
-    units="ms" expires_after="2027-02-14">
+    units="ms" expires_after="2027-04-18">
   <owner>sullivan@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>
@@ -2863,7 +2865,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.GoogleSearch.NavigationTiming.CreateStreamDelay2"
-    units="ms" expires_after="2027-02-14">
+    units="ms" expires_after="2027-04-18">
   <owner>chikamune@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -3539,6 +3541,20 @@ chromium-metrics-reviews@google.com.
     Records whether the Google Search prewarm page load was served from the HTTP
     cache or network. Recorded once upon navigation commit of the prerendered
     prewarm page.
+  </summary>
+</histogram>
+
+<histogram name="PageLoad.Clients.GoogleSearch.PrewarmOutcome"
+    enum="SearchPrewarmOutcome" expires_after="2027-02-07">
+  <owner>suzukikeita@chromium.org</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    The lifecycle outcome of each DSE search prewarm attempt, measuring whether
+    the prewarm ultimately benefited a user navigation (primary search process
+    reuse) versus whether it was unused, cancelled by a new prewarm (emitted
+    only when prewarm revalidation is enabled), cancelled before ready, or
+    failed before becoming ready. Recorded once per prewarm attempt when its
+    lifecycle ends.
   </summary>
 </histogram>
 
@@ -4401,7 +4417,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.ServiceWorker2.PaintTiming.NavigationToFirstContentfulPaint{PageLoadClientsServiceWorkerTimingSuffix}"
-    units="ms" expires_after="2027-02-14">
+    units="ms" expires_after="2027-04-18">
   <owner>sullivan@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>
@@ -4413,7 +4429,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.ServiceWorker2.PaintTiming.NavigationToFirstPaint"
-    units="ms" expires_after="2027-02-14">
+    units="ms" expires_after="2027-04-18">
   <owner>sullivan@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>
@@ -4424,7 +4440,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.ServiceWorker2.PaintTiming.NavigationToLargestContentfulPaint2"
-    units="ms" expires_after="2027-02-14">
+    units="ms" expires_after="2027-04-18">
   <owner>sullivan@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>
@@ -4509,7 +4525,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.ServiceWorker2.ParseTiming.NavigationToParseStart{PageLoadClientsServiceWorkerParseTimingSuffix}"
-    units="ms" expires_after="2027-02-14">
+    units="ms" expires_after="2027-04-18">
   <owner>sisidovski@chromium.org</owner>
   <owner>chrome-worker@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -5035,7 +5051,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.DocumentTiming.NavigationToLoadEventFired{PageLoadBackgrounded}"
-    units="ms" expires_after="2027-02-14">
+    units="ms" expires_after="2027-04-18">
   <owner>bmcquade@chromium.org</owner>
   <owner>csharrison@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -5693,7 +5709,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Internal.SoftNavigation.{Status}.TotalPaintArea"
-    units="pixels" expires_after="2027-02-14">
+    units="pixels" expires_after="2027-04-18">
   <owner>sullivan@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>
@@ -5706,7 +5722,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Internal.SoftNavigation.{Status}.TotalPaintAreaPoints"
-    units="Points" expires_after="2027-02-14">
+    units="Points" expires_after="2027-04-18">
   <owner>sullivan@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>
@@ -6216,7 +6232,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.PaintTiming.NavigationToFirstPaint{PageLoadBackgrounded}"
-    units="ms" expires_after="2027-02-14">
+    units="ms" expires_after="2027-04-18">
   <owner>sullivan@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>
@@ -6483,7 +6499,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.ParseTiming.NavigationToParseStart{PageLoadParseTimingNavigationToParseStartSuffix}"
-    units="ms" expires_after="2027-02-14">
+    units="ms" expires_after="2027-04-18">
   <owner>bmcquade@chromium.org</owner>
   <owner>csharrison@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -6536,7 +6552,7 @@ chromium-metrics-reviews@google.com.
 <histogram
     name="PageLoad.SoftNavigation.SoftNavigationPageLoadMetricsObserverState"
     enum="SoftNavigationPageLoadMetricsObserverState"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>sullivan@chromium.org</owner>
   <owner>johannes@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>

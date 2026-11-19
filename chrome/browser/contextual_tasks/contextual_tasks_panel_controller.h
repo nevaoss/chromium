@@ -5,19 +5,17 @@
 #ifndef CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_PANEL_CONTROLLER_H_
 #define CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_PANEL_CONTROLLER_H_
 
+#include <string>
 #include <vector>
 
 #include "base/observer_list_types.h"
+#include "base/uuid.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_host.h"
 #include "components/tabs/public/tab_interface.h"
 #include "third_party/omnibox_proto/chrome_aim_entry_point.pb.h"
 #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
 
 class BrowserWindowInterface;
-
-namespace base {
-class Uuid;
-}
 
 namespace contextual_search {
 class ContextualSearchSessionHandle;
@@ -32,6 +30,11 @@ class ContextualTask;
 
 class ContextualTasksPanelController {
  public:
+  struct RecentThreadInfo {
+    base::Uuid task_id;
+    std::u16string title;
+  };
+
   DECLARE_USER_DATA(ContextualTasksPanelController);
 
   virtual ~ContextualTasksPanelController() = default;
@@ -48,6 +51,30 @@ class ContextualTasksPanelController {
   virtual void AddObserver(Observer* observer) = 0;
   virtual void RemoveObserver(Observer* observer) = 0;
 
+  // The entry source for the contextual tasks panel.
+  enum class EntrySource {
+    kOther = 0,
+    kLensOverlay = 1,
+    kAiModeLinkClick = 2,
+    kAioToCobr = 3,
+    kAskGoogle = 4,
+    kEphemeralToolbarButton = 5,
+    kPermanentToolbarButton = 6,
+    kMaxValue = kPermanentToolbarButton,
+  };
+
+  // Whether clicking the permanently pinned toolbar button to open the side
+  // panel continues an existing thread or starts a new thread under Pinning v2.
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  // LINT.IfChange(ContextualTasksPermanentToolbarButtonThreadAction)
+  enum class PermanentToolbarButtonThreadAction {
+    kContinueThread = 0,
+    kNewThread = 1,
+    kMaxValue = kNewThread,
+  };
+  // LINT.ThenChange(//tools/metrics/histograms/metadata/contextual_tasks/enums.xml:ContextualTasksPermanentToolbarButtonThreadAction)
+
   // Visibility commands.
   // Show the panel. If |transition_from_tab| is true, trigger the panel content
   // to animate from the active tab content's bounds.
@@ -56,7 +83,8 @@ class ContextualTasksPanelController {
       omnibox::ChromeAimEntryPoint entry_point =
           omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT,
       bool use_no_animation = false,
-      std::optional<base::TimeTicks> open_time_ticks = std::nullopt) = 0;
+      std::optional<base::TimeTicks> open_time_ticks = std::nullopt,
+      std::optional<EntrySource> entry_source_override = std::nullopt) = 0;
   // Close the panel.
   virtual void Close() = 0;
 
@@ -71,21 +99,23 @@ class ContextualTasksPanelController {
   virtual void ShareTabsWithActiveOrNewThread(
       const std::vector<tabs::TabHandle>& tab_handles) = 0;
 
+  // Switches the side panel to the existing cached thread `task_id`, opens the
+  // side panel with `entry_point`, and attaches both the active tab (if valid
+  // for context sharing) and `tab_handles` as context.
+  virtual void ShareTabsWithExistingThread(
+      const base::Uuid& task_id,
+      const std::vector<tabs::TabHandle>& tab_handles,
+      omnibox::ChromeAimEntryPoint entry_point) = 0;
+
+  // Returns up to 5 recent non-zero-state threads cached in this browser
+  // window, ordered with the active side panel thread first followed by most
+  // recently active threads.
+  virtual std::vector<RecentThreadInfo> GetRecentThreads() const = 0;
+
   // State checks.
   // Check if the panel is currently opening for ContextualTask as another
   // feature might also show panel.
   virtual bool IsPanelOpenForContextualTask() const = 0;
-
-  // The entry source for the contextual tasks panel.
-  enum class EntrySource {
-    kOther = 0,
-    kLensOverlay = 1,
-    kAiModeLinkClick = 2,
-    kAioToCobr = 3,
-    kAskGoogle = 4,
-    kEphemeralToolbarButton = 5,
-    kMaxValue = kEphemeralToolbarButton,
-  };
 
   // Returns the entry source of the currently active panel.
   virtual EntrySource GetActiveEntrySource() const = 0;

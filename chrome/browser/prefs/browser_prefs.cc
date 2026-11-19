@@ -1096,8 +1096,6 @@ constexpr char kNtpMicrosoftAuthLastDismissedTime[] =
     "NewTabPage.MicrosoftAuthentication.LastDimissedTime";
 constexpr char kNtpTabGroupsLastDismissedTime[] =
     "NewTabPage.TabGroups.LastDimissedTime";
-constexpr char kTabsFromOtherDevicesAutoPinnedMigration[] =
-    "toolbar.tabs_from_other_devices_auto_pinned_migration";
 #endif  // !BUILDFLAG(IS_ANDROID)
 #if !BUILDFLAG(IS_CHROMEOS)
 // Deprecated on non-ChromePS platforms on 09/2026. Still used on ChromeOS.
@@ -1156,6 +1154,12 @@ constexpr char kSupervisedUserManualUrls[] = "profile.managed.manual_urls";
 
 // Deprecated 10/2026.
 inline constexpr char kTabSearchUsed[] = "tab_search.used";
+
+// Deprecated 10/2026.
+inline constexpr char kSyncEncryptionBootstrapToken[] =
+    "sync.encryption_bootstrap_token";
+inline constexpr char kSyncEncryptionBootstrapTokenPerAccountMigrationDone[] =
+    "sync.encryption_bootstrap_token_per_account_migration_done";
 
 // Register local state used only for migration (clearing or moving to a new
 // key).
@@ -1594,8 +1598,6 @@ void RegisterProfilePrefsForMigration(
 #if !BUILDFLAG(IS_ANDROID)
   registry->RegisterTimePref(kNtpMicrosoftAuthLastDismissedTime, base::Time());
   registry->RegisterTimePref(kNtpTabGroupsLastDismissedTime, base::Time());
-  registry->RegisterBooleanPref(kTabsFromOtherDevicesAutoPinnedMigration,
-                                false);
 #endif  // !BUILDFLAG(IS_ANDROID)
 #if !BUILDFLAG(IS_CHROMEOS)
   // Deprecated 09/2026.
@@ -1644,6 +1646,11 @@ void RegisterProfilePrefsForMigration(
 
   // Deprecated 10/2026.
   registry->RegisterBooleanPref(kTabSearchUsed, false);
+
+  // Deprecated 10/2026.
+  registry->RegisterStringPref(kSyncEncryptionBootstrapToken, std::string());
+  registry->RegisterBooleanPref(
+      kSyncEncryptionBootstrapTokenPerAccountMigrationDone, false);
 }
 
 }  // namespace
@@ -3040,7 +3047,6 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
 #if !BUILDFLAG(IS_ANDROID)
   profile_prefs->ClearPref(kNtpMicrosoftAuthLastDismissedTime);
   profile_prefs->ClearPref(kNtpTabGroupsLastDismissedTime);
-  profile_prefs->ClearPref(kTabsFromOtherDevicesAutoPinnedMigration);
 #endif  // !BUILDFLAG(IS_ANDROID)
 #if !BUILDFLAG(IS_CHROMEOS)
   // Added 09/2026.
@@ -3088,6 +3094,11 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
 
   // Added 10/2026.
   profile_prefs->ClearPref(kTabSearchUsed);
+
+  // Added 10/2026.
+  profile_prefs->ClearPref(kSyncEncryptionBootstrapToken);
+  profile_prefs->ClearPref(
+      kSyncEncryptionBootstrapTokenPerAccountMigrationDone);
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

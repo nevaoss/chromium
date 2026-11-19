@@ -99,10 +99,11 @@ std::optional<blink::mojom::WebInstallIssueReason> GetIssueReasonForFetchError(
   switch (error) {
     case WebInstallManifestFetchError::kDownloadFailed:
     case WebInstallManifestFetchError::kRedirected:
+    // TODO(crbug.com/575536637): Surface a new DevTools issue for invalid
+    // manifest content type.
+    case WebInstallManifestFetchError::kInvalidContentType:
       return blink::mojom::WebInstallIssueReason::
           kManifestParsingOrNetworkError;
-    case WebInstallManifestFetchError::kInvalidContentType:
-      return std::nullopt;
   }
 }
 
@@ -952,6 +953,15 @@ void WebInstallServiceImpl::OnManifestParsed(
     }
   }
 
+  // Explicit manifest installs require at least one parsed icon. Check before
+  // profile and permission checks to preserve DataError behavior.
+  if (parsed_manifest->icons.empty()) {
+    std::move(callback_with_metrics)
+        .Run(web_app::WebInstallServiceResult::kNoManifestIcons,
+             blink::mojom::WebInstallServiceResult::kDataError);
+    return;
+  }
+
   // The initiating page changed during parsing - this intentionally comes
   // after the id checks above to preserve DataError behavior.
   if (IsInitiatingPageGoneOrChanged()) {
@@ -1128,6 +1138,10 @@ void WebInstallServiceImpl::OnAppInstalledFromManifest(
       case webapps::InstallResultCode::kManifestIdMismatch:
         install_result = blink::mojom::WebInstallServiceResult::kDataError;
         uma_result = web_app::WebInstallServiceResult::kManifestIdMismatch;
+        break;
+      case webapps::InstallResultCode::kNoValidIconsInManifest:
+        install_result = blink::mojom::WebInstallServiceResult::kDataError;
+        uma_result = web_app::WebInstallServiceResult::kNoManifestIcons;
         break;
       // TODO(crbug.com/534847491): Distinguish AbortErrors caused by user
       // cancellation.

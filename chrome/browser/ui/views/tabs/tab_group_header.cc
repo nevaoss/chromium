@@ -29,7 +29,6 @@
 #include "chrome/browser/ui/tabs/tab_group_attention_indicator.h"
 #include "chrome/browser/ui/tabs/tab_group_data.h"
 #include "chrome/browser/ui/tabs/tab_group_features.h"
-#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_style.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -149,10 +148,9 @@ int GetTitleVisualCenteringOffset(std::u16string_view title) {
 
 class TabGroupHighlightPathGenerator : public views::HighlightPathGenerator {
  public:
-  TabGroupHighlightPathGenerator(const views::View* chip,
-                                 const views::View* title,
+  TabGroupHighlightPathGenerator(const views::View* title,
                                  const TabGroupStyleViews& style)
-      : chip_(chip), title_(title), style_(style) {}
+      : title_(title), style_(style) {}
   TabGroupHighlightPathGenerator(const TabGroupHighlightPathGenerator&) =
       delete;
   TabGroupHighlightPathGenerator& operator=(
@@ -161,13 +159,12 @@ class TabGroupHighlightPathGenerator : public views::HighlightPathGenerator {
   // views::HighlightPathGenerator:
   SkPath GetHighlightPath(const views::View* view) override {
     return SkPath::RRect(SkRRect::MakeRectXY(
-        gfx::RectToSkRect(chip_->bounds()),
+        gfx::RectToSkRect(view->GetLocalBounds()),
         style_->GetHighlightPathGeneratorCornerRadius(title_),
         style_->GetHighlightPathGeneratorCornerRadius(title_)));
   }
 
  private:
-  const raw_ptr<const views::View, AcrossTasksDanglingUntriaged> chip_;
   const raw_ptr<const views::View, AcrossTasksDanglingUntriaged> title_;
   const raw_ref<const TabGroupStyleViews> style_;
 };
@@ -179,16 +176,17 @@ TabGroupHeader::TabGroupHeader(TabSlotController& tab_slot_controller,
                                const TabGroupStyleViews& style)
     : HoverCardAnchorTarget(this),
       tab_slot_controller_(tab_slot_controller),
+      unfocus_chip_(AddChildView(std::make_unique<TabGroupUnfocusButton>(
+          TabStripOrientation::kHorizontal,
+          base::BindRepeating(&TabSlotController::ExitFocusMode,
+                              base::Unretained(tab_slot_controller_),
+                              TabGroupFocusExitReason::kHeaderUnfocusButton)))),
       title_chip_(AddChildView(std::make_unique<views::View>())),
       title_(title_chip_->AddChildView(std::make_unique<views::Label>())),
       sync_icon_(
           title_chip_->AddChildView(std::make_unique<views::ImageView>())),
       attention_indicator_(
           title_chip_->AddChildView(std::make_unique<views::ImageView>())),
-      unfocus_chip_(AddChildView(std::make_unique<TabGroupUnfocusButton>(
-          TabStripOrientation::kHorizontal,
-          base::BindRepeating(&TabGroupHeader::ExitFocusMode,
-                              base::Unretained(this))))),
       group_style_(style),
       tab_style_(TabStyle::Get()),
       group_title_(u""),
@@ -232,6 +230,7 @@ TabGroupHeader::~TabGroupHeader() {
 void TabGroupHeader::Init(const tab_groups::TabGroupId& group) {
   SetGroup(group);
   set_context_menu_controller(this);
+  title_chip_->set_context_menu_controller(this);
 
   // Disable events processing (like tooltip handling)
   // for children of TabGroupHeader.
@@ -244,15 +243,16 @@ void TabGroupHeader::Init(const tab_groups::TabGroupId& group) {
   title_->SetLineHeight(20);
 
   // Enable keyboard focus.
-  SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
-  views::FocusRing::Install(this);
+  title_chip_->SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
+  views::FocusRing::Install(title_chip_);
   views::HighlightPathGenerator::Install(
-      this, std::make_unique<TabGroupHighlightPathGenerator>(
-                title_chip_, title_, *group_style_));
+      title_chip_,
+      std::make_unique<TabGroupHighlightPathGenerator>(title_, *group_style_));
   // The tab group gets painted with a solid color that may not contrast well
   // with the focus indicator, so draw an outline around the focus ring for it
   // to contrast with the solid color.
-  SetProperty(views::kDrawFocusRingBackgroundOutline, true);
+  title_chip_->SetProperty(views::kDrawFocusRingBackgroundOutline, true);
+  title_chip_observation_.Observe(title_chip_);
 
   SetProperty(views::kElementIdentifierKey, kTabGroupHeaderElementId);
   attention_indicator_->SetProperty(views::kElementIdentifierKey,
@@ -265,6 +265,8 @@ void TabGroupHeader::Init(const tab_groups::TabGroupId& group) {
 
   GetViewAccessibility().SetRole(ax::mojom::Role::kTabList);
   GetViewAccessibility().SetIsEditable(true);
+  title_chip_->GetViewAccessibility().SetRole(ax::mojom::Role::kTabList);
+  title_chip_->GetViewAccessibility().SetIsEditable(true);
 }
 
 bool TabGroupHeader::OnKeyPressed(const ui::KeyEvent& event) {
@@ -404,20 +406,6 @@ void TabGroupHeader::OnGestureEvent(ui::GestureEvent* event) {
   event->SetHandled();
 }
 
-void TabGroupHeader::OnFocus() {
-  View::OnFocus();
-
-  tab_slot_controller_->UpdateHoverCard(
-      this, TabSlotController::HoverCardUpdateType::kFocus);
-}
-
-void TabGroupHeader::OnBlur() {
-  if (!tab_slot_controller_->IsFocusInTabStrip() || unfocus_chip_->HasFocus()) {
-    tab_slot_controller_->UpdateHoverCard(
-        nullptr, TabSlotController::HoverCardUpdateType::kFocus);
-  }
-}
-
 void TabGroupHeader::OnThemeChanged() {
   TabSlotView::OnThemeChanged();
   VisualsChanged();
@@ -446,7 +434,13 @@ gfx::Rect TabGroupHeader::GetAnchorBoundsInScreen() const {
   // unified with tabs so that bounds do not need to be calculated differently
   // between tabs and headers. As of writing this, hover cards to not cut into
   // the tab outline but without this change TabGroupEditorBubbleView does.
-  return View::GetAnchorBoundsInScreen();
+  gfx::Rect bounds = View::GetAnchorBoundsInScreen();
+  if (title_chip_) {
+    const gfx::Rect title_chip_bounds = title_chip_->GetAnchorBoundsInScreen();
+    bounds.set_x(title_chip_bounds.x());
+    bounds.set_width(title_chip_bounds.width());
+  }
+  return bounds;
 }
 
 bool TabGroupHeader::NeedsToShowThumbnail() const {
@@ -514,6 +508,18 @@ void TabGroupHeader::ShowContextMenuForViewImpl(
   editor_bubble_tracker_.Opened(TabGroupEditorBubbleView::Show(
       tab_slot_controller_->GetBrowserWindowInterface(), group().value(), this,
       std::nullopt, kStopContextMenuPropagation));
+}
+
+void TabGroupHeader::OnViewFocused(views::View* observed_view) {
+  tab_slot_controller_->UpdateHoverCard(
+      this, TabSlotController::HoverCardUpdateType::kFocus);
+}
+
+void TabGroupHeader::OnViewBlurred(views::View* observed_view) {
+  if (!tab_slot_controller_->IsFocusInTabStrip() || unfocus_chip_->HasFocus()) {
+    tab_slot_controller_->UpdateHoverCard(
+        nullptr, TabSlotController::HoverCardUpdateType::kFocus);
+  }
 }
 
 bool TabGroupHeader::DoesIntersectRect(const views::View* target,
@@ -603,8 +609,8 @@ void TabGroupHeader::VisualsChanged() {
   clip_bounds.Outset(1);
   title_chip_->SetClipPath(SkPath::Rect(gfx::RectToSkRect(clip_bounds)));
 
-  if (views::FocusRing::Get(this)) {
-    views::FocusRing::Get(this)->DeprecatedLayoutImmediately();
+  if (views::FocusRing::Get(title_chip_)) {
+    views::FocusRing::Get(title_chip_)->DeprecatedLayoutImmediately();
   }
 
   UpdateIsCollapsed();
@@ -737,8 +743,10 @@ void TabGroupHeader::UpdateAttentionIndicatorView() {
 void TabGroupHeader::UpdateIsCollapsed() {
   if (is_collapsed_) {
     GetViewAccessibility().SetIsCollapsed();
+    title_chip_->GetViewAccessibility().SetIsCollapsed();
   } else {
     GetViewAccessibility().SetIsExpanded();
+    title_chip_->GetViewAccessibility().SetIsExpanded();
   }
 }
 
@@ -896,8 +904,11 @@ void TabGroupHeader::CreateHeaderWithTitle() {
 }
 
 void TabGroupHeader::UpdateAccessibleName() {
-  GetViewAccessibility().SetName(tab_groups::GetHoverCardAccessibilityText(
-      tab_group_data_observer_->tab_group_data()));
+  const std::u16string accessible_name =
+      tab_groups::GetHoverCardAccessibilityText(
+          tab_group_data_observer_->tab_group_data());
+  GetViewAccessibility().SetName(accessible_name);
+  title_chip_->GetViewAccessibility().SetName(accessible_name);
 }
 
 void TabGroupHeader::OnTabGroupDataChanged() {
@@ -906,14 +917,6 @@ void TabGroupHeader::OnTabGroupDataChanged() {
   SetHoverCardDataFrom(tab_group_data);
   UpdateAttentionIndicatorView();
   UpdateAccessibleName();
-}
-
-void TabGroupHeader::ExitFocusMode() {
-  if (BrowserWindowInterface* bwi =
-          tab_slot_controller_->GetBrowserWindowInterface()) {
-    bwi->GetTabStripModel()->ExitFocusMode(
-        TabGroupFocusExitReason::kHeaderUnfocusButton);
-  }
 }
 
 int TabGroupHeader::GetUnfocusChipWidthWithGap() const {

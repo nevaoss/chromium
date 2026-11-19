@@ -129,6 +129,7 @@
 #import "ios/chrome/browser/start_surface/ui_bundled/start_surface_features.h"
 #import "ios/chrome/browser/text_selection/model/text_selection_util.h"
 #import "ios/chrome/browser/variations/model/ios_chrome_variations_seed_fetcher.h"
+#import "ios/chrome/browser/web/model/features.h"
 #import "ios/chrome/browser/welcome_back/model/features.h"
 #import "ios/chrome/browser/whats_new/coordinator/whats_new_util.h"
 #import "ios/chrome/grit/ios_strings.h"
@@ -145,18 +146,14 @@ namespace {
 
 constexpr FeatureEntry::Choice kSendTabToSelfEnhancedHandoffChoices[] = {
     {flags_ui::kGenericExperimentChoiceDefault, "", ""},
-    {flags_ui::kGenericExperimentChoiceEnabled, switches::kEnableFeatures,
-     "SendTabToSelfExtraEntryPoints"},
     {"Enabled with fast-follows", switches::kEnableFeatures,
      "IPH_SendTabToSelfOmnibox,"
-     "SendTabToSelfExtraEntryPoints,"
      "SendTabToSelfSupportAutoOpenInTabGrid,"
      "SyncDisambiguateDeviceNamesWithChannel,"
      "SendTabToSelfIOSShareSheetDeviceList,"
      "SendTabToSelfMultiTabShare"},
     {flags_ui::kGenericExperimentChoiceDisabled, switches::kDisableFeatures,
      "IPH_SendTabToSelfOmnibox,"
-     "SendTabToSelfExtraEntryPoints,"
      "SendTabToSelfSupportAutoOpenInTabGrid,"
      "SyncDisambiguateDeviceNamesWithChannel,"
      "SendTabToSelfIOSShareSheetDeviceList,"
@@ -1334,15 +1331,57 @@ constexpr FeatureEntry::FeatureVariation kPageClassificationVariations[] = {
     {"On-Device with Verticals Fallback",
      kPageClassificationOnDeviceWithFallback, nullptr}};
 
-constexpr FeatureEntry::FeatureParam kMagicStackTipsV2IosNonActionableParams[] =
-    {{segmentation_platform::features::kMagicStackTipsV2IosActionableParam,
-      "false"}};
-constexpr FeatureEntry::FeatureParam kMagicStackTipsV2IosActionableParams[] = {
-    {segmentation_platform::features::kMagicStackTipsV2IosActionableParam,
-     "true"}};
-constexpr FeatureEntry::FeatureVariation kMagicStackTipsV2IosVariations[] = {
-    {"(Non-Actionable)", kMagicStackTipsV2IosNonActionableParams, nullptr},
-    {"(Actionable)", kMagicStackTipsV2IosActionableParams, nullptr},
+constexpr FeatureEntry::FeatureParam
+    kMagicStackNTPThemeTipIosNonActionableParams[] = {
+        {segmentation_platform::features::
+             kMagicStackNTPThemeTipIosActionableParam,
+         "false"}};
+constexpr FeatureEntry::FeatureParam
+    kMagicStackNTPThemeTipIosActionableParam[] = {
+        {segmentation_platform::features::
+             kMagicStackNTPThemeTipIosActionableParam,
+         "true"}};
+constexpr FeatureEntry::FeatureVariation kMagicStackNTPThemeTipIosVariations[] =
+    {
+        {"(Non-Actionable)", kMagicStackNTPThemeTipIosNonActionableParams,
+         nullptr},
+        {"(Actionable)", kMagicStackNTPThemeTipIosActionableParam, nullptr},
+};
+
+constexpr FeatureEntry::FeatureParam
+    kMagicStackNTPCustomizationTipIosNonActionableParams[] = {
+        {segmentation_platform::features::
+             kMagicStackNTPCustomizationTipIosActionableParam,
+         "false"}};
+constexpr FeatureEntry::FeatureParam
+    kMagicStackNTPCustomizationTipIosActionableParam[] = {
+        {segmentation_platform::features::
+             kMagicStackNTPCustomizationTipIosActionableParam,
+         "true"}};
+constexpr FeatureEntry::FeatureVariation
+    kMagicStackNTPCustomizationTipIosVariations[] = {
+        {"(Non-Actionable)",
+         kMagicStackNTPCustomizationTipIosNonActionableParams, nullptr},
+        {"(Actionable)", kMagicStackNTPCustomizationTipIosActionableParam,
+         nullptr},
+};
+
+constexpr FeatureEntry::FeatureParam
+    kMagicStackTipsNotificationTipIosNonActionableParams[] = {
+        {segmentation_platform::features::
+             kMagicStackTipsNotificationTipIosActionableParam,
+         "false"}};
+constexpr FeatureEntry::FeatureParam
+    kMagicStackTipsNotificationTipIosActionableParam[] = {
+        {segmentation_platform::features::
+             kMagicStackTipsNotificationTipIosActionableParam,
+         "true"}};
+constexpr FeatureEntry::FeatureVariation
+    kMagicStackTipsNotificationTipIosVariations[] = {
+        {"(Non-Actionable)",
+         kMagicStackTipsNotificationTipIosNonActionableParams, nullptr},
+        {"(Actionable)", kMagicStackTipsNotificationTipIosActionableParam,
+         nullptr},
 };
 
 constexpr FeatureEntry::FeatureParam kLensSearchTipShowArm[] = {
@@ -1565,6 +1604,13 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(web::features::kFullscreenScrollThreshold,
                                     kFullscreenScrollThresholdVariations,
                                     "FullscreenScrollThreshold")},
+    {"webpage-alternative-text-zoom",
+     flag_descriptions::kWebPageAlternativeTextZoomName,
+     flag_descriptions::kWebPageAlternativeTextZoomDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(web::kWebPageAlternativeTextZoom)},
+    {"webpage-text-zoom-ipad", flag_descriptions::kWebPageTextZoomIPadName,
+     flag_descriptions::kWebPageTextZoomIPadDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(web::kWebPageTextZoomIPad)},
     {"aim-server-eligibility",
      flag_descriptions::kIOSOmniboxAimServerEligibilityName,
      flag_descriptions::kIOSOmniboxAimServerEligibilityDescription,
@@ -2609,9 +2655,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kActorTools,
                                     kActorToolsPageStabilityVariations,
                                     "ActorTools")},
-    {"gemini-client-migration", flag_descriptions::kGeminiClientMigrationName,
-     flag_descriptions::kGeminiClientMigrationDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kGeminiClientMigration)},
     {"ios-cobalt-developer-mode",
      flag_descriptions::kIOSCobaltDeveloperModeName,
      flag_descriptions::kIOSCobaltDeveloperModeDescription, flags_ui::kOsIos,
@@ -2946,12 +2989,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kGeminiHostExperimentIDsName,
      flag_descriptions::kGeminiHostExperimentIDsDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGeminiHostExperimentIDs)},
-    {"magic-stack-tips-v2-ios", flag_descriptions::kMagicStackTipsV2IosName,
-     flag_descriptions::kMagicStackTipsV2IosDescription, flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(
-         segmentation_platform::features::kMagicStackTipsV2Ios,
-         kMagicStackTipsV2IosVariations,
-         "MagicStackTipsV2Ios")},
     {"enable-segmentation-platform-ephemeral_card_ranker",
      flag_descriptions::kSegmentationPlatformEphemeralCardRankerName,
      flag_descriptions::kSegmentationPlatformEphemeralCardRankerDescription,
@@ -3028,6 +3065,34 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kAppBarDisableLongPressName,
      flag_descriptions::kAppBarDisableLongPressDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kAppBarDisableLongPress)},
+    {"android-switcher-default-browser-promo-in-fre",
+     flag_descriptions::kAndroidSwitcherDefaultBrowserPromoInFREName,
+     flag_descriptions::kAndroidSwitcherDefaultBrowserPromoInFREDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(first_run::kAndroidSwitcherDefaultBrowserPromoInFRE)},
+    {"magic-stack-ntp-theme-tip-ios",
+     flag_descriptions::kMagicStackNTPThemeTipIosName,
+     flag_descriptions::kMagicStackNTPThemeTipIosDescription, flags_ui::kOsIos,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(
+         segmentation_platform::features::kMagicStackNTPThemeTipIos,
+         kMagicStackNTPThemeTipIosVariations,
+         "MagicStackNTPThemeTipIos")},
+    {"magic-stack-ntp-customization-tip-ios",
+     flag_descriptions::kMagicStackNTPCustomizationTipIosName,
+     flag_descriptions::kMagicStackNTPCustomizationTipIosDescription,
+     flags_ui::kOsIos,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(
+         segmentation_platform::features::kMagicStackNTPCustomizationTipIos,
+         kMagicStackNTPCustomizationTipIosVariations,
+         "MagicStackNTPCustomizationTipIos")},
+    {"magic-stack-tips-notification-tip-ios",
+     flag_descriptions::kMagicStackTipsNotificationTipIosName,
+     flag_descriptions::kMagicStackTipsNotificationTipIosDescription,
+     flags_ui::kOsIos,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(
+         segmentation_platform::features::kMagicStackTipsNotificationTipIos,
+         kMagicStackTipsNotificationTipIosVariations,
+         "MagicStackTipsNotificationTipIos")},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

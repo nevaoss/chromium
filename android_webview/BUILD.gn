@@ -239,9 +239,10 @@ if (_is_default_toolchain) {
   if (has_static_initializer_checks) {
     check_static_initializers("check_webview_static_initializers") {
       library_target = ":libwebviewchromium"
-      if (use_webview_pgo_profile) {
-        toolchain_64 = webview_toolchain
-      }
+
+      # 64-bit WebView is not built by android-binary-size (to save build
+      # time), so check only 32-bit.
+      check_64bit = false
     }
   }
 
@@ -368,6 +369,7 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/android_webview/DualTraceEvent.java",
       "java/src/org/chromium/android_webview/FileModeConversionHelper.java",
       "java/src/org/chromium/android_webview/FullScreenView.java",
+      "java/src/org/chromium/android_webview/GoogleAccountsEvent.java",
       "java/src/org/chromium/android_webview/HttpAuthDatabase.java",
       "java/src/org/chromium/android_webview/JavaScriptExecutionCallback.java",
       "java/src/org/chromium/android_webview/JsPromptResultReceiver.java",
@@ -456,7 +458,6 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/android_webview/variations/VariationsSeedSafeModeAction.java",
     ]
     deps = [
-      ":android_webview_product_config_java",
       ":common_aidl_java",
       ":common_java",
       ":common_origin_trials_java",
@@ -499,6 +500,7 @@ if (_is_default_toolchain) {
       "//components/safe_browsing/android:safe_browsing_java",
       "//components/sensitive_content:java",
       "//components/sensitive_content:sensitive_content_features_java",
+      "//components/signin/core/browser:signin_enums_java",
       "//components/stylus_handwriting/android:java",
       "//components/url_formatter/android:url_formatter_java",
       "//components/variations:variations_java",
@@ -710,22 +712,6 @@ if (_is_default_toolchain) {
 
   android_library("common_aidl_java") {
     srcjar_deps = [ ":common_aidl" ]
-  }
-
-  # Generate ProductConfig.java so that android_webview_product_config_java's
-  # compile step works.
-  generate_product_config_srcjar("webview_product_config") {
-    java_package = webview_product_config_java_package
-  }
-
-  # ProductConfig.java is excluded from the generated .jar
-  # (via. jar_excluded_patterns) and the final version is inserted at the APK
-  # level - with the list of pak locales populated by looking at the assets that
-  # are listed in the final APK's .build_config.json.
-  android_library("android_webview_product_config_java") {
-    sources = [ "java/src/org/chromium/android_webview/AwLocaleConfig.java" ]
-    srcjar_deps = [ ":webview_product_config" ]
-    jar_excluded_patterns = [ "*/ProductConfig.class" ]
   }
 
   webview_repack_locales("repack_locales") {

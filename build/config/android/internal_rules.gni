@@ -12,6 +12,7 @@ import("//build/config/coverage/coverage.gni")
 import("//build/config/python.gni")
 import("//build/config/sanitizers/sanitizers.gni")
 import("//build/toolchain/kythe.gni")
+import("//build/toolchain/rbe.gni")
 import("//build/util/generate_wrapper.gni")
 import("//build_overrides/build.gni")
 if (current_toolchain == default_toolchain) {
@@ -20,7 +21,10 @@ if (current_toolchain == default_toolchain) {
 assert(is_android)
 
 default_android_sdk_dep = "//third_party/android_sdk:android_sdk_java"
-_kotlin_stdlib_dep = "//third_party/kotlin_stdlib:kotlin_stdlib_java"
+_kotlin_stdlib_dep = "//third_party/android_deps:kotlin_stdlib_java"
+
+# TODO(agrieve): Remove once there are no remaining references to it.
+_legacy_kotlin_stdlib_dep = "//third_party/kotlin_stdlib:kotlin_stdlib_java"
 _jacoco_dep = "//third_party/jacoco:jacocoagent_java"
 _robolectric_libs_dir =
     rebase_path(
@@ -101,6 +105,8 @@ _signflinger_jar_path =
     "//third_party/android_build_tools/signflinger/cipd/signflinger.jar"
 _signflinger_binary_path =
     "//third_party/android_build_tools/signflinger/cipd/signflinger"
+_global_synthetics_dex_path =
+    "//third_party/r8/cipd/lib/global_synthetics.dex.jar"
 _default_lint_jar_path = "//third_party/android_build_tools/lint/cipd/lint.jar"
 _manifest_merger_jar_path =
     "//third_party/android_build_tools/manifest_merger/cipd/manifest-merger.jar"
@@ -1664,6 +1670,16 @@ if (enable_java_templates) {
       }
       _deps = invoker.deps
 
+      # Per-library dexing discards D8's "global synthetics" (classes shared
+      # app-wide, e.g. RecordTag from record desugaring), so the final dex of
+      # an APK or bundle base module adds a dex containing all of them, built
+      # by //third_party/r8/3pp/3pp.py.
+      if (defined(invoker.include_global_synthetics) &&
+          invoker.include_global_synthetics) {
+        assert(!_is_library)
+        _input_dex_jars += [ _global_synthetics_dex_path ]
+      }
+
       if (_input_class_jars != []) {
         _rebased_input_class_jars =
             rebase_path(_input_class_jars, root_build_dir)
@@ -1683,6 +1699,8 @@ if (enable_java_templates) {
                    _custom_d8_binary_path,
                    _custom_d8_path,
                    _r8_path,
+                   _signflinger_binary_path,
+                   _signflinger_jar_path,
                  ] + java_paths_for_inputs
         if (defined(invoker.inputs)) {
           inputs += invoker.inputs
@@ -2033,7 +2051,6 @@ if (enable_java_templates) {
                                  ])
       script = "//build/android/gyp/prepare_resources.py"
 
-      depfile = "$target_gen_dir/${invoker.target_name}.d"
       outputs = [
         invoker.resources_zip,
         invoker.resources_zip + ".info",
@@ -2049,8 +2066,6 @@ if (enable_java_templates) {
           rebase_path(invoker.res_sources_path, root_build_dir)
 
       args = [
-        "--depfile",
-        rebase_path(depfile, root_build_dir),
         "--res-sources-path=$_rebased_res_sources_path",
         "--aapt2-path",
         rebase_path(android_sdk_tools_bundle_aapt2, root_build_dir),
@@ -2071,10 +2086,6 @@ if (enable_java_templates) {
 
       if (defined(invoker.strip_drawables) && invoker.strip_drawables) {
         args += [ "--strip-drawables" ]
-      }
-      if (defined(invoker.allow_missing_resources) &&
-          invoker.allow_missing_resources) {
-        args += [ "--allow-missing-resources" ]
       }
       if (png_to_webp) {
         _webp_target = "//third_party/libwebp:cwebp($host_toolchain)"
@@ -2254,6 +2265,14 @@ if (enable_java_templates) {
       "//third_party/protobuf/python/google/protobuf/util/__init__.py",
     ]
 
+    # Remote resource compilation runs on Linux workers, which need the Linux
+    # aapt2 when the host isn't Linux.
+    _use_linux_aapt2 = use_remoteexec && host_os != "linux"
+    if (_use_linux_aapt2) {
+      _linux_aapt2 = "//third_party/android_build_tools/aapt2/linux-amd64/aapt2"
+      _common_inputs += [ _linux_aapt2 ]
+    }
+
     _inputs = _common_inputs
 
     _rebased_build_config = rebase_path(invoker.build_config, root_build_dir)
@@ -2267,6 +2286,12 @@ if (enable_java_templates) {
       "--min-sdk-version=${invoker.min_sdk_version}",
       "--target-sdk-version=${_target_sdk_version}",
     ]
+    if (_use_linux_aapt2) {
+      _args += [
+        "--linux-aapt2-path",
+        rebase_path(_linux_aapt2, root_build_dir),
+      ]
+    }
 
     if (!defined(testonly) || !testonly ||
         (defined(invoker.enforce_resource_overlays_in_tests) &&
@@ -2608,27 +2633,31 @@ if (enable_java_templates) {
       forward_variables_from(invoker, TESTONLY_AND_VISIBILITY + [ "deps" ])
       script = "//build/android/gyp/create_size_info_files.py"
       _jar_info_path = "$root_build_dir/size-info/${invoker.name}.jar.info"
-      _pak_info_path = "$root_build_dir/size-info/${invoker.name}.pak.info"
-      _res_info_path = "$root_build_dir/size-info/${invoker.name}.res.info"
-      outputs = [
-        _jar_info_path,
-        _pak_info_path,
-        _res_info_path,
-      ]
+      outputs = [ _jar_info_path ]
       depfile = "$target_gen_dir/$target_name.d"
       args = [
         "--depfile",
         rebase_path(depfile, root_build_dir),
         "--jar-info-path",
         rebase_path(_jar_info_path, root_build_dir),
-        "--pak-info-path",
-        rebase_path(_pak_info_path, root_build_dir),
-        "--res-info-path",
-        rebase_path(_res_info_path, root_build_dir),
       ]
       _rebased_build_config = rebase_path(invoker.build_config, root_build_dir)
       inputs = [ invoker.build_config ]
       _is_bundle = defined(invoker.modules)
+      if (_is_bundle || defined(invoker.res_size_info_path)) {
+        _pak_info_path = "$root_build_dir/size-info/${invoker.name}.pak.info"
+        _res_info_path = "$root_build_dir/size-info/${invoker.name}.res.info"
+        outputs += [
+          _pak_info_path,
+          _res_info_path,
+        ]
+        args += [
+          "--pak-info-path",
+          rebase_path(_pak_info_path, root_build_dir),
+          "--res-info-path",
+          rebase_path(_res_info_path, root_build_dir),
+        ]
+      }
       if (_is_bundle) {
         foreach(_module, invoker.modules) {
           inputs += [ _module.build_config ]
@@ -2644,19 +2673,23 @@ if (enable_java_templates) {
           ]
         }
       } else {
-        inputs += [
-          invoker.res_size_info_path,
-          invoker.unprocessed_jar_path,
-        ]
+        if (defined(invoker.res_size_info_path)) {
+          inputs += [ invoker.res_size_info_path ]
+          _rebased_res_size_info_path =
+              rebase_path(invoker.res_size_info_path, root_build_dir)
+          args += [
+            "--in-res-info-path",
+            _rebased_res_size_info_path,
+            "--assets=@FileArg($_rebased_build_config:assets)",
+            "--uncompressed-assets=@FileArg($_rebased_build_config:uncompressed_assets)",
+          ]
+        }
+        inputs += [ invoker.unprocessed_jar_path ]
         _rebased_unprocessed_jar_path =
             rebase_path(invoker.unprocessed_jar_path, root_build_dir)
         args += [
           "--jar-files=$_rebased_unprocessed_jar_path",
           "--jar-files=@FileArg($_rebased_build_config:javac_full_classpath)",
-          "--in-res-info-path",
-          rebase_path(invoker.res_size_info_path, root_build_dir),
-          "--assets=@FileArg($_rebased_build_config:assets)",
-          "--uncompressed-assets=@FileArg($_rebased_build_config:uncompressed_assets)",
         ]
       }
     }
@@ -4008,7 +4041,11 @@ if (enable_java_templates) {
         _kotlinc_jar_path = "$target_out_dir/$_output_name.kotlinc.jar"
         _kotlin_interface_jar_path =
             "$target_out_dir/$_output_name.kt-jvm-abi.jar"
-        assert(filter_include(_lib_deps, [ _kotlin_stdlib_dep ]) != [],
+        assert(filter_include(_lib_deps,
+                              [
+                                _kotlin_stdlib_dep,
+                                _legacy_kotlin_stdlib_dep,
+                              ]) != [],
                "${_main_target_name} is missing dep: $_kotlin_stdlib_dep")
 
         compile_kt(_compile_kt_target_name) {

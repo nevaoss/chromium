@@ -465,6 +465,7 @@ void ToolbarView::Init() {
     auto* vts_controller =
         tabs::VerticalTabStripStateController::From(browser_);
     if ((!vts_controller || !vts_controller->ShouldDisplayVerticalTabs()) &&
+        !contextual_tasks::IsContextualTasksPinningV2Enabled() &&
         !(contextual_tasks::kEnableCircularEphemeralButtonNextToBatterySaver
               .Get() &&
           button->IsSidePanelRightAligned())) {
@@ -563,7 +564,8 @@ void ToolbarView::Init() {
   }
 
   if (glic::GlicEnabling::IsProfileEligible(browser_view_->GetProfile())) {
-    if (base::FeatureList::IsEnabled(features::kAiOverlayDialog) &&
+    if (ttc::AiOverlayDialogController::IsEnabledForProfile(
+            browser_view_->GetProfile()) &&
         ttc::AiOverlayDialogController::From(browser_)) {
       actions::ActionItem* action_item =
           actions::ActionManager::Get().FindAction(
@@ -1820,9 +1822,10 @@ void ToolbarView::PositionContextualTasksButton() {
   }
   auto* button =
       static_cast<ContextualTasksButton*>(contextual_tasks_button_.get());
-  if (contextual_tasks::kEnableCircularEphemeralButtonNextToBatterySaver
-          .Get() &&
-      button->IsSidePanelRightAligned()) {
+  if (contextual_tasks::IsContextualTasksPinningV2Enabled() ||
+      (contextual_tasks::kEnableCircularEphemeralButtonNextToBatterySaver
+           .Get() &&
+       button->IsSidePanelRightAligned())) {
     const bool is_glic_left_of_profile =
         features::kGlicToolbarButtonLocationParam.Get() ==
             features::GlicToolbarButtonLocation::kLeftOfProfileChip ||

@@ -59,6 +59,7 @@
 #include "content/public/common/content_features.h"
 #include "content/public/test/mock_render_process_host.h"
 #include "content/public/test/web_contents_tester.h"
+#include "extensions/buildflags/buildflags.h"
 #include "net/base/schemeful_site.h"
 #include "services/device/public/cpp/device_features.h"
 #include "services/device/public/cpp/geolocation/buildflags.h"
@@ -81,6 +82,13 @@
 #if BUILDFLAG(IS_MAC)
 #include "chrome/browser/permissions/system/system_media_permission_cache_mac_test_helper.h"
 #endif  // BUILDFLAG(IS_MAC)
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+#include "chrome/browser/extensions/test_extension_system.h"
+#include "extensions/browser/extension_registrar.h"
+#include "extensions/common/extension.h"
+#include "extensions/common/extension_builder.h"
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
 using content::WebContentsTester;
 using content_settings::PageSpecificContentSettings;
@@ -937,6 +945,37 @@ TEST_F(ContentSettingBubbleModelIsolatedWebAppTest, IsolatedWebAppUrl) {
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+// Content setting bubbles identify a chrome-extension:// page by the
+// extension's name.
+TEST_F(ContentSettingBubbleModelTest, ExtensionUrl) {
+  scoped_refptr<const extensions::Extension> extension =
+      extensions::ExtensionBuilder("Test Extension").Build();
+  static_cast<extensions::TestExtensionSystem*>(
+      extensions::ExtensionSystem::Get(profile()))
+      ->CreateExtensionService(base::CommandLine::ForCurrentProcess(),
+                               base::FilePath(), false);
+  extensions::ExtensionRegistrar::Get(profile())->AddExtension(extension.get());
+  NavigateAndCommit(extension->GetResourceURL("page.html"));
+  ASSERT_EQ(extension->GetResourceURL("page.html"),
+            web_contents()->GetPrimaryMainFrame()->GetLastCommittedURL());
+
+  PageSpecificContentSettings::GetForFrame(
+      web_contents()->GetPrimaryMainFrame())
+      ->OnContentBlocked(ContentSettingsType::CLIPBOARD_READ_WRITE);
+
+  std::unique_ptr<ContentSettingBubbleModel> content_setting_bubble_model(
+      ContentSettingBubbleModel::CreateContentSettingBubbleModel(
+          nullptr, page(), ContentSettingsType::CLIPBOARD_READ_WRITE));
+  const ContentSettingBubbleModel::BubbleContent& bubble_content =
+      content_setting_bubble_model->bubble_content();
+  ASSERT_FALSE(bubble_content.radio_group.radio_items.empty());
+  EXPECT_EQ(bubble_content.radio_group.radio_items[0],
+            l10n_util::GetStringFUTF16(IDS_BLOCKED_CLIPBOARD_UNBLOCK,
+                                       u"Test Extension"));
+}
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+
 TEST_F(ContentSettingBubbleModelTest, RegisterProtocolHandler) {
   const GURL page_url("https://toplevel.example/");
   NavigateAndCommit(page_url);
@@ -1414,7 +1453,7 @@ TEST_F(ContentSettingBubbleModelTest, PopupBubbleModelListItems) {
 
   const BlockedWindowParams params(
       GURL("about:blank"), std::nullopt, url::Origin(), nullptr,
-      content::Referrer(), std::string(), WindowOpenDisposition::NEW_POPUP,
+      content::Referrer(), std::string(), WindowOpenDisposition::kNewPopup,
       blink::mojom::WindowFeatures(), false, true);
   constexpr size_t kItemCount = 3;
   for (size_t i = 1; i <= kItemCount; i++) {
@@ -1446,7 +1485,7 @@ TEST_F(ContentSettingBubbleModelTest, PopupBubbleModelListItemsSpoofing) {
 
   const BlockedWindowParams params(spoof_url, std::nullopt, url::Origin(),
                                    nullptr, content::Referrer(), std::string(),
-                                   WindowOpenDisposition::NEW_POPUP,
+                                   WindowOpenDisposition::kNewPopup,
                                    blink::mojom::WindowFeatures(), false, true);
 
   NavigateParams navigate_params =
@@ -2042,5 +2081,30 @@ TEST_F(ContentSettingBubbleModelTest, NotificationsBubbleModel_DontAllow) {
   }
   EXPECT_EQ(1, user_action_tester.GetActionCount(
                    "ContentSettings.NotificationsDialog.Closed"));
+}
+
+TEST_F(ContentSettingBubbleModelTest,
+       NotificationsBubbleModel_OpenSystemSettings) {
+  const GURL url("https://www.example.com/");
+  WebContentsTester::For(web_contents())->NavigateAndCommit(url);
+
+  system_permission_settings::MockPlatformHandle mock_platform_handle;
+  system_permission_settings::SetInstanceForTesting(&mock_platform_handle);
+
+  EXPECT_CALL(
+      mock_platform_handle,
+      OpenSystemSettings(web_contents(), ContentSettingsType::NOTIFICATIONS));
+
+  base::UserActionTester user_action_tester;
+  {
+    ContentSettingNotificationsBubbleModel bubble_model(nullptr, page());
+    bubble_model.OnDoneButtonClicked();
+    EXPECT_EQ(
+        1,
+        user_action_tester.GetActionCount(
+            "ContentSettings.NotificationsDialog.OpenSystemSettingsClicked"));
+  }
+
+  system_permission_settings::SetInstanceForTesting(nullptr);
 }
 #endif  // BUILDFLAG(IS_MAC)

@@ -9,13 +9,15 @@ import type {SettingsContactInfoPageElement} from './contact_info_page.js';
 export function getHtml(this: SettingsContactInfoPageElement) {
   return html`<!--_html_template_start_-->
   <settings-subpage page-title="$i18n{contactInfoTitle}"
+      route-path="${this.routePath}"
       learn-more-url="$i18n{addressesAndPaymentMethodsLearnMoreURL}"
       class="multi-card">
     <div class="card">
       <settings-toggle-button id="autofillProfileToggle"
           no-extension-indicator label="$i18n{enableProfilesLabel}"
           sub-label="$i18n{enableProfilesSublabel}"
-          .pref="${this.profileEnabledSyntheticPref_}"
+          pref-key="synthetic.settings.autofill.profile_enabled"
+          no-set-pref
           @settings-boolean-control-change="${
               this.onAutofillProfileToggleSettingsBooleanControlChange_}">
       </settings-toggle-button>
@@ -42,7 +44,7 @@ export function getHtml(this: SettingsContactInfoPageElement) {
               this.onGmailOtpFillingSubLabelLinkClicked_}"
           @settings-boolean-control-change="${
               this.onAutofillOtpFillingToggleSettingsBooleanControlChange_}"
-          .pref="${this.otpFillingTogglePref_}"
+          pref-key="synthetic.settings.autofill.otp_filling"
           no-set-pref>
       </settings-toggle-button>
       ${this.profileEnabledSyntheticPref_?.extensionId ? html`
@@ -219,7 +221,7 @@ export function getHtml(this: SettingsContactInfoPageElement) {
             </div>
           </div>
         </cr-collapse>
-        <div class="vertical-list">
+        <div id="emailList" class="vertical-list">
           ${this.emailVerificationAddresses_.map((item, index) => html`
             <div class="list-item">
               <site-favicon

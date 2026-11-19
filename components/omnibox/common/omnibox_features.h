@@ -174,6 +174,10 @@ BASE_DECLARE_FEATURE(kOmniboxSearchPrefetchOnEnterKeyDown);
 // the Android Tab Search overlay.
 BASE_DECLARE_FEATURE(kAndroidTabSearchRecentTabs);
 
+// Shows a close button on open tab suggestions in the Android Tab Search
+// overlay, allowing users to close tabs directly from the suggestions list.
+BASE_DECLARE_FEATURE(kAndroidTabSearchCloseTabButton);
+
 // Site search/Keyword mode related features.
 BASE_DECLARE_FEATURE(kOmniboxSiteSearch);
 BASE_DECLARE_FEATURE(kStarterPackExpansion);
@@ -352,6 +356,11 @@ extern const base::FeatureParam<bool> kAskGShowChip;
 // Note that this parameter is created for a follow-up iteration of the current
 // Ask G LE. This may be moved to another base param in the future.
 extern const base::FeatureParam<bool> kAskGSuggestionSidePanelDescription;
+// Whether to show an in-product help bubble on the Lens icon (see
+// `kAskGLensIcon`) in the omnibox popup.
+// Note that this parameter is created for a follow-up iteration of the current
+// Ask G LE. This may be moved to another base param in the future.
+extern const base::FeatureParam<bool> kAskGLensIconIph;
 // Note: no new flags beyond this point.
 
 namespace flag_descriptions {

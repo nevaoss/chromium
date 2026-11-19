@@ -7,7 +7,7 @@ import 'chrome://contextual-tasks/contextual_tasks_extension/tab_picker.js';
 
 import {ExtensionBrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_browser_proxy.js';
 import type {TabPickerAppElement} from 'chrome://contextual-tasks/contextual_tasks_extension/tab_picker.js';
-import {TabPickerBrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_extension/tab_picker.js';
+import {TabPickerBrowserProxyImpl, TabPickerUnboundedPresentationResult} from 'chrome://contextual-tasks/contextual_tasks_extension/tab_picker.js';
 import type {TabPickerBrowserProxy} from 'chrome://contextual-tasks/contextual_tasks_extension/tab_picker.js';
 import {assert} from 'chrome://resources/js/assert.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
@@ -80,6 +80,8 @@ suite('TabPickerTest', () => {
   let originalRecordEnumerationValue: any;
   let recordedBooleans: Array<{metricName: string, value: boolean}> = [];
   let originalRecordBoolean: any;
+  let recordedTimes: Array<{metricName: string, value: number}> = [];
+  let originalRecordMediumTime: any;
 
   const tab0 = createTabInfo(1, 'Tab One', 'https://example.com/1');
   const tab1 = createTabInfo(2, 'Tab Two', 'https://example.com/2');
@@ -106,6 +108,15 @@ suite('TabPickerTest', () => {
             originalRecordBoolean(metricName, value);
           }
         };
+    originalRecordMediumTime =
+        (window as any).chrome.histograms.recordMediumTime;
+    (window as any).chrome.histograms.recordMediumTime =
+        (metricName: string, value: number) => {
+          recordedTimes.push({metricName, value});
+          if (originalRecordMediumTime) {
+            originalRecordMediumTime(metricName, value);
+          }
+        };
   });
 
   suiteTeardown(() => {
@@ -113,12 +124,15 @@ suite('TabPickerTest', () => {
       (window as any).chrome.histograms.recordEnumerationValue =
           originalRecordEnumerationValue;
       (window as any).chrome.histograms.recordBoolean = originalRecordBoolean;
+      (window as any).chrome.histograms.recordMediumTime =
+          originalRecordMediumTime;
     }
   });
 
   setup(async () => {
     recordedMetrics = [];
     recordedBooleans = [];
+    recordedTimes = [];
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
 
     // Stub the Unbounded Element API in unit tests so opening the menu does
@@ -168,6 +182,7 @@ suite('TabPickerTest', () => {
     assertEquals('Add tabs', label.textContent.trim());
 
     const triggerStyle = window.getComputedStyle(app.$.shareTabsTrigger);
+    assertEquals('Arial, sans-serif', triggerStyle.fontFamily);
     assertEquals('14px', triggerStyle.fontSize);
     assertEquals(
         '20px', triggerStyle.getPropertyValue('--iron-icon-height').trim());
@@ -526,10 +541,6 @@ suite('TabPickerTest', () => {
     await testProxy.whenCalled('getRecentTabs');
     await microtasksFinished();
 
-    app.$.shareTabsTrigger.dispatchEvent(new PointerEvent('pointerenter'));
-    await microtasksFinished();
-
-    assertTrue(app.$.tabMenu.open);
     assertFalse(app.$.tabMenu.getDialog().hasAttribute('unbounded'));
   });
 
@@ -616,20 +627,109 @@ suite('TabPickerTest', () => {
   });
 
   test('Flyout item text color adapts in dark mode', async () => {
+    const tab3 = createTabInfo(4, 'Tab Four', 'https://example.com/4');
+    app.selectedTabs = [tab0, tab1, tab2, tab3];
+    await microtasksFinished();
+
     app.$.shareTabsTrigger.click();
     await microtasksFinished();
     assertTrue(app.$.tabMenu.open);
 
+    const dialog = app.$.tabMenu.getDialog();
     const items =
         app.$.tabMenu.querySelectorAll<HTMLButtonElement>('.dropdown-item');
     const [item0] = items;
     assert(item0);
+    const faviconGroup =
+        app.$.shareTabsTrigger.querySelector('composebox-favicon-group');
+    assert(faviconGroup);
+    const faviconItem =
+        faviconGroup.shadowRoot.querySelector<HTMLElement>('.favicon-item');
+    assert(faviconItem);
+    const moreItems =
+        faviconGroup.shadowRoot.querySelector<HTMLElement>('#more-items');
+    assert(moreItems);
+
+    assertEquals('light', window.getComputedStyle(app).colorScheme);
+    assertEquals(
+        'rgb(255, 255, 255)', window.getComputedStyle(dialog).backgroundColor);
+    assertEquals('rgb(31, 31, 31)', window.getComputedStyle(item0).color);
+    assertEquals(
+        'rgba(0, 0, 0, 0.04)',
+        window.getComputedStyle(app.$.shareTabsTrigger).backgroundColor);
+    assertEquals(
+        '#0b57d0',
+        window.getComputedStyle(app)
+            .getPropertyValue('--cr-focus-outline-color')
+            .trim());
+    assertEquals(
+        'rgb(255, 255, 255)', window.getComputedStyle(faviconItem).borderColor);
+    assertEquals('rgb(71, 71, 71)', window.getComputedStyle(moreItems).color);
 
     app.darkMode = true;
     await microtasksFinished();
 
-    const color = window.getComputedStyle(item0).color;
-    assertEquals('rgb(230, 232, 240)', color);
+    assertEquals('dark', window.getComputedStyle(app).colorScheme);
+    assertEquals(
+        'rgb(44, 46, 54)', window.getComputedStyle(dialog).backgroundColor);
+    assertEquals('rgb(230, 232, 240)', window.getComputedStyle(item0).color);
+    assertEquals(
+        'rgb(53, 53, 53)',
+        window.getComputedStyle(app.$.shareTabsTrigger).backgroundColor);
+    assertEquals(
+        '#a8c7fa',
+        window.getComputedStyle(app)
+            .getPropertyValue('--cr-focus-outline-color')
+            .trim());
+    assertEquals(
+        'rgb(44, 46, 54)', window.getComputedStyle(faviconItem).borderColor);
+    assertEquals(
+        'rgb(199, 199, 199)', window.getComputedStyle(moreItems).color);
+  });
+
+  test('Initializes darkMode from cs URL query param', async () => {
+    const originalUrl = window.location.href;
+    let lightApp: TabPickerAppElement|undefined;
+    let darkApp: TabPickerAppElement|undefined;
+    try {
+      window.history.replaceState({}, '', '?cs=0');
+      lightApp = document.createElement('tab-picker-app');
+      document.body.appendChild(lightApp);
+      await microtasksFinished();
+      assertFalse(lightApp.darkMode);
+      assertFalse(lightApp.hasAttribute('dark-mode'));
+      assertEquals('light', window.getComputedStyle(lightApp).colorScheme);
+
+      window.history.replaceState({}, '', '?cs=1');
+      darkApp = document.createElement('tab-picker-app');
+      document.body.appendChild(darkApp);
+      await microtasksFinished();
+      assertTrue(darkApp.darkMode);
+      assertTrue(darkApp.hasAttribute('dark-mode'));
+      assertEquals('dark', window.getComputedStyle(darkApp).colorScheme);
+    } finally {
+      lightApp?.remove();
+      darkApp?.remove();
+      window.history.replaceState({}, '', originalUrl);
+    }
+  });
+
+  test('Flyout items and recent suffix use Arial', async () => {
+    app.$.shareTabsTrigger.click();
+    await microtasksFinished();
+    assertTrue(app.$.tabMenu.open);
+
+    const [item0] =
+        app.$.tabMenu.querySelectorAll<HTMLButtonElement>('.dropdown-item');
+    assert(item0);
+    const recentSuffix =
+        item0.querySelector<HTMLElement>('.recent-tabs-suffix');
+    assert(recentSuffix);
+
+    assertEquals(
+        'Arial, sans-serif', window.getComputedStyle(item0).fontFamily);
+    assertEquals(
+        'Arial, sans-serif', window.getComputedStyle(recentSuffix).fontFamily);
   });
 
   test(
@@ -1046,5 +1146,187 @@ suite('TabPickerTest', () => {
         assertEquals(
             'New Tab',
             items[0]!.querySelector('.tab-title')!.textContent.trim());
+      });
+
+  test(
+      'Records SHOWN_UNBOUNDED and MenuOpenLatencyMs on successful open',
+      async () => {
+        app.tabSuggestions = mockTabs;
+        await microtasksFinished();
+
+        recordedMetrics = [];
+        recordedTimes = [];
+        const shownPromise = eventToPromise('unbounded-shown', app.$.tabMenu);
+        await app.openTabMenuForTesting();
+        await shownPromise;
+
+        const resultMetric = recordedMetrics.find(
+            m => m.metricName ===
+                'ContextualTasks.TabPicker.UnboundedPresentationResult');
+        assertTrue(!!resultMetric);
+        assertEquals(
+            TabPickerUnboundedPresentationResult.SHOWN_UNBOUNDED,
+            resultMetric.value);
+        assertEquals(3, resultMetric.enumSize);
+
+        const latencyMetric = recordedTimes.find(
+            m =>
+                m.metricName === 'ContextualTasks.TabPicker.MenuOpenLatencyMs');
+        assertTrue(!!latencyMetric);
+        assertTrue(latencyMetric.value >= 0);
+      });
+
+  test(
+      'Records FALLBACK_API_UNSUPPORTED and MenuOpenLatencyMs when API is unsupported',
+      async () => {
+        const original = (HTMLElement.prototype as any)['showUnboundedElement'];
+        delete (HTMLElement.prototype as any)['showUnboundedElement'];
+
+        try {
+          const unsuppApp = document.createElement('tab-picker-app');
+          document.body.appendChild(unsuppApp);
+          await microtasksFinished();
+
+          unsuppApp.tabSuggestions = mockTabs;
+          await microtasksFinished();
+
+          recordedMetrics = [];
+          recordedTimes = [];
+          await unsuppApp.openTabMenuForTesting();
+
+          const resultMetric = recordedMetrics.find(
+              m => m.metricName ===
+                  'ContextualTasks.TabPicker.UnboundedPresentationResult');
+          assertTrue(!!resultMetric);
+          assertEquals(
+              TabPickerUnboundedPresentationResult.FALLBACK_API_UNSUPPORTED,
+              resultMetric.value);
+          assertEquals(3, resultMetric.enumSize);
+
+          const latencyMetric = recordedTimes.find(
+              m => m.metricName ===
+                  'ContextualTasks.TabPicker.MenuOpenLatencyMs');
+          assertTrue(!!latencyMetric);
+          assertTrue(latencyMetric.value >= 0);
+
+          unsuppApp.remove();
+        } finally {
+          (HTMLElement.prototype as any)['showUnboundedElement'] = original;
+        }
+      });
+
+  test(
+      'Records SHOW_UNBOUNDED_ELEMENT_FAILED and no latency when presentation rejects',
+      async () => {
+        const failingApp = document.createElement('tab-picker-app');
+        document.body.appendChild(failingApp);
+        await microtasksFinished();
+
+        failingApp.tabSuggestions = mockTabs;
+        (failingApp.$.tabMenu.getDialog() as any).showUnboundedElement = () =>
+            Promise.reject(new Error('Internal popup failure'));
+
+        recordedMetrics = [];
+        recordedTimes = [];
+        const originalConsoleError = console.error;
+        console.error = () => {};
+        try {
+          await failingApp.openTabMenuForTesting();
+        } finally {
+          console.error = originalConsoleError;
+        }
+
+        const resultMetric = recordedMetrics.find(
+            m => m.metricName ===
+                'ContextualTasks.TabPicker.UnboundedPresentationResult');
+        assertTrue(!!resultMetric);
+        assertEquals(
+            TabPickerUnboundedPresentationResult.SHOW_UNBOUNDED_ELEMENT_FAILED,
+            resultMetric.value);
+        assertEquals(3, resultMetric.enumSize);
+
+        const latencyMetric = recordedTimes.find(
+            m =>
+                m.metricName === 'ContextualTasks.TabPicker.MenuOpenLatencyMs');
+        assertFalse(!!latencyMetric);
+
+        failingApp.remove();
+      });
+
+  test(
+      'Does not record failure or latency when showUnboundedElement rejects with AbortError',
+      async () => {
+        const abortApp = document.createElement('tab-picker-app');
+        document.body.appendChild(abortApp);
+        await microtasksFinished();
+
+        abortApp.tabSuggestions = mockTabs;
+        (abortApp.$.tabMenu.getDialog() as any).showUnboundedElement = () =>
+            Promise.reject(new DOMException('User dismissed', 'AbortError'));
+
+        recordedMetrics = [];
+        recordedTimes = [];
+        await abortApp.openTabMenuForTesting();
+
+        const resultMetric = recordedMetrics.find(
+            m => m.metricName ===
+                'ContextualTasks.TabPicker.UnboundedPresentationResult');
+        assertFalse(!!resultMetric);
+
+        const latencyMetric = recordedTimes.find(
+            m =>
+                m.metricName === 'ContextualTasks.TabPicker.MenuOpenLatencyMs');
+        assertFalse(!!latencyMetric);
+
+        abortApp.remove();
+      });
+
+  test(
+      'Records IframeRenderLatencyMs and SuggestionsLoadLatencyMs once on load',
+      async () => {
+        const renderMetrics = recordedTimes.filter(
+            m => m.metricName ===
+                'ContextualTasks.TabPicker.IframeRenderLatencyMs');
+        assertEquals(1, renderMetrics.length);
+        assertTrue(renderMetrics[0]!.value >= 0);
+
+        const suggestionsMetrics = recordedTimes.filter(
+            m => m.metricName ===
+                'ContextualTasks.TabPicker.SuggestionsLoadLatencyMs');
+        assertEquals(1, suggestionsMetrics.length);
+        assertTrue(suggestionsMetrics[0]!.value >= renderMetrics[0]!.value);
+
+        // Subsequent property updates should not re-record either load metric.
+        recordedTimes = [];
+        app.darkMode = true;
+        app.selectedTabs = [tab0];
+        await microtasksFinished();
+
+        assertEquals(0, recordedTimes.length);
+      });
+
+  test(
+      'Does not record SuggestionsLoadLatencyMs when getRecentTabs rejects',
+      async () => {
+        app.remove();
+        testProxy.getRecentTabs = () => Promise.reject(new Error('Mojo error'));
+
+        recordedTimes = [];
+        const errorApp = document.createElement('tab-picker-app');
+        document.body.appendChild(errorApp);
+        await microtasksFinished();
+
+        const renderMetric = recordedTimes.find(
+            m => m.metricName ===
+                'ContextualTasks.TabPicker.IframeRenderLatencyMs');
+        assertTrue(!!renderMetric);
+        assertTrue(renderMetric.value >= 0);
+
+        const suggestionsMetric = recordedTimes.find(
+            m => m.metricName ===
+                'ContextualTasks.TabPicker.SuggestionsLoadLatencyMs');
+        assertFalse(!!suggestionsMetric);
+
+        errorApp.remove();
       });
 });

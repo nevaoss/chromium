@@ -1353,7 +1353,7 @@ TEST_F(ChromeAutofillClientTest,
 
   EXPECT_CALL(*bridge_ptr, ShowJavaBottomSheet);
   client()->ShowEmailVerificationPopup(
-      gfx::RectF(0, 0, 10, 10), net::SchemefulSite(GURL("https://google.com")),
+      gfx::RectF(0, 0, 10, 10), url::Origin::Create(GURL("https://google.com")),
       u"user@example.com", base::DoNothing());
 
   EXPECT_CALL(*bridge_ptr, HideJavaBottomSheet);
@@ -1394,7 +1394,7 @@ TEST_F(ChromeAutofillClientTest, OpenGmailForOtps) {
   ASSERT_TRUE(delegate.last_params().has_value());
   EXPECT_EQ(delegate.last_params()->url, GURL("https://mail.google.com"));
   EXPECT_EQ(delegate.last_params()->disposition,
-            WindowOpenDisposition::NEW_FOREGROUND_TAB);
+            WindowOpenDisposition::kNewForegroundTab);
 }
 
 TEST_F(ChromeAutofillClientTest,

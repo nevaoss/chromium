@@ -9,6 +9,8 @@
 #include <deque>
 #include <memory>
 #include <optional>
+#include <string>
+#include <string_view>
 
 #include "base/cancelable_callback.h"
 #include "base/cfi_buildflags.h"
@@ -137,6 +139,8 @@
 #include "net/base/net_errors.h"
 #include "net/base/network_change_notifier.h"
 #include "net/dns/mock_host_resolver.h"
+#include "net/http/http_status_code.h"
+#include "net/test/embedded_test_server/controllable_http_response.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "net/test/embedded_test_server/http_request.h"
 #include "net/test/embedded_test_server/http_response.h"
@@ -168,6 +172,8 @@
 #include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "ui/views/widget/any_widget_observer.h"
+#include "ui/views/widget/widget.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
@@ -3614,7 +3620,7 @@ IN_PROC_BROWSER_TEST_F(DevToolsTest, TestWindowInitializedOnNavigateBack) {
   chrome::SelectPreviousTab(browser());
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
   content::TestNavigationObserver back_navigation_observer(GetInspectedTab());
-  chrome::GoBack(browser(), WindowOpenDisposition::CURRENT_TAB);
+  chrome::GoBack(browser(), WindowOpenDisposition::kCurrentTab);
   back_navigation_observer.Wait();
   RunTestFunction(window, "testWindowInitializedOnNavigateBack");
 
@@ -3739,6 +3745,142 @@ IN_PROC_BROWSER_TEST_F(DevToolsTest, TestOpenInNewTabFilterHardening) {
 
   CloseDevToolsWindow();
 }
+
+namespace {
+
+// Returns the value of the `name` header in `headers`, or nullopt if there is
+// no such header. Unlike `headers[name]`, this distinguishes a missing header
+// from one with an empty value.
+std::optional<std::string> GetHeader(
+    const net::test_server::HttpRequest::HeaderMap& headers,
+    std::string_view name) {
+  auto it = headers.find(name);
+  if (it == headers.end()) {
+    return std::nullopt;
+  }
+  return it->second;
+}
+
+// Opens a page served from a dedicated server on 127.0.0.1 via `window`'s
+// OpenInNewTab and returns the headers of the resulting request. The
+// destination site has a SameSite=Strict and a SameSite=Lax cookie set
+// beforehand.
+net::test_server::HttpRequest::HeaderMap OpenInNewTabAndGetRequestHeaders(
+    Profile* profile,
+    DevToolsWindow* window) {
+  // Serve the destination from a separate server so that the request can be
+  // inspected. 127.0.0.1 is potentially trustworthy, so `Sec-Fetch-*` headers
+  // are attached to requests to it.
+  net::EmbeddedTestServer target_server;
+  net::test_server::ControllableHttpResponse response(&target_server,
+                                                      "/target");
+  EXPECT_TRUE(target_server.Start());
+  const GURL target_url = target_server.GetURL("/target");
+
+  EXPECT_TRUE(
+      content::SetCookie(profile, target_url, "strict=1; SameSite=Strict"));
+  EXPECT_TRUE(content::SetCookie(profile, target_url, "lax=1; SameSite=Lax"));
+
+  content::WebContentsAddedObserver observer;
+  static_cast<DevToolsUIBindings::Delegate*>(window)->OpenInNewTab(
+      target_url.spec());
+  content::WebContents* new_wc = observer.GetWebContents();
+
+  response.WaitForRequest();
+  net::test_server::HttpRequest::HeaderMap headers =
+      response.http_request()->headers;
+  response.Send(net::HTTP_OK);
+  response.Done();
+  EXPECT_TRUE(content::WaitForLoadStop(new_wc));
+  return headers;
+}
+
+}  // namespace
+
+// Tests that navigations started via OpenInNewTab are attributed to the
+// inspected page, i.e. that `Sec-Fetch-Site` and the SameSite cookie context
+// of the request are computed relative to the inspected page's origin, as if
+// the link had been opened from the inspected page itself. Without an
+// initiator, the request would be indistinguishable from a navigation typed
+// into the omnibox (`Sec-Fetch-Site: none` and SameSite=Strict cookies
+// attached), which would allow the inspected page to bypass the CSRF defenses
+// of the destination. See https://crbug.com/554558674.
+class DevToolsOpenInNewTabAttributionTest : public DevToolsTest {
+ protected:
+  // Opens DevTools on `kArbitraryPage` served from `inspected_host`, then
+  // opens a cross-origin destination via OpenInNewTab and returns the headers
+  // of the resulting request.
+  net::test_server::HttpRequest::HeaderMap GetRequestHeadersWhenInspecting(
+      const std::string& inspected_host) {
+    OpenDevToolsWindow(
+        embedded_test_server()->GetURL(inspected_host, kArbitraryPage).spec(),
+        false);
+    net::test_server::HttpRequest::HeaderMap headers =
+        OpenInNewTabAndGetRequestHeaders(chrome_test_utils::GetProfile(this),
+                                         window_);
+    CloseDevToolsWindow();
+    return headers;
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(DevToolsOpenInNewTabAttributionTest, CrossSite) {
+  // The inspected page on a.test is cross-site to the destination on
+  // 127.0.0.1, so the request must not look like a user-initiated navigation
+  // and must not carry the SameSite=Strict cookie.
+  net::test_server::HttpRequest::HeaderMap headers =
+      GetRequestHeadersWhenInspecting("a.test");
+  EXPECT_THAT(GetHeader(headers, "Sec-Fetch-Site"),
+              testing::Optional(std::string("cross-site")));
+  EXPECT_THAT(GetHeader(headers, "Cookie"),
+              testing::Optional(std::string("lax=1")));
+}
+
+IN_PROC_BROWSER_TEST_F(DevToolsOpenInNewTabAttributionTest, SameSite) {
+  // The inspected page is same-site (but cross-origin, due to the different
+  // port) with the destination, so the request is attributed accordingly and
+  // carries both cookies.
+  net::test_server::HttpRequest::HeaderMap headers =
+      GetRequestHeadersWhenInspecting("127.0.0.1");
+  EXPECT_THAT(GetHeader(headers, "Sec-Fetch-Site"),
+              testing::Optional(std::string("same-site")));
+  EXPECT_THAT(GetHeader(headers, "Cookie"),
+              testing::Optional(std::string("strict=1; lax=1")));
+}
+
+// Same as above, for a DevTools window that inspects a worker. Such windows
+// have no inspected WebContents, so there is no frame to attribute the
+// navigation to, and the navigation also has to be started without the help
+// of the inspected WebContents' delegate. A worker controls what is logged to
+// its console just like a page does, so the navigation must still not look
+// like one typed into the omnibox.
+//
+// Not on Android, where DevToolsWindow::OpenInNewTab() cannot open a tab
+// without an inspected WebContents (see the NOTIMPLEMENTED() there).
+#if !BUILDFLAG(IS_ANDROID)
+class DevToolsWorkerOpenInNewTabAttributionTest : public WorkerDevToolsTest {
+ public:
+  void SetUpOnMainThread() override {
+    WorkerDevToolsTest::SetUpOnMainThread();
+    host_resolver()->AddRule("*", "127.0.0.1");
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(DevToolsWorkerOpenInNewTabAttributionTest, CrossSite) {
+  ASSERT_TRUE(chrome_test_utils::NavigateToURL(
+      chrome_test_utils::GetActiveWebContents(this),
+      embedded_test_server()->GetURL("a.test", kSharedWorkerTestPage)));
+  OpenDevToolsWindow(WaitForFirstSharedWorker(kSharedWorkerTestWorker));
+
+  net::test_server::HttpRequest::HeaderMap headers =
+      OpenInNewTabAndGetRequestHeaders(chrome_test_utils::GetProfile(this),
+                                       window_);
+  EXPECT_THAT(GetHeader(headers, "Sec-Fetch-Site"),
+              testing::Optional(std::string("cross-site")));
+  EXPECT_THAT(GetHeader(headers, "Cookie"),
+              testing::Optional(std::string("lax=1")));
+  CloseDevToolsWindow();
+}
+#endif  // !BUILDFLAG(IS_ANDROID)
 
 IN_PROC_BROWSER_TEST_F(DevToolsTest, TestOpenSearchResultsInNewTab) {
   OpenDevToolsWindow(kDebuggerTestPage, false);
@@ -5027,6 +5169,39 @@ IN_PROC_BROWSER_TEST_F(DevToolsTest,
   CloseDevToolsWindow();
 }
 
+// Tests that localStorage is isolated between remote DevTools and bundled DevTools.
+IN_PROC_BROWSER_TEST_F(DevToolsTest, RemoteFrontendLocalStorageIsolation) {
+  // Use a blank page under the remote DevTools host to avoid external network fetch.
+  GURL remote_blank_url(base::StringPrintf("%s://%s/%s",
+                                          content::kChromeDevToolsScheme,
+                                          chrome::kChromeUIDevToolsRemoteHost,
+                                          chrome::kChromeUIDevToolsBlankPath));
+
+  std::unique_ptr<content::WebContents> remote_wc =
+      content::WebContents::Create(content::WebContents::CreateParams(GetProfile()));
+  ASSERT_TRUE(content::NavigateToURL(remote_wc.get(), remote_blank_url));
+
+  // In that WebContents, execute JS: localStorage.setItem('canary_key', 'canary_val');
+  EXPECT_TRUE(content::ExecJs(
+      remote_wc.get(), "localStorage.setItem('canary_key', 'canary_val');"));
+  EXPECT_EQ("canary_val",
+            content::EvalJs(remote_wc.get(), "localStorage.getItem('canary_key')"));
+
+  // Open a standard bundled DevTools window.
+  OpenDevToolsWindow(kEmptyTestPage, /* is_docked */ false);
+  ASSERT_TRUE(main_web_contents());
+
+  // Execute JS in the bundled WebContents: return localStorage.getItem('canary_key');
+  // Assert that the return value is null.
+  EXPECT_EQ(true, content::EvalJs(main_web_contents(),
+                                  "localStorage.getItem('canary_key') === null"));
+  EXPECT_EQ(
+      base::Value(),
+      content::EvalJs(main_web_contents(), "localStorage.getItem('canary_key')"));
+
+  CloseDevToolsWindow();
+}
+
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 // TODO(crbug.com/40937316): Test is flaky on Linux.
 #if BUILDFLAG(IS_LINUX)
@@ -5689,6 +5864,71 @@ IN_PROC_BROWSER_TEST_P(DevToolsProcessPerSiteTest,
   ASSERT_EQ(undocked_infobar_manager->infobars().size(), 1u);
   ASSERT_EQ(undocked_infobar_manager->infobars()[0]->GetIdentifier(),
             infobars::InfoBarDelegate::DEV_TOOLS_SHARED_PROCESS_DELEGATE);
+
+  // Accepting the infobar in the undocked DevTools window must parent the
+  // restart dialog to the inspected browser window, not the DevTools window.
+  views::NamedWidgetShownWaiter dialog_waiter(
+      views::test::AnyWidgetTestPasskey{}, "ProcessSharingAppRestart");
+  auto* confirm_delegate = undocked_infobar_manager->infobars()[0]
+                               ->delegate()
+                               ->AsConfirmInfoBarDelegate();
+  ASSERT_TRUE(confirm_delegate);
+  confirm_delegate->Accept();
+  views::Widget* dialog_widget = dialog_waiter.WaitIfNeededAndGet();
+  ASSERT_TRUE(dialog_widget);
+  EXPECT_EQ(dialog_widget->parent(), views::Widget::GetWidgetForNativeWindow(
+                                         browser1->GetTabStripModel()
+                                             ->GetActiveWebContents()
+                                             ->GetTopLevelNativeWindow()));
+  dialog_widget->CloseWithReason(
+      views::Widget::ClosedReason::kCancelButtonClicked);
+  DevToolsWindowTesting::CloseDevToolsWindowSync(window);
+}
+
+IN_PROC_BROWSER_TEST_P(DevToolsProcessPerSiteTest,
+                       TablessInspectedWebContentsFallback) {
+  const GURL url = embedded_test_server()->GetURL("foo.test", "/hello.html");
+
+  BrowserWindowInterface* browser1 = CreateBrowser(browser()->GetProfile());
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser1, url));
+
+  // Create a tabless WebContents (no tabs::TabInterface) that shares the
+  // renderer process with `browser1`'s tab.
+  std::unique_ptr<content::WebContents> tabless_contents =
+      content::WebContents::Create(
+          content::WebContents::CreateParams(browser()->GetProfile()));
+  infobars::ContentInfoBarManager::CreateForWebContents(tabless_contents.get());
+  ASSERT_TRUE(content::NavigateToURL(tabless_contents.get(), url));
+  ASSERT_EQ(tabs::TabInterface::MaybeGetFromContents(tabless_contents.get()),
+            nullptr);
+  ASSERT_EQ(browser1->GetTabStripModel()
+                ->GetActiveWebContents()
+                ->GetPrimaryMainFrame()
+                ->GetProcess(),
+            tabless_contents->GetPrimaryMainFrame()->GetProcess());
+
+  // Trigger PrimaryPageChanged while DevToolsWindow is still in its initial
+  // docked state on the tabless WebContents (before ScheduleShow switches it to
+  // undocked), exercising the legacy fallback in MaybeShowSharedProcessInfobar
+  // and subsequent cleanup in RemoveSharingInfoBar.
+  DevToolsWindowCreationObserver creation_observer(
+      base::BindLambdaForTesting([&](DevToolsWindow* devtools_window) {
+        static_cast<content::WebContentsObserver*>(devtools_window)
+            ->PrimaryPageChanged(tabless_contents->GetPrimaryPage());
+      }));
+
+  DevToolsWindow::OpenDevToolsWindow(tabless_contents.get(),
+                                     DevToolsOpenedByAction::kUnknown);
+  DevToolsWindow* window = creation_observer.devtools_window();
+  ASSERT_TRUE(window);
+  auto* tabless_infobar_manager =
+      infobars::ContentInfoBarManager::FromWebContents(tabless_contents.get());
+  ASSERT_EQ(tabless_infobar_manager->infobars().size(), 1u);
+  EXPECT_EQ(tabless_infobar_manager->infobars()[0]->GetIdentifier(),
+            infobars::InfoBarDelegate::DEV_TOOLS_SHARED_PROCESS_DELEGATE);
+
+  DevToolsWindowTesting::CloseDevToolsWindowSync(window);
+  EXPECT_EQ(tabless_infobar_manager->infobars().size(), 0u);
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -6351,5 +6591,39 @@ IN_PROC_BROWSER_TEST_F(
   auto* popup_bindings = DevToolsUIBindings::ForWebContents(popup);
   ASSERT_TRUE(popup_bindings);
   EXPECT_FALSE(popup_bindings->has_frontend_host_for_testing());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    DevToolsPopupOpenerTest,
+    RemoteFrontendDevToolsBlankPopupWithClosedOpenerDoesNotGetFrontendHost) {
+  WebContents* opener = chrome_test_utils::GetActiveWebContents(this);
+  ASSERT_TRUE(chrome_test_utils::NavigateToURL(
+      opener,
+      GURL("devtools://devtools/remote/serve_rev/@12345/empty.html")));
+  VerifyRemoteOpenerHasRestrictedBindings(opener);
+
+  WebContents* popup = OpenPopupFrom(opener, "devtools://devtools/blank");
+  ASSERT_TRUE(popup);
+  EXPECT_EQ("undefined", content::EvalJs(popup, "typeof DevToolsHost"));
+  auto* initial_popup_bindings = DevToolsUIBindings::ForWebContents(popup);
+  ASSERT_TRUE(initial_popup_bindings);
+  EXPECT_FALSE(initial_popup_bindings->has_frontend_host_for_testing());
+  EXPECT_FALSE(initial_popup_bindings->IsTrustedLocalFrontend());
+
+  content::WebContentsDestroyedWatcher destroyed_watcher(opener);
+  opener->Close();
+  destroyed_watcher.Wait();
+  EXPECT_FALSE(popup->HasLiveOriginalOpenerChain());
+
+  content::TestNavigationObserver nav_observer(popup);
+  ASSERT_TRUE(
+      content::ExecJs(popup, "location.href = 'devtools://devtools/blank';"));
+  nav_observer.Wait();
+
+  EXPECT_EQ("undefined", content::EvalJs(popup, "typeof DevToolsHost"));
+  auto* popup_bindings = DevToolsUIBindings::ForWebContents(popup);
+  ASSERT_TRUE(popup_bindings);
+  EXPECT_FALSE(popup_bindings->has_frontend_host_for_testing());
+  EXPECT_FALSE(popup_bindings->IsTrustedLocalFrontend());
 }
 

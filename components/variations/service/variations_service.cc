@@ -120,6 +120,12 @@ const uint32_t kServerTimeResolutionInSeconds = 1;
 // Timeout for fetching the variations seed.
 const base::TimeDelta kVariationsSeedFetchTimeout = base::Seconds(60);
 
+// Delay before retrying runtime mutable seed processing when it is too early to
+// close the UMA log, and the maximum number of retries per session before
+// applying the seed anyway.
+constexpr base::TimeDelta kRetryRuntimeMutableSeedDelay = base::Seconds(30);
+constexpr int kMaxRuntimeMutableSeedRetries = 4;
+
 // Whether the VariationsService should fetch the seed for testing.
 bool g_should_fetch_for_testing = false;
 
@@ -895,7 +901,7 @@ void VariationsService::OnSeedStoreResult(bool is_delta_compressed,
     // between this and `PerformSimulationWithVersion()` above (which is used
     // for badging killswitches).
     if (base::FeatureList::IsEnabled(kVariationsRuntimeMutability)) {
-      SimulateAndApplyRuntimeMutableChanges(seed);
+      SimulateAndApplyRuntimeMutableChanges(std::move(seed));
     }
 
     NotifySeedFetched();
@@ -903,8 +909,46 @@ void VariationsService::OnSeedStoreResult(bool is_delta_compressed,
 }
 
 void VariationsService::SimulateAndApplyRuntimeMutableChanges(
-    const VariationsSeed& seed) {
+    VariationsSeed seed) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  // A newly arrived seed supersedes any previously delayed seed. Stop the retry
+  // timer before checking `seed.study().empty()` so that a new seed with no
+  // runtime-mutable studies still cancels an older unapplied seed.
+  runtime_mutable_seed_retry_timer_.Stop();
+
+  // Strip studies that are not runtime-mutable before potentially delaying so
+  // that we do not retain the full `VariationsSeed` in memory.
+  google::protobuf::erase_if(*seed.mutable_study(), [](const Study& study) {
+    return !study.runtime_mutable();
+  });
+  if (seed.study().empty()) {
+    return;
+  }
+
+  // When `kVariationsRuntimeMutabilityRotateUmaLog` is enabled, applying
+  // runtime mutable changes rotates the current UMA log so that pre-mutation
+  // and post-mutation metrics are not mixed in the same log. However, if a seed
+  // arrives early in the session before `MetricsService` has started sending
+  // logs (`ShouldDelayRuntimeMutability()` is true), log rotation would fail
+  // with `RotateUmaLogResult::kTooEarly`. Delay processing the seed and retry
+  // after `kRetryRuntimeMutableSeedDelay`, up to
+  // `kMaxRuntimeMutableSeedRetries` times (after which the seed is applied
+  // anyway so that an idle client does not delay mutations indefinitely).
+  // `base::Unretained(this)` is safe because `this` owns
+  // `runtime_mutable_seed_retry_timer_`.
+  if (kVariationsRuntimeMutabilityRotateUmaLog.Get() &&
+      client_->ShouldDelayRuntimeMutability(
+          base::PassKey<VariationsService>()) &&
+      runtime_mutable_seed_retry_count_ < kMaxRuntimeMutableSeedRetries) {
+    ++runtime_mutable_seed_retry_count_;
+    runtime_mutable_seed_retry_timer_.Start(
+        FROM_HERE, kRetryRuntimeMutableSeedDelay,
+        base::BindOnce(
+            &VariationsService::SimulateAndApplyRuntimeMutableChanges,
+            base::Unretained(this), std::move(seed)));
+    return;
+  }
 
   base::ScopedUmaHistogramTimer scoped_timer(
       "Variations.SimulateAndApplyRuntimeMutableChanges.Time");
@@ -1381,10 +1425,6 @@ VariationsService::PrepareRuntimeMutableChanges(
   const Study::Experiment& experiment = study.experiment(experiment_index);
 
   // For now, only allow ACTIVATE_ON_STARTUP and ACTIVATE_ON_QUERY studies.
-  // TODO(crbug.com/536852160): For normal field trials, Default groups that
-  // have no features are still associated with features from the other groups
-  // (see `AssociateDefaultFeatures()`) for activation purposes. Implement this
-  // logic for runtime mutable experiments.
   if (study.activation_type() != Study::ACTIVATE_ON_STARTUP &&
       study.activation_type() != Study::ACTIVATE_ON_QUERY) {
     return base::unexpected(kInvalidActivationType);
@@ -1433,6 +1473,22 @@ VariationsService::PrepareRuntimeMutableChanges(
   if (feature_names.size() !=
       disable_features.size() + enable_features.size()) {
     return base::unexpected(kFeatureBothEnabledAndDisabled);
+  }
+
+  // If `experiment` does not specify any feature associations (e.g. a "Default"
+  // group), associate it with all features referenced by the other groups in
+  // `study` using `OVERRIDE_USE_DEFAULT` (similar to
+  // `AssociateDefaultFeatures()` for normal field trials). This ensures that:
+  // 1. For `ACTIVATE_ON_QUERY` studies, querying any of the study's features
+  //    will activate this runtime override.
+  // 2. `FeatureList` tracks that those features are controlled by this study.
+  base::flat_set<std::string_view> default_features;
+  if (!experiment.has_feature_association()) {
+    // `feature_names` is the union of `disable_features` and `enable_features`
+    // above, both of which are read from `experiment.feature_association()`.
+    CHECK(feature_names.empty());
+    default_features = GetStudyFeatureNames(study);
+    feature_names = default_features;
   }
 
   for (std::string_view feature_name : feature_names) {
@@ -1594,12 +1650,10 @@ VariationsService::PrepareRuntimeMutableChanges(
       study.name(), group_name, std::move(params), trial_to_override);
 
   auto prepare_feature_updates = [&](const auto& features,
-                                     base::FeatureList::OverrideState state) {
+                                     base::FeatureList::OverrideState state,
+                                     std::string_view action) {
     for (std::string_view feature_name : features) {
-      DVLOG(1) << "VariationsService: Preparing runtime override to "
-               << (state == base::FeatureList::OVERRIDE_ENABLE_FEATURE
-                       ? "enable"
-                       : "disable")
+      DVLOG(1) << "VariationsService: Preparing runtime override to " << action
                << " feature: " << feature_name;
       auto update = feature_list->PrepareRuntimeMutableFeatureStateUpdate(
           base::PassKey<VariationsService>(), changes.override_info.get(),
@@ -1609,10 +1663,13 @@ VariationsService::PrepareRuntimeMutableChanges(
     }
   };
 
-  prepare_feature_updates(disable_features,
-                          base::FeatureList::OVERRIDE_DISABLE_FEATURE);
+  prepare_feature_updates(
+      disable_features, base::FeatureList::OVERRIDE_DISABLE_FEATURE, "disable");
   prepare_feature_updates(enable_features,
-                          base::FeatureList::OVERRIDE_ENABLE_FEATURE);
+                          base::FeatureList::OVERRIDE_ENABLE_FEATURE, "enable");
+  prepare_feature_updates(default_features,
+                          base::FeatureList::OVERRIDE_USE_DEFAULT,
+                          "use default for");
 
   return base::ok(std::move(changes));
 }

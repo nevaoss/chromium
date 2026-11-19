@@ -10,7 +10,7 @@ import {ComposeboxProxyImpl} from 'chrome://omnibox-popup.top-chrome/omnibox_pop
 import {ComposeboxFile, SingleTabType} from 'chrome://resources/cr_components/composebox/common.js';
 import {PageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
 import type {ComposeboxFaviconGroupElement} from 'chrome://resources/cr_components/composebox/composebox_favicon_group.js';
-import {ContextUploadErrorType, ContextUploadStatus, InputType, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
+import {ContextUploadErrorType, ContextUploadStatus, InputType, ModelMode, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import type {ComposeboxFileCarouselElement} from 'chrome://resources/cr_components/composebox/file_carousel.js';
 import {WindowProxy} from 'chrome://resources/cr_components/composebox/window_proxy.js';
 import {GlowAnimationState} from 'chrome://resources/cr_components/search/constants.js';
@@ -303,6 +303,44 @@ suite('OmniboxComposeboxTest', () => {
     assertFalse(!!toolChip);
   });
 
+  test(
+      'addSearchContext applies the tool and model of the context',
+      async () => {
+        omniboxComposebox.addSearchContext({
+          input: '',
+          attachments: [],
+          toolMode: ToolMode.kDeepSearch,
+          modelMode: ModelMode.kGeminiPro,
+        });
+
+        const recordedTool =
+            await testProxy.handler.whenCalled('recordToolSelectionAction');
+        assertEquals(ToolMode.kDeepSearch, recordedTool);
+        const [activeTool, toolSetByAim] =
+            await testProxy.handler.whenCalled('setActiveToolMode');
+        assertEquals(ToolMode.kDeepSearch, activeTool);
+        assertFalse(toolSetByAim);
+        const recordedModel =
+            await testProxy.handler.whenCalled('recordModelSelectionAction');
+        assertEquals(ModelMode.kGeminiPro, recordedModel);
+        const [activeModel, modelSetByAim] =
+            await testProxy.handler.whenCalled('setActiveModelMode');
+        assertEquals(ModelMode.kGeminiPro, activeModel);
+        assertFalse(modelSetByAim);
+      });
+
+  test('addSearchContext leaves the tool and model unset by default', () => {
+    omniboxComposebox.addSearchContext({
+      input: 'query',
+      attachments: [],
+      toolMode: ToolMode.kUnspecified,
+      modelMode: ModelMode.kUnspecified,
+    });
+
+    assertEquals(0, testProxy.handler.getCallCount('setActiveToolMode'));
+    assertEquals(0, testProxy.handler.getCallCount('setActiveModelMode'));
+  });
+
   test('Add File Attachment (Unimodal) via addSearchContext', async () => {
     const mockToken = 'mock-file-token';
     const context = {
@@ -319,6 +357,7 @@ suite('OmniboxComposeboxTest', () => {
         },
       }],
       toolMode: 0,
+      modelMode: 0,
     };
     // Mock queryAutocomplete on element to verify clearMatches=true.
     let clearMatchesPassed = false;
@@ -358,6 +397,7 @@ suite('OmniboxComposeboxTest', () => {
         },
       }],
       toolMode: 0,
+      modelMode: 0,
     };
 
     omniboxComposebox.addSearchContext(context as unknown as SearchContext);
@@ -403,6 +443,7 @@ suite('OmniboxComposeboxTest', () => {
             },
           }],
           toolMode: 0,
+          modelMode: 0,
         });
         await microtasksFinished();
         await testProxy.handler.whenCalled('addTabContext');
@@ -429,6 +470,7 @@ suite('OmniboxComposeboxTest', () => {
             },
           }],
           toolMode: 0,
+          modelMode: 0,
         });
         await microtasksFinished();
         await testProxy.handler.whenCalled('addTabContext');
@@ -452,6 +494,7 @@ suite('OmniboxComposeboxTest', () => {
       files: [],
       attachments: [],
       toolMode: 0,
+      modelMode: 0,
     };
     omniboxComposebox.addSearchContext(context);
     await microtasksFinished();
@@ -485,6 +528,7 @@ suite('OmniboxComposeboxTest', () => {
             },
           }],
           toolMode: 0,
+          modelMode: 0,
         };
 
         omniboxComposebox.addSearchContext(context as unknown as SearchContext);
@@ -516,6 +560,7 @@ suite('OmniboxComposeboxTest', () => {
             },
           }],
           toolMode: 0,
+          modelMode: 0,
         };
 
         omniboxComposebox.addSearchContext(context as unknown as SearchContext);
@@ -544,6 +589,7 @@ suite('OmniboxComposeboxTest', () => {
             },
           }],
           toolMode: 0,
+          modelMode: 0,
         };
         omniboxComposebox.addSearchContext(context as unknown as SearchContext);
         await microtasksFinished();
@@ -584,6 +630,7 @@ suite('OmniboxComposeboxTest', () => {
             },
           }],
           toolMode: 0,
+          modelMode: 0,
         };
         omniboxComposebox.addSearchContext(context as unknown as SearchContext);
         await microtasksFinished();
@@ -624,6 +671,7 @@ suite('OmniboxComposeboxTest', () => {
             },
           }],
           toolMode: 0,
+          modelMode: 0,
         };
 
         omniboxComposebox.addSearchContext(context as unknown as SearchContext);
@@ -717,9 +765,8 @@ suite('OmniboxComposeboxTest', () => {
   test('Render Error Scrim on validation error', async () => {
     let scrim = omniboxComposebox.shadowRoot.querySelector('ntp-error-scrim');
     assertFalse(!!scrim);
-    const composebox =
-        omniboxComposebox.shadowRoot.querySelector('#composebox');
-    assertFalse(composebox!.hasAttribute('inert'));
+    const composebox = omniboxComposebox.$.composebox;
+    assertFalse(composebox.hasAttribute('inert'));
 
     omniboxComposebox.errorMessage = 'File size exceeds 100 MiB';
     await microtasksFinished();
@@ -728,7 +775,7 @@ suite('OmniboxComposeboxTest', () => {
     scrim = omniboxComposebox.shadowRoot.querySelector('ntp-error-scrim');
     assertTrue(!!scrim);
     assertEquals('File size exceeds 100 MiB', scrim.errorMessage);
-    assertTrue(composebox!.hasAttribute('inert'));
+    assertTrue(composebox.hasAttribute('inert'));
 
     // Dismiss error scrim.
     scrim.fire('dismiss-error-scrim');
@@ -738,7 +785,7 @@ suite('OmniboxComposeboxTest', () => {
     assertEquals('', omniboxComposebox.errorMessage);
     scrim = omniboxComposebox.shadowRoot.querySelector('ntp-error-scrim');
     assertFalse(!!scrim);
-    assertFalse(composebox!.hasAttribute('inert'));
+    assertFalse(composebox.hasAttribute('inert'));
   });
 
   test('Add Attachment with validation error fails', async () => {
@@ -759,6 +806,7 @@ suite('OmniboxComposeboxTest', () => {
         },
       }],
       toolMode: 0,
+      modelMode: 0,
     };
 
     omniboxComposebox.addSearchContext(context);
@@ -789,6 +837,7 @@ suite('OmniboxComposeboxTest', () => {
             },
           }],
           toolMode: 0,
+          modelMode: 0,
         };
 
         omniboxComposebox.i18n = (key: string) => {
@@ -1017,10 +1066,8 @@ suite('OmniboxComposeboxTest', () => {
     // When the submit button is clicked.
     const composeboxSubmit =
         omniboxComposebox.shadowRoot.querySelector('cr-composebox-submit');
-    const submitContainer =
-        composeboxSubmit!.shadowRoot.querySelector<HTMLElement>(
-            '#submitContainer');
-    submitContainer!.click();
+    const submitContainer = composeboxSubmit!.$.submitContainer;
+    submitContainer.click();
     await microtasksFinished();
 
     // Then openAutocompleteMatch is called.
@@ -1065,10 +1112,8 @@ suite('OmniboxComposeboxTest', () => {
 
         const composeboxSubmit =
             omniboxComposebox.shadowRoot.querySelector('cr-composebox-submit');
-        const submitContainer =
-            composeboxSubmit!.shadowRoot.querySelector<HTMLElement>(
-                '#submitContainer');
-        submitContainer!.click();
+        const submitContainer = composeboxSubmit!.$.submitContainer;
+        submitContainer.click();
         await microtasksFinished();
 
         assertEquals(1, testProxy.handler.getCallCount('submitQuery'));
@@ -1133,10 +1178,8 @@ suite('OmniboxComposeboxTest', () => {
         const composeboxSubmit =
             omniboxComposebox.shadowRoot.querySelector('cr-composebox-submit');
         assertFalse(composeboxSubmit!.hasAttribute('disabled'));
-        const submitContainer =
-            composeboxSubmit!.shadowRoot.querySelector<HTMLElement>(
-                '#submitContainer');
-        submitContainer!.click();
+        const submitContainer = composeboxSubmit!.$.submitContainer;
+        submitContainer.click();
         await microtasksFinished();
 
         // Then submitQuery is called.
@@ -1707,13 +1750,11 @@ suite('OmniboxComposeboxTest', () => {
     });
 
     test('sets is-dragging-file attribute on dragenter', async () => {
-      const dropZone =
-          omniboxComposebox.shadowRoot.querySelector('#composebox');
-      assertTrue(!!dropZone);
+      const dropZone = omniboxComposebox.$.composebox;
 
       assertFalse(omniboxComposebox.hasAttribute('is-dragging-file'));
 
-      dropZone?.dispatchEvent(new DragEvent('dragenter', {
+      dropZone.dispatchEvent(new DragEvent('dragenter', {
         bubbles: true,
         composed: true,
       }));
@@ -1725,16 +1766,14 @@ suite('OmniboxComposeboxTest', () => {
     });
 
     test('removes is-dragging-file attribute on dragleave', async () => {
-      const dropZone =
-          omniboxComposebox.shadowRoot.querySelector('#composebox');
-      assertTrue(!!dropZone);
+      const dropZone = omniboxComposebox.$.composebox;
 
       omniboxComposebox.animationState = GlowAnimationState.DRAGGING;
-      dropZone?.dispatchEvent(new DragEvent('dragenter', {
+      dropZone.dispatchEvent(new DragEvent('dragenter', {
         bubbles: true,
         composed: true,
       }));
-      dropZone?.dispatchEvent(new DragEvent('dragleave', {
+      dropZone.dispatchEvent(new DragEvent('dragleave', {
         bubbles: true,
         composed: true,
       }));
@@ -2324,6 +2363,7 @@ suite('OmniboxComposeboxTest', () => {
           },
         }],
         toolMode: 0,
+        modelMode: 0,
       };
 
       omniboxComposebox.addSearchContext(context as unknown as SearchContext);
@@ -2419,9 +2459,7 @@ suite('OmniboxComposeboxTest', () => {
       assertTrue(!!submitButton);
       await submitButton.updateComplete;
 
-      const submitContainer =
-          submitButton.shadowRoot.querySelector<HTMLElement>('#submitContainer');
-      assertTrue(!!submitContainer);
+      const submitContainer = submitButton.$.submitContainer;
       submitContainer.click();
 
       await microtasksFinished();
@@ -2879,6 +2917,7 @@ suite('OmniboxComposeboxTest', () => {
           },
         }],
         toolMode: 0,
+        modelMode: 0,
       };
 
       omniboxComposebox.addSearchContext(context as unknown as SearchContext);
@@ -2904,6 +2943,7 @@ suite('OmniboxComposeboxTest', () => {
           },
         }],
         toolMode: 0,
+        modelMode: 0,
       };
 
       omniboxComposebox.addSearchContext(context as unknown as SearchContext);
@@ -2929,6 +2969,7 @@ suite('OmniboxComposeboxTest', () => {
           },
         }],
         toolMode: 0,
+        modelMode: 0,
       };
 
       omniboxComposebox.addSearchContext(context as unknown as SearchContext);
@@ -2959,6 +3000,7 @@ suite('OmniboxComposeboxTest', () => {
           },
         }],
         toolMode: 0,
+        modelMode: 0,
       };
 
       omniboxComposebox.addSearchContext(context as unknown as SearchContext);
@@ -3060,6 +3102,7 @@ suite('OmniboxComposeboxTest', () => {
           },
         }],
         toolMode: 0,
+        modelMode: 0,
       };
       omniboxComposebox.addSearchContext(context as unknown as SearchContext);
       await microtasksFinished();

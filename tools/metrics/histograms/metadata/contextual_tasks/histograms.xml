@@ -118,7 +118,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="ContextualTasks.Context.CandidateTabHasEmbeddings"
-    enum="Boolean" expires_after="2027-02-07">
+    enum="Boolean" expires_after="2027-04-18">
   <owner>sophiechang@chromium.org</owner>
   <owner>abhayprakash@google.com</owner>
   <summary>
@@ -338,6 +338,34 @@ chromium-metrics-reviews@google.com.
     contextual task is active or suggested and the toolbar button transitions
     from hidden to shown. Always recorded as true.
   </summary>
+</histogram>
+
+<histogram
+    name="ContextualTasks.EphemeralToolbarButton.ShownDuration{EndReason}"
+    units="ms" expires_after="2027-04-15">
+  <owner>dianaou@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <summary>
+    Measures the time elapsed from when the ephemeral (unpinned) contextual
+    tasks toolbar button became visible until it was clicked or removed.
+    {EndReason}
+  </summary>
+  <token key="EndReason">
+    <variant name=""
+        summary="Recorded for all click and removal events combined."/>
+    <variant name=".AutoDismissed"
+        summary="Recorded when the button is automatically dismissed after
+                 its auto-dismiss timeout expires."/>
+    <variant name=".Clicked"
+        summary="Recorded when the user clicks the button to open the side
+                 panel."/>
+    <variant name=".RemovedByContextMenu"
+        summary="Recorded when the user removes the button for the current
+                 task via its context menu."/>
+    <variant name=".TaskDisassociated"
+        summary="Recorded when the active tab is disassociated from its task
+                 or the task is removed."/>
+  </token>
 </histogram>
 
 <histogram
@@ -589,6 +617,20 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
+<histogram
+    name="ContextualTasks.PermanentToolbarButton.UserAction.OpenSidePanel.ThreadAction"
+    enum="ContextualTasksPermanentToolbarButtonThreadAction"
+    expires_after="2027-04-15">
+  <owner>dianaou@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <summary>
+    Recorded when the user clicks the permanently pinned contextual tasks
+    toolbar button to open the side panel under Pinning v2. Records whether
+    clicking the button continues an existing thread associated with the active
+    tab or starts a new thread.
+  </summary>
+</histogram>
+
 <histogram name="ContextualTasks.Session.Completed" enum="Boolean"
     expires_after="2027-03-07">
   <owner>sophiechang@chromium.org</owner>
@@ -623,6 +665,18 @@ chromium-metrics-reviews@google.com.
     (unpinned) toolbar button is closed or ended. Measures the time elapsed from
     when the side panel was opened via the ephemeral toolbar button until it was
     closed.
+  </summary>
+</histogram>
+
+<histogram name="ContextualTasks.Session.Duration.PermanentToolbarButton"
+    units="ms" expires_after="2027-04-15">
+  <owner>dianaou@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <summary>
+    Recorded when a contextual tasks side panel session resumed via the
+    permanently pinned toolbar button (functioning ephemerally under Pinning v2)
+    is closed or ended. Measures the time elapsed from when the side panel was
+    reopened via the permanent toolbar button until it was closed.
   </summary>
 </histogram>
 
@@ -716,6 +770,22 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram
+    name="ContextualTasks.SidePanel.UserAction.Close.PermanentToolbarButton"
+    enum="Boolean" expires_after="2027-06-18">
+  <owner>dianaou@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <summary>
+    Recorded when the user closes the side panel (e.g. via the side panel close
+    button), for sessions that were resumed via the permanently pinned toolbar
+    button (functioning ephemerally under Pinning v2). Unlike
+    ContextualTasks.PermanentToolbarButton.UserAction.CloseSidePanel (which
+    records clicking the toolbar button itself to toggle any open side panel
+    closed), this slices side panel closures by the session's entry source.
+    Always recorded as true.
+  </summary>
+</histogram>
+
 <histogram name="ContextualTasks.Tab.ClosedWithSidePanelOpenState"
     enum="ContextualTasksTabCloseState" expires_after="2027-06-18">
   <owner>nguyenbryan@google.com</owner>
@@ -761,6 +831,56 @@ chromium-metrics-reviews@google.com.
         summary="The user changed tabs which resulted in staying on the
                  existing thread."/>
   </token>
+</histogram>
+
+<histogram name="ContextualTasks.TabPicker.IframeRenderLatencyMs" units="ms"
+    expires_after="2027-03-07">
+  <owner>hujasonx@google.com</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <summary>
+    Time from the tab picker iframe navigation start (performance.timeOrigin) in
+    the Contextual Tasks component extension until the tab picker element
+    completes its initial DOM render (firstUpdated) of the trigger button.
+    Recorded once per tab picker iframe load.
+  </summary>
+</histogram>
+
+<histogram name="ContextualTasks.TabPicker.MenuOpenLatencyMs" units="ms"
+    expires_after="2027-03-07">
+  <owner>hujasonx@google.com</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <summary>
+    Time from when the user triggers opening the tab picker flyout in the
+    Contextual Tasks component extension (via hover, click, or keyboard) until
+    the menu is positioned and presented to the user. Recorded each time the
+    menu successfully finishes opening in either unbounded mode or fallback
+    bounded mode.
+  </summary>
+</histogram>
+
+<histogram name="ContextualTasks.TabPicker.SuggestionsLoadLatencyMs" units="ms"
+    expires_after="2027-03-07">
+  <owner>hujasonx@google.com</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <summary>
+    Time from the tab picker iframe navigation start (performance.timeOrigin) in
+    the Contextual Tasks component extension until recent tab suggestions are
+    fetched from the browser and rendered into the flyout menu. Recorded once
+    per tab picker iframe load when getRecentTabs() succeeds.
+  </summary>
+</histogram>
+
+<histogram name="ContextualTasks.TabPicker.UnboundedPresentationResult"
+    enum="ContextualTasksTabPickerUnboundedPresentationResult"
+    expires_after="2027-03-07">
+  <owner>hujasonx@google.com</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <summary>
+    Records the presentation outcome when opening the tab picker flyout in the
+    Contextual Tasks component extension. Differentiates successful presentation
+    via the Unbounded Element API from fallbacks when the API is unsupported by
+    the platform and runtime presentation failures.
+  </summary>
 </histogram>
 
 <histogram

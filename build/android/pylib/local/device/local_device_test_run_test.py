@@ -359,6 +359,24 @@ class LocalDeviceTestRunTest(unittest.TestCase):
         with self.assertRaises(test_exception.InvalidShardingSettings):
             test_run._ApplyExternalSharding(['a', 'b'], 0, -1)
 
+    def testCompilePackages(self):
+        device = mock.MagicMock()
+        local_device_test_run.CompilePackages(
+            ['org.chromium.test'], device, num_tests=20
+        )
+        device.RunShellCommand.assert_not_called()
+
+        local_device_test_run.CompilePackages(
+            ['org.chromium.test', 'org.chromium.test', 'org.chromium.app'],
+            device,
+            num_tests=21,
+        )
+        self.assertEqual(device.RunShellCommand.call_count, 2)
+        self.assertEqual(
+            device.RunShellCommand.call_args_list[0][0][0],
+            ['cmd', 'package', 'compile', '-m', 'speed', 'org.chromium.test'],
+        )
+
     @mock.patch('devil.android.sdk.adb_wrapper.AdbWrapper.GetAdbPath')
     @mock.patch('pylib.constants.GetOutDirectory', return_value='/tmp/out')
     @mock.patch('devil_chromium.Initialize')
@@ -386,6 +404,26 @@ class LocalDeviceTestRunTest(unittest.TestCase):
         args.sharding_strategy = 'hash'
         env = local_device_environment.LocalDeviceEnvironment(args, None, None)
         self.assertEqual(env.sharding_strategy, 'hash')
+
+    def _RecoverDevices(self, force_main_user):
+        device = mock.MagicMock()
+        test_run = TestLocalDeviceTestRun()
+        test_run._env.force_main_user = force_main_user
+        test_run._env.parallel_devices.pMap.side_effect = lambda f: f(device)
+        with mock.patch.object(
+            local_device_test_run.device_recovery, 'RecoverDevice'
+        ) as mock_recover:
+            test_run._RecoverDevices()
+        mock_recover.assert_called_once_with(device, None)
+        return device
+
+    def testRecoverDevices_restoresMainUser(self):
+        device = self._RecoverDevices(force_main_user=True)
+        device.EnsureMainUser.assert_called_once_with()
+
+    def testRecoverDevices_noForceMainUser(self):
+        device = self._RecoverDevices(force_main_user=False)
+        device.EnsureMainUser.assert_not_called()
 
 
 if __name__ == '__main__':

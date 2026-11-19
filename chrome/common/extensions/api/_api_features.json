@@ -368,10 +368,6 @@
     "contexts": ["privileged_extension"],
     "dependencies": ["permission:downloads"]
   },
-  "echoPrivate": {
-    "dependencies": ["permission:echoPrivate"],
-    "contexts": ["privileged_extension"]
-  },
   "enterprise.hardwarePlatform": {
     "dependencies": ["permission:enterprise.hardwarePlatform"],
     "contexts": ["privileged_extension"]
@@ -742,16 +738,6 @@
     "dependencies": ["permission:pdfViewerPrivate"],
     "contexts": ["privileged_extension"]
   },
-  "printing": {
-    "dependencies": ["permission:printing"],
-    "contexts": ["privileged_extension"],
-    "required_buildflags": ["use_cups"]
-  },
-  "printingMetrics": {
-    "dependencies": ["permission:printingMetrics"],
-    "contexts": ["privileged_extension"],
-    "required_buildflags": ["use_cups"]
-  },
   "privacy": {
     "dependencies": ["permission:privacy"],
     "contexts": ["privileged_extension"]
@@ -819,10 +805,6 @@
   },
   "smartCardProviderPrivate": {
     "dependencies": ["permission:smartCardProviderPrivate"],
-    "contexts": ["privileged_extension"]
-  },
-  "systemLog": {
-    "dependencies": ["permission:systemLog"],
     "contexts": ["privileged_extension"]
   },
   "systemPrivate": {

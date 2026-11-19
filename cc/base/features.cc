@@ -226,6 +226,19 @@ bool IsEligibleForThrottleMainFrameTo60Hz() {
       std::memory_order_relaxed);
 }
 
+bool IsThrottleMainFrameTo60HzEnabled(bool is_webview) {
+  if (!IsEligibleForThrottleMainFrameTo60Hz()) {
+    return false;
+  }
+#if BUILDFLAG(IS_ANDROID)
+  const base::Feature& feature =
+      is_webview ? kThrottleMainFrameTo60HzWebView : kThrottleMainFrameTo60Hz;
+#else
+  const base::Feature& feature = kThrottleMainFrameTo60Hz;
+#endif
+  return base::FeatureList::IsEnabled(feature);
+}
+
 BASE_FEATURE(kUseLayerListsByDefault, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kProgrammaticScrollAnimationOverride,
@@ -352,6 +365,9 @@ BASE_FEATURE(kDeferMainFrameBeforeCommitWithPendingTree,
 
 // Kill switch for https://crbug.com/569098933.
 BASE_FEATURE(kOmitTransparentSolidQuadsForNoopBlendModes,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kViewTransitionsAvoidDuplicateCaptureRenderPass,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 }  // namespace features

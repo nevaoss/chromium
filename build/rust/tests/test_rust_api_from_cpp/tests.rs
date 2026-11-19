@@ -122,8 +122,8 @@ fn test_std_unique_ptr() {
     use ::test_std_types::{CreateUniquePtr, GetValueFromUniquePtr};
 
     // `std::unique_ptr<int>` uses a layout-compatible type from `cc_std`.
-    let mut ptr: unique_ptr<i32> = CreateUniquePtr(123);
-    assert_eq!(*ptr.as_mut(), 123);
+    let ptr: unique_ptr<i32> = CreateUniquePtr(123);
+    assert_eq!(*ptr, 123);
     assert_eq!(GetValueFromUniquePtr(ptr), 123);
 
     // Ownership can move between C++ and Rust.  (Both sides allocate and free
@@ -136,6 +136,26 @@ fn test_std_unique_ptr() {
 
     // Memory allocated by Rust can be freed by C++.
     assert_eq!(GetValueFromUniquePtr(unique_ptr::new(789)), 789);
+}
+
+#[gtest(TestRustApiFromCpp, StdVector)]
+fn test_std_vector() {
+    use ::cc_std::std::vector;
+    use ::test_std_types::{CreateVector, SumVector};
+
+    // `std::vector<int>` uses a layout-compatible type from `cc_std`.
+    let mut v: vector<i32> = CreateVector(1, 2, 3);
+    assert_eq!(v.as_slice(), &[1, 2, 3]);
+
+    // Rust can grow a vector allocated by C++.  (Both sides allocate and free
+    // through C++ `operator new` and `operator delete`, because Rust code uses
+    // `cc_std::std::Allocator`.)
+    v.push(4);
+    assert_eq!(v.len(), 4);
+    assert_eq!(SumVector(v), 10);
+
+    // Memory allocated by Rust can be freed by C++.
+    assert_eq!(SumVector(vector::from(vec![5, 6, 7])), 18);
 }
 
 #[gtest(TestRustApiFromCpp, TemplateInstantiation)]

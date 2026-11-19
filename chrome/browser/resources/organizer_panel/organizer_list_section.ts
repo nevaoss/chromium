@@ -46,7 +46,10 @@ export class OrganizerListSectionElement extends CrLitElement implements
     return {
       delegate: {type: Object},
       items: {type: Array},
-      expanded: {type: Boolean},
+      expanded: {
+        type: Boolean,
+        notify: true,
+      },
       noAnimation_: {type: Boolean},
       showAll_: {type: Boolean},
       searchQuery: {type: String},
@@ -146,7 +149,9 @@ export class OrganizerListSectionElement extends CrLitElement implements
     }
 
     if (changedProperties.has('searchQuery') ||
-        (changedProperties.has('items') && !this.isSearching_())) {
+        (changedProperties.has('items') &&
+         (!this.isSearching_() ||
+          changedProperties.get('items')?.length !== this.items.length))) {
       this.updateFilteredItems_();
     }
 
@@ -207,16 +212,6 @@ export class OrganizerListSectionElement extends CrLitElement implements
     }
   }
 
-  setExpanded(expanded: boolean) {
-    if (this.expanded === expanded) {
-      return;
-    }
-    this.expanded = expanded;
-    assert(this.delegate);
-    this.browserProxy_.handler.setSectionExpanded(
-        this.delegate.getId(), this.expanded);
-  }
-
   protected hasContextMenu_(): boolean {
     return !!this.delegate?.onItemContextMenuClicked;
   }
@@ -234,10 +229,13 @@ export class OrganizerListSectionElement extends CrLitElement implements
   }
 
   protected onExpandedChanged_(e: CustomEvent<{value: boolean}>) {
-    if (this.isSearching_()) {
+    if (this.isSearching_() || this.expanded === e.detail.value) {
       return;
     }
-    this.setExpanded(e.detail.value);
+    this.expanded = e.detail.value;
+    assert(this.delegate);
+    this.browserProxy_.handler.setSectionExpanded(
+        this.delegate.getId(), this.expanded);
   }
 
   protected hasZeroState_(): boolean {
@@ -298,7 +296,47 @@ export class OrganizerListSectionElement extends CrLitElement implements
     if (this.showAll_ || this.isSearching_()) {
       return this.filteredItems_;
     }
-    return this.filteredItems_.slice(0, INITIAL_ITEM_COUNT);
+    const alwaysShowIndices: number[] = [];
+    const regularIndices: number[] = [];
+    for (let i = 0; i < this.filteredItems_.length; i++) {
+      if (this.filteredItems_[i]!.alwaysShow) {
+        alwaysShowIndices.push(i);
+      } else {
+        regularIndices.push(i);
+      }
+    }
+
+    const maxItems = alwaysShowIndices.length > 0 ? INITIAL_ITEM_COUNT + 1 :
+                                                    INITIAL_ITEM_COUNT;
+    const selectedAlwaysShow = alwaysShowIndices.slice(0, maxItems);
+    const selectedRegular =
+        regularIndices.slice(0, maxItems - selectedAlwaysShow.length);
+    const selectedIndices =
+        new Set([...selectedAlwaysShow, ...selectedRegular]);
+    return this.filteredItems_.filter((_, index) => selectedIndices.has(index));
+  }
+
+  override focus() {
+    this.$.header.focus();
+  }
+
+  getNavigableElements(): HTMLElement[] {
+    if (this.hidden) {
+      return [];
+    }
+    const elements: HTMLElement[] = [this.$.header];
+    if (this.isExpanded_()) {
+      elements.push(
+          ...this.shadowRoot.querySelectorAll<OrganizerListSectionItemElement>(
+              'organizer-list-section-item'));
+    }
+    return elements;
+  }
+
+  getVisibleItems(): OrganizerListSectionItemElement[] {
+    return Array.from(
+        this.shadowRoot.querySelectorAll<OrganizerListSectionItemElement>(
+            'organizer-list-section-item'));
   }
 }
 

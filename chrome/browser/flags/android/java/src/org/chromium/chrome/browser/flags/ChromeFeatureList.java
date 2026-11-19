@@ -339,7 +339,6 @@ public abstract class ChromeFeatureList {
     public static final String APB144_PATCH6 = "Apb144Patch6";
     public static final String APB144_PATCH7 = "Apb144Patch7";
     public static final String APB144_PATCH8 = "Apb144Patch8";
-    public static final String APPLY_DEVICE_CHOICE_RENEWAL = "ApplyDeviceChoiceRenewal";
     public static final String APP_SPECIFIC_HISTORY = "AppSpecificHistory";
     public static final String APP_SPECIFIC_HISTORY_VIEW_INTENT = "AppSpecificHistoryViewIntent";
     public static final String ARCHIVED_TABS_TEARDOWN = "ArchivedTabsTeardown";
@@ -550,6 +549,8 @@ public abstract class ChromeFeatureList {
     public static final String DESKTOP_ANDROID_TWA_DISCLOSURES = "DesktopAndroidTWADisclosures";
     public static final String DESKTOP_ANDROID_TWA_DISCLOSURES_HELP_LINK =
             "DesktopAndroidTWADisclosuresHelpLink";
+    public static final String DESKTOP_ANDROID_WEB_APP_HEADER_APP_NAME =
+            "DesktopAndroidWebAppHeaderAppName";
     public static final String DESKTOP_UA_ON_CONNECTED_DISPLAY = "DesktopUAOnConnectedDisplay";
     public static final String DETAILED_LANGUAGE_SETTINGS = "DetailedLanguageSettings";
     public static final String DEVICE_REAUTH_REFACTOR = "DeviceReauthRefactor";
@@ -760,8 +761,6 @@ public abstract class ChromeFeatureList {
             "ResetNativePointerInCreditCardAuthDialog";
     public static final String RFH_HIDDEN_WHEN_HIDDEN_BUT_PAINTING =
             "RFHHiddenWhenHiddenButPainting";
-    public static final String ROBUST_WINDOW_MANAGEMENT_EXPERIMENTAL =
-            "RobustWindowManagementExperimental";
     public static final String SAFETY_FRE_PROMO = "SafetyFrePromo";
     public static final String SAFETY_HUB = "SafetyHub";
     public static final String SAFETY_HUB_DISRUPTIVE_NOTIFICATION_REVOCATION =
@@ -783,8 +782,6 @@ public abstract class ChromeFeatureList {
     public static final String SEGMENTATION_PLATFORM_EPHEMERAL_CARD_RANKER =
             "SegmentationPlatformEphemeralCardRanker";
     public static final String SEND_TAB_TO_SELF_DYNAMIC_SHORTCUTS = "SendTabToSelfDynamicShortcuts";
-    public static final String SEND_TAB_TO_SELF_EXTRA_ENTRY_POINTS =
-            "SendTabToSelfExtraEntryPoints";
     public static final String SEND_TAB_TO_SELF_GESTURE = "SendTabToSelfGesture";
     public static final String SEND_TAB_TO_SELF_MULTI_TAB_SHARE = "SendTabToSelfMultiTabShare";
     public static final String SEND_TAB_TO_SELF_OPEN_NATIVE_APP = "SendTabToSelfOpenNativeApp";
@@ -839,6 +836,8 @@ public abstract class ChromeFeatureList {
             "TabClosureCommittedMethodRefactor";
     public static final String TAB_CLOSURE_METHOD_REFACTOR = "TabClosureMethodRefactor";
     public static final String TAB_GROUP_ACTIONS_SUBMENUS = "TabGroupActionsSubmenus";
+    public static final String TAB_GROUP_CONTEXT_MENU_LIVE_TITLE_UPDATE =
+            "TabGroupContextMenuLiveTitleUpdate";
     public static final String TAB_OPENER_TRACKING = "TabOpenerTracking";
     public static final String TAB_SEARCH_FOR_DESKTOP = "TabSearchForDesktop";
     public static final String TAB_SHARING_TOOLBAR_ANDROID = "TabSharingToolbarAndroid";
@@ -910,8 +909,6 @@ public abstract class ChromeFeatureList {
     public static final String WIDE_SCREEN_FEED_FOR_FOLDABLES = "WideScreenFeedForFoldables";
     public static final String XPLAT_SYNCED_SETUP_THEMES = "XplatSyncedSetupThemes";
     public static final String XSURFACE_METRICS_REPORTING = "XsurfaceMetricsReporting";
-    public static final String YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID =
-            "YourSavedInfoSettingsPageAndroid";
 
     // keep-sorted end
     // LINT.ThenChange(//chrome/browser/flags/android/chrome_feature_list.cc:FeaturesExposedToJava)
@@ -932,7 +929,7 @@ public abstract class ChromeFeatureList {
                             Map.entry(DEVICE_REAUTH_REFACTOR, false),
                             Map.entry(GMSCORE_BIND_SERVICE_OPTIMIZATION, true),
                             Map.entry(NTP_AURORA, true),
-                            Map.entry(NTP_AURORA_V2, false),
+                            Map.entry(NTP_AURORA_V2, true),
                             Map.entry(UNIVERSAL_KEYBOARD_HANDLING, true));
 
     // keep-sorted start group_prefixes=["public static final CachedFlag"]
@@ -984,7 +981,7 @@ public abstract class ChromeFeatureList {
     public static final CachedFlag sAndroidOpenIncognitoAsWindowRestrictions =
             newCachedFlag(ANDROID_OPEN_INCOGNITO_AS_WINDOW_RESTRICTIONS, true);
     public static final CachedFlag sAndroidPageInfoAsAppMenuItem =
-            newCachedFlag(ANDROID_PAGE_INFO_AS_APP_MENU_ITEM, false, true);
+            newCachedFlag(ANDROID_PAGE_INFO_AS_APP_MENU_ITEM, true);
     public static final CachedFlag sAndroidProgressBarVisualUpdate =
             newCachedFlag(
                     ANDROID_PROGRESS_BAR_VISUAL_UPDATE,
@@ -1170,6 +1167,8 @@ public abstract class ChromeFeatureList {
             newCachedFlag(DESKTOP_ANDROID_TWA_DISCLOSURES, true);
     public static final CachedFlag sDesktopAndroidTWADisclosuresHelpLink =
             newCachedFlag(DESKTOP_ANDROID_TWA_DISCLOSURES_HELP_LINK, true);
+    public static final CachedFlag sDesktopAndroidWebAppHeaderAppName =
+            newCachedFlag(DESKTOP_ANDROID_WEB_APP_HEADER_APP_NAME, false);
     public static final CachedFlag sDesktopUAOnConnectedDisplay =
             newCachedFlag(
                     DESKTOP_UA_ON_CONNECTED_DISPLAY,
@@ -1361,11 +1360,6 @@ public abstract class ChromeFeatureList {
                     /* defaultValueInTests= */ true);
     public static final CachedFlag sSafetyHubWeakAndReusedPasswords =
             newCachedFlag(SAFETY_HUB_WEAK_AND_REUSED_PASSWORDS, false);
-    public static final CachedFlag sSendTabToSelfExtraEntryPoints =
-            newCachedFlag(
-                    SEND_TAB_TO_SELF_EXTRA_ENTRY_POINTS,
-                    /* defaultValue= */ false,
-                    /* defaultValueInTests= */ true);
     public static final CachedFlag sSessionRestoreAfterCrash =
             newCachedFlag(SESSION_RESTORE_AFTER_CRASH, true);
     // Do not use this flag directly. Use SettingsInTab.shouldOpenSettingsInTab(), which takes into
@@ -1579,6 +1573,7 @@ public abstract class ChromeFeatureList {
                     sDesktopAndroidTWADeleteBrowserData,
                     sDesktopAndroidTWADisclosures,
                     sDesktopAndroidTWADisclosuresHelpLink,
+                    sDesktopAndroidWebAppHeaderAppName,
                     sDesktopUAOnConnectedDisplay,
                     sDisablePartnerHomepageAndroid,
                     sDocumentPictureInPictureAPI,
@@ -1641,7 +1636,6 @@ public abstract class ChromeFeatureList {
                     sQueuedCompositorWebContentsUpdates,
                     sReportNotificationContentDetectionData,
                     sSafetyHubWeakAndReusedPasswords,
-                    sSendTabToSelfExtraEntryPoints,
                     sSessionRestoreAfterCrash,
                     sSettingsInTab,
                     sSettingsInTabDesktop,
@@ -1729,6 +1723,8 @@ public abstract class ChromeFeatureList {
             newMutableFlagWithSafeDefault(ANDROID_USER_EDUCATION_FRAMEWORK, false);
     public static final MutableFlagWithSafeDefault sAndroidZoomImmersive =
             newMutableFlagWithSafeDefault(ANDROID_ZOOM_IMMERSIVE, false);
+    public static final MutableFlagWithSafeDefault sAutofillCardScanningBugfixes =
+            newMutableFlagWithSafeDefault(AUTOFILL_CARD_SCANNING_BUGFIXES, true);
     public static final MutableFlagWithSafeDefault sAuxiliarySearchHistoryDonation =
             newMutableFlagWithSafeDefault(AUXILIARY_SEARCH_HISTORY_DONATION, false);
     public static final MutableFlagWithSafeDefault sBlueBubbleIphCooldownGroup =
@@ -1747,8 +1743,6 @@ public abstract class ChromeFeatureList {
             newMutableFlagWithSafeDefault(BROWSER_CONTROLS_SCROLL_SNAP_ANIMATION, false);
     public static final MutableFlagWithSafeDefault sBrowsingHistoryFilterByActor =
             newMutableFlagWithSafeDefault(BROWSING_HISTORY_FILTER_BY_ACTOR, false);
-    public static final MutableFlagWithSafeDefault sBrowsingHistoryFilterByDevice =
-            newMutableFlagWithSafeDefault(BROWSING_HISTORY_FILTER_BY_DEVICE, false);
     public static final MutableFlagWithSafeDefault sBrowsingHistoryFilterByDomain =
             newMutableFlagWithSafeDefault(BROWSING_HISTORY_FILTER_BY_DOMAIN, false);
     public static final MutableFlagWithSafeDefault sCrossWindowTabGroupOperations =
@@ -1942,7 +1936,7 @@ public abstract class ChromeFeatureList {
                             Map.entry(
                                     NTP_AURORA_V2,
                                     Map.ofEntries(
-                                            Map.entry(NTP_AURORA_V2_ACTION_CHIPS, "0"),
+                                            Map.entry(NTP_AURORA_V2_ACTION_CHIPS, "1"),
                                             Map.entry(NTP_AURORA_V2_LAYOUT_TYPE, "0"))),
                             Map.entry(
                                     XPLAT_SYNCED_SETUP_THEMES,
@@ -2499,6 +2493,9 @@ public abstract class ChromeFeatureList {
     public static final MutableBooleanParamWithSafeDefault
             sAndroidTabDeclutterArchiveOnDesktopForceDisable =
                     sAndroidTabDeclutterArchiveOnDesktop.newBooleanParam("force_disable", false);
+    public static final MutableIntParamWithSafeDefault
+            sAutofillCardScanningBugfixesAvailabilityTimeoutMs =
+                    sAutofillCardScanningBugfixes.newIntParam("availability_timeout_ms", 200);
     public static final MutableBooleanParamWithSafeDefault
             sCrossWindowTabGroupOperationsRemoteGroupOperations =
                     sCrossWindowTabGroupOperations.newBooleanParam(

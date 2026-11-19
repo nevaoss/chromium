@@ -14,14 +14,39 @@
 #include "ui/compositor/layer_nine_patch.h"
 #include "ui/decoration/decoration.h"
 #include "ui/decoration/shadow.h"
+#include "ui/decoration/shadow_with_highlight_border.h"
 #include "ui/views/view.h"
+#include "ui/views/view_decoration.h"
 #include "ui/views/view_observer.h"
-#include "ui/views/view_shadow.h"
 #include "ui/views/widget/widget.h"
 
 namespace ash {
 
 namespace {
+
+ui::decoration::Shadow* GetShadow(ui::Decoration* decoration) {
+  if (auto* shadow = decoration->GetSourceAs<ui::decoration::Shadow>()) {
+    return shadow;
+  }
+  if (auto* shadow_with_border =
+          decoration
+              ->GetSourceAs<ui::decoration::ShadowWithHighlightBorder>()) {
+    return shadow_with_border->shadow();
+  }
+  return nullptr;
+}
+
+const ui::decoration::Shadow* GetShadow(const ui::Decoration* decoration) {
+  if (const auto* shadow = decoration->GetSourceAs<ui::decoration::Shadow>()) {
+    return shadow;
+  }
+  if (const auto* shadow_with_border =
+          decoration
+              ->GetSourceAs<ui::decoration::ShadowWithHighlightBorder>()) {
+    return shadow_with_border->shadow();
+  }
+  return nullptr;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // SystemShadowImpl:
@@ -52,14 +77,16 @@ class SystemShadowImpl : public SystemShadow {
 ////////////////////////////////////////////////////////////////////////////////
 // SystemViewShadow:
 
-// An implementation of `SystemShadow`. It is based on ViewShadow. The
-// ViewShadow is added in the layers beneath the view and adjusts its content
-// bounds with the view's bounds. Do not manually set the content bounds.
+// An implementation of `SystemShadow`. It is based on ViewDecoration. The
+// ViewDecoration is added in the layers beneath the view and adjusts its
+// content bounds with the view's bounds. Do not manually set the content
+// bounds.
 class SystemViewShadow : public SystemShadow, public views::ViewObserver {
  public:
   SystemViewShadow(views::View* view, SystemShadow::Type type)
-      : view_shadow_(view, SystemShadow::GetElevationFromType(type)) {
-    view_shadow_.decoration()->GetSourceAs<ui::decoration::Shadow>()->SetStyle(
+      : view_decoration_(view) {
+    view_decoration_.SetShadow(
+        SystemShadow::GetElevationFromType(type),
         ui::decoration::Shadow::Style::kChromeOSSystemUI);
     view_observation_.Observe(view);
     if (auto* widget = view->GetWidget()) {
@@ -82,12 +109,14 @@ class SystemViewShadow : public SystemShadow, public views::ViewObserver {
 
  private:
   // SystemShadow:
-  ui::Decoration* decoration() override { return view_shadow_.decoration(); }
+  ui::Decoration* decoration() override {
+    return view_decoration_.decoration();
+  }
   const ui::Decoration* decoration() const override {
-    return view_shadow_.decoration();
+    return view_decoration_.decoration();
   }
 
-  views::ViewShadow view_shadow_;
+  views::ViewDecoration view_decoration_;
   base::ScopedObservation<views::View, views::ViewObserver> view_observation_{
       this};
 };
@@ -181,8 +210,8 @@ int SystemShadow::GetElevationFromType(Type type) {
 }
 
 void SystemShadow::SetType(SystemShadow::Type type) {
-  decoration()->GetSourceAs<ui::decoration::Shadow>()->SetElevation(
-      SystemShadow::GetElevationFromType(type));
+  GetShadow(decoration())
+      ->SetElevation(SystemShadow::GetElevationFromType(type));
 }
 
 void SystemShadow::SetContentBounds(const gfx::Rect& bounds) {
@@ -214,15 +243,15 @@ void SystemShadow::OnColorProviderChanged() {
 }
 
 const gfx::ShadowValues SystemShadow::GetShadowValuesForTesting() const {
-  return decoration()
-      ->GetSourceAs<ui::decoration::Shadow>()
-      ->details_for_testing()  // IN-TEST
-      ->spec;
+  return GetShadow(decoration())
+      ->GetSpec(decoration()->content_bounds(), decoration()->rounded_corners())
+      .value_or(gfx::ShadowValues());
 }
 
 void SystemShadow::UpdateShadowColors(const ui::ColorProvider* color_provider) {
-  decoration()->GetSourceAs<ui::decoration::Shadow>()->SetColorMap(
-      StyleUtil::CreateShadowElevationToColorsMap(color_provider));
+  GetShadow(decoration())
+      ->SetColorMap(
+          StyleUtil::CreateShadowElevationToColorsMap(color_provider));
 }
 
 }  // namespace ash

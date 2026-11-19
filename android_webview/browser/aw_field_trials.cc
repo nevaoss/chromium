@@ -19,6 +19,7 @@
 #include "components/metrics/metrics_features.h"
 #include "components/metrics/persistent_histograms.h"
 #include "components/payments/content/android/payment_feature_map.h"
+#include "components/payments/core/features.h"
 #include "components/permissions/features.h"
 #include "components/safe_browsing/core/common/features.h"
 #include "components/variations/feature_overrides.h"
@@ -179,6 +180,11 @@ void AwFieldTrials::RegisterFeatureOverrides(base::FeatureList* feature_list) {
 
   // WebView does not support handling payment links.
   aw_feature_overrides.DisableFeature(blink::features::kPaymentLinkDetection);
+
+  // DISABLED_TEMPORARY: WebView needs to be updated to support 3D-Secure
+  // Telemetry b/575486194.
+  aw_feature_overrides.DisableFeature(
+      ::payments::features::kThreeDSecureTelemetry);
 
   // WebView does not support overlay fullscreen yet for video overlays.
   aw_feature_overrides.DisableFeature(media::kOverlayFullscreenVideo);
@@ -408,6 +414,11 @@ void AwFieldTrials::RegisterFeatureOverrides(base::FeatureList* feature_list) {
   // unconditionally retain caches in the face of memory pressure signals.
   aw_feature_overrides.DisableFeature(
       net::features::kIgnoreQuicCryptoConfigMemoryPressure);
+
+  // DISABLED_INCOMPATIBLE: WebView does not support the browser-style keyboard
+  // context menu or dropdown selection menu.
+  aw_feature_overrides.DisableFeature(
+      blink::features::kAndroidKeyboardContextMenu);
 }
 
 void AwFieldTrials::EnableRuntimeMutableFeatures(

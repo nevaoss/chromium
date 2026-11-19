@@ -109,8 +109,6 @@ static_library("test_support") {
     "../browser/file_system_access/mock_file_system_access_permission_grant.h",
     "../browser/file_system_access/spying_shared_handle_state_factory.cc",
     "../browser/file_system_access/spying_shared_handle_state_factory.h",
-    "../browser/first_party_sets/test/scoped_mock_first_party_sets_handler.cc",
-    "../browser/first_party_sets/test/scoped_mock_first_party_sets_handler.h",
     "../browser/font_access/font_access_test_utils.cc",
     "../browser/font_access/font_access_test_utils.h",
     "../browser/installedapp/test/installed_app_provider_impl_test_utils.cc",
@@ -1572,7 +1570,6 @@ test("content_browsertests") {
     "../browser/file_system_access/file_system_access_sync_access_handle_browsertest.cc",
     "../browser/file_system_access/file_system_chooser_browsertest.cc",
     "../browser/find_request_manager_browsertest.cc",
-    "../browser/first_party_sets/test/first_party_sets_initialization_browsertest.cc",
     "../browser/font_access/font_access_manager_browsertest.cc",
     "../browser/font_unique_name_lookup/font_unique_name_browsertest.cc",
     "../browser/form_controls_browsertest.cc",
@@ -2347,6 +2344,12 @@ test("content_browsertests") {
           [ "../browser/compute_pressure/pressure_service_browsertest.cc" ]
     }
 
+    if (enable_device_bound_sessions) {
+      sources +=
+          [ "../browser/network/device_bound_session_js_api_browsertest.cc" ]
+      deps += [ "//crypto:test_support" ]
+    }
+
     if (is_chromeos) {
       deps += [ "//ash/constants" ]
     }
@@ -2721,9 +2724,6 @@ test("content_unittests") {
     "../browser/file_system_access/file_system_access_watch_scope_unittest.cc",
     "../browser/file_system_access/file_system_access_watcher_manager_unittest.cc",
     "../browser/file_system_access/file_system_chooser_unittest.cc",
-    "../browser/first_party_sets/first_party_set_parser_unittest.cc",
-    "../browser/first_party_sets/first_party_sets_handler_impl_instance_unittest.cc",
-    "../browser/first_party_sets/first_party_sets_loader_unittest.cc",
     "../browser/font_access/font_access_manager_unittest.cc",
     "../browser/font_access/font_enumeration_data_source_unittest.cc",
     "../browser/generic_sensor/frame_sensor_provider_proxy_unittest.cc",
@@ -3145,7 +3145,6 @@ test("content_unittests") {
 
   fuzztests = [
     "ActionsParserFuzzTest.ParsesJSONCorrectly",
-    "FirstPartySetFuzzer.ParsesSetsCorrectly",
     "IndexedDbLevelDbCodingFuzzTest.CompareHandlesAnyInput",
     "ClearSiteDataHandlerFuzzerTest.ParseHeader",
   ]

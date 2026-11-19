@@ -214,6 +214,15 @@ BASE_FEATURE(kBackToAdIntervention, base::FEATURE_DISABLED_BY_DEFAULT);
 // If enabled, makes battery saver request heavy align wake ups.
 BASE_FEATURE(kBatterySaverModeAlignWakeUps, base::FEATURE_DISABLED_BY_DEFAULT);
 
+#if BUILDFLAG(IS_ANDROID)
+// If enabled, the default ContentBrowserClient::
+// IsContentSchemeURLNavigationAllowed() blocks content:// navigations.
+// Embedders that need content:// navigations either override the method or
+// disable this feature.
+BASE_FEATURE(kBlockContentUriNavigationByDefault,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif
+
 // Broker file operations on disk cache in the Network Service.
 // This is no-op if the network service is hosted in the browser process.
 BASE_FEATURE(kBrokerFileOperationsOnDiskCacheInNetworkService,
@@ -279,6 +288,12 @@ const base::FeatureParam<bool> kCreateSpeculativeRFHFilterRestore{
 // RFH instantly.
 const base::FeatureParam<int> kCreateSpeculativeRFHDelayMs{
     &kDeferSpeculativeRFHCreation, "create_speculative_rfh_delay_ms", 0};
+
+// Lets the browser tell each document at commit whether it may bind
+// RestrictedDeviceBoundSessionManager, and bind it for those that may. Also
+// turns on the DeviceBoundSessionJsApi Blink feature, which exposes
+// DeviceBoundSessionRegistrationObserver.
+BASE_FEATURE(kDeviceBoundSessionJsApi, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When a device bound session
 // (https://github.com/w3c/webappsec-dbsc/blob/main/README.md) is

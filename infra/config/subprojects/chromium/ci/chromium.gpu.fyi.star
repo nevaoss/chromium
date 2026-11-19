@@ -976,7 +976,8 @@ shared_gpu.ci.linux_builder(
             "amd64-generic-vm",
             "ozone_headless",
             "release_builder",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             "dcheck_off",
             "no_symbols",
@@ -1067,7 +1068,8 @@ shared_gpu.ci.linux_builder(
             "android_builder",
             "android_with_static_analysis",
             "release_builder",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             "static_angle",
             "arm",
@@ -1113,7 +1115,8 @@ shared_gpu.ci.linux_builder(
             "android_builder",
             "android_with_static_analysis",
             "release_builder",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             "arm64",
             "static_angle",
@@ -1149,7 +1152,8 @@ shared_gpu.ci.linux_builder(
             "gpu_tests",
             "linux_native_wayland",
             "release_builder",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             "linux",
             "x64",
@@ -1186,7 +1190,8 @@ shared_gpu.ci.linux_builder(
         configs = [
             "gpu_fyi_tests",
             "release_builder",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             "linux",
             "x64",
@@ -1256,7 +1261,8 @@ shared_gpu.ci.linux_builder(
         configs = [
             "gpu_fyi_tests",
             "release_builder",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             "tsan",
             "linux",
@@ -1311,7 +1317,8 @@ shared_gpu.ci.mac_builder(
         configs = [
             "gpu_fyi_tests",
             "release_builder",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             "x64",
             "mac",
@@ -1381,7 +1388,8 @@ shared_gpu.ci.mac_builder(
         configs = [
             "gpu_fyi_tests",
             "release_builder",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             "arm64",
             "mac",
@@ -1419,7 +1427,8 @@ shared_gpu.ci.mac_builder(
             "mac",
             "release_builder",
             "remoteexec",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
         ],
     ),
     targets = targets.bundle(),
@@ -1723,9 +1732,6 @@ ci.thin_tester(
         ],
         mixins = [
             "linux_nvidia_gtx_1660_stable",
-            # Temporary for ATL97 outage (b/570132975).
-            "ci_only",
-            "experiments",
         ],
     ),
     targets_settings = targets.settings(
@@ -1811,9 +1817,6 @@ ci.thin_tester(
         ],
         mixins = [
             "linux_amd_rx_5500_xt",
-            # Temporary for ATL97 outage (b/570132975).
-            "ci_only",
-            "experiments",
         ],
         per_test_modifications = {
             "vulkan_pixel_skia_gold_test": targets.remove(
@@ -1983,9 +1986,6 @@ ci.thin_tester(
         ],
         mixins = [
             "linux_intel_uhd_630_stable",
-            # Temporary for ATL97 outage (b/570132975).
-            "ci_only",
-            "experiments",
         ],
         per_test_modifications = {
             "vulkan_pixel_skia_gold_test": targets.remove(
@@ -2430,9 +2430,6 @@ ci.thin_tester(
         ],
         mixins = [
             "mac_arm64_apple_m2_retina_gpu_stable",
-            # Temporary for ATL97 outage (b/570133826).
-            "ci_only",
-            "experiments",
         ],
     ),
     targets_settings = targets.settings(
@@ -3050,9 +3047,6 @@ ci.thin_tester(
         ],
         mixins = [
             "win10_intel_uhd_630_stable",
-            # Temporary for ATL97 outage (b/570132975).
-            "ci_only",
-            "experiments",
         ],
         per_test_modifications = {
             "context_lost_passthrough_graphite_tests": targets.remove(
@@ -3219,9 +3213,6 @@ ci.thin_tester(
         ],
         mixins = [
             "win10_nvidia_gtx_1660_stable",
-            # Temporary for ATL97 outage (b/570132975).
-            "ci_only",
-            "experiments",
         ],
         per_test_modifications = {
             "media_foundation_browser_tests": targets.remove(
@@ -3889,7 +3880,8 @@ gpu_fyi_windows_builder(
             "arm64",
             "gpu_fyi_tests",
             "release_builder",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             "win",
         ],
@@ -3922,7 +3914,8 @@ gpu_fyi_windows_builder(
         configs = [
             "gpu_fyi_tests",
             "release_builder",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             "x86",
             "win",
@@ -3957,7 +3950,8 @@ gpu_fyi_windows_builder(
         configs = [
             "gpu_fyi_tests",
             "release_builder",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             # Remove this once the decision to use cross-compilation or not in
             # crbug.com/1510985 is made.
@@ -4027,7 +4021,8 @@ gpu_fyi_windows_builder(
             "gpu_fyi_tests",
             "dx12vk",
             "release_builder",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             "win",
             "x64",
@@ -4102,7 +4097,8 @@ gpu_fyi_windows_builder(
         configs = [
             "gpu_fyi_tests",
             "release_builder",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             "win",
             "x64",

@@ -352,7 +352,8 @@ enum class GlicInstanceEvent {
   kUserInputSubmitted = 41,
   kFocusedTabContextRequested = 42,
   kResponseStarted = 43,
-  kResponseStopped = 44,
+  // kResponseStopped = 44 - Deprecated in favor of kResponseStoppedByUser,
+  // kResponseStoppedOther, and kResponseStoppedSuccess.
   kTurnCompleted = 45,
   kReaction = 46,
   kShown = 47,
@@ -366,7 +367,11 @@ enum class GlicInstanceEvent {
   // also log kFocusedTabContextRequested).
   kTabContextRequested = 54,
   kOptInImpression = 55,
-  kMaxValue = kOptInImpression,
+  kResponseStoppedByUser = 56,
+  kResponseStoppedOther = 57,
+  kResponseStoppedSuccess = 58,
+  kWebUiStateGuestLoaded = 59,
+  kMaxValue = kWebUiStateGuestLoaded,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicInstanceEvent)
 

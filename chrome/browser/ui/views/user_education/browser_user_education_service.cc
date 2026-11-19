@@ -382,7 +382,7 @@ CreateNavigationAction(GURL target) {
          user_education::FeaturePromoHandle promo_handle) {
         auto* browser = GetBrowser(ctx);
         NavigateParams params(browser, url, ui::PAGE_TRANSITION_LINK);
-        params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+        params.disposition = WindowOpenDisposition::kNewForegroundTab;
         Navigate(&params);
       },
       std::move(target));
@@ -767,7 +767,7 @@ void MaybeRegisterChromeFeaturePromos(
                                           chrome::ChromeUINewTabPageURLAsGURL(),
                                           ui::PAGE_TRANSITION_LINK);
                     params.disposition =
-                        WindowOpenDisposition::NEW_FOREGROUND_TAB;
+                        WindowOpenDisposition::kNewForegroundTab;
                     Navigate(&params);
                   }
                 }
@@ -2145,13 +2145,38 @@ void MaybeRegisterChromeFeaturePromos(
               "ideal width.")));
 
   registry.RegisterFeature(std::move(
-      FeaturePromoSpecification::CreateForTutorialPromo(
+      FeaturePromoSpecification::CreateForCustomAction(
           feature_engagement::kIPHSidePanelContextualTasksPinnableFeature,
-          kContextualTasksWebUIToolbarElementId,
+          kContextualTasksEphemeralToolbarButtonElementId,
           IDS_SIDE_PANEL_CONTEXTUAL_TASKS_PINNABLE_IPH,
-          kContextualTasksTutorialId)
-          .SetBubbleArrow(HelpBubbleArrow::kNone)
+          IDS_SIDE_PANEL_CONTEXTUAL_TASKS_PINNABLE_IPH_PIN_SHORTCUT,
+          base::BindRepeating(
+              [](ContextPtr ctx,
+                 user_education::FeaturePromoHandle promo_handle) {
+                BrowserWindowInterface* const browser = GetBrowser(ctx);
+                if (!browser) {
+                  return;
+                }
+                auto* service =
+                    UserEducationServiceFactory::GetForBrowserContext(
+                        browser->GetProfile());
+                user_education::TutorialService* tutorial_service =
+                    service ? service->tutorial_service() : nullptr;
+                if (tutorial_service) {
+                  tutorial_service->StartTutorial(kContextualTasksTutorialId,
+                                                  ctx->GetElementContext());
+                  tutorial_service->LogIPHLinkClicked(
+                      kContextualTasksTutorialId, true);
+                }
+                if (auto* model = PinnedToolbarActionsModel::Get(
+                        browser->GetProfile())) {
+                  model->UpdatePinnedState(
+                      kActionSidePanelShowContextualTasks, true);
+                }
+              }))
+          .SetBubbleArrow(HelpBubbleArrow::kTopRight)
           .SetBubbleIcon(kLightbulbOutlineIcon)
+          .SetCustomActionIsDefault(true)
           .SetInAnyContext(true)
           .SetMetadata(
               147, "dianaou@google.com",
@@ -2159,6 +2184,11 @@ void MaybeRegisterChromeFeaturePromos(
               "to smoothly onboard them into the pinning tutorial.")));
 
   // kIPHContextualTasksEphemeralToolbarButtonFeature:
+  const bool is_ephemeral_button_on_right =
+      contextual_tasks::GetEnableRightHandContextualTasksEphemeralButton() ||
+      contextual_tasks::kEnableCircularEphemeralButtonNextToBatterySaver
+          .Get() ||
+      contextual_tasks::IsContextualTasksPinningV2Enabled();
   registry.RegisterFeature(std::move(
       FeaturePromoSpecification::CreateForToastPromo(
           feature_engagement::kIPHContextualTasksEphemeralToolbarButtonFeature,
@@ -2166,7 +2196,9 @@ void MaybeRegisterChromeFeaturePromos(
           IDS_CONTEXTUAL_TASKS_EPHEMERAL_TOOLBAR_BUTTON_IPH,
           IDS_CONTEXTUAL_TASKS_EPHEMERAL_TOOLBAR_BUTTON_IPH_SCREENREADER,
           FeaturePromoSpecification::AcceleratorInfo())
-          .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
+          .SetBubbleArrow(is_ephemeral_button_on_right
+                              ? HelpBubbleArrow::kTopRight
+                              : HelpBubbleArrow::kTopLeft)
           .SetMetadata(148, "dianaou@google.com",
                        "Triggered when the ephemeral contextual tasks toolbar "
                        "button is shown after closing the side panel.")));
@@ -2663,24 +2695,7 @@ void MaybeRegisterChromeTutorials(
   {  // Contextual Tasks tutorial
     auto contextual_tasks_tutorial =
         TutorialDescription::Create<kContextualTasksTutorialMetricPrefix>(
-
-            // Bubble step - overflow menu button
-            BubbleStep(kContextualTasksWebUIOverflowMenuElementId)
-                .SetBubbleBodyText(IDS_TUTORIAL_CONTEXTUAL_TASKS_STEP1)
-                .SetBubbleArrow(HelpBubbleArrow::kTopRight)
-                .InAnyContext(),
-
-            // Bubble step - pin button
-            BubbleStep(kContextualTasksWebUIOverflowMenuPinButtonElementId)
-                .SetBubbleBodyText(IDS_TUTORIAL_CONTEXTUAL_TASKS_STEP2)
-                .SetBubbleArrow(HelpBubbleArrow::kRightCenter)
-                .InAnyContext(),
-
-            // Hidden step - wait for pin button to be hidden?
-            HiddenStep::WaitForHidden(
-                kContextualTasksWebUIOverflowMenuPinButtonElementId),
-
-            // Completion of the tutorial after side panel appears.
+            // Completion of the tutorial after the shortcut is pinned.
             BubbleStep(
                 kPinnedToolbarActionShowSidePanelContextualTasksElementId)
                 .SetBubbleBodyText(IDS_TUTORIAL_CONTEXTUAL_TASKS_STEP3)
@@ -2688,7 +2703,7 @@ void MaybeRegisterChromeTutorials(
                 .InAnyContext());
 
     contextual_tasks_tutorial.metadata.additional_description =
-        "Tutorial for pinning Google Search AI Mode.";
+        "Tutorial for pinning Google Search in side panel.";
     contextual_tasks_tutorial.metadata.launch_milestone = 147;
     contextual_tasks_tutorial.metadata.owners = "dianaou@google.com";
 

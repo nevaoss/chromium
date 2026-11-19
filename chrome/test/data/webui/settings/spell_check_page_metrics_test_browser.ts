@@ -4,7 +4,7 @@
 
 import type {LanguageHelper, LanguageSettingsMetricsProxy, LanguageSettingsPageImpressionType, SettingsSpellCheckPageElement} from 'chrome://settings/lazy_load.js';
 import {getLanguageHelperInstance, LanguageHelperImpl, LanguagesBrowserProxyImpl, LanguageSettingsActionType, LanguageSettingsMetricsProxyImpl} from 'chrome://settings/lazy_load.js';
-import {CrSettingsPrefs, PrefsBrowserProxy, PrefService} from 'chrome://settings/settings.js';
+import {PrefsBrowserProxy, PrefService} from 'chrome://settings/settings.js';
 import {assertEquals} from 'chrome://webui-test/chai_assert.js';
 
 // <if expr="_google_chrome or not is_macosx">
@@ -42,10 +42,6 @@ suite('SpellCheckPageMetricsBrowser', function() {
   let browserProxy: TestLanguagesBrowserProxy;
   let languageSettingsMetricsProxy: TestSpellCheckSettingsMetricsProxy;
   let prefService: PrefService;
-
-  suiteSetup(function() {
-    CrSettingsPrefs.deferInitialization = true;
-  });
 
   setup(async function() {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
@@ -104,6 +100,7 @@ suite('SpellCheckPageMetricsBrowser', function() {
   suite('MetricsOfficialBuild', function() {
     test('records when selecting basic spell check', async () => {
       prefService.setPrefValue('spellcheck.use_spelling_service', true);
+      await microtasksFinished();
       const basicServiceSelect =
           spellCheckPage.shadowRoot.querySelector<HTMLElement>(
               '#spellingServiceDisable');
@@ -118,6 +115,7 @@ suite('SpellCheckPageMetricsBrowser', function() {
 
     test('records when selecting enhanced spell check', async () => {
       prefService.setPrefValue('spellcheck.use_spelling_service', false);
+      await microtasksFinished();
       const enhancedServiceSelect = spellCheckPage.$.spellingServiceEnable;
       enhancedServiceSelect.click();
       await microtasksFinished();

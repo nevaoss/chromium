@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "base/feature_list.h"
 #include "base/files/scoped_temp_dir.h"
@@ -299,15 +300,21 @@ class ExtensionTabsTest : public ExtensionApiTest {
   }
 
   // Moves the tab `tab_id` with `move_properties` and returns the moved tab.
+  // If `caller` is set, the call comes from that window.
   base::DictValue RunMoveFunction(const Extension* extension,
                                   int tab_id,
-                                  const std::string& move_properties) {
+                                  const std::string& move_properties,
+                                  BrowserWindowInterface* caller = nullptr) {
     auto function = base::MakeRefCounted<TabsMoveFunction>();
     function->set_extension(extension);
+    const std::string args =
+        base::StringPrintf("[%d, %s]", tab_id, move_properties.c_str());
+    if (caller) {
+      return utils::ToDict(RunFunctionWithDispatcherDelegateAndReturnValue(
+          function, args, caller));
+    }
     return utils::ToDict(utils::RunFunctionAndReturnSingleResult(
-        function.get(),
-        base::StringPrintf("[%d, %s]", tab_id, move_properties.c_str()),
-        profile()));
+        function.get(), args, profile()));
   }
 };
 
@@ -1067,7 +1074,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionApiTabsIwaDuplicateTest,
 IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, DuplicateTab) {
   content::OpenURLParams params =
       content::OpenURLParams::CreateBrowserInitiated(
-          GURL(url::kAboutBlankURL), WindowOpenDisposition::NEW_FOREGROUND_TAB,
+          GURL(url::kAboutBlankURL), WindowOpenDisposition::kNewForegroundTab,
           ui::PAGE_TRANSITION_LINK);
   content::WebContents* web_contents =
       browser()->OpenURL(params, /*navigation_handle_callback=*/{});
@@ -1105,7 +1112,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, DuplicateTab) {
 IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, DuplicateTabNoPermission) {
   content::OpenURLParams params =
       content::OpenURLParams::CreateBrowserInitiated(
-          GURL(url::kAboutBlankURL), WindowOpenDisposition::NEW_FOREGROUND_TAB,
+          GURL(url::kAboutBlankURL), WindowOpenDisposition::kNewForegroundTab,
           ui::PAGE_TRANSITION_LINK);
   content::WebContents* web_contents =
       browser()->OpenURL(params, /*navigation_handle_callback=*/{});
@@ -1327,7 +1334,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, DiscardedProperty) {
   // Create two additional tabs and wait for them to finish loading.
   content::OpenURLParams params =
       content::OpenURLParams::CreateBrowserInitiated(
-          GURL(url::kAboutBlankURL), WindowOpenDisposition::NEW_BACKGROUND_TAB,
+          GURL(url::kAboutBlankURL), WindowOpenDisposition::kNewBackgroundTab,
           ui::PAGE_TRANSITION_LINK);
   content::WebContents* web_contents_a =
       browser()->OpenURL(params, /*navigation_handle_callback=*/{});
@@ -1911,7 +1918,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, Freezing) {
   // Create a background tab.
   ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL(url::kAboutBlankURL),
-      WindowOpenDisposition::NEW_BACKGROUND_TAB,
+      WindowOpenDisposition::kNewBackgroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
   content::WebContents* web_contents =
       GetTabListInterface()->GetTab(1)->GetContents();
@@ -2006,7 +2013,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, AutoDiscardableProperty) {
   // Create two additional tabs.
   content::OpenURLParams params =
       content::OpenURLParams::CreateBrowserInitiated(
-          GURL(url::kAboutBlankURL), WindowOpenDisposition::NEW_BACKGROUND_TAB,
+          GURL(url::kAboutBlankURL), WindowOpenDisposition::kNewBackgroundTab,
           ui::PAGE_TRANSITION_LINK);
   content::WebContents* web_contents_a =
       browser()->OpenURL(params, /*navigation_handle_callback=*/{});
@@ -2304,7 +2311,7 @@ double GetZoomFactor(const content::WebContents* web_contents) {
 
 content::OpenURLParams GetOpenParams(const char* url) {
   return content::OpenURLParams::CreateBrowserInitiated(
-      GURL(url), WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      GURL(url), WindowOpenDisposition::kNewForegroundTab,
       ui::PAGE_TRANSITION_LINK);
 }
 
@@ -2593,7 +2600,7 @@ IN_PROC_BROWSER_TEST_P(ExtensionApiPdfTest, TemporaryAddressSpoof) {
   content::TestNavigationManager navigation_manager(
       second_web_contents, GURL("http://www.facebook.com:83"));
   ui_test_utils::NavigateToURLWithDisposition(
-      browser(), url, WindowOpenDisposition::CURRENT_TAB,
+      browser(), url, WindowOpenDisposition::kCurrentTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
 
   // Ensure the PDF has loaded, and get the WebContents to click.
@@ -3854,6 +3861,28 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, TabsMoveAcrossWindows) {
   EXPECT_EQ(tab_list2->GetTab(4)->GetContents(), web_contentses[4]);
 }
 
+// Tests that moving the only tab of the caller's window to WINDOW_ID_CURRENT
+// leaves it in that window.
+IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, TabsMoveOnlyTabToCurrentWindow) {
+  scoped_refptr<const Extension> extension =
+      ExtensionBuilder("MoveOnlyTabToCurrentWindowTest").Build();
+  BrowserWindowInterface* window = browser_window_interface();
+  TabListInterface* tab_list = TabListInterface::From(window);
+  ASSERT_EQ(1, tab_list->GetTabCount());
+  content::WebContents* contents = tab_list->GetTab(0)->GetContents();
+
+  base::DictValue tab =
+      RunMoveFunction(extension.get(), ExtensionTabUtil::GetTabId(contents),
+                      base::StringPrintf(R"({"windowId": %d, "index": 0})",
+                                         api::windows::WINDOW_ID_CURRENT),
+                      window);
+
+  EXPECT_EQ(ExtensionTabUtil::GetWindowId(window),
+            utils::GetInteger(tab, "windowId"));
+  EXPECT_EQ(0, utils::GetInteger(tab, "index"));
+  EXPECT_EQ(contents, tab_list->GetTab(0)->GetContents());
+}
+
 IN_PROC_BROWSER_TEST_F(ExtensionTabsTest,
                        TabsMoveAcrossWindowsShouldRespectGroupContiguity) {
   scoped_refptr<const Extension> extension =
@@ -3936,6 +3965,131 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, TabsMoveEmptyTabListFails) {
   EXPECT_EQ("No tabs given.",
             utils::RunFunctionAndReturnError(
                 function.get(), R"([[], {"index": 0}])", profile()));
+}
+
+// Tests that moving a tab within a window cannot cross the boundary between
+// pinned and unpinned tabs; the index is clamped to that boundary instead.
+IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, TabsMovePinnedBoundaryWithinWindow) {
+  scoped_refptr<const Extension> extension =
+      ExtensionBuilder("MovePinnedBoundaryTest").Build();
+  TabListInterface* tab_list = GetTabListInterface();
+  std::vector<int> tab_ids = CreateAndGetTabData(tab_list, 4).tab_ids;
+  tab_list->PinTab(tab_list->GetTab(0)->GetHandle());
+  tab_list->PinTab(tab_list->GetTab(1)->GetHandle());
+
+  // [0p, 1p, 2, 3]: a pinned tab moved past the unpinned tabs stops at the end
+  // of the pinned tabs.
+  base::DictValue tab =
+      RunMoveFunction(extension.get(), tab_ids[0], R"({"index": 3})");
+  EXPECT_EQ(tab_ids[0], utils::GetInteger(tab, "id"));
+  EXPECT_EQ(1, utils::GetInteger(tab, "index"));
+  EXPECT_TRUE(utils::GetBoolean(tab, "pinned"));
+
+  // [1p, 0p, 2, 3]: an unpinned tab moved before the pinned tabs stops at the
+  // start of the unpinned tabs.
+  tab = RunMoveFunction(extension.get(), tab_ids[3], R"({"index": 0})");
+  EXPECT_EQ(tab_ids[3], utils::GetInteger(tab, "id"));
+  EXPECT_EQ(2, utils::GetInteger(tab, "index"));
+  EXPECT_FALSE(utils::GetBoolean(tab, "pinned"));
+
+  // [1p, 0p, 3, 2]: -1 moves a pinned tab to the end of the pinned tabs.
+  tab = RunMoveFunction(extension.get(), tab_ids[1], R"({"index": -1})");
+  EXPECT_EQ(tab_ids[1], utils::GetInteger(tab, "id"));
+  EXPECT_EQ(1, utils::GetInteger(tab, "index"));
+  EXPECT_TRUE(utils::GetBoolean(tab, "pinned"));
+}
+
+// Android keeps a moved tab's pinned state.
+#if !BUILDFLAG(IS_ANDROID)
+// Tests that a pinned tab moved to another window is unpinned, and that a tab
+// moved to another window is placed after that window's pinned tabs.
+IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, TabsMovePinnedBoundaryAcrossWindows) {
+  scoped_refptr<const Extension> extension =
+      ExtensionBuilder("MovePinnedAcrossWindowsTest").Build();
+  TabListInterface* tab_list1 = GetTabListInterface();
+  const int window_1_id =
+      ExtensionTabUtil::GetWindowId(browser_window_interface());
+  std::vector<int> tab_ids1 = CreateAndGetTabData(tab_list1, 4).tab_ids;
+  tab_list1->PinTab(tab_list1->GetTab(0)->GetHandle());
+  tab_list1->PinTab(tab_list1->GetTab(1)->GetHandle());
+  BrowserWindowInterface* window_2 =
+      CreateBrowserWindowWithType(BrowserWindowInterface::Type::TYPE_NORMAL);
+  const int window_2_id = ExtensionTabUtil::GetWindowId(window_2);
+  TabListInterface* tab_list2 = TabListInterface::From(window_2);
+  std::vector<int> tab_ids2 = CreateAndGetTabData(tab_list2, 3).tab_ids;
+  tab_list2->PinTab(tab_list2->GetTab(0)->GetHandle());
+  tab_list2->PinTab(tab_list2->GetTab(1)->GetHandle());
+
+  // A pinned tab moved into the pinned region of another window is unpinned and
+  // placed at the start of the unpinned tabs.
+  base::DictValue tab = RunMoveFunction(
+      extension.get(), tab_ids1[0],
+      base::StringPrintf(R"({"windowId": %d, "index": 0})", window_2_id));
+  EXPECT_EQ(tab_ids1[0], utils::GetInteger(tab, "id"));
+  EXPECT_EQ(window_2_id, utils::GetInteger(tab, "windowId"));
+  EXPECT_EQ(2, utils::GetInteger(tab, "index"));
+  EXPECT_FALSE(utils::GetBoolean(tab, "pinned"));
+
+  // A pinned tab moved past the pinned region of another window is unpinned and
+  // keeps the requested index.
+  tab = RunMoveFunction(
+      extension.get(), tab_ids1[1],
+      base::StringPrintf(R"({"windowId": %d, "index": 3})", window_2_id));
+  EXPECT_EQ(tab_ids1[1], utils::GetInteger(tab, "id"));
+  EXPECT_EQ(window_2_id, utils::GetInteger(tab, "windowId"));
+  EXPECT_EQ(3, utils::GetInteger(tab, "index"));
+  EXPECT_FALSE(utils::GetBoolean(tab, "pinned"));
+
+  // An unpinned tab moved into the pinned region of another window is placed at
+  // the start of the unpinned tabs.
+  tab = RunMoveFunction(
+      extension.get(), tab_ids1[2],
+      base::StringPrintf(R"({"windowId": %d, "index": 0})", window_2_id));
+  EXPECT_EQ(tab_ids1[2], utils::GetInteger(tab, "id"));
+  EXPECT_EQ(window_2_id, utils::GetInteger(tab, "windowId"));
+  EXPECT_EQ(2, utils::GetInteger(tab, "index"));
+  EXPECT_FALSE(utils::GetBoolean(tab, "pinned"));
+
+  // A pinned tab moved to another window at -1 is unpinned and appended.
+  tab = RunMoveFunction(
+      extension.get(), tab_ids2[0],
+      base::StringPrintf(R"({"windowId": %d, "index": -1})", window_1_id));
+  EXPECT_EQ(tab_ids2[0], utils::GetInteger(tab, "id"));
+  EXPECT_EQ(window_1_id, utils::GetInteger(tab, "windowId"));
+  ASSERT_EQ(2, tab_list1->GetTabCount());
+  EXPECT_EQ(1, utils::GetInteger(tab, "index"));
+  EXPECT_FALSE(utils::GetBoolean(tab, "pinned"));
+}
+#endif  // !BUILDFLAG(IS_ANDROID)
+
+// Tests that WINDOW_ID_CURRENT resolves to the calling extension's window, not
+// to whichever window the OS last activated.
+IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, TabsMoveToCurrentWindow) {
+  scoped_refptr<const Extension> extension =
+      ExtensionBuilder("MoveToCurrentWindowTest").Build();
+  BrowserWindowInterface* window_1 = browser_window_interface();
+  BrowserWindowInterface* window_2 =
+      CreateBrowserWindowWithType(BrowserWindowInterface::Type::TYPE_NORMAL);
+  CreateAndGetTabData(TabListInterface::From(window_1), 2);
+  CreateAndGetTabData(TabListInterface::From(window_2), 2);
+
+  // Call from each window in turn, so that one of the calls fails if
+  // WINDOW_ID_CURRENT resolves to the last active window instead.
+  for (auto [current, other] :
+       {std::pair(window_1, window_2), std::pair(window_2, window_1)}) {
+    content::WebContents* contents =
+        TabListInterface::From(other)->GetTab(0)->GetContents();
+    base::DictValue tab =
+        RunMoveFunction(extension.get(), ExtensionTabUtil::GetTabId(contents),
+                        base::StringPrintf(R"({"windowId": %d, "index": 0})",
+                                           api::windows::WINDOW_ID_CURRENT),
+                        current);
+
+    EXPECT_EQ(ExtensionTabUtil::GetWindowId(current),
+              utils::GetInteger(tab, "windowId"));
+    EXPECT_EQ(contents,
+              TabListInterface::From(current)->GetTab(0)->GetContents());
+  }
 }
 
 // Tests that saved tabs in a group can be moved.

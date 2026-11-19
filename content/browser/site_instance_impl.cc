@@ -840,9 +840,6 @@ AgentSchedulingGroupHost& SiteInstanceImpl::GetOrCreateAgentSchedulingGroup() {
   // * From the RFH constructor created by InitChild, the child RFH is assumed
   //   to share the same process as the parent so the process will already be
   //   present.
-  // * In SharedStorageRenderThreadWorkletDriver::StartWorkletService, the
-  //   constructor of SharedStorageRenderThreadWorkletDriver will create
-  //   the process for the site instance.
   // Since this is called when SiteInstance already has a process in all these
   // cases, and since site_instance_group_ is created when the SiteInstance's
   // process is set, there should be no case here when there is no
@@ -1708,14 +1705,15 @@ SiteInstanceImpl::GetCompatibleSandboxedSiteInstance(
   return result;
 }
 
-RenderProcessHost* SiteInstanceImpl::GetDefaultProcessForBrowsingInstance() {
+RenderProcessHost*
+SiteInstanceImpl::GetDefaultProcessForBrowsingInstanceForTesting() {
   if (ShouldUseDefaultSiteInstanceGroup()) {
     return browsing_instance_->has_default_site_instance_group()
                ? browsing_instance_->default_site_instance_group()->process()
                : nullptr;
   } else {
     if (SiteInstanceImpl* default_instance =
-            browsing_instance_->default_site_instance()) {
+            browsing_instance_->default_site_instance_.get()) {
       return default_instance->HasProcess() ? default_instance->GetProcess()
                                             : nullptr;
     }

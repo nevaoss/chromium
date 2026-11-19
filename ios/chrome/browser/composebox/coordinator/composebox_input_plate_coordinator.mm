@@ -37,7 +37,6 @@
 #import "ios/chrome/browser/composebox/public/composebox_entrypoint.h"
 #import "ios/chrome/browser/composebox/public/composebox_focus_params.h"
 #import "ios/chrome/browser/composebox/public/composebox_input_item_source.h"
-#import "ios/chrome/browser/composebox/public/composebox_model_option.h"
 #import "ios/chrome/browser/composebox/public/composebox_theme.h"
 #import "ios/chrome/browser/composebox/public/features.h"
 #import "ios/chrome/browser/composebox/shared/coordinator/composebox_attachment_diff.h"
@@ -507,42 +506,6 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
   }
 }
 
-- (void)composeboxViewControllerDidTapFileButton:
-    (ComposeboxInputPlateViewController*)composeboxViewController {
-  [_metricsRecorder
-      recordAttachmentButtonUsed:FuseboxAttachmentButtonType::kFiles];
-  if (![_mediator canAddMoreAttachments]) {
-    [self showMaxAttachmentSnackbarError];
-    return;
-  }
-
-  [_pickerPresenter presentFilePicker];
-}
-
-- (void)composeboxViewControllerDidTapDriveButton:
-    (ComposeboxInputPlateViewController*)composeboxViewController {
-  [_metricsRecorder
-      recordAttachmentButtonUsed:FuseboxAttachmentButtonType::kDriveFiles];
-  if (![_mediator canAddMoreAttachments]) {
-    [self showMaxAttachmentSnackbarError];
-    return;
-  }
-
-  [_pickerPresenter presentDriveFilePicker];
-}
-
-- (void)composeboxViewControllerDidTapAttachTabsButton:
-    (ComposeboxInputPlateViewController*)viewController {
-  if (![_mediator canAddMoreAttachments]) {
-    [self showMaxAttachmentSnackbarError];
-    return;
-  }
-
-  [_metricsRecorder
-      recordAttachmentButtonUsed:FuseboxAttachmentButtonType::kTabPicker];
-  [_pickerPresenter presentTabPicker];
-}
-
 - (void)composeboxViewController:
             (ComposeboxInputPlateViewController*)viewController
        didAttemptDragAndDropType:(ComposeboxDragAndDropType)type {
@@ -554,13 +517,6 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
                       didTapTool:(ComposeboxMode)toolMode
                 activationSource:(AiModeActivationSource)activationSource {
   [self selectTool:toolMode activationSource:activationSource];
-}
-
-- (void)composeboxViewController:
-            (ComposeboxInputPlateViewController*)composeboxViewController
-                  didSelectModel:(ComposeboxModelOption)modelOption {
-  [_mediator setModelOption:modelOption explicitUserAction:YES];
-  [_metricsRecorder recordModelSelected:modelOption];
 }
 
 - (void)composeboxViewController:
@@ -680,8 +636,8 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
     UrlLoadParams params = UrlLoadParams::InNewTab(web_params);
     params.disposition = disposition;
     params.in_incognito = isIncognito;
-    if (params.disposition == WindowOpenDisposition::CURRENT_TAB) {
-      params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+    if (params.disposition == WindowOpenDisposition::kCurrentTab) {
+      params.disposition = WindowOpenDisposition::kNewForegroundTab;
     }
     UrlLoadingBrowserAgent::FromBrowser(self.browser)->Load(params);
   }
@@ -985,9 +941,9 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
 }
 
 - (void)composeboxMenuCoordinator:(ComposeboxMenuCoordinator*)coordinator
-                      didTapModel:(ComposeboxModelOption)modelMode {
-  [_mediator setModelOption:modelMode explicitUserAction:YES];
-  [_metricsRecorder recordModelSelected:modelMode];
+                      didTapModel:(omnibox::ModelMode)model {
+  [_mediator setModel:model explicitUserAction:YES];
+  [_metricsRecorder recordModelSelected:model];
 }
 
 - (void)composeboxMenuCoordinator:(ComposeboxMenuCoordinator*)coordinator

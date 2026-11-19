@@ -79,12 +79,6 @@ OfferNotificationBubbleControllerImpl::OfferNotificationBubbleControllerImpl(
 
 std::u16string OfferNotificationBubbleControllerImpl::GetWindowTitle() const {
   switch (offer_.GetOfferType()) {
-    case AutofillOfferData::OfferType::GPAY_CARD_LINKED_OFFER:
-      return l10n_util::GetStringUTF16(
-          IDS_AUTOFILL_CARD_LINKED_OFFER_REMINDER_TITLE);
-    case AutofillOfferData::OfferType::GPAY_PROMO_CODE_OFFER:
-      return l10n_util::GetStringUTF16(
-          IDS_AUTOFILL_GPAY_PROMO_CODE_OFFERS_REMINDER_TITLE);
     case AutofillOfferData::OfferType::WALLET_DIRECT_OFFER:
       return base::UTF8ToUTF16(offer_.GetOfferRewardAmount());
     case AutofillOfferData::OfferType::UNKNOWN:
@@ -92,33 +86,9 @@ std::u16string OfferNotificationBubbleControllerImpl::GetWindowTitle() const {
   }
 }
 
-std::u16string OfferNotificationBubbleControllerImpl::GetOkButtonLabel() const {
-  CHECK_EQ(offer_.GetOfferType(),
-           AutofillOfferData::OfferType::GPAY_CARD_LINKED_OFFER,
-           base::NotFatalUntil::M162);
-  return l10n_util::GetStringUTF16(
-      IDS_AUTOFILL_OFFERS_REMINDER_POSITIVE_BUTTON_LABEL);
-}
-
-std::u16string
-OfferNotificationBubbleControllerImpl::GetPromoCodeButtonTooltip() const {
-  return l10n_util::GetStringUTF16(
-      promo_code_button_clicked_
-          ? IDS_AUTOFILL_PROMO_CODE_OFFER_BUTTON_TOOLTIP_CLICKED
-          : IDS_AUTOFILL_PROMO_CODE_OFFER_BUTTON_TOOLTIP_NORMAL);
-}
-
 AutofillBubbleBase*
 OfferNotificationBubbleControllerImpl::GetOfferNotificationBubbleView() const {
   return bubble_view();
-}
-
-const CreditCard* OfferNotificationBubbleControllerImpl::GetLinkedCard() const {
-  if (card_.has_value()) {
-    return &(*card_);
-  }
-
-  return nullptr;
 }
 
 const AutofillOfferData* OfferNotificationBubbleControllerImpl::GetOffer()
@@ -133,7 +103,6 @@ bool OfferNotificationBubbleControllerImpl::IsIconVisible() const {
 void OfferNotificationBubbleControllerImpl::OnBubbleClosed(
     PaymentsUiClosedReason closed_reason) {
   ResetBubbleViewAndInformBubbleManager();
-  promo_code_button_clicked_ = false;
 
   autofill_metrics::LogOfferNotificationBubbleResult(closed_reason);
 
@@ -142,7 +111,6 @@ void OfferNotificationBubbleControllerImpl::OnBubbleClosed(
 
 void OfferNotificationBubbleControllerImpl::ShowOfferNotificationIfApplicable(
     const AutofillOfferData& offer,
-    const CreditCard* card,
     const OfferNotificationOptions& options) {
   // If this is not the bubble's first show, and offer to be shown has not
   // changed, and it has not been shown for more than
@@ -162,7 +130,7 @@ void OfferNotificationBubbleControllerImpl::ShowOfferNotificationIfApplicable(
   // going to show another bubble anyway.
   HideBubbleAndClearTimestamp(/*should_show_icon=*/true);
 
-  SetupOfferNotification(offer, card);
+  SetupOfferNotification(offer);
 
   if (options.show_notification_automatically) {
     QueueOrShowBubble();
@@ -172,16 +140,12 @@ void OfferNotificationBubbleControllerImpl::ShowOfferNotificationIfApplicable(
 }
 
 void OfferNotificationBubbleControllerImpl::SetupOfferNotification(
-    AutofillOfferData offer,
-    const CreditCard* card) {
+    AutofillOfferData offer) {
   was_bubble_shown_ = false;
   offer_ = std::move(offer);
 
   CHECK(IsIconVisible(), base::NotFatalUntil::M162);
 
-  if (card) {
-    card_ = *card;
-  }
   is_user_gesture_ = false;
 }
 

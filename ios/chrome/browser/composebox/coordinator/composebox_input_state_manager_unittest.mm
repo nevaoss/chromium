@@ -4,7 +4,6 @@
 
 #import "ios/chrome/browser/composebox/coordinator/composebox_input_state_manager.h"
 
-#import "base/test/metrics/histogram_tester.h"
 #import "base/test/scoped_feature_list.h"
 #import "base/test/task_environment.h"
 #import "components/contextual_search/contextual_search_metrics_recorder.h"
@@ -22,6 +21,7 @@
 #import "ios/chrome/browser/composebox/public/features.h"
 #import "ios/chrome/browser/composebox/ui/composebox_input_item.h"
 #import "ios/chrome/browser/composebox/ui/composebox_input_item_collection.h"
+#import "ios/chrome/browser/composebox/ui/composebox_model_item.h"
 #import "ios/chrome/browser/composebox/ui/composebox_ui_config.h"
 #import "ios/chrome/browser/composebox/ui/composebox_ui_input_state.h"
 #import "ios/chrome/browser/shared/model/web_state_list/test/fake_web_state_list_delegate.h"
@@ -42,7 +42,7 @@
 @interface ComposeboxInputStateManager (Testing)
 - (void)didUpdateInputState:(const contextual_search::InputState&)inputState;
 - (ComposeboxMode)defaultTool;
-- (ComposeboxModelOption)defaultModel;
+- (omnibox::ModelMode)defaultModel;
 - (void)onDriveDisclaimerChecked:
     (drive_picker::DriveDisclaimerController::DisclaimerStatus)status;
 - (BOOL)isAttachmentAllowed:(ComposeboxAttachmentOption)attachmentOption;
@@ -146,7 +146,7 @@ TEST_F(ComposeboxInputStateManagerTest, Initialization) {
   // Expect default active mode to be regular search.
   EXPECT_EQ(mode_holder_.mode, ComposeboxMode::kRegularSearch);
   // Expect default active model to be none.
-  EXPECT_EQ(manager_.activeModel, ComposeboxModelOption::kNone);
+  EXPECT_EQ(manager_.activeModel, omnibox::ModelMode::MODEL_MODE_UNSPECIFIED);
 }
 
 // Tests that the manager correctly observes state updates from the model
@@ -788,8 +788,10 @@ TEST_F(ComposeboxInputStateManagerTest,
   omnibox::SearchboxConfig config;
   omnibox::ModelConfig* model_config = config.add_model_configs();
   model_config->set_model(omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
+  model_config->set_menu_label("Thinking");
   omnibox::ModelConfig* regular_config = config.add_model_configs();
   regular_config->set_model(omnibox::ModelMode::MODEL_MODE_GEMINI_REGULAR);
+  regular_config->set_menu_label("Auto");
 
   EXPECT_CALL(*mock_aim_service_, GetSearchboxConfig())
       .WillRepeatedly(testing::Return(&config));
@@ -798,14 +800,23 @@ TEST_F(ComposeboxInputStateManagerTest,
   }
 
   mode_holder_.mode = ComposeboxMode::kAIM;
-  [manager_ setActiveModel:ComposeboxModelOption::kThinking
+  [manager_ setActiveModel:omnibox::ModelMode::MODEL_MODE_GEMINI_PRO
         explicitUserAction:YES];
 
   ComposeboxUIInputState* state = [manager_ computeUIInputStateWithFavicon:nil
                                                        attachedWebStateIDs:{}];
 
   EXPECT_NE(state, nil);
-  EXPECT_EQ(state.activeModel, ComposeboxModelOption::kThinking);
+  ComposeboxModelItem* selectedItem = nil;
+  for (ComposeboxModelItem* item in state.modelItems) {
+    SCOPED_TRACE(static_cast<int>(item.modelMode));
+    if (item.selected) {
+      EXPECT_EQ(selectedItem, nil);
+      selectedItem = item;
+    }
+  }
+  ASSERT_NE(selectedItem, nil);
+  EXPECT_EQ(selectedItem.modelMode, omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
 }
 
 // Tests that `computeUIInputStateWithFavicon:attachedWebStateIDs:` correctly
@@ -826,6 +837,7 @@ TEST_F(ComposeboxInputStateManagerTest,
 
   omnibox::ModelConfig* model_config = config.add_model_configs();
   model_config->set_model(omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
+  model_config->set_menu_label("Thinking");
 
   config.mutable_rule_set()->add_allowed_models(
       omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
@@ -849,12 +861,100 @@ TEST_F(ComposeboxInputStateManagerTest,
   EXPECT_TRUE(state.allowModelPicker);
 
   EXPECT_TRUE([state isToolAvailable:ComposeboxMode::kImageGeneration]);
-  EXPECT_TRUE([state isModelAvailable:ComposeboxModelOption::kThinking]);
+  ASSERT_EQ(state.modelItems.count, 1u);
+  EXPECT_EQ(state.modelItems[0].modelMode,
+            omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
+  EXPECT_FALSE(state.modelItems[0].disabled);
+}
+
+// Tests that the model items contain the allowed models in server order and
+// that the active model is selected.
+TEST_F(ComposeboxInputStateManagerTest, ComputeUIInputState_ModelItems) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kComposeboxAdditionalAdvancedTools);
+
+  omnibox::SearchboxConfig config;
+  for (omnibox::ModelMode model :
+       {omnibox::ModelMode::MODEL_MODE_GEMINI_PRO,
+        omnibox::ModelMode::MODEL_MODE_GEMINI_PRO_AUTOROUTE,
+        omnibox::ModelMode::MODEL_MODE_UNSPECIFIED}) {
+    omnibox::ModelConfig* model_config = config.add_model_configs();
+    model_config->set_model(model);
+    model_config->set_menu_label("Model");
+    model_config->mutable_rule()->set_allow_all_input_types(true);
+    config.mutable_rule_set()->add_allowed_models(model);
+  }
+  EXPECT_CALL(*mock_aim_service_, GetSearchboxConfig())
+      .WillRepeatedly(testing::Return(&config));
+  if (aim_eligibility_callback_) {
+    aim_eligibility_callback_.Run();
+  }
+
+  mode_holder_.mode = ComposeboxMode::kAIM;
+  [manager_ setActiveModel:omnibox::ModelMode::MODEL_MODE_GEMINI_PRO
+        explicitUserAction:YES];
+
+  ComposeboxUIInputState* state = [manager_ computeUIInputStateWithFavicon:nil
+                                                       attachedWebStateIDs:{}];
+
+  ASSERT_EQ(state.modelItems.count, 3u);
+  ComposeboxModelItem* proItem = state.modelItems[0];
+  EXPECT_EQ(proItem.modelMode, omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
+  EXPECT_TRUE(proItem.selected);
+  EXPECT_NSEQ(proItem.title, @"Model");
+  EXPECT_NE(proItem.icon, nil);
+  ComposeboxModelItem* autoItem = state.modelItems[1];
+  EXPECT_EQ(autoItem.modelMode,
+            omnibox::ModelMode::MODEL_MODE_GEMINI_PRO_AUTOROUTE);
+  EXPECT_FALSE(autoItem.selected);
+  EXPECT_FALSE(autoItem.disabled);
+  ComposeboxModelItem* unspecifiedItem = state.modelItems[2];
+  EXPECT_EQ(unspecifiedItem.modelMode,
+            omnibox::ModelMode::MODEL_MODE_UNSPECIFIED);
+  EXPECT_FALSE(unspecifiedItem.selected);
+  EXPECT_FALSE(unspecifiedItem.disabled);
+  EXPECT_NE(unspecifiedItem.icon, nil);
+}
+
+// Tests that models without a server label are not displayed, and that models
+// unknown to the client are displayed with their server label.
+TEST_F(ComposeboxInputStateManagerTest,
+       ComputeUIInputState_ModelItemsRequireLabel) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kComposeboxAdditionalAdvancedTools);
+
+  const omnibox::ModelMode kUnknownModel =
+      static_cast<omnibox::ModelMode>(9999);
+  omnibox::SearchboxConfig config;
+  config.add_model_configs()->set_model(
+      omnibox::ModelMode::MODEL_MODE_GEMINI_PRO_LATEST);
+  omnibox::ModelConfig* unknown_config = config.add_model_configs();
+  unknown_config->set_model(kUnknownModel);
+  unknown_config->set_menu_label("New model");
+  for (const omnibox::ModelConfig& model_config : config.model_configs()) {
+    config.mutable_rule_set()->add_allowed_models(model_config.model());
+  }
+  EXPECT_CALL(*mock_aim_service_, GetSearchboxConfig())
+      .WillRepeatedly(testing::Return(&config));
+  if (aim_eligibility_callback_) {
+    aim_eligibility_callback_.Run();
+  }
+
+  ComposeboxUIInputState* state = [manager_ computeUIInputStateWithFavicon:nil
+                                                       attachedWebStateIDs:{}];
+
+  ASSERT_EQ(state.modelItems.count, 1u);
+  EXPECT_EQ(state.modelItems[0].modelMode, kUnknownModel);
+  EXPECT_NSEQ(state.modelItems[0].title, @"New model");
+  EXPECT_NE(state.modelItems[0].icon, nil);
 }
 
 // Tests that `computeUIInputStateWithFavicon:attachedWebStateIDs:` parses
 // server-configured icons.
 TEST_F(ComposeboxInputStateManagerTest, ComputeUIInputState_ServerIcons) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kComposeboxAdditionalAdvancedTools);
+
   omnibox::SearchboxConfig config;
   omnibox::ToolConfig* tool_config = config.add_tool_configs();
   tool_config->set_tool(omnibox::ToolMode::TOOL_MODE_IMAGE_GEN);
@@ -866,6 +966,7 @@ TEST_F(ComposeboxInputStateManagerTest, ComputeUIInputState_ServerIcons) {
   omnibox::ModelConfig* model_config = config.add_model_configs();
   model_config->set_model(omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
   model_config->mutable_icon()->set_icon_id(omnibox::IconResourceIds::TIMER);
+  model_config->set_menu_label("Server Pro");
 
   config.mutable_rule_set()->add_allowed_models(
       omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
@@ -880,8 +981,9 @@ TEST_F(ComposeboxInputStateManagerTest, ComputeUIInputState_ServerIcons) {
                                                        attachedWebStateIDs:{}];
   EXPECT_NE(state, nil);
   EXPECT_NE([state.uiConfig iconForTool:ComposeboxMode::kImageGeneration], nil);
-  EXPECT_NE([state.uiConfig iconForModel:ComposeboxModelOption::kThinking],
-            nil);
+  ASSERT_EQ(state.modelItems.count, 1u);
+  EXPECT_NSEQ(state.modelItems[0].title, @"Server Pro");
+  EXPECT_NE(state.modelItems[0].icon, nil);
 }
 
 // Tests that `computeUIInputStateWithFavicon:attachedWebStateIDs:` falls back
@@ -889,6 +991,9 @@ TEST_F(ComposeboxInputStateManagerTest, ComputeUIInputState_ServerIcons) {
 // server.
 TEST_F(ComposeboxInputStateManagerTest,
        ComputeUIInputState_UnknownServerIcons) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kComposeboxAdditionalAdvancedTools);
+
   omnibox::SearchboxConfig config;
   omnibox::ToolConfig* tool_config = config.add_tool_configs();
   tool_config->set_tool(omnibox::ToolMode::TOOL_MODE_IMAGE_GEN);
@@ -903,6 +1008,7 @@ TEST_F(ComposeboxInputStateManagerTest,
   model_config->set_model(omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
   model_config->mutable_icon()->set_icon_id(
       static_cast<omnibox::IconResourceIds>(9999));
+  model_config->set_menu_label("Thinking");
 
   config.mutable_rule_set()->add_allowed_models(
       omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
@@ -918,66 +1024,8 @@ TEST_F(ComposeboxInputStateManagerTest,
   EXPECT_NE(state, nil);
   // Default icons should be returned without crashing.
   EXPECT_NE([state.uiConfig iconForTool:ComposeboxMode::kImageGeneration], nil);
-  EXPECT_NE([state.uiConfig iconForModel:ComposeboxModelOption::kThinking],
-            nil);
-}
-
-// Tests that an unsupported server-side `ModelMode` is ignored in the UI state,
-// does not overwrite `kRegular`'s UI config, falls back to the first supported
-// allowed model when selecting the default model, and records the unsupported
-// model histogram.
-TEST_F(ComposeboxInputStateManagerTest,
-       ComputeUIInputState_UnsupportedServerModelIgnored) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(kComposeboxAdditionalAdvancedTools);
-  base::HistogramTester histogram_tester;
-
-  omnibox::SearchboxConfig config;
-
-  omnibox::ModelConfig* regular_config = config.add_model_configs();
-  regular_config->set_model(omnibox::ModelMode::MODEL_MODE_GEMINI_REGULAR);
-  regular_config->set_menu_label("Regular Label");
-  regular_config->set_hint_text("Regular Hint");
-
-  // Add an unsupported model after `MODEL_MODE_GEMINI_REGULAR`.
-  const omnibox::ModelMode kUnsupportedModel =
-      static_cast<omnibox::ModelMode>(9999);
-  omnibox::ModelConfig* unsupported_config = config.add_model_configs();
-  unsupported_config->set_model(kUnsupportedModel);
-  unsupported_config->set_menu_label("Unsupported Label");
-  unsupported_config->set_hint_text("Unsupported Hint");
-
-  // Put the unsupported model first in `allowed_models` so `GetDefaultModel()`
-  // returns `kUnsupportedModel`, followed by `MODEL_MODE_GEMINI_REGULAR`.
-  config.mutable_rule_set()->add_allowed_models(kUnsupportedModel);
-  config.mutable_rule_set()->add_allowed_models(
-      omnibox::ModelMode::MODEL_MODE_GEMINI_REGULAR);
-
-  EXPECT_CALL(*mock_aim_service_, GetSearchboxConfig())
-      .WillRepeatedly(testing::Return(&config));
-  if (aim_eligibility_callback_) {
-    aim_eligibility_callback_.Run();
-  }
-
-  histogram_tester.ExpectUniqueSample(
-      "Omnibox.MobileFusebox.UnsupportedModelMode",
-      static_cast<int>(kUnsupportedModel), 1);
-
-  mode_holder_.mode = ComposeboxMode::kAIM;
-
-  ComposeboxUIInputState* state = [manager_ computeUIInputStateWithFavicon:nil
-                                                       attachedWebStateIDs:{}];
-  ASSERT_NE(state, nil);
-  EXPECT_EQ(state.allowedModels.size(), 1u);
-  EXPECT_TRUE([state isModelAvailable:ComposeboxModelOption::kRegular]);
-  EXPECT_EQ(state.activeModel, ComposeboxModelOption::kRegular);
-
-  // Verify `kRegular` UI config was not overwritten by the unsupported model.
-  ComposeboxUIConfig* ui_config = state.uiConfig;
-  EXPECT_NSEQ([ui_config menuLabelForModel:ComposeboxModelOption::kRegular],
-              @"Regular Label");
-  EXPECT_NSEQ([ui_config hintTextForModel:ComposeboxModelOption::kRegular],
-              @"Regular Hint");
+  ASSERT_EQ(state.modelItems.count, 1u);
+  EXPECT_NE(state.modelItems[0].icon, nil);
 }
 
 // Tests that `computeUIInputStateWithFavicon:attachedWebStateIDs:` disables
@@ -1124,7 +1172,7 @@ TEST_F(ComposeboxInputStateManagerTest, SetActiveModel_NotifiesDelegate) {
       [[FakeComposeboxInputStateManagerDelegate alloc] init];
   manager_.delegate = delegate;
 
-  [manager_ setActiveModel:ComposeboxModelOption::kThinking
+  [manager_ setActiveModel:omnibox::ModelMode::MODEL_MODE_GEMINI_PRO
         explicitUserAction:YES];
 
   EXPECT_TRUE(delegate.didUpdateUIStateCalled);
@@ -1151,7 +1199,7 @@ TEST_F(ComposeboxInputStateManagerTest, SetActiveModel_SwitchesToAIM) {
 
   mode_holder_.mode = ComposeboxMode::kRegularSearch;
 
-  [manager_ setActiveModel:ComposeboxModelOption::kThinking
+  [manager_ setActiveModel:omnibox::ModelMode::MODEL_MODE_GEMINI_PRO
         explicitUserAction:YES];
 
   EXPECT_EQ(mode_holder_.mode, ComposeboxMode::kAIM);
@@ -1177,10 +1225,11 @@ TEST_F(ComposeboxInputStateManagerTest, SetActiveModel_FallbackToDefault) {
 
   mode_holder_.mode = ComposeboxMode::kAIM;
 
-  [manager_ setActiveModel:ComposeboxModelOption::kThinking
+  [manager_ setActiveModel:omnibox::ModelMode::MODEL_MODE_GEMINI_PRO
         explicitUserAction:YES];
 
-  EXPECT_EQ(manager_.activeModel, ComposeboxModelOption::kRegular);
+  EXPECT_EQ(manager_.activeModel,
+            omnibox::ModelMode::MODEL_MODE_GEMINI_REGULAR);
 }
 
 #pragma mark - Reconciliation Tests
@@ -1317,9 +1366,9 @@ TEST_F(ComposeboxInputStateManagerTest,
   }
 
   mode_holder_.mode = ComposeboxMode::kAIM;
-  [manager_ setActiveModel:ComposeboxModelOption::kThinking
+  [manager_ setActiveModel:omnibox::ModelMode::MODEL_MODE_GEMINI_PRO
         explicitUserAction:YES];
-  EXPECT_EQ(manager_.activeModel, ComposeboxModelOption::kThinking);
+  EXPECT_EQ(manager_.activeModel, omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
 
   FakeComposeboxInputStateManagerDelegate* delegate =
       [[FakeComposeboxInputStateManagerDelegate alloc] init];
@@ -1335,7 +1384,7 @@ TEST_F(ComposeboxInputStateManagerTest,
 
   // Reconciliation should have called setActiveModelInInputState:kThinking,
   // which triggers another update.
-  EXPECT_EQ(manager_.activeModel, ComposeboxModelOption::kThinking);
+  EXPECT_EQ(manager_.activeModel, omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
 }
 
 // Tests that reconciliation falls back to default model when model
@@ -1358,9 +1407,9 @@ TEST_F(ComposeboxInputStateManagerTest,
   }
 
   mode_holder_.mode = ComposeboxMode::kAIM;
-  [manager_ setActiveModel:ComposeboxModelOption::kThinking
+  [manager_ setActiveModel:omnibox::ModelMode::MODEL_MODE_GEMINI_PRO
         explicitUserAction:YES];
-  EXPECT_EQ(manager_.activeModel, ComposeboxModelOption::kThinking);
+  EXPECT_EQ(manager_.activeModel, omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
 
   // 2. Load config that DOES NOT allow Gemini Pro.
   omnibox::SearchboxConfig deny_config;
@@ -1391,7 +1440,7 @@ TEST_F(ComposeboxInputStateManagerTest,
   }
 
   mode_holder_.mode = ComposeboxMode::kRegularSearch;
-  EXPECT_EQ(manager_.activeModel, ComposeboxModelOption::kNone);
+  EXPECT_EQ(manager_.activeModel, omnibox::ModelMode::MODEL_MODE_UNSPECIFIED);
 
   FakeComposeboxInputStateManagerDelegate* delegate =
       [[FakeComposeboxInputStateManagerDelegate alloc] init];
@@ -1406,7 +1455,7 @@ TEST_F(ComposeboxInputStateManagerTest,
   [manager_ didUpdateInputState:state];
 
   // Reconciliation should ignore it, so activeModel remains kNone.
-  EXPECT_EQ(manager_.activeModel, ComposeboxModelOption::kNone);
+  EXPECT_EQ(manager_.activeModel, omnibox::ModelMode::MODEL_MODE_UNSPECIFIED);
 
   // UI update should still be triggered because strings might have changed.
   EXPECT_TRUE(delegate.didUpdateUIStateCalled);

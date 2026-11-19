@@ -15,7 +15,10 @@
 #include "third_party/blink/renderer/core/html/forms/html_option_element.h"
 #include "third_party/blink/renderer/core/html/html_area_element.h"
 #include "third_party/blink/renderer/core/html/html_br_element.h"
+#include "third_party/blink/renderer/core/html/html_collection.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
+#include "third_party/blink/renderer/core/html/html_image_element.h"
+#include "third_party/blink/renderer/core/html/html_map_element.h"
 #include "third_party/blink/renderer/core/layout/layout_box.h"
 #include "third_party/blink/renderer/modules/accessibility/ax_node_object.h"
 #include "third_party/blink/renderer/modules/accessibility/ax_object-inl.h"
@@ -30,6 +33,21 @@ void IdsFromAttribute(const Element& element,
                       const QualifiedName& attr_name) {
   SpaceSplitString split_ids(AXObject::AriaAttribute(element, attr_name));
   ids.append_range(split_ids);
+}
+
+// Return the DOM <map> whose children are cached on |ax_image|.
+HTMLMapElement* GetMapOfCachedChildren(const AXObject* ax_image) {
+  if (!ax_image) {
+    return nullptr;
+  }
+  // In the AX tree, <map> children live under the image.
+  for (AXObject* child : ax_image->CachedChildrenIncludingIgnored()) {
+    // Get the child's DOM node and find its first <map> ancestor.
+    if (Node* child_node = child->GetNode()) {
+      return Traversal<HTMLMapElement>::FirstAncestor(*child_node);
+    }
+  }
+  return nullptr;
 }
 }  // namespace
 
@@ -253,23 +271,56 @@ void AXRelationCache::CheckElementWasProcessed(Element& element) {
 #endif  // AX_FAIL_FAST_BUILD()
 
 void AXRelationCache::ProcessUpdatesWithCleanLayout() {
-  while (!owner_axids_to_update_.empty()) {
-    HashSet<DOMNodeId> old_owner_axids_to_update;
-    old_owner_axids_to_update.swap(owner_axids_to_update_);
+  while (!owner_axids_to_update_.empty() ||
+         !child_axids_to_restore_parent_.empty()) {
+    RestorePendingParents();
 
-    for (DOMNodeId aria_owner_axid : old_owner_axids_to_update) {
-      AXObject* obj = ObjectFromAXID(aria_owner_axid);
-      if (!obj) {
-        owner_axids_to_update_.erase(aria_owner_axid);
+    if (!owner_axids_to_update_.empty()) {
+      HashSet<DOMNodeId> old_owner_axids_to_update;
+      old_owner_axids_to_update.swap(owner_axids_to_update_);
+
+      for (DOMNodeId aria_owner_axid : old_owner_axids_to_update) {
+        AXObject* obj = ObjectFromAXID(aria_owner_axid);
+        if (!obj) {
+          owner_axids_to_update_.erase(aria_owner_axid);
+          continue;
+        }
+
+        if (!UpdateAriaOwnsWithCleanLayout(obj)) {
+          // Processing can requeue the same owner even when its validated
+          // mapping is unchanged. Drop only that redundant self-requeue; other
+          // owners queued while processing remain pending.
+          owner_axids_to_update_.erase(aria_owner_axid);
+        }
+
+        RestorePendingParents();
+      }
+    }
+  }
+}
+
+void AXRelationCache::RestorePendingParents() {
+  // Prevent reentrant calls; the while loop will ensure
+  // `child_axids_to_restore_parent_` is completely drained.
+  if (is_restoring_parents_) {
+    return;
+  }
+  base::AutoReset<bool> restoring(&is_restoring_parents_, true);
+  while (!child_axids_to_restore_parent_.empty()) {
+    // This swap is both to clear `child_axids_to_restore_parent_` and to
+    // prevent iterator invalidation if `MaybeRestoreParentOfOwnedChild()`
+    // recursively calls `RemoveAXID()`.
+    HashSet<DOMNodeId> old_child_axids;
+    old_child_axids.swap(child_axids_to_restore_parent_);
+    for (DOMNodeId child_axid : old_child_axids) {
+      if (aria_owned_child_to_owner_mapping_.Contains(child_axid)) {
         continue;
       }
-
-      if (!UpdateAriaOwnsWithCleanLayout(obj)) {
-        // Processing can requeue the same owner even when its validated mapping
-        // is unchanged. Drop only that redundant self-requeue; other owners
-        // queued while processing remain pending.
-        owner_axids_to_update_.erase(aria_owner_axid);
+      AXObject* child = ObjectFromAXID(child_axid);
+      if (child && !child->IsMissingParent()) {
+        continue;
       }
+      MaybeRestoreParentOfOwnedChild(child_axid);
     }
   }
 }
@@ -280,8 +331,96 @@ void AXRelationCache::QueueOwnerToUpdate(AXObject* owner) {
   owner_axids_to_update_.insert(owner->AXObjectID());
 }
 
+void AXRelationCache::MarkImageMapsDirty() {
+  has_dirty_image_maps_ = true;
+  object_cache_->ScheduleAXUpdate();
+}
+
+void AXRelationCache::MaybeMarkImageMapsDirty(const Node& node) {
+  if (IsA<HTMLMapElement>(node) ||
+      (IsA<HTMLImageElement>(node) &&
+       To<Element>(node).FastHasAttribute(html_names::kUsemapAttr))) {
+    MarkImageMapsDirty();
+  }
+}
+
+HeapVector<Member<Element>>
+AXRelationCache::DetachStaleImageMapsWithCleanLayout() {
+  HeapVector<Member<Element>> images_with_changed_map;
+  if (!has_dirty_image_maps_) {
+    return images_with_changed_map;
+  }
+  has_dirty_image_maps_ = false;
+  DetachStaleImageMapsInDocument(object_cache_->GetDocument(),
+                                 images_with_changed_map);
+  if (Document* popup = object_cache_->GetPopupDocumentIfShowing()) {
+    DetachStaleImageMapsInDocument(*popup, images_with_changed_map);
+  }
+  return images_with_changed_map;
+}
+
+void AXRelationCache::DetachStaleImageMapsInDocument(
+    Document& document,
+    HeapVector<Member<Element>>& images_with_changed_map) {
+  HashSet<AtomicString> earlier_usemap_names;
+  auto used_earlier = [&](const AtomicString& name) {
+    return !name.empty() && earlier_usemap_names.Contains(name);
+  };
+
+  // O(N) time complexity to images in the document.
+  for (Element* image : *document.images()) {
+    const AtomicString& usemap =
+        image->FastGetAttribute(html_names::kUsemapAttr);
+    // Look up the image's DOM HTMLMapElement (no AXObject involved).
+    HTMLMapElement* map = AXObject::GetMapForImage(image);
+
+    // Only map->ImageElement() (the first image in the document where
+    // MatchesUseMap() is true) gets the map's children.
+    if (map && (!map->MatchesUseMap(usemap) || used_earlier(map->GetName()) ||
+                used_earlier(map->GetIdAttribute()))) {
+      map = nullptr;
+    }
+    // Record the target name so we can reject later images that point to the
+    // same map.
+    if (usemap.length() > 1) {
+      earlier_usemap_names.insert(AtomicString(StringView(usemap, 1)));
+    }
+    // Get the existing AXObject for the image.
+    AXObject* ax_image = Get(image);
+    // Use the AXObject's children to look up its DOM HTMLMapElement.
+    HTMLMapElement* cached_map = GetMapOfCachedChildren(ax_image);
+
+    // If what the DOM map should be & the DOM map we looked up from the
+    // AXTree agree, then we don't need to do any recalculation.
+    if (cached_map == map) {
+      continue;
+    }
+
+    // If we have an existing map in AX remove stale children now, so that no
+    // queued update reaches them.
+    if (cached_map) {
+      object_cache_->RemoveImageMapChildren(*ax_image);
+    }
+    images_with_changed_map.push_back(image);
+  }
+}
+
+void AXRelationCache::RebuildImageMapsWithCleanLayout(
+    const HeapVector<Member<Element>>& images) {
+  for (Element* image : images) {
+    if (AXObject* ax_image = Get(image)) {
+      object_cache_->ChildrenChangedWithCleanLayout(image, ax_image);
+      // ChildrenChangedWithCleanLayout() defers rebuilding to FinalizeTree().
+      // Rebuild now so any aria-owns in the <map> is queued before relations
+      // are processed.
+      ax_image->UpdateChildrenIfNecessary();
+    }
+  }
+}
+
 bool AXRelationCache::IsDirty() const {
-  return !owner_axids_to_update_.empty();
+  return !owner_axids_to_update_.empty() ||
+         !child_axids_to_restore_parent_.empty() || has_dirty_image_maps_;
 }
 
 bool AXRelationCache::IsAriaOwned(const AXObject* child, bool check) const {
@@ -592,7 +731,7 @@ base::span<std::pair<QualifiedName, Element::TinyBloomFilter>>
 AXRelationCache::GetOtherRelationAttributes() {
   // Avoid issues with commas within the type name in DEFINE_STATIC_LOCAL().
   using QualifiedNameArray =
-      std::array<std::pair<QualifiedName, Element::TinyBloomFilter>, 5>;
+      std::array<std::pair<QualifiedName, Element::TinyBloomFilter>, 7>;
   DEFINE_STATIC_LOCAL(
       QualifiedNameArray, attributes,
       ({{html_names::kAriaControlsAttr,
@@ -604,8 +743,22 @@ AXRelationCache::GetOtherRelationAttributes() {
         {html_names::kAriaFlowtoAttr,
          Element::FilterForAttribute(html_names::kAriaFlowtoAttr)},
         {html_names::kAriaActionsAttr,
-         Element::FilterForAttribute(html_names::kAriaActionsAttr)}}));
+         Element::FilterForAttribute(html_names::kAriaActionsAttr)},
+        {html_names::kCommandforAttr,
+         Element::FilterForAttribute(html_names::kCommandforAttr)},
+        {html_names::kPopovertargetAttr,
+         Element::FilterForAttribute(html_names::kPopovertargetAttr)}}));
   return attributes;
+}
+
+// static
+bool AXRelationCache::IsOtherRelationAttribute(const QualifiedName& attr_name) {
+  for (const auto& [attribute, filter] : GetOtherRelationAttributes()) {
+    if (attribute == attr_name) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void AXRelationCache::UpdateReverseOtherRelations(Element& source) {
@@ -728,10 +881,24 @@ bool AXRelationCache::IsValidOwner(AXObject* owner) {
   if (!AXObject::CanComputeAsNaturalParent(owner->GetNode()))
     return false;
 
-  // Problematic for cycles, and does not solve a known use case.
-  // Easiest to omit the possibility.
+  // Per ARIA, "User agents MUST NOT resolve aria-owns when it is set on an
+  // element that has been excluded from the accessibility tree."
+  // https://w3c.github.io/aria/#aria-owns
+  //
+  // aria-hidden owners: also problematic for cycles, and does not solve a
+  // known use case. Easiest to omit the possibility.
   if (owner->IsAriaHidden())
     return false;
+
+  // Owners hidden via style, e.g. display:none (including via the hidden
+  // attribute), visibility:hidden, or a descendant of such an element. The
+  // referenced elements remain in their natural position in the tree, which
+  // also keeps the name-from-contents of their natural parent intact.
+  // Note that aria-owned children are already required to have a layout object
+  // (see IsValidOwnedChild()), so this only closes the gap on the owner side.
+  if (owner->IsHiddenViaStyle()) {
+    return false;
+  }
 
   return true;
 }
@@ -861,7 +1028,12 @@ void AXRelationCache::MapOwnedChildrenWithCleanLayout(
     if (added_child->ChildrenNeedToUpdateCachedValues()) {
       object_cache_->RemoveSubtree(added_child->GetNode(),
                                    /*remove_root*/ false);
-      added_child->UpdateChildrenIfNecessary();
+      if (!added_child->IsDetached()) {
+        added_child->UpdateChildrenIfNecessary();
+      }
+      if (owner->IsDetached()) {
+        return;
+      }
     }
   }
 }
@@ -1019,6 +1191,9 @@ bool AXRelationCache::UpdateAriaOwnsWithCleanLayout(AXObject* owner,
   // Update the internal validated mapping of owned children. This will
   // fire an event if the mapping has changed.
   UpdateAriaOwnerToChildrenMappingWithCleanLayout(owner, owned_children, force);
+  if (owner->IsDetached()) {
+    return !previously_owned_child_ids.empty();
+  }
 
   auto updated_mapping =
       aria_owner_to_children_mapping_.find(owner->AXObjectID());
@@ -1079,16 +1254,18 @@ void AXRelationCache::UpdateAriaOwnerToChildrenMappingWithCleanLayout(
   MapOwnedChildrenWithCleanLayout(owner, validated_owned_child_axids);
 
 #if DCHECK_IS_ON()
-  // Owned children must be in tree to avoid serialization issues.
-  for (AXObject* child : validated_owned_children_result) {
-    if (!child || child->IsDetached()) {
-      continue;
+  if (!owner->IsDetached()) {
+    // Owned children must be in tree to avoid serialization issues.
+    for (AXObject* child : validated_owned_children_result) {
+      if (!child || child->IsDetached()) {
+        continue;
+      }
+      DCHECK(IsAriaOwned(child));
+      DCHECK(child->ComputeIsIgnoredButIncludedInTree())
+          << "Owned child not in tree: " << child
+          << "\nRecompute included in tree: "
+          << child->ComputeIsIgnoredButIncludedInTree();
     }
-    DCHECK(IsAriaOwned(child));
-    DCHECK(child->ComputeIsIgnoredButIncludedInTree())
-        << "Owned child not in tree: " << child
-        << "\nRecompute included in tree: "
-        << child->ComputeIsIgnoredButIncludedInTree();
   }
 #endif
 
@@ -1123,7 +1300,9 @@ void AXRelationCache::UpdateAriaOwnerToChildrenMappingWithCleanLayout(
     }
   }
 
-  ChildrenChangedWithCleanLayout(owner);
+  if (!owner->IsDetached()) {
+    ChildrenChangedWithCleanLayout(owner);
+  }
 }
 
 bool AXRelationCache::MayHaveHTMLLabelViaForAttribute(
@@ -1221,7 +1400,7 @@ void AXRelationCache::GetRelationSourcesById(
     const AtomicString& target_id_attr,
     TargetIdToSourceNodeMap& id_map,
     HeapVector<Member<AXObject>>& source_objects) {
-  if (target_id_attr == g_null_atom) {
+  if (target_id_attr == g_null_atom || id_map.empty()) {
     return;
   }
 
@@ -1241,6 +1420,9 @@ void AXRelationCache::GetRelationSourcesByElementReference(
     const DOMNodeId target_node,
     TargetNodeToSourceNodeMap& node_map,
     HeapVector<Member<AXObject>>& source_objects) {
+  if (node_map.empty()) {
+    return;
+  }
   auto it = node_map.find(target_node);
   if (it == node_map.end()) {
     return;
@@ -1356,8 +1538,8 @@ void AXRelationCache::UpdateRelatedTreeAfterChange(Element& element) {
   MarkOldAndNewRelationSourcesDirty(element, aria_text_relations_id_map_,
                                     aria_text_relations_node_map_);
 
-  // aria-controls, aria-details, aria-errormessage, aria-flowto, and
-  // aria-actions.
+  // aria-controls, aria-details, aria-errormessage, aria-flowto, aria-actions,
+  // commandfor, and popovertarget.
   MarkOldAndNewRelationSourcesDirty(element, aria_other_relations_id_map_,
                                     aria_other_relations_node_map_);
   UpdateReverseOtherRelations(element);
@@ -1444,16 +1626,18 @@ void AXRelationCache::MarkOldAndNewRelationSourcesDirty(
   const AtomicString& id_attr = element.GetIdAttribute();
   GetRelationSourcesById(id_attr, id_map, related_sources);
 
-  const DOMNodeId dom_node_id = element.GetDomNodeId();
-  GetRelationSourcesByElementReference(dom_node_id, node_map, related_sources);
+  if (const DOMNodeId dom_node_id = DOMNodeIds::ExistingIdForNode(&element)) {
+    GetRelationSourcesByElementReference(dom_node_id, node_map,
+                                         related_sources);
 
-  // If id attribute changed, also mark old relation source dirty, and update
-  // the map that points from the id attribute to the node id
-  auto iter = registered_id_attributes_.find(element.GetDomNodeId());
-  if (iter != registered_id_attributes_.end()) {
-    const AtomicString& old_id_attr = iter->value;
-    if (old_id_attr != id_attr) {
-      GetRelationSourcesById(old_id_attr, id_map, related_sources);
+    // If id attribute changed, also mark old relation source dirty, and update
+    // the map that points from the id attribute to the node id
+    auto iter = registered_id_attributes_.find(dom_node_id);
+    if (iter != registered_id_attributes_.end()) {
+      const AtomicString& old_id_attr = iter->value;
+      if (old_id_attr != id_attr) {
+        GetRelationSourcesById(old_id_attr, id_map, related_sources);
+      }
     }
   }
   for (AXObject* related : related_sources) {
@@ -1503,10 +1687,11 @@ AXObject* AXRelationCache::GetAnchorForPositionedObject(
 }
 
 void AXRelationCache::RemoveAXID(AXID obj_id) {
+  owner_axids_to_update_.erase(obj_id);
+
   // Need to remove from maps.
   // There are maps from children to their owners, and owners to their children.
   // In addition, the removed id may be an owner, or be owned, or both.
-
   // |obj_id| owned others:
   if (aria_owner_to_children_mapping_.Contains(obj_id)) {
     // |obj_id| no longer owns anything.
@@ -1528,7 +1713,14 @@ void AXRelationCache::RemoveAXID(AXID obj_id) {
                  "parentless objects at a bad time: "
               << owned_child;
         }
-        MaybeRestoreParentOfOwnedChild(child_axid);
+        if (object_cache_->lifecycle().StateAllowsImmediateTreeUpdates()) {
+          // Defer parent restoration until the current removal completes so
+          // that restoring or pruning a child during `Remove()` does not
+          // synchronously mutate or rebuild ancestor subtrees mid-removal.
+          child_axids_to_restore_parent_.insert(child_axid);
+        } else {
+          MaybeRestoreParentOfOwnedChild(child_axid);
+        }
       }
     }
   }
@@ -1573,11 +1765,12 @@ void AXRelationCache::RemoveOwnedRelation(AXID obj_id) {
       // will refresh this owner before the tree is frozen.
       owner_axids_to_update_.insert(owner_id);
 
-      if (object_cache_->lifecycle().StateAllowsImmediateTreeUpdates()) {
-        // Currently in CommitAXUpdates(). Changing the children of the owner
-        // here could interfere with the execution of RemoveSubtree().
-        object_cache_->MarkAXObjectDirtyWithCleanLayout(owner);
-      } else {
+      // Do not call `MarkAXObjectDirtyWithCleanLayout(owner)` during immediate
+      // tree updates: recomputing the owner's cached values while `Remove()` is
+      // on the stack can fire `ChildrenChangedOnAncestorOf(owner)` and mutate
+      // ancestor subtrees mid-removal. `ProcessUpdatesWithCleanLayout()` will
+      // update the owner and mark its children changed after removal finishes.
+      if (!object_cache_->lifecycle().StateAllowsImmediateTreeUpdates()) {
         object_cache_->ChildrenChanged(owner);
       }
     }

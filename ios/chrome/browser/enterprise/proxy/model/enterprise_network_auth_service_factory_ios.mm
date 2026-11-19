@@ -4,6 +4,8 @@
 
 #import "ios/chrome/browser/enterprise/proxy/model/enterprise_network_auth_service_factory_ios.h"
 
+#import <utility>
+
 #import "base/functional/bind.h"
 #import "components/enterprise/net/core/enterprise_network_auth_service.h"
 #import "components/enterprise/net/core/features.h"
@@ -28,36 +30,21 @@ std::unique_ptr<KeyedService> BuildEnterpriseNetworkAuthService(
 }  // namespace
 
 // static
-enterprise_net::EnterpriseNetworkAuthService*
-EnterpriseNetworkAuthServiceFactoryIOS::GetForProfile(ProfileIOS* profile) {
-  return GetInstance()
-      ->GetServiceForProfileAs<enterprise_net::EnterpriseNetworkAuthService>(
-          profile, /*create=*/true);
-}
-
-// static
-EnterpriseNetworkAuthServiceFactoryIOS*
-EnterpriseNetworkAuthServiceFactoryIOS::GetInstance() {
-  static base::NoDestructor<EnterpriseNetworkAuthServiceFactoryIOS> instance;
-  return instance.get();
-}
-
-// static
 EnterpriseNetworkAuthServiceFactoryIOS::TestingFactory
 EnterpriseNetworkAuthServiceFactoryIOS::GetDefaultFactory() {
   return base::BindOnce(&BuildEnterpriseNetworkAuthService);
 }
 
-EnterpriseNetworkAuthServiceFactoryIOS::EnterpriseNetworkAuthServiceFactoryIOS()
-    : ProfileKeyedServiceFactoryIOS("EnterpriseNetworkAuthServiceIOS",
-                                    ProfileSelection::kNoInstanceInIncognito,
-                                    TestingCreation::kNoServiceForTests) {
+EnterpriseNetworkAuthServiceFactoryIOS::EnterpriseNetworkAuthServiceFactoryIOS(
+    PassKey key)
+    : TypedProfileKeyedServiceFactoryIOS(
+          std::move(key),
+          "EnterpriseNetworkAuthServiceIOS",
+          ProfileSelection::kNoInstanceInIncognito,
+          TestingCreation::kNoServiceForTests) {
   DependsOn(IdentityManagerFactory::GetInstance());
   DependsOn(enterprise::ProfileIdServiceFactoryIOS::GetInstance());
 }
-
-EnterpriseNetworkAuthServiceFactoryIOS::
-    ~EnterpriseNetworkAuthServiceFactoryIOS() = default;
 
 std::unique_ptr<KeyedService>
 EnterpriseNetworkAuthServiceFactoryIOS::BuildServiceInstanceFor(

@@ -99,7 +99,8 @@ linux_memory_builder(
             "asan",
             "lsan",
             "fail_on_san_warnings",
-            "release_try_builder",
+            "release_builder",
+            "dcheck_always_on",
             "minimal_symbols",
             "remoteexec",
             "linux",
@@ -215,8 +216,6 @@ linux_memory_builder(
                         "--use-gpu-in-tests",
                         "--no-xvfb",
                     ],
-                    ci_only = True,
-                    experiment_percentage = 100,
                 ),
                 "linux_nvidia_gtx_1660_stable",
             ],
@@ -244,13 +243,6 @@ linux_memory_builder(
                 swarming = targets.swarming(
                     shards = 16,
                 ),
-            ),
-            "perfetto_unittests": targets.mixin(
-                # TODO(crbug.com/574123811): Re-enable once the int64 to double
-                # filter cast no longer relies on undefined behavior.
-                args = [
-                    "--gtest_filter=-ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854774784_000000_Gt:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854774784_000000_Le:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854775808_000000_Ge:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854775808_000000_Lt",
-                ],
             ),
             "sync_integration_tests": targets.mixin(
                 args = [
@@ -377,8 +369,6 @@ linux_memory_builder(
                         "--use-gpu-in-tests",
                         "--no-xvfb",
                     ],
-                    ci_only = True,
-                    experiment_percentage = 100,
                 ),
                 "linux_nvidia_gtx_1660_stable",
             ],
@@ -439,7 +429,8 @@ linux_memory_builder(
             "asan",
             "lsan",
             "chromeos",
-            "release_try_builder",
+            "release_builder",
+            "dcheck_always_on",
             "minimal_symbols",
             "remoteexec",
             "x64",
@@ -536,13 +527,6 @@ linux_memory_builder(
                 swarming = targets.swarming(
                     shards = 8,
                 ),
-            ),
-            "perfetto_unittests": targets.mixin(
-                # TODO(crbug.com/574123811): Re-enable once the int64 to double
-                # filter cast no longer relies on undefined behavior.
-                args = [
-                    "--gtest_filter=-ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854774784_000000_Gt:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854774784_000000_Le:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854775808_000000_Ge:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854775808_000000_Lt",
-                ],
             ),
             "sync_integration_tests": targets.mixin(
                 swarming = targets.swarming(
@@ -972,13 +956,6 @@ linux_memory_builder(
                     shards = 4,
                 ),
             ),
-            "perfetto_unittests": targets.mixin(
-                # TODO(crbug.com/574123811): Re-enable once the int64 to double
-                # filter cast no longer relies on undefined behavior.
-                args = [
-                    "--gtest_filter=-ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854774784_000000_Gt:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854774784_000000_Le:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854775808_000000_Ge:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854775808_000000_Lt",
-                ],
-            ),
             "sync_integration_tests": targets.mixin(
                 args = [
                     # TODO(crbug.com/542347163): Re-enable when the runtime regression is fixed.
@@ -1168,13 +1145,6 @@ ci.builder(
             "interactive_ui_tests": targets.mixin(
                 # https://crbug.com/1251656
                 experiment_percentage = 100,
-            ),
-            "perfetto_unittests": targets.mixin(
-                # TODO(crbug.com/574123811): Re-enable once the int64 to double
-                # filter cast no longer relies on undefined behavior.
-                args = [
-                    "--gtest_filter=-ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854774784_000000_Gt:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854774784_000000_Le:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854775808_000000_Ge:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854775808_000000_Lt",
-                ],
             ),
             "sync_integration_tests": targets.mixin(
                 swarming = targets.swarming(
@@ -1548,13 +1518,6 @@ ci.builder(
                 swarming = targets.swarming(
                     shards = 16,
                 ),
-            ),
-            "perfetto_unittests": targets.mixin(
-                # TODO(crbug.com/574123811): Re-enable once the int64 to double
-                # filter cast no longer relies on undefined behavior.
-                args = [
-                    "--gtest_filter=-ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854774784_000000_Gt:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854774784_000000_Le:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854775808_000000_Ge:ToDouble/BytecodeInterpreterCastTest.Cast/9223372036854775806_Double_9223372036854775808_000000_Lt",
-                ],
             ),
             "sync_integration_tests": targets.mixin(
                 # Tests shows tests run faster with fewer retries by using fewer jobs crbug.com/1411912

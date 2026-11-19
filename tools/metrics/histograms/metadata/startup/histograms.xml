@@ -156,7 +156,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Startup.Android.Cold.ExperimentalProcessStart.TimeToFirstContentfulPaint.{StartActivityType}"
-    units="ms" expires_after="2027-02-14">
+    units="ms" expires_after="2027-04-18">
   <owner>nafisabedin@google.com</owner>
   <owner>pasko@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -175,7 +175,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Startup.Android.Cold.ExperimentalProcessStart.TimeToFirstNavigationCommit.{StartActivityType}"
-    units="ms" expires_after="2027-02-14">
+    units="ms" expires_after="2027-04-18">
   <owner>nafisabedin@google.com</owner>
   <owner>pasko@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -194,7 +194,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Startup.Android.Cold.ExperimentalProcessStart.TimeToFirstVisibleContent"
-    units="ms" expires_after="2027-02-14">
+    units="ms" expires_after="2027-04-18">
   <owner>nafisabedin@google.com</owner>
   <owner>pasko@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -250,7 +250,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Startup.Android.Cold.TimeToFirstContentfulPaint3.{StartActivityType}"
-    units="ms" expires_after="2027-02-14">
+    units="ms" expires_after="2027-04-18">
   <owner>pasko@chromium.org</owner>
   <owner>nafisabedin@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -972,7 +972,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Startup.ColdStartFromMain" units="ms"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>justincohen@chromium.org</owner>
   <owner>olivierrobin@chromium.org</owner>
   <owner>junov@chromium.org</owner>
@@ -1087,7 +1087,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Startup.CrashBubbleShown" enum="BooleanShown"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>spvm@chromium.org</owner>
   <owner>etienneb@chromium.org</owner>
   <owner>catan-team@chromium.org</owner>
@@ -1127,6 +1127,85 @@ chromium-metrics-reviews@google.com.
     <variant name="TimedWaitSucceeded"/>
     <variant name="TimedWaitSucceededAtStartup"/>
   </token>
+</histogram>
+
+<histogram name="Startup.DirectLaunch.PayloadResult"
+    enum="DirectLaunchPayloadResult" expires_after="2027-09-01">
+  <owner>fdoray@chromium.org</owner>
+  <owner>gab@chromium.org</owner>
+  <owner>chrdavis@microsoft.com</owner>
+  <owner>louisl@microsoft.com</owner>
+  <summary>
+    Whether a WM_COPYDATA payload tagged as a direct launch could be read as a
+    URI, and if not, why, including when it holds an empty URI. Recorded once
+    per tagged payload, so the Accepted bucket counts the URI launches that the
+    Windows shell handed straight to the running browser process. Tile launches
+    carry no payload, and are counted by Startup.DirectLaunch.TileLaunch
+    instead. Rejections distinguish a change to the shell's payload format from
+    the shell no longer sending direct launches at all, which the Accepted
+    bucket alone cannot. Windows 11 and later only.
+  </summary>
+</histogram>
+
+<histogram name="Startup.DirectLaunch.RegistrationResult" enum="Hresult"
+    expires_after="2027-09-01">
+  <owner>fdoray@chromium.org</owner>
+  <owner>gab@chromium.org</owner>
+  <owner>chrdavis@microsoft.com</owner>
+  <owner>louisl@microsoft.com</owner>
+  <summary>
+    The HRESULT of registering with the Windows shell for direct launch.
+    Recorded when direct launch is initialized, and again each time the default
+    browser changes, unless the browser is known not to be the default browser
+    after the change. A registration that the shell reports as unsupported is
+    recorded as E_NOTIMPL. The shell can accept the registration while the
+    browser is not the default browser, but only hands launches to the default
+    browser, so a success does not mean that the browser receives direct
+    launches. Windows 11 and later only.
+  </summary>
+</histogram>
+
+<histogram name="Startup.DirectLaunch.Supported" enum="BooleanSupported"
+    expires_after="2027-09-01">
+  <owner>fdoray@chromium.org</owner>
+  <owner>gab@chromium.org</owner>
+  <owner>chrdavis@microsoft.com</owner>
+  <owner>louisl@microsoft.com</owner>
+  <summary>
+    Whether the OS supports direct launch. Recorded once during startup by the
+    process singleton for the default user data dir, once it has checked the OS
+    for support. Windows only.
+  </summary>
+</histogram>
+
+<histogram name="Startup.DirectLaunch.TileLaunch" enum="BooleanHit"
+    expires_after="2027-09-01">
+  <owner>fdoray@chromium.org</owner>
+  <owner>gab@chromium.org</owner>
+  <owner>chrdavis@microsoft.com</owner>
+  <owner>louisl@microsoft.com</owner>
+  <summary>
+    Recorded each time the Windows shell hands a launch of the browser's Start
+    menu or taskbar tile straight to the running browser process, instead of
+    starting a new browser process that would only forward it through the
+    process singleton. Direct URI launches are counted by the Accepted bucket of
+    Startup.DirectLaunch.PayloadResult instead. Windows 11 and later only.
+  </summary>
+</histogram>
+
+<histogram name="Startup.DirectLaunch.UserDataDirOverride"
+    enum="BooleanPresent" expires_after="2027-09-01">
+  <owner>fdoray@chromium.org</owner>
+  <owner>gab@chromium.org</owner>
+  <owner>chrdavis@microsoft.com</owner>
+  <owner>louisl@microsoft.com</owner>
+  <summary>
+    Whether the browser uses a user data dir other than the default one, e.g.
+    one given with the --user-data-dir switch, or cannot tell. Such an instance
+    is not the one a shell launch reaches, so it does not register for direct
+    launch. Recorded once during startup by every browser process that becomes
+    the process singleton for its user data dir. Windows only.
+  </summary>
 </histogram>
 
 <histogram name="Startup.FirstNavigationLatency" units="ms"
@@ -1490,7 +1569,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Startup.GPU.LoadTime.ApplicationStartToGpuInitialized"
-    units="ms" expires_after="2027-02-14">
+    units="ms" expires_after="2027-04-18">
   <owner>spvm@chromium.org</owner>
   <owner>etienneb@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -1514,7 +1593,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Startup.GPU.LoadTime.ChromeMainToGpuInitialized" units="ms"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>spvm@chromium.org</owner>
   <owner>etienneb@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -1816,7 +1895,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Startup.StartupBrowserCreator.LaunchBrowser" units="ms"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>hidehiko@chromium.org</owner>
   <owner>junis@google.com</owner>
   <owner>cros-sw-perf+metrics@google.com</owner>
@@ -1857,7 +1936,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Startup.TimeFromMainToDidFinishLaunchingCall" units="ms"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>olivierrobin@chromium.org</owner>
   <owner>justincohen@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>

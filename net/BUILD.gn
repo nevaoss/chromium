@@ -101,8 +101,6 @@ config("net_internal_config") {
 net_configs = [
   ":net_internal_config",
   "//build/config:precompiled_headers",
-
-  "//build/config/compiler:wexit_time_destructors",
 ]
 
 if (is_linux || is_chromeos) {
@@ -606,20 +604,6 @@ component("net") {
     "filter/source_stream.cc",
     "filter/source_stream.h",
     "filter/source_stream_type.h",
-    "first_party_sets/first_party_set_entry.cc",
-    "first_party_sets/first_party_set_entry.h",
-    "first_party_sets/first_party_set_entry_override.cc",
-    "first_party_sets/first_party_set_entry_override.h",
-    "first_party_sets/first_party_set_metadata.cc",
-    "first_party_sets/first_party_set_metadata.h",
-    "first_party_sets/first_party_sets_context_config.cc",
-    "first_party_sets/first_party_sets_context_config.h",
-    "first_party_sets/first_party_sets_validator.cc",
-    "first_party_sets/first_party_sets_validator.h",
-    "first_party_sets/global_first_party_sets.cc",
-    "first_party_sets/global_first_party_sets.h",
-    "first_party_sets/sets_mutation.cc",
-    "first_party_sets/sets_mutation.h",
     "http/alternative_service.cc",
     "http/alternative_service.h",
     "http/bidirectional_stream.cc",
@@ -2143,8 +2127,6 @@ proto_library("net_nqe_proto") {
   link_deps = [ "//net/base:net_export_header" ]
 
   defines = [ "NET_IMPLEMENTATION" ]
-
-  extra_configs = [ "//build/config/compiler:wexit_time_destructors" ]
 }
 
 proto_library("isolation_info_proto") {
@@ -2162,7 +2144,6 @@ component("extras") {
     "extras/sqlite/sqlite_persistent_store_backend_base.h",
   ]
   defines = [ "IS_NET_EXTRAS_IMPL" ]
-  configs += [ "//build/config/compiler:wexit_time_destructors" ]
   deps = [
     ":net",
     "//base",
@@ -2186,7 +2167,6 @@ component("shared_dictionary_info") {
     "extras/shared_dictionary/shared_dictionary_usage_info.h",
   ]
   defines = [ "IS_NET_SHARED_DICTIONARY_IMPL" ]
-  configs += [ "//build/config/compiler:wexit_time_destructors" ]
   deps = [
     ":net",
     "//base",
@@ -3048,11 +3028,6 @@ target(_test_target_type, "net_unittests") {
     "disk_cache/simple/simple_version_upgrade_unittest.cc",
     "filter/filter_source_stream_unittest.cc",
     "filter/gzip_source_stream_unittest.cc",
-    "first_party_sets/first_party_set_entry_override_unittest.cc",
-    "first_party_sets/first_party_sets_context_config_unittest.cc",
-    "first_party_sets/first_party_sets_validator_unittest.cc",
-    "first_party_sets/global_first_party_sets_unittest.cc",
-    "first_party_sets/sets_mutation_unittest.cc",
     "http/alternative_service_unittest.cc",
     "http/bidirectional_stream_multinetwork_unittest.cc",
     "http/bidirectional_stream_unittest.cc",

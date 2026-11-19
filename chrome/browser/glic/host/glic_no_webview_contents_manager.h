@@ -31,6 +31,8 @@
 class Profile;
 
 namespace content {
+class RenderFrameHost;
+class RenderWidgetHostView;
 class WebContents;
 }  // namespace content
 
@@ -82,7 +84,8 @@ class GlicNoWebviewContentsManager : public GlicWebContentsManager,
    public:
     OverlayContentsManager(Profile* profile,
                            GlicNoWebviewContentsManager* owner,
-                           ObservableValueView<GuestState>& guest_state);
+                           ObservableValueView<GuestState>& guest_state,
+                           ObservableValueView<bool>& guest_main_page_loaded);
     ~OverlayContentsManager() override;
 
     content::WebContents* EnsureWebContents();
@@ -110,7 +113,8 @@ class GlicNoWebviewContentsManager : public GlicWebContentsManager,
     static mojom::OverlayStatePtr DetermineOverlayState(
         std::optional<mojom::ErrorPanelType> error_type,
         GuestState guest_state,
-        std::optional<mojom::PanelStateKind> panel_state_kind);
+        std::optional<mojom::PanelStateKind> panel_state_kind,
+        bool guest_main_page_loaded);
 
     // Evaluates current inputs to determine the desired overlay state.
     mojom::OverlayStatePtr DetermineOverlayState();
@@ -147,6 +151,8 @@ class GlicNoWebviewContentsManager : public GlicWebContentsManager,
     std::optional<mojom::ErrorPanelType> error_type_;
     const raw_ref<ObservableValueView<GuestState>> guest_state_;
     base::CallbackListSubscription guest_state_subscription_;
+    const raw_ref<ObservableValueView<bool>> guest_main_page_loaded_;
+    base::CallbackListSubscription guest_main_page_loaded_subscription_;
     base::CallbackListSubscription panel_state_subscription_;
     raw_ptr<ObservableValueView<mojom::PanelState>> panel_state_ = nullptr;
     gfx::Size cached_size_;
@@ -183,6 +189,7 @@ class GlicNoWebviewContentsManager : public GlicWebContentsManager,
                         bool is_api_allowed,
                         mojom::GuestPageType page_type,
                         bool is_initial_commit) override;
+  void OnGuestMainPageLoaded() override;
   void OnGuestProcessGone(base::TerminationStatus status) override;
   void OnWebClientCreated() override;
   void OnWebClientStateChanged(mojom::WebClientState state) override;
@@ -312,7 +319,16 @@ class GlicNoWebviewContentsManager : public GlicWebContentsManager,
   // sign-in required or disabled by admin).
   void ClearTransientErrorState();
 
-  // Applies the cached viewport size from the overlay/host to the guest view.
+  // Applies the target viewport size (from the host panel, cached overlay
+  // size, or default warming size) to the guest WebContentsView (and any active
+  // RenderWidgetHostView).
+  //
+  // Sizing the WebContentsView container bounds (`WebContents::Resize()` /
+  // `ViewAndroid::OnSizeChanged()`) before `LoadURLWithParams()` in
+  // `LoadGuest()` ensures `WebContentsImpl::GetSizeForMainFrame()` returns the
+  // target size when creating both the initial `RenderWidgetHostView` and any
+  // speculative `RenderWidgetHostView` (e.g. for `Cross-Origin-Opener-Policy`
+  // or `RenderDocument` swaps), even before a `RenderWidgetHostView` exists.
   void ApplySizeToGuest();
 
   // Displays the guest WebContents directly for guest pages that bypass the
@@ -347,6 +363,7 @@ class GlicNoWebviewContentsManager : public GlicWebContentsManager,
 
   // Lifecycle state of the guest WebContents.
   ObservableValue<GuestState> guest_state_{GuestState::kLoading};
+  ObservableValue<bool> guest_main_page_loaded_{false};
 
   // A client load error that happened before a Host was attached, i.e. while
   // the contents were warming in the background. Reported once AttachToHost()

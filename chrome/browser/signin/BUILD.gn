@@ -211,6 +211,7 @@ source_set("impl") {
   ]
   public_deps = [ ":signin" ]
   deps = [
+    "//base:i18n",
     "//chrome/browser:browser_process_platform_part",
     "//chrome/browser:global_features",
     "//chrome/browser/autofill",
@@ -362,7 +363,10 @@ source_set("impl") {
       "force_signin_verifier.cc",
       "signin_ui_delegate.cc",
     ]
-    deps += [ "//chrome/browser/ui/webui/signin:signin_impl" ]
+    deps += [
+      "//chrome/browser/ui/webui/signin",
+      "//chrome/browser/ui/webui/signin:signin_impl",
+    ]
   }
 
   if (is_chromeos) {
@@ -589,10 +593,6 @@ source_set("identity_test_support") {
 
 source_set("unit_tests") {
   testonly = true
-
-  # signin_util_unittest.cc has a file-scope static with a non-trivial
-  # destructor, which -Wexit-time-destructors rejects.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 
   sources = [
     "account_consistency_mode_manager_unittest.cc",
@@ -833,7 +833,6 @@ if (!is_android) {
         "//chrome/browser/ui/views/profiles:dice_web_signin_interception_bubble_view",
         "//chrome/browser/ui/webui/settings",
         "//chrome/browser/ui/webui/signin",
-        "//chrome/browser/ui/webui/signin:login_ui_service",
         "//chrome/browser/ui/webui/signin:signin_ui_error",
         "//chrome/browser/ui/webui/signin:test_support_ui",
         "//chrome/browser/web_applications:web_applications_test_support",
@@ -913,10 +912,6 @@ if (!is_android) {
         "//components/user_manager",
       ]
     }
-
-    # bound_session_cookie_refresh_service_impl_browsertest.cc:198 has a
-    # file-scope static with a non-trivial destructor.
-    configs += [ "//build/config/compiler:no_exit_time_destructors" ]
   }
 }
 

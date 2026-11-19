@@ -11,7 +11,7 @@ import './stacked_favicons.js';
 
 import type {CrUrlListItemElement, CrUrlListItemSize} from '//resources/cr_elements/cr_url_list_item/cr_url_list_item.js';
 import {MouseHoverableMixinLit} from '//resources/cr_elements/mouse_hoverable_mixin_lit.js';
-import type {TemplateResult} from '//resources/lit/v3_0/lit.rollup.js';
+import type {PropertyValues, TemplateResult} from '//resources/lit/v3_0/lit.rollup.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import type {Range} from '/tab_group_shared/search.js';
 
@@ -51,6 +51,9 @@ export interface OrganizerListSectionItemActionButton {
 
   // Accessibility label.
   ariaLabel: string;
+
+  // Optional: Tooltip to display on hover.
+  tooltip?: string;
 }
 
 // Model for a single item in an organizer list section.
@@ -75,6 +78,11 @@ export interface OrganizerListSectionItem<T> {
   // when the item is hovered. Clicking on the button will call
   // onItemActionButtonClicked on the delegate.
   hoveredActionButton?: OrganizerListSectionItemActionButton;
+
+  // Optional: Whether this item should be prioritized to be shown when the
+  // section is truncated. If at least one item has this set to true, the
+  // count of items shown is increased by 1 (up to 4). Defaults to false.
+  alwaysShow?: boolean;
 
   // The size to render. Defaults to medium.
   size?: CrUrlListItemSize;
@@ -138,6 +146,53 @@ export class OrganizerListSectionItemElement extends
       document.documentElement.lang || undefined,
       {style: 'narrow', type: 'conjunction'});
 
+  override firstUpdated(changedProperties: PropertyValues<this>) {
+    super.firstUpdated(changedProperties);
+    this.$.crUrlListItem.getFocusableElement().tabIndex = -1;
+  }
+
+  override focus() {
+    this.$.crUrlListItem.focus();
+  }
+
+  focusActionButton() {
+    const actionButton =
+        this.shadowRoot.querySelector<HTMLElement>('#actionButton');
+    if (actionButton) {
+      actionButton.focus();
+    }
+  }
+
+  protected onItemKeydown_(e: KeyboardEvent) {
+    if (e.key === 'Tab') {
+      if (!e.shiftKey) {
+        const actionButton =
+            this.shadowRoot.querySelector<HTMLElement>('#actionButton');
+        if (actionButton && this.hasActionButton_()) {
+          actionButton.focus();
+        } else {
+          this.fire('focus-next-section');
+        }
+      } else {
+        this.fire('focus-current-section');
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
+  protected onActionButtonKeydown_(e: KeyboardEvent) {
+    if (e.key === 'Tab') {
+      if (!e.shiftKey) {
+        this.fire('focus-next-section');
+      } else {
+        this.focus();
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
   protected getAriaLabel_(): string {
     return this.listFormatter_.format(this.item.title);
   }
@@ -191,7 +246,7 @@ export class OrganizerListSectionItemElement extends
   }
 
   resetActionButtonStateIfNeeded() {
-    this.shadowRoot.querySelector<HTMLElement>('#actionButton')!.blur();
+    this.shadowRoot.querySelector<HTMLElement>('#actionButton')?.blur();
   }
 }
 

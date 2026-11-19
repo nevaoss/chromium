@@ -854,9 +854,7 @@ suite('ComposeboxVoiceSearch', () => {
 
     // With nothing to submit, clicking it exits voice search and returns to
     // the searchbox, the same as closing voice search.
-    const submitContainer =
-        submitButton.shadowRoot.querySelector<HTMLElement>('#submitContainer');
-    assertTrue(!!submitContainer);
+    const submitContainer = submitButton.$.submitContainer;
     const cancelEventPromise =
         eventToPromise('voice-search-cancel', voiceSearchElement);
     submitContainer.click();
@@ -1206,10 +1204,7 @@ suite('ComposeboxVoiceSearch', () => {
 
 
         // Verify: classes were added to elements.
-        const animatedSearchElement =
-            composeboxElement.shadowRoot.querySelector(
-                '#animatedSearchElement')!;
-        assertTrue(!!animatedSearchElement);
+        const animatedSearchElement = composeboxElement.$.animatedSearchElement;
         assertTrue(
             voiceSearchElement.classList.contains('permission-prompt-showing'));
         assertTrue(animatedSearchElement.classList.contains(
@@ -1639,6 +1634,29 @@ suite('ComposeboxVoiceSearch', () => {
             .querySelector<HTMLElement>('#closeButton')!.click();
         await microtasksFinished();
       });
+
+  test('voice search fills the composebox host while listening', async () => {
+    // Custom elements default to 'display: inline'. An inline containing block
+    // that only wraps block-level boxes has an empty size, which would collapse
+    // the absolutely positioned voice search UI and clip its stop/submit
+    // buttons (crbug.com/569803503).
+    assertEquals('block', window.getComputedStyle(composeboxElement).display);
+
+    // Embedders position the host so that it is the containing block of the
+    // voice search UI.
+    composeboxElement.style.position = 'relative';
+    const voiceSearchElement = await openVoiceSearchUI();
+    assertEquals(
+        'absolute', window.getComputedStyle(voiceSearchElement).position);
+
+    const hostRect = composeboxElement.getBoundingClientRect();
+    const voiceSearchRect = voiceSearchElement.getBoundingClientRect();
+    assertTrue(hostRect.width > 0);
+    assertTrue(hostRect.height > 0);
+    assertEquals(Math.round(hostRect.width), Math.round(voiceSearchRect.width));
+    assertEquals(
+        Math.round(hostRect.height), Math.round(voiceSearchRect.height));
+  });
 
   test('transcript input font size uses 16px default', async () => {
     await createComposeboxElement();

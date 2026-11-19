@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <deque>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -42,7 +41,6 @@
 #include "base/notreached.h"
 #include "base/process/kill.h"
 #include "base/process/memory.h"
-#include "base/rand_util.h"
 #include "base/state_transitions.h"
 #include "base/strings/escape.h"
 #include "base/strings/strcat.h"
@@ -139,6 +137,7 @@
 #include "content/browser/renderer_host/local_network_access_util.h"
 #include "content/browser/renderer_host/media/peer_connection_tracker_host.h"
 #include "content/browser/renderer_host/mixed_content_checker.h"
+#include "content/browser/renderer_host/model_context_user_data.h"
 #include "content/browser/renderer_host/navigation_controller_impl.h"
 #include "content/browser/renderer_host/navigation_entry_impl.h"
 #include "content/browser/renderer_host/navigation_metrics_utils.h"
@@ -4275,6 +4274,12 @@ RenderFrameHostImpl::AccessibilityGetAcceleratedWidget() {
 
 gfx::NativeViewAccessible
 RenderFrameHostImpl::AccessibilityGetNativeViewAccessible() {
+  // Inactive documents, including pages in the back/forward cache, are not
+  // children of the native view's accessible object.
+  if (!IsActive()) {
+    return gfx::NativeViewAccessible();
+  }
+
   RenderWidgetHostViewBase* view = static_cast<RenderWidgetHostViewBase*>(
       render_view_host_->GetWidget()->GetView());
   if (view) {
@@ -6852,6 +6857,24 @@ void RenderFrameHostImpl::DidOpenDocumentInputStream(const GURL& url) {
   }
 }
 
+void RenderFrameHostImpl::DidCommitDocumentReplacement() {
+  // The renderer replaced its Document, so drop the replaced Document's
+  // ModelContextUserData.
+  // TODO(crbug.com/576419973): Do this for all Document scoped user data.
+  //
+  // The new Document binds `ModelContextHost` through the frame's
+  // BrowserInterfaceBroker, which isn't ordered with navigation IPCs. When a
+  // commit replaces the window, the renderer creates a new broker whose
+  // messages are only processed after the commit IPC. But a document
+  // replacement reuses the broker, so the bind can race this IPC, as it does
+  // for a commit that reuses the initial empty Document's window.
+  // TODO(crbug.com/576011705): Order the bind after the IPC that replaces its
+  // Document.
+  if (ModelContextUserData::GetForCurrentDocument(this)) {
+    ModelContextUserData::DeleteForCurrentDocument(this);
+  }
+}
+
 RenderWidgetHostImpl* RenderFrameHostImpl::GetRenderWidgetHost() {
   RenderFrameHostImpl* frame = this;
   while (frame) {
@@ -7949,6 +7972,19 @@ void RenderFrameHostImpl::ClosePage(
   CHECK(IsOutermostMainFrame());
   if (!IsActive() && source == ClosePageSource::kRenderer) {
     return;
+  }
+
+  if (source == ClosePageSource::kBrowser && owner_) {
+    // Browser (but not renderer)-initiated page closures should not
+    // be canceled by a navigation that can destroy `this` and wipe out
+    // `page_close_state_`.
+    // Therefore, cancel the main frame navigation, including the case where
+    // it has been already moved to the speculative RFH. However, we are not
+    // dropping the NavigationRequest here, so that a navigation that was sent
+    // to the renderer to commit can reply successfully (crbug.com/559040906).
+    NavigationDiscardReason reason = NavigationDiscardReason::kWillRemoveFrame;
+    owner_->CancelNavigation(reason);
+    owner_->GetRenderFrameHostManager().DiscardSpeculativeRFH(reason);
   }
 
   page_close_state_ = PageCloseState::kRunningUnloadHandlers;
@@ -10584,7 +10620,7 @@ void RenderFrameHostImpl::OpenURL(blink::mojom::OpenURLParamsPtr params) {
 
     // Try recording the AdClickMainFrameNavigation use counter for navigation
     // targeting this page's main frame, or targeting a new tab.
-    if (params->disposition != WindowOpenDisposition::CURRENT_TAB ||
+    if (params->disposition != WindowOpenDisposition::kCurrentTab ||
         IsOutermostMainFrame()) {
       MaybeRecordAdClickMainFrameNavigationMetrics(
           /*initiator_frame=*/initiator_frame, params->user_gesture,
@@ -10760,7 +10796,7 @@ void RenderFrameHostImpl::CreateNewWindow(
   }
 
   // Only top-most frames can open picture-in-picture windows.
-  if (params->disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE &&
+  if (params->disposition == WindowOpenDisposition::kNewPictureInPicture &&
       !IsOutermostMainFrame()) {
     frame_host_associated_receiver_.ReportBadMessage(
         "Only top-most frames can open picture-in-picture windows.");
@@ -10783,14 +10819,14 @@ void RenderFrameHostImpl::CreateNewWindow(
   GetProcess()->FilterURL(false, &params->target_url);
 
   bool is_accepted_popup_disposition =
-      params->disposition == WindowOpenDisposition::NEW_POPUP ||
-      params->disposition == WindowOpenDisposition::NEW_FOREGROUND_TAB ||
-      params->disposition == WindowOpenDisposition::NEW_BACKGROUND_TAB ||
-      params->disposition == WindowOpenDisposition::NEW_WINDOW;
+      params->disposition == WindowOpenDisposition::kNewPopup ||
+      params->disposition == WindowOpenDisposition::kNewForegroundTab ||
+      params->disposition == WindowOpenDisposition::kNewBackgroundTab ||
+      params->disposition == WindowOpenDisposition::kNewWindow;
   bool effective_transient_activation_state =
       HasTransientUserActivation() ||
       (transient_allow_popup_.IsActive() &&
-       params->disposition == WindowOpenDisposition::NEW_POPUP) ||
+       params->disposition == WindowOpenDisposition::kNewPopup) ||
       (popup_delegation_token_.IsActive() && is_accepted_popup_disposition);
 
   if (!effective_transient_activation_state && params->allow_popup) {
@@ -11293,7 +11329,9 @@ RenderFrameHostImpl::GetUnboundedElementAuth() const {
               ->GetLastCommittedOrigin()) &&
       const_cast<RenderFrameHostImpl*>(this)->IsFeatureEnabled(
           network::mojom::PermissionsPolicyFeature::kUnboundedElement)) {
-    return UnboundedElementAuth::kAllowedOpenWeb;
+    // The privileged main frame opted this frame in via permissions policy, so
+    // user activation is not required.
+    return UnboundedElementAuth::kAllowedByPrivilegedMainFrame;
   }
   return UnboundedElementAuth::kDenied;
 }
@@ -11380,6 +11418,7 @@ void RenderFrameHostImpl::RequestUnboundedSurface(
     return;
   }
   if (auth != UnboundedElementAuth::kAllowedPrivileged &&
+      auth != UnboundedElementAuth::kAllowedByPrivilegedMainFrame &&
       !HasTransientUserActivation()) {
     local_frame_host_receiver_.ReportBadMessage(
         "RequestUnboundedSurface should not be called without user "
@@ -12208,7 +12247,7 @@ CanCommitStatus RenderFrameHostImpl::CanCommitOriginAndUrl(
 
   // Check with ChildProcessSecurityPolicy, which enforces Site Isolation, etc.
   const CanCommitStatus can_commit_status = policy->CanCommitOriginAndUrl(
-      GetProcess()->GetDeprecatedID(), GetSiteInstance()->GetIsolationContext(),
+      GetProcess()->GetID(), GetSiteInstance()->GetIsolationContext(),
       url_info);
   if (can_commit_status != CanCommitStatus::CAN_COMMIT_ORIGIN_AND_URL) {
     LogCanCommitOriginAndUrlFailureReason("cpspi_disallowed_commit");
@@ -15386,6 +15425,25 @@ void RenderFrameHostImpl::BindRestrictedCookieManagerWithOrigin(
       CreateCookieAccessObserver(CookieAccessDetails::Source::kNonNavigation));
 }
 
+void RenderFrameHostImpl::BindRestrictedDeviceBoundSessionManager(
+    mojo::PendingReceiver<network::mojom::RestrictedDeviceBoundSessionManager>
+        receiver) {
+  // Blink asks only when the commit params said the document may use the
+  // API. Like CreateWebUsbService(), treat anything else as a compromised
+  // renderer.
+  if (!CanUseDeviceBoundSessionJsApi()) {
+    bad_message::ReceivedBadMessage(
+        GetProcess(),
+        bad_message::RFH_DEVICE_BOUND_SESSION_JS_API_NOT_AVAILABLE);
+    return;
+  }
+  GetStoragePartition()
+      ->GetNetworkContext()
+      ->GetRestrictedDeviceBoundSessionManager(
+          std::move(receiver), GetLastCommittedOrigin(),
+          GetIsolationInfoForSubresources());
+}
+
 void RenderFrameHostImpl::BindTrustTokenQueryAnswerer(
     mojo::PendingReceiver<network::mojom::TrustTokenQueryAnswerer> receiver) {
   auto top_frame_origin = ComputeTopFrameOrigin(GetLastCommittedOrigin());
@@ -16420,10 +16478,25 @@ bool RenderFrameHostImpl::DidCommitNavigationInternal(
       features::IsEnforceSameDocumentOriginInvariantsEnabled()) {
     if (params->insecure_request_policy !=
         frame_tree_node_->current_replication_state().insecure_request_policy) {
-      bad_message::ReceivedBadMessage(
-          GetProcess(),
-          bad_message::RFH_SAME_DOC_INSECURE_REQUEST_POLICY_CHANGE);
-      return false;
+      // Log crash keys to diagnose the mismatch direction.
+      SCOPED_CRASH_KEY_NUMBER(
+          "SameDocIRP", "renderer_policy",
+          static_cast<int>(params->insecure_request_policy));
+      SCOPED_CRASH_KEY_NUMBER(
+          "SameDocIRP", "browser_policy",
+          static_cast<int>(frame_tree_node_->current_replication_state()
+                               .insecure_request_policy));
+      SCOPED_CRASH_KEY_BOOL("SameDocIRP", "is_main_frame", !GetParent());
+      SCOPED_CRASH_KEY_NUMBER("SameDocIRP", "lifecycle",
+                              static_cast<int>(lifecycle_state()));
+      SCOPED_CRASH_KEY_STRING256("SameDocIRP", "url", params->url.spec());
+      SCOPED_CRASH_KEY_STRING256("SameDocIRP", "origin",
+                                 GetLastCommittedOrigin().GetDebugString());
+      // TODO(crbug.com/549229687): Collect data on the mismatch before
+      // enforcing. The root cause is not yet identified — keeping as
+      // DumpWithoutCrashing to gather crash reports without killing the
+      // renderer.
+      base::debug::DumpWithoutCrashing();
     }
 
     if (params->insecure_navigations_set !=
@@ -16799,6 +16872,9 @@ bool RenderFrameHostImpl::DidCommitNavigationInternal(
     document_associated_data_->set_renderer_accessible_http_cache_write_enabled(
         !!navigation_request
               ->GetNetworkIsolationKeyForRendererAccessibleHttpCache());
+    document_associated_data_->set_can_use_device_bound_session_js_api(
+        navigation_request->commit_params()
+            .can_use_device_bound_session_js_api);
 
     const std::optional<FencedFrameProperties>& fenced_frame_properties =
         navigation_request->ComputeFencedFrameProperties();
@@ -16938,14 +17014,6 @@ bool RenderFrameHostImpl::DidCommitNavigationInternal(
     // That occurs before the navigation has actually committed, so return false
     // to indicate that the commit did not succeed.
     return false;
-  }
-
-  // Run any deferred shared storage operations from response headers now that
-  // commit has occurred.
-  while (!deferred_shared_storage_header_callbacks_.empty()) {
-    std::move(deferred_shared_storage_header_callbacks_.front())
-        .Run(GetNavigationOrDocumentHandle().get());
-    deferred_shared_storage_header_callbacks_.pop_front();
   }
 
   // Reset back the state to false after navigation commits.
@@ -20073,10 +20141,6 @@ void RenderFrameHostImpl::NotifyCookiesAccessed(
     std::vector<network::mojom::CookieAccessDetailsPtr> details_vector,
     CookieAccessDetails::Source source) {
   TRACE_EVENT("browser", "RenderFrameHostImpl::NotifyCookiesAccessed");
-  std::optional<base::ElapsedTimer> timer;
-  if (base::ShouldRecordSubsampledMetric(0.01)) {
-    timer.emplace();
-  }
   UMA_HISTOGRAM_COUNTS_1M("Cookie.OnCookiesAccessed.BatchSize",
                           details_vector.size());
   size_t access_sum = 0;
@@ -20095,11 +20159,6 @@ void RenderFrameHostImpl::NotifyCookiesAccessed(
     }
   }
   UMA_HISTOGRAM_COUNTS_1M("Cookie.OnCookiesAccessed.TotalAccesses", access_sum);
-  if (timer) {
-    base::UmaHistogramCustomMicrosecondsTimes(
-        "Browser.CookieAccessObserver.RenderFrameHost.Duration.Subsampled",
-        timer->Elapsed(), base::Microseconds(1), base::Seconds(1), 100);
-  }
 }
 
 void RenderFrameHostImpl::OnStart(const perfetto::DataSourceBase::StartArgs&) {
@@ -20630,11 +20689,6 @@ RenderFrameHostImpl::MakeUrgentMessageScopeIfNeeded() {
   }
 
   return mojo::UrgentMessageScope();
-}
-
-void RenderFrameHostImpl::AddDeferredSharedStorageHeaderCallback(
-    base::OnceCallback<void(NavigationOrDocumentHandle*)> callback) {
-  deferred_shared_storage_header_callbacks_.push_back(std::move(callback));
 }
 
 void RenderFrameHostImpl::IsClipboardOwner(

@@ -1,7 +1,6 @@
 <?xml version="1.0" ?>
 <!DOCTYPE translationbundle>
 <translationbundle lang="te">
-<translation id="1003222766972176318">రిమైండర్: సేవ్ చేసిన ఆఫర్ అందుబాటులో ఉంది</translation>
 <translation id="1008557486741366299">ఇప్పుడు కాదు</translation>
 <translation id="100957008357583611">మీ లొకేషన్‌ను ఉపయోగించాలా?</translation>
 <translation id="1010200102790553230">పేజీని తర్వాత లోడ్ చేయి</translation>
@@ -1122,6 +1121,7 @@
 <translation id="2911973620368911614">జాబ్ అకౌంటింగ్ యూజర్ ID</translation>
 <translation id="2914160345369867329"><ph name="SITE" /> సాధారణంగా మీ సమాచారాన్ని రక్షించడానికి ఎన్‌క్రిప్ష‌న్‌ను ఉపయోగిస్తుంది. Chrome ఈసారి <ph name="SITE" />‌ను కనెక్ట్ చేయడానికి ట్రై చేసినప్పుడు, వెబ్‌సైట్ అసాధారణ, తప్పు ఆధారాలు అని ప్రతిస్పందించింది. దాడి చేసే వ్యక్తి <ph name="SITE" />గా వ్యవహరించి మోసగించడానికి ట్రై చేసినప్పుడు లేదా Wi-Fi సైన్-ఇన్ స్క్రీన్ కనెక్షన్‌కు అంతరాయం కలిగించినప్పుడు ఇలా జరగవచ్చు. ఎలాంటి డేటా వినిమయం సంభవించక ముందే Chrome, కనెక్షన్‌ను ఆపివేసినందున మీ సమాచారం ఇప్పటికీ సురక్షితంగానే ఉంది.</translation>
 <translation id="2915068235268646559"><ph name="CRASH_TIME" /> సమయంలో ఏర్పడిన క్రాష్</translation>
+<translation id="291568339791418558">అన్ని డివైజ్‌లు</translation>
 <translation id="2916038427272391327">ఇతర ప్రోగ్రామ్‌లను మూసివేయండి</translation>
 <translation id="2917630513638801879">ముదురు నీలం రంగు 1</translation>
 <translation id="2922350208395188000">సర్వర్ యొక్క ప్రమాణపత్రం తనిఖీ చెయ్యబడదు.</translation>
@@ -1457,7 +1457,6 @@
 <translation id="3479552764303398839">ఇప్పుడు కాదు</translation>
 <translation id="3481315707647070701">విజువలైజ్ చేయండి, ఎడిట్ చేయండి</translation>
 <translation id="3484560055331845446">మీరు మీ Google ఖాతాకు యాక్సెస్‌ని కోల్పోవచ్చు. మీరు ఇప్పుడే మీ పాస్‌వర్డ్‌ని మార్చాల్సిందిగా Chrome సిఫార్సు చేస్తోంది. మీరు సైన్ ఇన్ చేయాల్సి ఉంటుంది.</translation>
-<translation id="3484861421501147767">రిమైండర్: సేవ్ చేసిన ప్రోమో కోడ్ అందుబాటులో ఉంది</translation>
 <translation id="3485901585646640838">మీ Google ఖాతాలో సేవ్ చేయబడిన పాస్‌వర్డ్‌లను, మరిన్నింటిని ఉపయోగించడానికి, ఇది మీరేనని వెరిఫై చేయండి</translation>
 <translation id="3487845404393360112">ట్రే 4</translation>
 <translation id="3493881266323043047">చెల్లుబాటు</translation>
@@ -1817,6 +1816,7 @@
 <translation id="4067774859633143413">ఫుల్ స్క్రీన్ నుండి ఎగ్జిట్ అయ్యి, డౌన్‌లోడ్‌ను చూడటానికి, |<ph name="ACCELERATOR" />|ను నొక్కి, పట్టుకోండి</translation>
 <translation id="4067947977115446013">చెల్లుబాటు అయ్యే అడ్రస్‌ను జోడించండి</translation>
 <translation id="4072486802667267160">మీ ఆర్డర్‌ను ప్రాసెస్ చేస్తున్నప్పుడు ఎర్రర్ ఏర్పడింది. దయచేసి మళ్లీ ట్రై చేయండి.</translation>
+<translation id="4073293290376142777">సైన్ ఇన్ చేయమంటారా?</translation>
 <translation id="4073376909608563327">పరికర లాక్‌ను ఉపయోగించడం సాధ్యపడలేదు</translation>
 <translation id="4073797364926776829">కార్డ్‌ను చూడండి</translation>
 <translation id="4075732493274867456">క్లయింట్, సర్వర్- ఒకే SSL ప్రోటోకాల్ వెర్షన్‌ లేదా సైఫర్ సూట్‌కు మద్దతు ఇవ్వవు.</translation>
@@ -1849,6 +1849,7 @@
 <translation id="4107047499377819067">VPN బ్యాక్‌గ్రౌండ్ సర్వీస్‌ల ఇన్‌స్టలేషన్ ప్రారంభమయ్యింది, దీనికి కొన్ని నిమిషాలు పట్టవచ్చు.</translation>
 <translation id="4110642094637545339">Google Pay, AfterPay లోగో</translation>
 <translation id="4110652170750985508">మీ పేమెంట్‌ను రివ్యూ చేయండి</translation>
+<translation id="411071007970303441">యాక్టర్‌లందరూ</translation>
 <translation id="4112140312785995938">వెనుకకు జరుపు</translation>
 <translation id="4114007503059268298">ఈ కార్డ్‌ను మీ Google ఖాతాకు, ఇంకా ఈ పరికరంలో సేవ్ చేయాలని అనుకుంటున్నారా?</translation>
 <translation id="4114146879518089587">సైట్‌కు కొనసాగండి</translation>
@@ -2346,7 +2347,7 @@
 <translation id="4926340098269537727"><ph name="ACTIVE_MATCH" />/<ph name="TOTAL_MATCHCOUNT" /></translation>
 <translation id="4929871932072157101"><ph name="KEYWORD_FOCUSED_FRIENDLY_MATCH_TEXT" />, వెతకడానికి 'Tab'ను నొక్కి, ఆపై 'Enter'ను నొక్కండి</translation>
 <translation id="4930153903256238152">ఎక్కువ సామర్థ్యం</translation>
-<translation id="4930714375720679147">ఆన్ చేయి</translation>
+<translation id="4930714375720679147">ఆన్ చేయండి</translation>
 <translation id="4931347573573430180">జారీ చేసిన తేదీ</translation>
 <translation id="4932035752129140860">మీరు పేస్ట్ చేసిన లేదా జోడించిన టెక్స్ట్ Google Cloudకు లేదా థర్డ్-పార్టీలకు విశ్లేషణ కోసం పంపబడుతుంది. ఉదాహరణకు, అది సున్నితమైన వ్యక్తిగత సమాచారం కోసం స్కాన్ చేయబడవచ్చు, కంపెనీ పాలసీల ఆధారంగా స్టోర్ చేయబడవచ్చు, మీ అడ్మినిస్ట్రేటర్‌కు కనిపించవచ్చు.</translation>
 <translation id="4932733599132424254">తేదీ</translation>
@@ -3435,6 +3436,7 @@
 <translation id="6753460329812070808">Chrome నుండి సూచనను తీసివేశారు</translation>
 <translation id="6757797048963528358">మీ పరికరం నిద్రావస్థకు వెళ్లింది.</translation>
 <translation id="6758934187792712102"><ph name="URL" /> మీ మోషన్, లైట్ సెన్సార్‌లను ఉపయోగించాలనుకుంటోంది</translation>
+<translation id="6766488013065406604">Google Password Managerకు వెళ్లండి</translation>
 <translation id="6770747695101757579">పేపర్ (కాటన్)</translation>
 <translation id="6772959465807028761">YouTubeను ఉపయోగించడానికి, మీ Google ఖాతాతో కొనసాగించండి</translation>
 <translation id="6775759552199460396">JIS B2</translation>
@@ -3645,7 +3647,6 @@
 <translation id="7120588595737538743">డౌన్‌లోడ్‌లు, స్క్రీన్‌షాట్‌లు</translation>
 <translation id="7124354851782353862">మీ CVCని ఎంటర్ చేయండి</translation>
 <translation id="7129409597930077180">ఈ అడ్రస్‌కు రవాణా చేయడం సాధ్యం కాదు. వేరే అడ్రస్‌ను ఎంచుకోండి.</translation>
-<translation id="7129809579943936035"><ph name="VALUE_PROP" /> <ph name="DETAILS" /></translation>
 <translation id="7130775116821607281">అప్‌లోడ్ చేయకుండా బ్లాక్ చేయబడింది</translation>
 <translation id="7132939140423847331">మీ అడ్మిన్ ఈ డేటాను కాపీ చేయకుండా నిషేధించారు.</translation>
 <translation id="7134653428559514680">ఈ సైట్ నుండి షేర్ చేయడం సరైన పని కాదు</translation>
@@ -3963,6 +3964,7 @@
 <translation id="7637571805876720304">Chromium నుండి క్రెడిట్ కార్డ్‌ను తీసివేయాలా?</translation>
 <translation id="7637586430889951925">{COUNT,plural, =0{ఏవీ లేవు}=1{మీ ఖాతాలో 1 పాస్‌వర్డ్‌ (<ph name="DOMAIN_LIST" /> కోసం)}other{మీ ఖాతాలో # పాస్‌వర్డ్‌‌లు (<ph name="DOMAIN_LIST" /> కోసం)}}</translation>
 <translation id="7638605456503525968">సీరియల్ పోర్ట్‌లు</translation>
+<translation id="7644100755247241229">Google Walletను ఉపయోగించి ఫ్రెండ్స్‌కు, బిజినెస్‌లకు Pix పంపండి</translation>
 <translation id="7646681339175747202">మీరు ఇప్పుడే ఉపయోగించిన పాస్‌వర్డ్, డేటా ఉల్లంఘనలో కనగొనబడింది. మీ పాస్‌వర్డ్‌ను ఇప్పుడే మార్చమని Google Password Manager సిఫార్సు చేస్తోంది.</translation>
 <translation id="7647206758853451655">ప్రింట్ క్వాలిటీ</translation>
 <translation id="7648133459447652947">మీ కర్సర్ చూపడానికి, యాప్‌లు మారండి, పేజీని రీలోడ్ చేయండి లేదా వెనుకకు వెళ్లండి</translation>
@@ -4066,6 +4068,7 @@
 <translation id="7791543448312431591">జోడించండి</translation>
 <translation id="7798389633136518089">ఈ పాలసీ, క్లౌడ్ సోర్స్ ద్వారా సెట్ చేయబడనందున విస్మరించబడింది.</translation>
 <translation id="7800304661137206267"><ph name="KX" />‌ను కీ మార్పిడి విధానం లాగా మరియు సందేశ ప్రామాణీకరణ కోసం <ph name="CIPHER" />‌ను <ph name="MAC" />తో ఉపయోగించడం ద్వారా కనెక్షన్ ఎన్‌క్రిప్ట్ చేయబడింది.</translation>
+<translation id="780228007282527248">మీ సెర్చ్‌ను మెరుగుపరచడానికి ట్యాబ్‌ను లేదా ఇమేజ్‌ను జోడించండి</translation>
 <translation id="7802523362929240268">సైట్ చట్టబద్ధమైనది</translation>
 <translation id="7802989406998618639"><ph name="SIDE_OF_CARD" /> ఉన్న <ph name="NUMBER_OF_DIGITS" /> అంకెల సెక్యూరిటీ కోడ్‌ను ఎంటర్ చేయండి, తద్వారా ఇది మీరేనని మీ బ్యాంక్ వెరిఫై చేస్తుంది</translation>
 <translation id="780301667611848630">వద్దు</translation>

@@ -25,6 +25,7 @@
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/modules/webgl/webgl_active_info.h"
 #include "third_party/blink/renderer/modules/webgl/webgl_buffer.h"
+#include "third_party/blink/renderer/modules/webgl/webgl_context_attribute_helpers.h"
 #include "third_party/blink/renderer/modules/webgl/webgl_framebuffer.h"
 #include "third_party/blink/renderer/modules/webgl/webgl_object.h"
 #include "third_party/blink/renderer/modules/webgl/webgl_program.h"
@@ -669,10 +670,15 @@ void WebGLRenderingContextWebGPUBase::attachShader(WebGLProgram* program,
   shader->OnAttached();
 }
 
-void WebGLRenderingContextWebGPUBase::bindAttribLocation(WebGLProgram*,
+void WebGLRenderingContextWebGPUBase::bindAttribLocation(WebGLProgram* program,
                                                          GLuint index,
                                                          const String& name) {
-  NOTIMPLEMENTED();
+  if (!ValidateProgramOrShader("bindAttribLocation", program)) {
+    return;
+  }
+
+  driver_gl_.fn.glBindAttribLocationFn(program->Object(), index,
+                                       name.Utf8().c_str());
 }
 
 void WebGLRenderingContextWebGPUBase::bindBuffer(GLenum target,
@@ -891,7 +897,21 @@ void WebGLRenderingContextWebGPUBase::compressedTexImage2D(
     GLsizei height,
     GLint border,
     MaybeShared<DOMArrayBufferView> data) {
-  NOTIMPLEMENTED();
+  // WebGL 2.0 uses a separate overload taking an offset for uploads from a
+  // PIXEL_UNPACK_BUFFER. GL would interpret the data pointer as an offset.
+  if (pixel_unpack_buffer_binding_) {
+    InsertGLError(GL_INVALID_OPERATION, "compressedTexImage2D",
+                  "a buffer is bound to PIXEL_UNPACK_BUFFER");
+    return;
+  }
+  if (!ValidateFitsNonNegInt32("compressedTexImage2D", "data",
+                               data->byteLength())) {
+    return;
+  }
+
+  driver_gl_.fn.glCompressedTexImage2DFn(
+      target, level, internalformat, width, height, border,
+      static_cast<GLsizei>(data->byteLength()), data->BaseAddressMaybeShared());
 }
 
 void WebGLRenderingContextWebGPUBase::compressedTexSubImage2D(
@@ -903,7 +923,21 @@ void WebGLRenderingContextWebGPUBase::compressedTexSubImage2D(
     GLsizei height,
     GLenum format,
     MaybeShared<DOMArrayBufferView> data) {
-  NOTIMPLEMENTED();
+  // WebGL 2.0 uses a separate overload taking an offset for uploads from a
+  // PIXEL_UNPACK_BUFFER. GL would interpret the data pointer as an offset.
+  if (pixel_unpack_buffer_binding_) {
+    InsertGLError(GL_INVALID_OPERATION, "compressedTexSubImage2D",
+                  "a buffer is bound to PIXEL_UNPACK_BUFFER");
+    return;
+  }
+  if (!ValidateFitsNonNegInt32("compressedTexSubImage2D", "data",
+                               data->byteLength())) {
+    return;
+  }
+
+  driver_gl_.fn.glCompressedTexSubImage2DFn(
+      target, level, xoffset, yoffset, width, height, format,
+      static_cast<GLsizei>(data->byteLength()), data->BaseAddressMaybeShared());
 }
 
 void WebGLRenderingContextWebGPUBase::copyTexImage2D(GLenum target,
@@ -1164,7 +1198,7 @@ void WebGLRenderingContextWebGPUBase::frontFace(GLenum mode) {
 }
 
 void WebGLRenderingContextWebGPUBase::generateMipmap(GLenum target) {
-  NOTIMPLEMENTED();
+  driver_gl_.fn.glGenerateMipmapEXTFn(target);
 }
 
 WebGLActiveInfo* WebGLRenderingContextWebGPUBase::getActiveAttrib(
@@ -1260,17 +1294,47 @@ GLint WebGLRenderingContextWebGPUBase::getAttribLocation(WebGLProgram* program,
                                              name.Utf8().c_str());
 }
 
-ScriptValue WebGLRenderingContextWebGPUBase::getBufferParameter(ScriptState*,
-                                                                GLenum target,
-                                                                GLenum pname) {
-  NOTIMPLEMENTED();
-  return {};
+ScriptValue WebGLRenderingContextWebGPUBase::getBufferParameter(
+    ScriptState* script_state,
+    GLenum target,
+    GLenum pname) {
+  // ANGLE also accepts the ES3 buffer mapping pnames (BUFFER_MAPPED,
+  // BUFFER_ACCESS_FLAGS, ...), but WebGL 2.0 has no buffer mapping.
+  if (pname != GL_BUFFER_USAGE && pname != GL_BUFFER_SIZE) {
+    InsertGLError(GL_INVALID_ENUM, "getBufferParameter",
+                  "invalid parameter name");
+    return ScriptValue::CreateNull(script_state->GetIsolate());
+  }
+
+  // WebGL 2.0 spec, getBufferParameter:
+  // > querying with the pname BUFFER_SIZE returns the buffer size as a value of
+  // > type GLsizeiptr.
+  // https://registry.khronos.org/webgl/specs/latest/2.0/
+  // A 32-bit GLint is equivalent for us: bufferData rejects sizes above
+  // INT32_MAX, and JS gets the same Number.
+  GLint value = 0;
+  RETURN_IF_GL_ERROR(driver_gl_.fn.glGetBufferParameterivRobustANGLEFn(
+                         target, pname, 1, nullptr, &value),
+                     ScriptValue::CreateNull(script_state->GetIsolate()));
+  return WebGLAny(script_state, value);
 }
 
 WebGLContextAttributes* WebGLRenderingContextWebGPUBase::getContextAttributes()
     const {
-  NOTIMPLEMENTED();
-  return nullptr;
+  if (isContextLost()) {
+    return nullptr;
+  }
+
+  // TODO(413078308): Adjust the returned attributes to match what the context
+  // actually provides once implemented:
+  // - depth / stencil: set to false if the default framebuffer failed to
+  //   allocate them.
+  // - antialias: set to whether the default framebuffer is multisampled.
+  // - xrCompatible: set to the tracked XR compatibility state once
+  //   makeXRCompatible() is implemented.
+  // - desynchronized: set to Host()->LowLatencyEnabled() once low-latency
+  //   presentation is supported.
+  return ToWebGLContextAttributes(CreationAttributes());
 }
 
 GLenum WebGLRenderingContextWebGPUBase::getError() {
@@ -1309,10 +1373,30 @@ ScriptValue WebGLRenderingContextWebGPUBase::getParameter(
   GLint int_value = 0;
   switch (pname) {
     case GL_MAX_CUBE_MAP_TEXTURE_SIZE:
-    case GL_MAX_TEXTURE_SIZE: {
-      driver_gl_.fn.glGetIntegervFn(pname, &int_value);
+    case GL_MAX_TEXTURE_SIZE:
+    case GL_PACK_ALIGNMENT:
+    case GL_PACK_ROW_LENGTH:
+    case GL_PACK_SKIP_PIXELS:
+    case GL_PACK_SKIP_ROWS:
+    case GL_UNPACK_ALIGNMENT:
+    case GL_UNPACK_IMAGE_HEIGHT:
+    case GL_UNPACK_ROW_LENGTH:
+    case GL_UNPACK_SKIP_IMAGES:
+    case GL_UNPACK_SKIP_PIXELS:
+    case GL_UNPACK_SKIP_ROWS: {
+      RETURN_IF_GL_ERROR(driver_gl_.fn.glGetIntegervFn(pname, &int_value),
+                         ScriptValue::CreateNull(script_state->GetIsolate()));
       return WebGLAny(script_state, int_value);
     }
+
+    case GC3D_UNPACK_FLIP_Y_WEBGL:
+      return WebGLAny(script_state, unpack_flip_y_);
+
+    case GC3D_UNPACK_PREMULTIPLY_ALPHA_WEBGL:
+      return WebGLAny(script_state, unpack_premultiply_alpha_);
+
+    case GC3D_UNPACK_COLORSPACE_CONVERSION_WEBGL:
+      return WebGLAny(script_state, unpack_colorspace_conversion_);
 
     default:
       // TODO(413078308): Support other pnames.
@@ -1597,7 +1681,34 @@ void WebGLRenderingContextWebGPUBase::linkProgram(WebGLProgram* program) {
 }
 
 void WebGLRenderingContextWebGPUBase::pixelStorei(GLenum pname, GLint param) {
-  NOTIMPLEMENTED();
+  switch (pname) {
+    // WebGL-specific parameters:
+    // TODO(413078308): Apply these parameters in tex[Sub]Image2D and
+    // tex[Sub]Image3D.
+    case GC3D_UNPACK_FLIP_Y_WEBGL:
+      unpack_flip_y_ = param != 0;
+      return;
+
+    case GC3D_UNPACK_PREMULTIPLY_ALPHA_WEBGL:
+      unpack_premultiply_alpha_ = param != 0;
+      return;
+
+    case GC3D_UNPACK_COLORSPACE_CONVERSION_WEBGL:
+      if (static_cast<GLenum>(param) != GC3D_BROWSER_DEFAULT_WEBGL &&
+          param != GL_NONE) {
+        InsertGLError(
+            GL_INVALID_VALUE, "pixelStorei",
+            "invalid parameter for UNPACK_COLORSPACE_CONVERSION_WEBGL");
+        return;
+      }
+      unpack_colorspace_conversion_ = static_cast<GLenum>(param);
+      return;
+
+    // Standard parameters. ANGLE keeps their state.
+    default:
+      driver_gl_.fn.glPixelStoreiFn(pname, param);
+      return;
+  }
 }
 
 void WebGLRenderingContextWebGPUBase::polygonOffset(GLfloat factor,
@@ -4440,7 +4551,10 @@ bool WebGLRenderingContextWebGPUBase::ValidateProgramOrShader(
     const char* function_name,
     const WebGLObject* object) {
   DCHECK(object);
-  if (object->MarkedForDeletion()) {
+  // Programs and shaders stay usable after deleteProgram/deleteShader while
+  // they are still in use (attached or current). Only reject them once the GL
+  // object is really gone.
+  if (!object->HasObject()) {
     InsertGLError(GL_INVALID_VALUE, function_name,
                   "attempt to use a deleted object");
     return false;

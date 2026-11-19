@@ -36,14 +36,12 @@
 #include "components/autofill/core/browser/ui/popup_open_enums.h"
 #include "components/autofill/core/common/aliases.h"
 #include "components/autofill/core/common/unique_ids.h"
-#include "components/device_reauth/device_auth_availability_checker.h"
 #include "components/device_reauth/device_authenticator.h"
 #include "components/optimization_guide/core/model_execution/remote_model_executor.h"
-#include "components/password_manager/core/browser/features/password_features.h"
 #include "components/personal_context/core/personal_context_types.h"
 #include "components/profile_metrics/browser_profile_type.h"
-#include "net/base/schemeful_site.h"
 #include "ui/gfx/geometry/rect_f.h"
+#include "url/origin.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "components/autofill/core/browser/ui/autofill_tapjacking_protector.h"
@@ -365,19 +363,6 @@ AutofillClient::GetDeviceAuthenticator() const {
   return GetDeviceAuthenticator("");
 }
 
-bool AutofillClient::SupportsDeviceReauth() const {
-  if (base::FeatureList::IsEnabled(
-          password_manager::features::kDeviceReauthRefactor)) {
-    std::unique_ptr<device_reauth::DeviceAuthAvailabilityChecker> checker =
-        GetDeviceAuthAvailabilityChecker();
-    return checker && checker->CanAuthenticateWithBiometricOrScreenLock();
-  }
-  std::unique_ptr<device_reauth::DeviceAuthenticator> authenticator =
-      GetDeviceAuthenticator();
-  return authenticator &&
-         authenticator->CanAuthenticateWithBiometricOrScreenLock();
-}
-
 bool AutofillClient::ShowAutofillFieldIphForFeature(
     const FormFieldData&,
     AutofillClient::IphFeature feature) {
@@ -498,7 +483,7 @@ void AutofillClient::ShowAutofillAiSuggestionRemovedNotification(
 
 void AutofillClient::ShowEmailVerificationPopup(
     const gfx::RectF& element_bounds,
-    const net::SchemefulSite& issuer_site,
+    const url::Origin& issuer_origin,
     const std::u16string& email,
     base::OnceCallback<void(EmailVerificationPermissionUiStatus)> callback) {
   NOTIMPLEMENTED();

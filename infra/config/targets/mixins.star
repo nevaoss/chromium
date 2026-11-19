@@ -102,9 +102,6 @@ targets.mixin(
 
 targets.mixin(
     name = "amd_radeon_rx_5500_xt",
-    # Temporary for ATL97 outage (b/570132975).
-    ci_only = True,
-    experiment_percentage = 100,
     swarming = targets.swarming(
         dimensions = {
             "gpu": "1002:7340",
@@ -164,9 +161,6 @@ targets.mixin(
 
 targets.mixin(
     name = "chrome-finch-swarming-pool",
-    # Temporary for ATL97 outage (b/570133826).
-    ci_only = True,
-    experiment_percentage = 100,
     swarming = targets.swarming(
         dimensions = {
             "pool": "chrome.tests.finch",
@@ -1050,9 +1044,6 @@ targets.mixin(
 
 targets.mixin(
     name = "intel_uhd_630_or_770",
-    # Temporary for ATL97 outage (b/570132975).
-    ci_only = True,
-    experiment_percentage = 100,
     swarming = targets.swarming(
         dimensions = {
             "gpu": "8086:9bc5|8086:4680",
@@ -1279,14 +1270,32 @@ targets.mixin(
     ),
 )
 
-# Restricts Windows GPU Gemma 4 AI WPT tasks to NVIDIA discrete GPUs
-# to prevent D3D12 vision compilation crashes on AMD integrated graphics
-# (see https://crbug.com/547946848).
+# Expands Windows GPU AI WPT tasks across both Windows 10 and Windows 11 x86-64
+# discrete GPUs (NVIDIA, Intel Arc/UHD, and discrete AMD Radeon RX 5500 XT /
+# 7600 / 7900 XTX / 9070 XT) while excluding integrated AMD APUs (1002:1638 and
+# 1002:164e) that have < 4 GB dedicated VRAM and fail on-device GPU model
+# preconditions.
+targets.mixin(
+    name = "win_gpu_ai_wpt_dimensions",
+    swarming = targets.swarming(
+        dimensions = {
+            "cpu": "x86-64",
+            "gpu": "10de|8086|1002:7340|1002:744c|1002:7480|1002:7550",
+            "os": "Windows",
+        },
+    ),
+)
+
+# Restricts Windows GPU Gemma 4 AI WPT tasks to Windows 10 and Windows 11 x86-64
+# NVIDIA discrete GPUs to prevent D3D12 vision compilation crashes on AMD
+# integrated graphics (see https://crbug.com/547946848).
 targets.mixin(
     name = "win_gpu_gemma4_ai_wpt_dimensions",
     swarming = targets.swarming(
         dimensions = {
+            "cpu": "x86-64",
             "gpu": "10de",
+            "os": "Windows",
         },
     ),
 )
@@ -2003,9 +2012,6 @@ targets.mixin(
 
 targets.mixin(
     name = "updater-win-uac-pool",
-    # Temporary for ATL97 outage (b/570132975).
-    ci_only = True,
-    experiment_percentage = 100,
     swarming = targets.swarming(
         dimensions = {
             "pool": "chromium.win.uac",
@@ -2401,12 +2407,12 @@ targets.mixin(
     name = "xcode_27_beta",
     args = [
         "--xcode-build-version",
-        "27b5028f",
+        "27b48",
     ],
     swarming = targets.swarming(
         named_caches = [
             swarming.cache(
-                name = "xcode_ios_27b5028f",
+                name = "xcode_ios_27b48",
                 path = "Xcode.app",
             ),
         ],

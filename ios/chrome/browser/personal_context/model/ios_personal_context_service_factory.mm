@@ -4,6 +4,8 @@
 
 #import "ios/chrome/browser/personal_context/model/ios_personal_context_service_factory.h"
 
+#import <utility>
+
 #import "base/feature_list.h"
 #import "base/functional/bind.h"
 #import "components/personal_context/core/personal_context_features.h"
@@ -37,7 +39,7 @@ std::unique_ptr<KeyedService> BuildPersonalContextService(ProfileIOS* profile) {
 // static
 IOSPersonalContextServiceFactory::TestingFactory
 IOSPersonalContextServiceFactory::GetDefaultFactory() {
-  return base::BindRepeating(&BuildPersonalContextService);
+  return base::BindOnce(&BuildPersonalContextService);
 }
 
 IOSPersonalContextServiceFactory::IOSPersonalContextServiceFactory(PassKey key)

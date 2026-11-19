@@ -36,7 +36,7 @@
 
 namespace base::internal {
 
-#if PA_BUILDFLAG(DCHECKS_ARE_ON) || \
+#if PA_BUILDFLAG(EXPENSIVE_DCHECKS_ARE_ON) || \
     PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SLOW_CHECKS)
 PA_COMPONENT_EXPORT(RAW_PTR)
 void CheckThatAddressIsntWithinFirstPartitionPage(uintptr_t address);
@@ -109,7 +109,7 @@ struct CBE_BASE_EXPORT RawPtrBackupRefImpl {
     // IsManagedByPartitionAllocBRPPool returns true for a valid pointer,
     // it must be at least partition page away from the beginning of a super
     // page.
-#if PA_BUILDFLAG(DCHECKS_ARE_ON) || \
+#if PA_BUILDFLAG(EXPENSIVE_DCHECKS_ARE_ON) || \
     PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SLOW_CHECKS)
     if (use_brp) {
       CheckThatAddressIsntWithinFirstPartitionPage(address);
@@ -229,12 +229,16 @@ struct CBE_BASE_EXPORT RawPtrBackupRefImpl {
 #if PA_BUILDFLAG(BACKUP_REF_PTR_POISON_OOB_PTR)
     PA_BASE_CHECK(!IsPtrOOB(wrapped_ptr));
 #endif
+#endif  // PA_BUILDFLAG(DCHECKS_ARE_ON) ||
+        // PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SLOW_CHECKS)
+#if PA_BUILDFLAG(EXPENSIVE_DCHECKS_ARE_ON) || \
+    PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SLOW_CHECKS)
     uintptr_t address = partition_alloc::UntagPtr(wrapped_ptr);
     if (IsSupportedAndNotNull(address)) {
       PA_BASE_CHECK(wrapped_ptr != nullptr);
       PA_BASE_CHECK(IsPointeeAlive(address));  // Detects use-after-free.
     }
-#endif  // PA_BUILDFLAG(DCHECKS_ARE_ON) ||
+#endif  // PA_BUILDFLAG(EXPENSIVE_DCHECKS_ARE_ON) ||
         // PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SLOW_CHECKS)
     return wrapped_ptr;
   }

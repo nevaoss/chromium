@@ -362,6 +362,97 @@ TEST_F(AccessibilityTest,
   EXPECT_EQ(recreated_owner, recreated_target->ParentObject());
 }
 
+TEST_F(AccessibilityTest, ImageMapsNotDirtyOnInitialLoad) {
+  SetBodyInnerHTML(R"HTML(
+      <map id="m" name="m"><area href="#"></map>
+      <img usemap="#m" alt="mapped">
+      <img alt="plain">
+  )HTML");
+  // Initial tree construction attaches <area> children via
+  // AXNodeObject::AddImageMapChildren(), so the initial scan does not mark
+  // image maps dirty.
+  EXPECT_FALSE(GetAXObjectCache().RelationCache()->has_dirty_image_maps_);
+}
+
+TEST_F(AccessibilityTest, ImageMapsNotDirtyWhenPlainImageInsertedOrRemoved) {
+  SetBodyInnerHTML(R"HTML(<img id="img" alt="plain">)HTML");
+  AXRelationCache* relation_cache = GetAXObjectCache().RelationCache();
+
+  Element* added = GetDocument().CreateRawElement(html_names::kImgTag);
+  GetDocument().body()->AppendChild(added);
+  EXPECT_FALSE(relation_cache->has_dirty_image_maps_);
+
+  // Remove both an <img> without an AXObject and one that already has one.
+  added->remove();
+  GetElementById("img")->remove();
+  EXPECT_FALSE(relation_cache->has_dirty_image_maps_);
+}
+
+TEST_F(AccessibilityTest, ImageMapsNotDirtyOnOtherAttributeChanges) {
+  SetBodyInnerHTML(R"HTML(
+      <map id="m" name="m"><area id="area" href="#"></map>
+      <img id="img" usemap="#m" alt="mapped">
+      <div id="div"></div>
+  )HTML");
+  AXRelationCache* relation_cache = GetAXObjectCache().RelationCache();
+
+  // Attributes other than usemap on <img> do not affect which map it uses.
+  Element* img = GetElementById("img");
+  img->setAttribute(html_names::kSrcAttr, AtomicString("about:blank"));
+  img->setAttribute(html_names::kAltAttr, AtomicString("new-alt"));
+  img->setAttribute(html_names::kIdAttr, AtomicString("new-id"));
+  img->setAttribute(html_names::kNameAttr, AtomicString("new-name"));
+  EXPECT_FALSE(relation_cache->has_dirty_image_maps_);
+
+  // Attributes other than id and name on <map> do not affect which image uses
+  // it.
+  GetElementById("m")->setAttribute(html_names::kPopoverAttr, keywords::kAuto);
+  EXPECT_FALSE(relation_cache->has_dirty_image_maps_);
+
+  // id, name, and usemap on elements other than <map> and <img> are ignored.
+  for (const char* id : {"div", "area"}) {
+    Element* el = GetElementById(id);
+    el->setAttribute(html_names::kIdAttr, AtomicString("other-id"));
+    el->setAttribute(html_names::kNameAttr, AtomicString("other-name"));
+    el->setAttribute(html_names::kUsemapAttr, AtomicString("#m"));
+    EXPECT_FALSE(relation_cache->has_dirty_image_maps_);
+  }
+}
+
+// Only <img usemap> and <map> mutations mark image maps dirty, and the next
+// AX update clears the dirty bit.
+TEST_F(AccessibilityTest, ImageMapsDirtyOnMapOrUsemapChanges) {
+  SetBodyInnerHTML(R"HTML(
+      <map id="map" name="m"><area href="#"></map>
+      <img id="img" alt="img">
+  )HTML");
+  AXObjectCacheImpl& cache = GetAXObjectCache();
+  AXRelationCache* relation_cache = cache.RelationCache();
+  auto expect_dirty_then_clean = [&]() {
+    EXPECT_TRUE(relation_cache->has_dirty_image_maps_);
+    cache.UpdateAXForAllDocuments();
+    EXPECT_FALSE(relation_cache->has_dirty_image_maps_);
+  };
+
+  Element* img = GetElementById("img");
+  img->setAttribute(html_names::kUsemapAttr, AtomicString("#m"));
+  expect_dirty_then_clean();
+  img->remove();
+  expect_dirty_then_clean();
+  GetDocument().body()->AppendChild(img);
+  expect_dirty_then_clean();
+
+  Element* map = GetElementById("map");
+  map->setAttribute(html_names::kNameAttr, AtomicString("m2"));
+  expect_dirty_then_clean();
+  map->setAttribute(html_names::kIdAttr, AtomicString("m2"));
+  expect_dirty_then_clean();
+  map->remove();
+  expect_dirty_then_clean();
+  GetDocument().body()->AppendChild(map);
+  expect_dirty_then_clean();
+}
+
 class MockAXObject : public AXObject {
  public:
   explicit MockAXObject(AXObjectCacheImpl& ax_object_cache)
@@ -2181,6 +2272,228 @@ TEST_F(AccessibilityTest, WebAXObjectClearSelectionAnnotatesAction) {
     }
   }
   EXPECT_TRUE(found_selection_event);
+}
+
+TEST_F(AccessibilityTest, PopoverInvokerUpdatedWhenTargetConnectedOrModified) {
+  AXObjectCacheImpl& cache = GetAXObjectCache();
+  cache.SetAXMode(ui::kAXModeComplete);
+
+  DocumentParser* parser = GetDocument().ImplicitOpen(kForceSynchronousParsing);
+  ASSERT_NE(nullptr, parser);
+  parser->Append(
+      R"HTML(<button id="btn" popovertarget="pop">Toggle</button>)HTML");
+  UpdateAllLifecyclePhasesForTest();
+
+  AXObject* button = GetAXObjectByElementId("btn");
+  ASSERT_NE(nullptr, button);
+  EXPECT_EQ(kExpandedUndefined, button->IsExpanded());
+
+  ASSERT_TRUE(cache.CommitAXUpdates(GetDocument(), /*force=*/true));
+  {
+    std::vector<ui::AXTreeUpdate> initial_updates;
+    std::vector<ui::AXEvent> initial_events;
+    bool had_end_of_test_event = false;
+    bool had_load_complete_messages = false;
+    ScopedFreezeAXCache freeze(cache);
+    cache.GetUpdatesAndEventsForSerialization(initial_updates, initial_events,
+                                              had_end_of_test_event,
+                                              had_load_complete_messages);
+  }
+  cache.ClearObjectsPendingSerializationForTesting();
+  cache.ResetLifecycleForTesting();
+
+  // Now parse the closed (display:none) target popover after the invoker was
+  // already serialized.
+  parser->Append(
+      R"HTML(<div id="pop" popover="invalid_value">Popover</div>)HTML");
+  parser->Finish();
+  UpdateAllLifecyclePhasesForTest();
+
+  ASSERT_TRUE(cache.CommitAXUpdates(GetDocument(), /*force=*/true));
+  EXPECT_EQ(kExpandedCollapsed, button->IsExpanded());
+
+  std::vector<ui::AXTreeUpdate> updates;
+  std::vector<ui::AXEvent> events;
+  bool had_end_of_test_event = false;
+  bool had_load_complete_messages = false;
+  {
+    ScopedFreezeAXCache freeze(cache);
+    cache.GetUpdatesAndEventsForSerialization(
+        updates, events, had_end_of_test_event, had_load_complete_messages);
+  }
+  cache.ClearObjectsPendingSerializationForTesting();
+  cache.ResetLifecycleForTesting();
+
+  bool found_collapsed_button = false;
+  for (const ui::AXTreeUpdate& update : updates) {
+    for (const ui::AXNodeData& node : update.nodes) {
+      if (node.id == button->AXObjectID()) {
+        found_collapsed_button =
+            node.HasState(ax::mojom::blink::State::kCollapsed);
+      }
+    }
+  }
+  EXPECT_TRUE(found_collapsed_button);
+
+  // Removing the popover attribute on the connected target should also dirty
+  // the invoker and clear its expanded/collapsed state.
+  Element* pop = GetElementById("pop");
+  ASSERT_NE(nullptr, pop);
+  pop->removeAttribute(html_names::kPopoverAttr);
+  UpdateAllLifecyclePhasesForTest();
+
+  ASSERT_TRUE(cache.CommitAXUpdates(GetDocument(), /*force=*/true));
+  EXPECT_EQ(kExpandedUndefined, button->IsExpanded());
+
+  updates.clear();
+  events.clear();
+  {
+    ScopedFreezeAXCache freeze(cache);
+    cache.GetUpdatesAndEventsForSerialization(
+        updates, events, had_end_of_test_event, had_load_complete_messages);
+  }
+  cache.ClearObjectsPendingSerializationForTesting();
+  cache.ResetLifecycleForTesting();
+
+  bool found_uncollapsed_button = false;
+  for (const ui::AXTreeUpdate& update : updates) {
+    for (const ui::AXNodeData& node : update.nodes) {
+      if (node.id == button->AXObjectID()) {
+        found_uncollapsed_button =
+            !node.HasState(ax::mojom::blink::State::kCollapsed) &&
+            !node.HasState(ax::mojom::blink::State::kExpanded);
+      }
+    }
+  }
+  EXPECT_TRUE(found_uncollapsed_button);
+
+  // Re-adding the popover attribute should mark the invoker dirty and restore
+  // its collapsed state.
+  pop->setAttribute(html_names::kPopoverAttr, keywords::kAuto);
+  UpdateAllLifecyclePhasesForTest();
+
+  ASSERT_TRUE(cache.CommitAXUpdates(GetDocument(), /*force=*/true));
+  EXPECT_EQ(kExpandedCollapsed, button->IsExpanded());
+
+  updates.clear();
+  events.clear();
+  {
+    ScopedFreezeAXCache freeze(cache);
+    cache.GetUpdatesAndEventsForSerialization(
+        updates, events, had_end_of_test_event, had_load_complete_messages);
+  }
+  cache.ClearObjectsPendingSerializationForTesting();
+  cache.ResetLifecycleForTesting();
+
+  found_collapsed_button = false;
+  for (const ui::AXTreeUpdate& update : updates) {
+    for (const ui::AXNodeData& node : update.nodes) {
+      if (node.id == button->AXObjectID()) {
+        found_collapsed_button =
+            node.HasState(ax::mojom::blink::State::kCollapsed);
+      }
+    }
+  }
+  EXPECT_TRUE(found_collapsed_button);
+
+  // Removing the closed popover element from the DOM should also mark the
+  // invoker dirty and clear its expanded/collapsed state.
+  pop->remove();
+  UpdateAllLifecyclePhasesForTest();
+
+  ASSERT_TRUE(cache.CommitAXUpdates(GetDocument(), /*force=*/true));
+  EXPECT_EQ(kExpandedUndefined, button->IsExpanded());
+
+  updates.clear();
+  events.clear();
+  {
+    ScopedFreezeAXCache freeze(cache);
+    cache.GetUpdatesAndEventsForSerialization(
+        updates, events, had_end_of_test_event, had_load_complete_messages);
+  }
+  cache.ClearObjectsPendingSerializationForTesting();
+  cache.ResetLifecycleForTesting();
+
+  found_uncollapsed_button = false;
+  for (const ui::AXTreeUpdate& update : updates) {
+    for (const ui::AXNodeData& node : update.nodes) {
+      if (node.id == button->AXObjectID()) {
+        found_uncollapsed_button =
+            !node.HasState(ax::mojom::blink::State::kCollapsed) &&
+            !node.HasState(ax::mojom::blink::State::kExpanded);
+      }
+    }
+  }
+  EXPECT_TRUE(found_uncollapsed_button);
+}
+
+TEST_F(AccessibilityTest, RemoveSubtreeWithNestedAriaOwnsParentRestoration) {
+  SetBodyInnerHTML(R"HTML(
+    <div id="c0" aria-owns="target1 target2"></div>
+    <div id="subtree_root" aria-owns="c0 c2"></div>
+    <div id="c2">
+      <div id="target1">Item 1</div>
+      <div id="target2">Item 2</div>
+    </div>
+    <div id="outer_owner" aria-live="polite"></div>
+  )HTML");
+
+  AXObjectCacheImpl& cache = GetAXObjectCache();
+  UpdateAllLifecyclePhasesForTest();
+  cache.UpdateAXForAllDocuments();
+
+  AXObject* subtree_root = GetAXObjectByElementId("subtree_root");
+  AXObject* c0 = GetAXObjectByElementId("c0");
+  AXObject* c2 = GetAXObjectByElementId("c2");
+  AXObject* target1 = GetAXObjectByElementId("target1");
+  AXObject* target2 = GetAXObjectByElementId("target2");
+  ASSERT_NE(nullptr, subtree_root);
+  ASSERT_NE(nullptr, c0);
+  ASSERT_NE(nullptr, c2);
+  ASSERT_NE(nullptr, target1);
+  ASSERT_NE(nullptr, target2);
+  ASSERT_EQ(2u, subtree_root->CachedChildrenIncludingIgnored().size());
+  ASSERT_EQ(c0, target1->ParentObjectIfPresent());
+  ASSERT_EQ(c0, target2->ParentObjectIfPresent());
+
+  c0->ClearChildren();
+  target1->SetParent(c0);
+  target2->SetParent(c0);
+  GetElementById("outer_owner")
+      ->setAttribute(html_names::kAriaOwnsAttr,
+                     AtomicString("target1 subtree_root"));
+
+  UpdateAllLifecyclePhasesForTest();
+  cache.UpdateAXForAllDocuments();
+
+  EXPECT_NE(nullptr, GetAXObjectByElementId("subtree_root"));
+  EXPECT_NE(nullptr, GetAXObjectByElementId("c2"));
+  EXPECT_NE(nullptr, GetAXObjectByElementId("target1"));
+  EXPECT_NE(nullptr, GetAXObjectByElementId("target2"));
+}
+
+TEST_F(AccessibilityTest, SnapshotWithNestedAriaOwnsRestoringParent) {
+  SetBodyInnerHTML(R"HTML(
+    <div id="outer" role="group" aria-disabled="true"
+         aria-owns="owner1 leaf parent_of_leaf"></div>
+    <div id="owner1" role="group" aria-live="polite" aria-owns="target"></div>
+    <div id="target" role="group" aria-owns="child1 child2"></div>
+    <div id="child1" role="group" aria-owns="leaf"></div>
+    <div id="child2" role="group">2</div>
+    <div id="parent_of_leaf" role="group">
+      <div id="leaf" role="group">Leaf</div>
+    </div>
+  )HTML");
+
+  Member<AXObjectCache> snapshot_cache = AXObjectCache::CreateSnapshotter(
+      GetDocument(), ui::AXMode(ui::AXMode::kPDFPrinting));
+  ui::AXTreeUpdate response;
+  std::set<ui::AXSerializationErrorFlag> out_error;
+  snapshot_cache->SerializeEntireTreeAndDispose(
+      /*max_nodes=*/1000, base::TimeDelta::FiniteMax(), &response, &out_error);
+
+  EXPECT_FALSE(response.nodes.empty());
+  EXPECT_TRUE(out_error.empty());
 }
 
 TEST_F(AccessibilityTest,

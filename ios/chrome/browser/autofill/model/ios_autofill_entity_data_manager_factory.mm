@@ -4,6 +4,8 @@
 
 #import "ios/chrome/browser/autofill/model/ios_autofill_entity_data_manager_factory.h"
 
+#import <utility>
+
 #import "components/autofill/core/browser/country_type.h"
 #import "components/autofill/core/browser/data_manager/autofill_ai/entity_data_manager.h"
 #import "components/autofill/core/common/autofill_features.h"
@@ -43,8 +45,7 @@ IOSAutofillEntityDataManagerFactory::BuildServiceInstanceFor(
   return std::make_unique<autofill::EntityDataManager>(
       profile->GetPrefs(), IdentityManagerFactory::GetForProfile(profile),
       SyncServiceFactory::GetForProfile(profile), std::move(local_storage),
-      ios::HistoryServiceFactory::GetForProfile(
-          profile, ServiceAccessType::EXPLICIT_ACCESS),
+      ios::HistoryServiceFactory::GetForProfile(profile),
       IOSAutofillAiPersonalContextAccessManagerFactory::GetForProfile(profile),
       autofill::StrikeDatabaseFactory::GetForProfile(profile),
       autofill::GeoIpCountryCode(autofill::GetCountryCodeFromVariations()));

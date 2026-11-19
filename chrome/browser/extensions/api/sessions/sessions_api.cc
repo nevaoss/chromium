@@ -513,7 +513,9 @@ std::optional<api::windows::Window>
 SessionsGetDevicesFunction::CreateWindowModel(
     const sessions::SessionWindow& window,
     const std::string& session_tag) {
-  CHECK(!window.tabs.empty(), base::NotFatalUntil::M161);
+  // TODO(crbug.com/575408483): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(!window.tabs.empty());
 
   // Ignore app popup window for now because we do not have a corresponding
   // api::windows::WindowType value.
@@ -931,7 +933,7 @@ ExtensionFunction::ResponseAction SessionsRestoreFunction::RestoreLocalSession(
   std::optional<std::vector<sessions::LiveTab*>> restored_tabs =
       tab_restore_service->RestoreEntryById(
           context, SessionID::FromSerializedValue(session_id.id()),
-          WindowOpenDisposition::UNKNOWN);
+          WindowOpenDisposition::kUnknown);
   if (!restored_tabs.has_value()) {
     return RespondNow(Error(kInvalidSessionIdError, session_id.ToString()));
   }
@@ -978,7 +980,7 @@ SessionsRestoreFunction::RestoreForeignSession(
 
     content::WebContents* tab_contents =
         SessionRestore::RestoreForeignSessionTab(
-            contents, *tab, WindowOpenDisposition::NEW_FOREGROUND_TAB);
+            contents, *tab, WindowOpenDisposition::kNewForegroundTab);
     return RespondNow(GetRestoredTabResult(tab_contents));
   }
 

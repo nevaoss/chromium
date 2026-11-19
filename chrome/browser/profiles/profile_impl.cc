@@ -62,6 +62,12 @@
 #include "chrome/browser/download/download_core_service.h"
 #include "chrome/browser/download/download_core_service_factory.h"
 #include "chrome/browser/download/download_manager_utils.h"
+#include "chrome/browser/enterprise/client_certificates/certificate_provisioning_service_factory.h"
+#if BUILDFLAG(ENABLE_EXTENSIONS)
+#include "chrome/browser/extensions/api/autofill_private/autofill_private_event_router_factory.h"
+#endif
+#include "chrome/browser/safe_browsing/chrome_ping_manager_factory.h"
+#include "chrome/browser/send_tab_to_self/send_tab_to_self_client_service_factory.h"
 #include "chrome/browser/file_system_access/chrome_file_system_access_permission_context.h"
 #include "chrome/browser/file_system_access/file_system_access_permission_context_factory.h"
 #include "chrome/browser/heavy_ad_intervention/heavy_ad_service_factory.h"
@@ -953,6 +959,49 @@ void ProfileImpl::DoFinalInit(CreateMode create_mode) {
               OnDeviceTailModelServiceFactory::GetForProfile(profile.get());
               PredictionModelHandlerProviderFactory::GetForBrowserContext(
                   profile.get());
+            },
+            GetWeakPtr()));
+  }
+
+  if (features::IsLazyAfterStartupKeyedServicesEnabled() &&
+      IsRegularProfile()) {
+    AfterStartupTaskUtils::PostTask(
+        FROM_HERE,
+        content::GetUIThreadTaskRunner({base::TaskPriority::BEST_EFFORT}),
+        base::BindOnce(
+            [](base::WeakPtr<Profile> profile) {
+              if (!profile || profile->ShutdownStarted()) {
+                return;
+              }
+              safe_browsing::ChromePingManagerFactory::GetForBrowserContext(
+                  profile.get());
+              send_tab_to_self::SendTabToSelfClientServiceFactory::
+                  GetForProfile(profile.get());
+#if BUILDFLAG(ENABLE_EXTENSIONS)
+              extensions::AutofillPrivateEventRouterFactory::GetForProfile(
+                  profile.get());
+#endif
+            },
+            GetWeakPtr()));
+  }
+
+  if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
+      features::kLazyKeyedServiceInstantiationCertificateProvisioning.Get() &&
+      IsRegularProfile()) {
+    // CertificateProvisioningService only needs to start background cert
+    // provisioning for managed profiles, while creating it synchronously during
+    // profile init forces the default StoragePartition and LevelDB
+    // CertificateStore onto the startup critical path.
+    AfterStartupTaskUtils::PostTask(
+        FROM_HERE,
+        content::GetUIThreadTaskRunner({base::TaskPriority::BEST_EFFORT}),
+        base::BindOnce(
+            [](base::WeakPtr<Profile> profile) {
+              if (!profile || profile->ShutdownStarted()) {
+                return;
+              }
+              client_certificates::CertificateProvisioningServiceFactory::
+                  GetForProfile(profile.get());
             },
             GetWeakPtr()));
   }

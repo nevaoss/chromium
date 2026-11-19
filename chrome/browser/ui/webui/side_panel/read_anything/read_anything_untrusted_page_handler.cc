@@ -84,6 +84,7 @@
 
 #if BUILDFLAG(ENABLE_PDF)
 #include "components/pdf/common/pdf_util.h"
+#include "components/translate/content/browser/content_translate_driver.h"
 #include "extensions/browser/mime_handler/mime_handler_stream_manager.h"
 #include "pdf/pdf_features.h"
 #endif  // BUILDFLAG(ENABLE_PDF)
@@ -835,6 +836,13 @@ void ReadAnythingUntrustedPageHandler::OnDistillationStateChanged(
   CHECK(ra_controller);
 
   ra_controller->OnDistillationStateChanged(new_state);
+
+  // Translate only once the content is distilled, so that the translation
+  // applies to the content shown in Reading Mode.
+  if (new_state == read_anything::mojom::ReadAnythingDistillationState::
+                       kDistillationWithContent) {
+    MaybeTriggerPendingPdfTranslation();
+  }
 }
 
 void ReadAnythingUntrustedPageHandler::OnGetVoicePackInfo(
@@ -954,7 +962,7 @@ bool ReadAnythingUntrustedPageHandler::AreActionsAllowedInTree(
     const ui::AXTreeID& tree_id) const {
   content::RenderFrameHost* rfh =
       content::RenderFrameHost::FromAXTreeID(tree_id);
-  if (!rfh) {
+  if (!rfh || rfh->IsErrorDocument()) {
     return false;
   }
 
@@ -1268,6 +1276,14 @@ void ReadAnythingUntrustedPageHandler::ScrollToTargetNode(
     return;
   }
 
+  // If the render frame is in an errored state, return early instead of
+  // scrolling to avoid performing actions on invalid nodes.
+  content::RenderFrameHost* rfh =
+      content::RenderFrameHost::FromAXTreeID(target_tree_id);
+  if (!rfh || rfh->IsErrorDocument()) {
+    return;
+  }
+
   base::UmaHistogramEnumeration(kRendererScrollRequestHistogram,
                                 ReadAnythingRendererRequestResult::kAllowed);
   if (!ui::IsValidAXNodeIDFromRenderer(target_node_id)) {
@@ -1518,6 +1534,14 @@ void ReadAnythingUntrustedPageHandler::Activate(
     // it was previously marked as hidden.
     OnGetPresentationState();
     RestoreSettingsFromPrefs();
+
+    // The content may have been distilled before Reading Mode was shown, in
+    // which case the distillation state won't change again.
+    if (distillation_state_ ==
+        read_anything::mojom::ReadAnythingDistillationState::
+            kDistillationWithContent) {
+      MaybeTriggerPendingPdfTranslation();
+    }
   }
   if (!active && !tab_will_detach_) {
     if (features::IsReadAnythingImprovedUiEnabled() &&
@@ -1705,6 +1729,19 @@ void ReadAnythingUntrustedPageHandler::OnActiveAXTreeIDChanged() {
   // Reset the distillation from the previous tree/page so its result is not
   // used as stale content.
   ResetReadabilityState();
+  // Likewise, the previous page's distillation state no longer applies, and
+  // distillation of the new page hasn't been attempted yet. Otherwise, e.g.
+  // Activate() could trigger a pending PDF translation before the new page's
+  // content is distilled. This is set directly rather than through
+  // OnDistillationStateChanged(), whose validation of the renderer's messages
+  // still rejects kNotAttempted after initialization. Leave kUndefined alone:
+  // this is also called from the constructor, before the renderer reports its
+  // initial kNotAttempted state, which must still be accepted.
+  if (distillation_state_ !=
+      read_anything::mojom::ReadAnythingDistillationState::kUndefined) {
+    distillation_state_ =
+        read_anything::mojom::ReadAnythingDistillationState::kNotAttempted;
+  }
 
   is_pdf_with_frame_ = false;
 
@@ -1791,6 +1828,7 @@ void ReadAnythingUntrustedPageHandler::OnActiveAXTreeIDChanged() {
     RequestDomDistillerDistillation(contents);
   }
 }
+
 bool ReadAnythingUntrustedPageHandler::RequestDomDistillerDistillation(
     content::WebContents* content) {
   if (!content || !features::IsReadAnythingWithReadabilityEnabled() ||
@@ -1816,8 +1854,10 @@ bool ReadAnythingUntrustedPageHandler::RequestDomDistillerDistillation(
   const GURL& url = content->GetLastCommittedURL();
   RecordDistillationSchemeHistogram(url);
 
-  if (!url.SchemeIsHTTPOrHTTPS()) {
-    VLOG(1) << kReadAnythingPrefix << ": URL is not HTTP/HTTPS, skipping for "
+  content::RenderFrameHost* rfh = content->GetPrimaryMainFrame();
+  if (!url.SchemeIsHTTPOrHTTPS() || !rfh || rfh->IsErrorDocument()) {
+    VLOG(1) << kReadAnythingPrefix
+            << ": URL is not HTTP/HTTPS or is error document, skipping for "
             << url.spec();
     // Call UpdateContent with empty values so status can be updated from show
     // loading to no content.
@@ -1833,7 +1873,7 @@ bool ReadAnythingUntrustedPageHandler::RequestDomDistillerDistillation(
   dom_distiller::DomDistillerService* dom_distiller_service =
       dom_distiller::DomDistillerServiceFactory::GetForBrowserContext(
           content->GetBrowserContext());
-  DCHECK(dom_distiller_service);
+  CHECK(dom_distiller_service, base::NotFatalUntil::M162);
   page_->OnReadabilityDistillationStateChanged(
       read_anything::mojom::ReadAnythingDistillationState::
           kDistillationInProgress);
@@ -2113,6 +2153,26 @@ void ReadAnythingUntrustedPageHandler::SendTranslationState(
   }
   last_sent_is_translated_ = is_translated;
   page_->OnTranslationStateChanged(is_translated);
+}
+
+void ReadAnythingUntrustedPageHandler::MaybeTriggerPendingPdfTranslation() {
+#if BUILDFLAG(ENABLE_PDF)
+  if (!base::FeatureList::IsEnabled(translate::kEnableTranslatePdf)) {
+    return;
+  }
+  // The pending translation is on the tab's ContentTranslateDriver, which is
+  // attached to the tab's contents rather than to the inner contents hosting
+  // the PDF.
+  content::WebContents* tab_contents = tab_ ? tab_->GetContents() : nullptr;
+  if (!tab_contents) {
+    return;
+  }
+  if (auto* driver =
+          translate::ContentTranslateDriver::FromWebContents(tab_contents)) {
+    // This is a no-op unless a PDF translation is pending.
+    driver->MaybeTriggerPendingPdfTranslation();
+  }
+#endif  // BUILDFLAG(ENABLE_PDF)
 }
 
 void ReadAnythingUntrustedPageHandler::LogExtensionState() {

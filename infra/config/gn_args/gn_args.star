@@ -1069,13 +1069,6 @@ gn_args.config(
 )
 
 gn_args.config(
-    name = "no_reclient",
-    args = {
-        "use_reclient": False,
-    },
-)
-
-gn_args.config(
     name = "no_remoteexec",
     args = {
         "use_remoteexec": False,
@@ -1238,6 +1231,9 @@ gn_args.config(
 
 gn_args.config(
     name = "release_try_builder",
+    args = {
+        "enable_expensive_dchecks": False,
+    },
     configs = [
         "release_builder",
         "try_builder",

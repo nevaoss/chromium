@@ -34,16 +34,12 @@
 #include "components/autofill/core/common/unique_ids.h"
 #include "components/profile_metrics/browser_profile_type.h"
 #include "components/security_state/core/security_state.h"
-#include "net/base/schemeful_site.h"
 #include "ui/gfx/geometry/rect_f.h"
+#include "url/origin.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "components/autofill/core/browser/ui/autofill_tapjacking_protector.h"
 #endif
-
-namespace net {
-class SchemefulSite;
-}
 
 class GoogleGroupsManager;
 class GURL;
@@ -877,9 +873,6 @@ class AutofillClient {
   virtual std::unique_ptr<device_reauth::DeviceAuthAvailabilityChecker>
   GetDeviceAuthAvailabilityChecker() const = 0;
 
-  // Returns `true` if the device supports any kind of re-auth.
-  virtual bool SupportsDeviceReauth() const;
-
   // Attaches the IPH for `feature` to the `field`, on
   // platforms that it. If another IPH has been shown for the tab, the IPH is
   // granteed not to be shown. Returns `true` if the IPH bubble is shown after
@@ -986,12 +979,12 @@ class AutofillClient {
 
   // Shows a yes/no prompt asking the user to confirm that they want to verify
   // their email. The prompt is anchored on the field at `element_bounds`.
-  // `issuer_site` is the site that issued the assertion.
+  // `issuer_origin` is the origin that issued the assertion.
   // `callback` is called with the permission UI status
   // (`EmailVerificationPermissionUiStatus`).
   virtual void ShowEmailVerificationPopup(
       const gfx::RectF& element_bounds,
-      const net::SchemefulSite& issuer_site,
+      const url::Origin& issuer_origin,
       const std::u16string& email,
       base::OnceCallback<void(EmailVerificationPermissionUiStatus)> callback);
 
