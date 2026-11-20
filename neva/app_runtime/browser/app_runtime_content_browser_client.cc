@@ -408,7 +408,7 @@ void AppRuntimeContentBrowserClient::AppendExtraCommandLineSwitches(
         static_cast<AppRuntimeBrowserContext*>(process->GetBrowserContext());
     if (browser_context->ExtensionsIsAllowed() &&
         extensions::ProcessMap::Get(browser_context)
-            ->Contains(process->GetDeprecatedID())) {
+            ->Contains(process->GetID())) {
       command_line->AppendSwitch(extensions::switches::kExtensionProcess);
     }
   }
@@ -944,7 +944,7 @@ bool AppRuntimeContentBrowserClient::HandleExternalProtocol(
 
 base::OnceClosure AppRuntimeContentBrowserClient::SelectClientCertificate(
     content::BrowserContext* browser_context,
-    int process_id,
+    content::ChildProcessId process_id,
     content::WebContents* web_contents,
     net::SSLCertRequestInfo* cert_request_info,
     net::ClientCertIdentityList client_certs,
