@@ -115,7 +115,7 @@ void DispatchOnCommitted(extensions::events::HistogramValue histogram_value,
       navigation_handle->GetRenderFrameHost();
   ui::PageTransition transition_type = navigation_handle->GetPageTransition();
 
-  auto args = base::MakeRefCounted<EventArgs>();
+  auto args = base::MakeRefCounted<extensions::EventArgs>();
   base::DictValue dict;
   int tab_id = static_cast<int>(NevaExtensionsServiceFactory::GetService(
                                     web_contents->GetBrowserContext())

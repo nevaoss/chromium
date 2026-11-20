@@ -261,7 +261,7 @@ void ExtensionTabUtil::DispatchTabsOnCreated(content::BrowserContext* context,
           ->GetTabHelper()
           ->GetWebContentsFromId(tab_id);
 
-  auto on_created_args = base::MakeRefCounted<EventArgs>();;
+  auto on_created_args = base::MakeRefCounted<extensions::EventArgs>();;
   tabs::Tab tab_object;
   tab_object.id = tab_id;
   tab_object.window_id = tab_id;
@@ -291,7 +291,7 @@ void ExtensionTabUtil::DispatchTabsOnActivated(content::BrowserContext* context,
     return;
   }
 
-  auto on_activated_args = base::MakeRefCounted<EventArgs>();
+  auto on_activated_args = base::MakeRefCounted<extensions::EventArgs>();
   base::DictValue details;
   details.Set(tabs_constants::kTabIdKey, static_cast<int>(tab_id));
   details.Set(tabs_constants::kWindowIdKey, static_cast<int>(tab_id));
@@ -344,7 +344,7 @@ void ExtensionTabUtil::DispatchTabsOnUpdated(content::BrowserContext* context,
   tab_object.incognito = context->IsOffTheRecord();
   tab_object.highlighted = tab_object.active;
 
-  auto on_updated_args = base::MakeRefCounted<EventArgs>();
+  auto on_updated_args = base::MakeRefCounted<extensions::EventArgs>();
   on_updated_args->data.Append(static_cast<int>(tab_id));
   on_updated_args->data.Append(std::move(details));
   on_updated_args->data.Append(tab_object.ToValue());
@@ -368,7 +368,7 @@ void ExtensionTabUtil::DispatchTabsOnRemoved(content::BrowserContext* context,
   details.Set(tabs_constants::kWindowIdKey, static_cast<int>(tab_id));
   details.Set(tabs_constants::kIsWindowClosingKey, false);
 
-  auto on_removed_args = base::MakeRefCounted<EventArgs>();
+  auto on_removed_args = base::MakeRefCounted<extensions::EventArgs>();
   on_removed_args->data.Append(static_cast<int>(tab_id));
   on_removed_args->data.Append(std::move(details));
 
@@ -388,7 +388,7 @@ void ExtensionTabUtil::DispatchWindowsOnCreated(
     return;
   }
 
-  auto args = base::MakeRefCounted<EventArgs>();
+  auto args = base::MakeRefCounted<extensions::EventArgs>();
   args->data.Append(CreateWindowValueForExtension(tab_id, true));
 
   const std::string event_name = windows::OnCreated::kEventName;
@@ -407,7 +407,7 @@ void ExtensionTabUtil::DispatchWindowsOnFocusChanged(
     return;
   }
 
-  auto args = base::MakeRefCounted<EventArgs>();
+  auto args = base::MakeRefCounted<extensions::EventArgs>();
   args->data.Append(static_cast<int>(tab_id));
 
   const std::string event_name = windows::OnFocusChanged::kEventName;
@@ -426,7 +426,7 @@ void ExtensionTabUtil::DispatchWindowsOnRemoved(
     return;
   }
 
-  auto args = base::MakeRefCounted<EventArgs>();
+  auto args = base::MakeRefCounted<extensions::EventArgs>();
   args->data.Append(static_cast<int>(tab_id));
 
   const std::string event_name = windows::OnRemoved::kEventName;

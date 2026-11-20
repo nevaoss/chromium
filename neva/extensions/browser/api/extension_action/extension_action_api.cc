@@ -69,7 +69,7 @@ void ExtensionActionAPI::DispatchExtensionActionClicked(
     content::WebContents* web_contents) {
   // TODO(neva): In chrome browser, there are much more arguments such as
   // favIconUrl, width/height, index, openerTabId, title, windowId.
-  auto args = base::MakeRefCounted<EventArgs>();
+  auto args = base::MakeRefCounted<extensions::EventArgs>();
   base::DictValue dict;
   dict.Set("url", web_contents->GetLastCommittedURL().spec());
   dict.Set("id", static_cast<int>(tab_id));
