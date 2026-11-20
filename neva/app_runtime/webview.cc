@@ -450,7 +450,7 @@ content::WebContents* WebView::OpenURLFromTab(
     return nullptr;
   }
 
-  if (params.disposition != WindowOpenDisposition::CURRENT_TAB) {
+  if (params.disposition != WindowOpenDisposition::kCurrentTab) {
     NOTIMPLEMENTED();
     return nullptr;
   }
