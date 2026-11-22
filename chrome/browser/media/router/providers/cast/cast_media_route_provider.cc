@@ -175,11 +175,6 @@ void CastMediaRouteProvider::Init(
 
 CastMediaRouteProvider::~CastMediaRouteProvider() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!sink_queries_.empty()) {
-    CHECK_EQ(sink_queries_.size(), 1u, base::NotFatalUntil::M161);
-    CHECK_EQ(sink_queries_.begin()->first, MediaSource::ForAnyTab().id(),
-             base::NotFatalUntil::M161);
-  }
 }
 
 void CastMediaRouteProvider::CreateRoute(const std::string& source_id,

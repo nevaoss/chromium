@@ -172,7 +172,6 @@ source_set("tab_style_views_impl") {
 source_set("tab_container") {
   sources = [
     "tab_container.h",
-    "tab_container_impl.h",
     "tab_slot_animation_delegate.h",
     "tab_strip_layout_helper.h",
     "z_orderable_tab_container_element.h",
@@ -197,7 +196,6 @@ source_set("tab_container") {
 source_set("tab_container_impl") {
   sources = [
     "tab_container.cc",
-    "tab_container_impl.cc",
     "tab_slot_animation_delegate.cc",
     "tab_strip_layout_helper.cc",
     "z_orderable_tab_container_element.cc",
@@ -550,10 +548,6 @@ source_set("test_support") {
 source_set("unit_tests") {
   testonly = true
 
-  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-  # enable the diagnostic by removing this line.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
-
   sources = [
     "tab_container_unittest.cc",
     "tab_group_views_unittest.cc",
@@ -704,7 +698,10 @@ source_set("browser_tests") {
   ]
 
   if (is_chromeos) {
-    deps += [ "//chrome/browser/ash/boca/on_task" ]
+    deps += [
+      "//chrome/browser/ash/boca/on_task",
+      "//chrome/browser/ui/chromeos/locked_state",
+    ]
   }
 }
 
@@ -712,10 +709,6 @@ if (!is_chromeos_device) {
   source_set("interactive_ui_tests") {
     testonly = true
     defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
-
-    # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-    # enable the diagnostic by removing this line.
-    configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 
     sources = [
       "tab_group_header_interactive_uitest.cc",

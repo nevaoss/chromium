@@ -249,16 +249,44 @@ constexpr base::FeatureParam<int>
         &kNewTabPageCustomizationV2, "iph_display_interval_days",
         /*default_value=*/7};
 
-BASE_FEATURE(kMagicStackTipsV2Ios, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kMagicStackNTPThemeTipIos, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kMagicStackNTPCustomizationTipIos,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kMagicStackTipsNotificationTipIos,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
-const char kMagicStackTipsV2IosActionableParam[] = "actionable_variation";
-constexpr base::FeatureParam<bool> kMagicStackTipsV2IosActionable{
-    &kMagicStackTipsV2Ios, kMagicStackTipsV2IosActionableParam,
+const char kMagicStackNTPThemeTipIosActionableParam[] = "actionable_variation";
+constexpr base::FeatureParam<bool> kMagicStackNTPThemeTipIosActionable{
+    &kMagicStackNTPThemeTipIos, kMagicStackNTPThemeTipIosActionableParam,
     /*default_value=*/false};
 
-bool IsMagicStackTipsV2IosActionableEnabled() {
-  return base::FeatureList::IsEnabled(kMagicStackTipsV2Ios) &&
-         kMagicStackTipsV2IosActionable.Get();
+const char kMagicStackNTPCustomizationTipIosActionableParam[] =
+    "actionable_variation";
+constexpr base::FeatureParam<bool> kMagicStackNTPCustomizationTipIosActionable{
+    &kMagicStackNTPCustomizationTipIos,
+    kMagicStackNTPCustomizationTipIosActionableParam,
+    /*default_value=*/false};
+
+const char kMagicStackTipsNotificationTipIosActionableParam[] =
+    "actionable_variation";
+constexpr base::FeatureParam<bool> kMagicStackTipsNotificationTipIosActionable{
+    &kMagicStackTipsNotificationTipIos,
+    kMagicStackTipsNotificationTipIosActionableParam,
+    /*default_value=*/false};
+
+bool IsMagicStackNTPThemeTipIosActionableEnabled() {
+  return base::FeatureList::IsEnabled(kMagicStackNTPThemeTipIos) &&
+         kMagicStackNTPThemeTipIosActionable.Get();
+}
+
+bool IsMagicStackNTPCustomizationTipIosActionableEnabled() {
+  return base::FeatureList::IsEnabled(kMagicStackNTPCustomizationTipIos) &&
+         kMagicStackNTPCustomizationTipIosActionable.Get();
+}
+
+bool IsMagicStackTipsNotificationTipIosActionableEnabled() {
+  return base::FeatureList::IsEnabled(kMagicStackTipsNotificationTipIos) &&
+         kMagicStackTipsNotificationTipIosActionable.Get();
 }
 
 }  // namespace segmentation_platform::features

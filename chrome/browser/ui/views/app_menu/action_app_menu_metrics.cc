@@ -18,6 +18,8 @@
 namespace {
 
 constexpr char kMenuActionHistogram[] = "WrenchMenu.MenuAction";
+constexpr char kMenuHeightPercentageHistogram[] =
+    "WrenchMenu.MenuHeightPercentage";
 constexpr char kTimeToActionHistogram[] = "WrenchMenu.TimeToAction";
 constexpr char kTimeToActionPrefix[] = "WrenchMenu.TimeToAction.";
 
@@ -85,6 +87,15 @@ void ActionAppMenuMetrics::LogMenuAction(actions::BaseAction* base_action) {
       return;
     }
   }
+}
+
+void ActionAppMenuMetrics::RecordMenuHeightPercentage(int menu_height,
+                                                      int screen_height) {
+  if (screen_height <= 0 || menu_height <= 0) {
+    return;
+  }
+  const int percentage = menu_height * 100 / screen_height;
+  base::UmaHistogramPercentage(kMenuHeightPercentageHistogram, percentage);
 }
 
 void ActionAppMenuMetrics::SetTimerForTesting(base::ElapsedTimer timer) {
@@ -516,6 +527,9 @@ void ActionAppMenuMetrics::LogMenuActionWithId(actions::ActionId action_id) {
       RecordAction(MENU_ACTION_TAKE_SCREENSHOT, "TakeScreenshot");
       break;
 
+    case kActionSidePanelShowTabsFromOtherDevices:
+      RecordTimeToAction();
+      break;
     case kActionTabSearch:
       RecordAction(MENU_ACTION_TAB_SEARCH, "TabSearch");
       break;

@@ -296,6 +296,7 @@ BASE_FEATURE(kGlicStructuredYieldMetadata, base::FEATURE_ENABLED_BY_DEFAULT);
 // Runs the glic client in a PrivilegedWebContents instead of a webview.
 // This is a work in progress. See b/534807813.
 BASE_FEATURE(kGlicNoWebview, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicDisableHfcr, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicSetAuthUser, FEATURE_ENABLED_BY_DEFAULT_ALL_PLATFORMS);
 // Whether to disallow webview communication directly with the glic host
 // (chrome/browser/resources/glic/glic_api_impl/host). When enabled, some
@@ -340,10 +341,14 @@ BASE_FEATURE(kGlicColdWarmingUsePerformanceManager,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicSsr, base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<bool> kGlicShowLoaderUntilMainPageOnload{
+    &kGlicSsr, "show_loader_until_main_page_onload", false};
 
 BASE_FEATURE(kGlicClientDataStorage, FEATURE_ENABLED_BY_DEFAULT_ALL_PLATFORMS);
 
 BASE_FEATURE(kGlicShowNotTellTutorials, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<int> kGlicShowNotTellTutorialsArm{
     &kGlicShowNotTellTutorials, "tutorials_arm", 0};
+
+BASE_FEATURE(kGlicSendTabToSelf, base::FEATURE_DISABLED_BY_DEFAULT);
 }  // namespace features

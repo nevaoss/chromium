@@ -70,7 +70,6 @@
 #import "ios/chrome/browser/composebox/public/composebox_constants.h"
 #import "ios/chrome/browser/composebox/public/composebox_focus_params.h"
 #import "ios/chrome/browser/composebox/public/composebox_input_plate_controls.h"
-#import "ios/chrome/browser/composebox/public/composebox_model_option.h"
 #import "ios/chrome/browser/composebox/public/features.h"
 #import "ios/chrome/browser/composebox/shared/coordinator/composebox_attachment_diff.h"
 #import "ios/chrome/browser/composebox/shared/coordinator/composebox_picker_drive_result.h"
@@ -78,6 +77,7 @@
 #import "ios/chrome/browser/composebox/shared/metrics/composebox_metrics_recorder.h"
 #import "ios/chrome/browser/composebox/ui/composebox_input_item.h"
 #import "ios/chrome/browser/composebox/ui/composebox_input_item_collection.h"
+#import "ios/chrome/browser/composebox/ui/composebox_model_item.h"
 #import "ios/chrome/browser/composebox/ui/composebox_ui_input_state.h"
 #import "ios/chrome/browser/favicon/model/favicon_loader.h"
 #import "ios/chrome/browser/intelligence/persist_tab_context/model/persist_tab_context_browser_agent.h"
@@ -556,7 +556,11 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
     switch (item.type) {
       case ComposeboxInputItemType::kComposeboxInputItemTypeTab: {
         auto it = _latestTabSelectionMapping.find(item.identifier);
-        if (it != _latestTabSelectionMapping.end() && it->second.valid()) {
+        // Only preselect the tab if its current URL still matches the attached
+        // item. If the tab navigated to a new URL, it should not appear as
+        // already selected in the tab picker.
+        if (it != _latestTabSelectionMapping.end() &&
+            [self isItem:item matchingCurrentURLOfWebStateID:it->second]) {
           tabIDs.insert(it->second);
         }
         break;
@@ -688,8 +692,8 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
 
   _modeHolder.mode = params.toolMode;
 
-  if (params.modelMode != ComposeboxModelOption::kNone) {
-    [self setModelOption:params.modelMode explicitUserAction:YES];
+  if (params.modelMode != omnibox::ModelMode::MODEL_MODE_UNSPECIFIED) {
+    [self setModel:params.modelMode explicitUserAction:YES];
   }
 
   if (params.attachmentList) {
@@ -697,8 +701,14 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   }
 }
 
+- (void)setModel:(omnibox::ModelMode)model
+    explicitUserAction:(BOOL)explicitUserAction {
+  [_stateManager setActiveModel:model explicitUserAction:explicitUserAction];
+}
+
 - (std::set<web::WebStateID>)allAttachedWebStateIDs {
-  std::set<web::WebStateID> webStateIDs;
+  std::set<web::WebStateID> webStateIDs =
+      [self attachedWebStateIDsInCurrentContext];
   for (ComposeboxInputItem* item in _items.containedItems) {
     web::WebStateID webStateID = _latestTabSelectionMapping[item.identifier];
 
@@ -706,9 +716,18 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
       continue;
     }
 
+    WebStateSearchCriteria searchCriteria{
+        .identifier = webStateID,
+        .pinned_state = WebStateSearchCriteria::PinnedState::kAny,
+    };
+
     // Include web state IDs of tabs added to composebox context from other
-    // web states.
-    webStateIDs.insert(webStateID);
+    // browser windows (not present in `_webStateList`).
+    if (!_webStateList ||
+        GetWebStateIndex(_webStateList.get(), searchCriteria) ==
+            WebStateList::kInvalidIndex) {
+      webStateIDs.insert(webStateID);
+    }
   }
   return webStateIDs;
 }
@@ -717,19 +736,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   std::set<web::WebStateID> webStateIDs;
   for (ComposeboxInputItem* item in _items.containedItems) {
     web::WebStateID webStateID = _latestTabSelectionMapping[item.identifier];
-
-    if (!webStateID.valid()) {
-      continue;
-    }
-
-    // Only get web state IDs for tabs in the current web state.
-    WebStateSearchCriteria searchCriteria{
-        .identifier = webStateID,
-        .pinned_state = WebStateSearchCriteria::PinnedState::kAny,
-    };
-
-    if (GetWebStateIndex(_webStateList, searchCriteria) !=
-        WebStateList::kInvalidIndex) {
+    if ([self isItem:item matchingCurrentURLOfWebStateID:webStateID]) {
       webStateIDs.insert(webStateID);
     }
   }
@@ -755,7 +762,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
   if (item.type == ComposeboxInputItemType::kComposeboxInputItemTypeTab) {
     web::WebStateID webStateID = _latestTabSelectionMapping[item.identifier];
-    if (webStateID.valid()) {
+    if ([self isItem:item matchingCurrentURLOfWebStateID:webStateID]) {
       _removedWebStateIDs.insert(webStateID);
     }
   }
@@ -1075,12 +1082,6 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
                             }];
 }
 
-- (void)setModelOption:(ComposeboxModelOption)modelOption
-    explicitUserAction:(BOOL)explicitUserAction {
-  [_stateManager setActiveModel:modelOption
-             explicitUserAction:explicitUserAction];
-}
-
 - (void)setOmniboxFocused:(bool)focused {
   if (_omniboxFocused == focused) {
     return;
@@ -1105,8 +1106,8 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
     [self.metricsRecorder recordToolModeShown:tool];
   }
 
-  for (const auto& model : state.allowedModels) {
-    [self.metricsRecorder recordModelModeShown:model];
+  for (ComposeboxModelItem* modelItem in state.modelItems) {
+    [self.metricsRecorder recordModelModeShown:modelItem.modelMode];
   }
 }
 
@@ -1172,6 +1173,25 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
 
 #pragma mark - Private
 
+// Returns whether `item` represents the current visible URL of the WebState
+// matching `webStateID` in `_webStateList`.
+- (BOOL)isItem:(ComposeboxInputItem*)item
+    matchingCurrentURLOfWebStateID:(web::WebStateID)webStateID {
+  if (!item || !webStateID.valid() || !_webStateList) {
+    return NO;
+  }
+  WebStateSearchCriteria searchCriteria{
+      .identifier = webStateID,
+      .pinned_state = WebStateSearchCriteria::PinnedState::kAny,
+  };
+  int index = GetWebStateIndex(_webStateList.get(), searchCriteria);
+  if (index == WebStateList::kInvalidIndex) {
+    return NO;
+  }
+  web::WebState* webState = _webStateList->GetWebStateAt(index);
+  return webState && item.tabURL == webState->GetVisibleURL();
+}
+
 // Removes input items matching the deselected WebState IDs.
 - (void)removeDeselectedIDs:(std::set<web::WebStateID>)deselectedIDs {
   for (const web::WebStateID& webStateID : deselectedIDs) {
@@ -1182,9 +1202,13 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   NSArray<ComposeboxInputItem*>* items = [_items.containedItems copy];
   for (ComposeboxInputItem* item in items) {
     web::WebStateID webStateID = _latestTabSelectionMapping[item.identifier];
-    if (webStateID.valid() && deselectedIDs.contains(webStateID)) {
-      [self removeItem:item];
+    if (!deselectedIDs.contains(webStateID)) {
+      continue;
     }
+    if (![self isItem:item matchingCurrentURLOfWebStateID:webStateID]) {
+      continue;
+    }
+    [self removeItem:item];
   }
 }
 
@@ -1961,7 +1985,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   }
 
   UrlLoadParams params = CreateOmniboxUrlLoadParams(
-      URL, /*post_content=*/nullptr, WindowOpenDisposition::CURRENT_TAB,
+      URL, /*post_content=*/nullptr, WindowOpenDisposition::kCurrentTab,
       ui::PAGE_TRANSITION_GENERATED,
       /*destination_url_entered_without_scheme=*/false, _isIncognito);
 
@@ -2795,7 +2819,13 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
       if (!detachedWebState) {
         return;
       }
-      [self removeDeselectedIDs:{detachedWebState->GetUniqueIdentifier()}];
+      web::WebStateID detachedID = detachedWebState->GetUniqueIdentifier();
+      for (ComposeboxInputItem* item in [_items.containedItems copy]) {
+        if (_latestTabSelectionMapping[item.identifier] == detachedID &&
+            item.tabURL == detachedWebState->GetVisibleURL()) {
+          [self removeItemInternal:item];
+        }
+      }
       break;
     }
     default:

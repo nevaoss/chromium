@@ -415,7 +415,7 @@ class PDFExtensionContentSettingJSTest : public PDFExtensionJSTest {
   bool LoadPdfAndWait(const GURL& url, bool new_tab) override {
     if (new_tab) {
       EXPECT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
-          browser(), url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+          browser(), url, WindowOpenDisposition::kNewForegroundTab,
           ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
     } else {
       EXPECT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
@@ -670,26 +670,32 @@ IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2Test, Ink2BottomToolbarDropdown) {
   RunTestsInJsModule("ink2_bottom_toolbar_dropdown_test.js", "test.pdf");
 }
 
-IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2Test, Ink2SidePanel) {
+IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2Test, Ink2DrawBottomToolbar) {
+  // The window must be smaller than 960px to show the bottom toolbar.
+  GetActiveWebContents()->Resize({0, 0, 959, 100});
+  RunTestsInJsModule("ink2_draw_bottom_toolbar_test.js", "test.pdf");
+}
+
+IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2Test, Ink2DrawSidePanel) {
   // The window must be at least 960px to show the side panel.
   GetActiveWebContents()->Resize({0, 0, 960, 100});
-  RunTestsInJsModule("ink2_side_panel_test.js", "test.pdf");
+  RunTestsInJsModule("ink2_draw_side_panel_test.js", "test.pdf");
 }
 
 IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2Test, SelectableIconButton) {
   RunTestsInJsModule("selectable_icon_button_test.js", "test.pdf");
 }
 
-IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2Test, Ink2BrushSelector) {
-  RunTestsInJsModule("ink2_brush_selector_test.js", "test.pdf");
+IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2Test, Ink2DrawBrushSelector) {
+  RunTestsInJsModule("ink2_draw_brush_selector_test.js", "test.pdf");
 }
 
 IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2Test, Ink2ColorSelector) {
   RunTestsInJsModule("ink2_color_selector_test.js", "test.pdf");
 }
 
-IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2Test, Ink2SizeSelector) {
-  RunTestsInJsModule("ink2_size_selector_test.js", "test.pdf");
+IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2Test, Ink2DrawSizeSelector) {
+  RunTestsInJsModule("ink2_draw_size_selector_test.js", "test.pdf");
 }
 
 IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2Test, Ink2ViewerToolbar) {
@@ -746,6 +752,15 @@ IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2TextTest, Ink2TextBoxKeyboard) {
 
 IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2TextTest, Ink2TextBoxViewport) {
   RunTestsInJsModule("ink2_text_box_viewport_test.js", "test.pdf");
+}
+
+IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2TextTest, Ink2TextIntegration) {
+  // TODO(crbug.com/40268279): Test hangs with GuestView PDF. Remove once
+  // GuestView PDF is fully deprecated.
+  if (!UseOopif()) {
+    GTEST_SKIP();
+  }
+  RunTestsInJsModule("ink2_text_integration_test.js", "test.pdf");
 }
 
 IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2TextTest, Ink2TextSidePanel) {
@@ -828,12 +843,12 @@ class PDFExtensionJSInk2BeforeUnloadTest : public PDFExtensionJSTestBase {
   }
 };
 
-IN_PROC_BROWSER_TEST_F(PDFExtensionJSInk2BeforeUnloadTest, Stroke) {
-  RunTestsInJsModule("ink2_before_unload_stroke_test.js", "test.pdf");
+IN_PROC_BROWSER_TEST_F(PDFExtensionJSInk2BeforeUnloadTest, DrawStroke) {
+  RunTestsInJsModule("ink2_draw_before_unload_stroke_test.js", "test.pdf");
 }
 
-IN_PROC_BROWSER_TEST_F(PDFExtensionJSInk2BeforeUnloadTest, Undo) {
-  RunTestsInJsModule("ink2_before_unload_undo_test.js", "test.pdf");
+IN_PROC_BROWSER_TEST_F(PDFExtensionJSInk2BeforeUnloadTest, DrawUndo) {
+  RunTestsInJsModule("ink2_draw_before_unload_undo_test.js", "test.pdf");
 }
 
 #endif  // BUILDFLAG(ENABLE_PDF_INK2)

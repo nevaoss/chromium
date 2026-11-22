@@ -630,6 +630,91 @@ IN_PROC_BROWSER_TEST_P(SamlTestWithFeatures, CredentialPassingAPI) {
                                      1);
 }
 
+// Verifies that a cross-origin subframe embedded in the SAML IdP page cannot
+// use the credentials passing API to override the user's password.
+IN_PROC_BROWSER_TEST_P(SamlTestWithFeatures,
+                       CrossOriginSubframeCannotUseCredentialPassingAPI) {
+  net::EmbeddedTestServer cross_origin_https_server(
+      net::EmbeddedTestServer::TYPE_HTTPS);
+  net::EmbeddedTestServer::ServerCertificateConfig cert_config;
+  cert_config.dns_names = {kAdditionalIdPHost};
+  cross_origin_https_server.SetSSLConfig(cert_config);
+  cross_origin_https_server.ServeFilesFromSourceDirectory("chrome/test/data");
+  ASSERT_TRUE(cross_origin_https_server.Start());
+
+  fake_saml_idp()->SetLoginHTMLTemplate("saml_login.html");
+  StartSamlAndWaitForIdpPageLoad(
+      saml_test_users::kFirstUserCorpExampleComEmail);
+
+  content::RenderFrameHost* signin_frame =
+      signin::GetAuthFrame(GetLoginUI()->GetWebContents(), gaia_frame_parent_);
+  ASSERT_TRUE(signin_frame);
+
+  const GURL cross_origin_iframe_url =
+      cross_origin_https_server.GetURL(kAdditionalIdPHost, "/simple.html");
+  ASSERT_EQ(true,
+            content::EvalJs(signin_frame,
+                            content::JsReplace(
+                                "new Promise(resolve => {"
+                                "  const f = document.createElement('iframe');"
+                                "  f.onload = () => resolve(true);"
+                                "  f.src = $1;"
+                                "  document.body.appendChild(f);"
+                                "});",
+                                cross_origin_iframe_url)));
+
+  content::RenderFrameHost* child_frame =
+      content::ChildFrameAt(signin_frame, 0);
+  ASSERT_TRUE(child_frame);
+  ASSERT_NE(signin_frame->GetLastCommittedOrigin(),
+            child_frame->GetLastCommittedOrigin());
+
+  // Attempt to invoke the SAML credentials passing API from the cross-origin
+  // child frame and wait briefly for any postMessage relay to settle.
+  ASSERT_EQ(true,
+            content::EvalJs(child_frame,
+                            "new Promise(resolve => {"
+                            "  window.postMessage({"
+                            "    type: 'gaia_saml_api',"
+                            "    call: {"
+                            "      method: 'add',"
+                            "      token: 'subframe_token',"
+                            "      keyType: 'KEY_TYPE_PASSWORD_PLAIN',"
+                            "      passwordBytes: 'subframe_injected_password'"
+                            "    }"
+                            "  }, '/');"
+                            "  window.postMessage({"
+                            "    type: 'gaia_saml_api',"
+                            "    call: {"
+                            "      method: 'confirm',"
+                            "      token: 'subframe_token'"
+                            "    }"
+                            "  }, '/');"
+                            "  window.setTimeout(() => resolve(true), 100);"
+                            "});"));
+
+  // Fill in the top-level SAML IdP form with the user's real password and
+  // submit.
+  SigninFrameJS().TypeIntoPath("fake_user", {"Email"});
+  SigninFrameJS().TypeIntoPath("actual_password", {"Password"});
+  SigninFrameJS().TapOn("Submit");
+
+  test::WaitForPrimaryUserSessionStart();
+
+  // The cryptohome secret must match the password entered in the top-level IdP
+  // form, not the password sent by the cross-origin child frame.
+  Key expected_key("actual_password");
+  expected_key.Transform(Key::KEY_TYPE_SALTED_SHA256_TOP_HALF,
+                         SystemSaltGetter::ConvertRawSaltToHexString(
+                             FakeCryptohomeMiscClient::GetStubSystemSalt()));
+  EXPECT_EQ(expected_key.GetSecret(),
+            cryptohome_client_->salted_hashed_secret());
+  EXPECT_FALSE(user_manager::KnownUser(g_browser_process->local_state())
+                   .GetIsUsingSAMLPrincipalsAPI(AccountId::FromUserEmailGaiaId(
+                       saml_test_users::kFirstUserCorpExampleComEmail,
+                       kFirstSAMLUserGaiaId)));
+}
+
 // Tests the sign-in flow when the credentials passing API is used w/o 'confirm'
 // call. The password from the last 'add' should be used.
 IN_PROC_BROWSER_TEST_P(SamlTestWithFeatures,
@@ -2369,6 +2454,8 @@ IN_PROC_BROWSER_TEST_P(SAMLPasswordAttributesTest, DISABLED_LoginFailed) {
 
 INSTANTIATE_TEST_SUITE_P(All, SAMLPasswordAttributesTest, testing::Bool());
 
+namespace {
+
 void FakeGetCertificateCallbackTrue(
     attestation::AttestationFlow::CertificateCallback callback) {
   // In reality, attestation service holds the certificate after a successful
@@ -2381,12 +2468,44 @@ void FakeGetCertificateCallbackTrue(
   std::move(callback).Run(attestation::ATTESTATION_SUCCESS, "certificate");
 }
 
+// Makes `TpmChallengeKeyFactory::Create()` return a `TpmChallengeKeyImpl`
+// that uses the returned mocks while the returned override is alive.
+[[nodiscard]] std::tuple<
+    attestation::TpmChallengeKeyFactory::ScopedOneshotOverrideForTesting,
+    std::unique_ptr<NiceMock<attestation::MockAttestationFlow>>,
+    std::unique_ptr<attestation::MockMachineCertificateUploader>>
+InjectTpmChallengeKey() {
+  auto mock_attestation_flow =
+      std::make_unique<NiceMock<attestation::MockAttestationFlow>>();
+  ON_CALL(*mock_attestation_flow, GetCertificate)
+      .WillByDefault(WithArgs<7>(FakeGetCertificateCallbackTrue));
+
+  auto mock_cert_uploader =
+      std::make_unique<attestation::MockMachineCertificateUploader>();
+  // By default make it reply that the certificate is already uploaded.
+  ON_CALL(*mock_cert_uploader, WaitForUploadComplete)
+      .WillByDefault(base::test::RunOnceCallbackRepeatedly<0>(
+          /*certificate_uploaded=*/true));
+
+  auto challenge_key_impl = std::make_unique<attestation::TpmChallengeKeyImpl>(
+      mock_attestation_flow.get(), mock_cert_uploader.get());
+  // NOTE: ScopedOneshotOverrideForTesting is non-movable. Relying on C++17 RVO.
+  return std::tuple<
+      attestation::TpmChallengeKeyFactory::ScopedOneshotOverrideForTesting,
+      std::unique_ptr<NiceMock<attestation::MockAttestationFlow>>,
+      std::unique_ptr<attestation::MockMachineCertificateUploader>>(
+      std::move(challenge_key_impl), std::move(mock_attestation_flow),
+      std::move(mock_cert_uploader));
+}
+
 constexpr base::TimeDelta kTimeoutTaskDelay = base::Milliseconds(500);
 constexpr base::TimeDelta kBuildResponseTaskDelay = base::Seconds(3);
 static_assert(
     kTimeoutTaskDelay < kBuildResponseTaskDelay,
     "kTimeoutTaskDelay should be less than kBuildResponseTaskDelay to trigger "
     "timeout error in SAMLDeviceAttestationTest.TimeoutError test.");
+
+}  // namespace
 
 class SAMLDeviceAttestationTest : public SamlTestBase {
  public:
@@ -2405,27 +2524,11 @@ class SAMLDeviceAttestationTest : public SamlTestBase {
       const std::vector<std::string>& allowed_urls);
 
   policy::DevicePolicyCrosTestHelper policy_helper_;
-
-  attestation::MockMachineCertificateUploader mock_cert_uploader_;
-  NiceMock<attestation::MockAttestationFlow> mock_attestation_flow_;
   ScopedStubInstallAttributes stub_install_attributes_;
 };
 
 void SAMLDeviceAttestationTest::SetUpInProcessBrowserTestFixture() {
   SamlTestBase::SetUpInProcessBrowserTestFixture();
-
-  ON_CALL(mock_attestation_flow_, GetCertificate)
-      .WillByDefault(WithArgs<7>(FakeGetCertificateCallbackTrue));
-
-  // By default make it reply that the certificate is already uploaded.
-  ON_CALL(mock_cert_uploader_, WaitForUploadComplete)
-      .WillByDefault(base::test::RunOnceCallbackRepeatedly<0>(
-          /*certificate_uploaded=*/true));
-
-  attestation::TpmChallengeKeyFactory::SetForTesting(
-      std::make_unique<attestation::TpmChallengeKeyImpl>(
-          &mock_attestation_flow_, &mock_cert_uploader_));
-
   fake_saml_idp()->SetLoginHTMLTemplate("saml_login.html");
 }
 
@@ -2477,6 +2580,7 @@ class SAMLDeviceAttestationEnrolledTest : public SAMLDeviceAttestationTest {
 IN_PROC_BROWSER_TEST_F(SAMLDeviceAttestationTest, DefaultPolicy) {
   // Leave policy unset.
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kFourthUserCorpExampleTestEmail);
 
@@ -2489,6 +2593,7 @@ IN_PROC_BROWSER_TEST_F(SAMLDeviceAttestationTest, DefaultPolicy) {
 IN_PROC_BROWSER_TEST_F(SAMLDeviceAttestationTest, EmptyPolicy) {
   SetAllowedUrlsPolicy({/* empty list */});
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kFourthUserCorpExampleTestEmail);
 
@@ -2507,6 +2612,7 @@ IN_PROC_BROWSER_TEST_F(SAMLDeviceAttestationTest,
                        MAYBE_NotEnterpriseEnrolledError) {
   SetAllowedUrlsPolicy({fake_saml_idp()->GetIdpHost()});
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kFourthUserCorpExampleTestEmail);
 
@@ -2521,6 +2627,7 @@ IN_PROC_BROWSER_TEST_F(SAMLDeviceAttestationTest,
 IN_PROC_BROWSER_TEST_F(SAMLDeviceAttestationEnrolledTest, Success) {
   SetAllowedUrlsPolicy({fake_saml_idp()->GetIdpHost()});
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kFourthUserCorpExampleTestEmail);
 
@@ -2540,6 +2647,7 @@ IN_PROC_BROWSER_TEST_F(SAMLDeviceAttestationEnrolledTest, Success) {
 IN_PROC_BROWSER_TEST_F(SAMLDeviceAttestationEnrolledTest, PolicyNoMatchError) {
   SetAllowedUrlsPolicy({fake_saml_idp()->GetIdpDomain()});
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kFourthUserCorpExampleTestEmail);
 
@@ -2557,6 +2665,7 @@ IN_PROC_BROWSER_TEST_F(SAMLDeviceAttestationEnrolledTest, PolicyNoMatchError) {
 IN_PROC_BROWSER_TEST_F(SAMLDeviceAttestationEnrolledTest, PolicyRegexSuccess) {
   SetAllowedUrlsPolicy({"[*.]" + fake_saml_idp()->GetIdpDomain()});
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kFourthUserCorpExampleTestEmail);
 
@@ -2577,6 +2686,7 @@ IN_PROC_BROWSER_TEST_F(SAMLDeviceAttestationEnrolledTest,
                        PolicyTwoEntriesSuccess) {
   SetAllowedUrlsPolicy({"example2.com", fake_saml_idp()->GetIdpHost()});
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kFourthUserCorpExampleTestEmail);
 
@@ -2600,6 +2710,7 @@ IN_PROC_BROWSER_TEST_F(SAMLDeviceAttestationEnrolledTest,
   SetDeviceContextAwareAccessSignalsAllowlistPolicy(
       {fake_saml_idp()->GetIdpHost()});
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kFourthUserCorpExampleTestEmail);
 
@@ -2635,6 +2746,7 @@ IN_PROC_BROWSER_TEST_F(SAMLDeviceAttestationEnrolledTest, TimeoutError) {
       ->GetHandler<GaiaScreenHandler>()
       ->SetNextSamlChallengeKeyHandlerForTesting(std::move(handler));
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kFourthUserCorpExampleTestEmail);
 
@@ -2682,6 +2794,7 @@ IN_PROC_BROWSER_TEST_F(SAMLDeviceTrustTest, NotEnterpriseEnrolledError) {
   SetDeviceContextAwareAccessSignalsAllowlistPolicy(
       {fake_saml_idp()->GetIdpHost()});
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kSixthUserCorpExampleTestEmail);
 
@@ -2697,6 +2810,7 @@ IN_PROC_BROWSER_TEST_F(SAMLDeviceTrustTest, NotEnterpriseEnrolledError) {
 IN_PROC_BROWSER_TEST_F(SAMLDeviceTrustEnrolledTest, DefaultPolicy) {
   // Leave policy unset.
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kSixthUserCorpExampleTestEmail);
 
@@ -2709,6 +2823,7 @@ IN_PROC_BROWSER_TEST_F(SAMLDeviceTrustEnrolledTest, DefaultPolicy) {
 IN_PROC_BROWSER_TEST_F(SAMLDeviceTrustEnrolledTest, EmptyPolicy) {
   SetDeviceContextAwareAccessSignalsAllowlistPolicy({/* empty list */});
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kSixthUserCorpExampleTestEmail);
 
@@ -2721,6 +2836,7 @@ IN_PROC_BROWSER_TEST_F(SAMLDeviceTrustEnrolledTest, PolicyRegexSuccess) {
   SetDeviceContextAwareAccessSignalsAllowlistPolicy(
       {fake_saml_idp()->GetIdpDomain()});
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kSixthUserCorpExampleTestEmail);
 
@@ -2736,6 +2852,7 @@ IN_PROC_BROWSER_TEST_F(SAMLDeviceTrustEnrolledTest, SendHeaderForMatchingURL) {
   SetDeviceContextAwareAccessSignalsAllowlistPolicy(
       {fake_saml_idp()->GetIdpHost()});
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kSixthUserCorpExampleTestEmail);
 
@@ -2751,6 +2868,7 @@ IN_PROC_BROWSER_TEST_F(SAMLDeviceTrustEnrolledTest,
                        HeaderNotSentForNonMatchingURL) {
   SetDeviceContextAwareAccessSignalsAllowlistPolicy({"example2.com"});
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kSixthUserCorpExampleTestEmail);
 
@@ -2766,6 +2884,7 @@ IN_PROC_BROWSER_TEST_F(SAMLDeviceTrustEnrolledTest, Success) {
   SetDeviceContextAwareAccessSignalsAllowlistPolicy(
       {fake_saml_idp()->GetIdpHost()});
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kSixthUserCorpExampleTestEmail);
 
@@ -2782,6 +2901,7 @@ IN_PROC_BROWSER_TEST_F(SAMLDeviceTrustEnrolledTest, PolicyTwoEntriesSuccess) {
   SetDeviceContextAwareAccessSignalsAllowlistPolicy(
       {fake_saml_idp()->GetIdpHost()});
 
+  auto scoped_tpm_challenge_key_override = InjectTpmChallengeKey();
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kSixthUserCorpExampleTestEmail);
 

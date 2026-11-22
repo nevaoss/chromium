@@ -148,7 +148,7 @@ class OfferNotificationBubbleControllerImplTest
 
   void ShowBubble(const AutofillOfferData& offer) {
     controller()->ShowOfferNotificationIfApplicable(
-        offer, &card_, {.show_notification_automatically = true});
+        offer, {.show_notification_automatically = true});
   }
 
   void CloseBubble(PaymentsUiClosedReason closed_reason =
@@ -161,36 +161,7 @@ class OfferNotificationBubbleControllerImplTest
     controller()->ReshowBubble();
   }
 
-  AutofillOfferData CreateTestCardLinkedOffer(
-      const std::vector<GURL>& merchant_origins,
-      const std::vector<int64_t>& eligible_instrument_ids = {}) {
-    std::string offer_id = "1357";
-    base::Time expiry = base::Time::Now() + base::Days(2);
-    GURL offer_details_url("https://www.google.com/");
-    std::string offer_reward_amount = "5%";
-    return AutofillOfferData::GPayCardLinkedOffer(
-        offer_id, expiry, merchant_origins, offer_details_url, DisplayStrings(),
-        eligible_instrument_ids, offer_reward_amount);
-  }
-
-  AutofillOfferData CreateTestGPayPromoCodeOffer(
-      const std::vector<GURL>& merchant_origins,
-      const std::string& promo_code) {
-    std::string offer_id = "2468";
-    base::Time expiry = base::Time::Now() + base::Days(2);
-    DisplayStrings display_strings;
-    display_strings.value_prop_text = "5% off on shoes. Up to $50.";
-    display_strings.see_details_text = "See details";
-    display_strings.usage_instructions_text =
-        "Click the promo code field at checkout to autofill it.";
-    GURL offer_details_url = GURL("https://pay.google.com");
-    return AutofillOfferData::GPayPromoCodeOffer(
-        offer_id, expiry, merchant_origins, offer_details_url, display_strings,
-        promo_code);
-  }
-
  private:
-  CreditCard card_ = test::GetCreditCard();
   std::unique_ptr<tabs::TabInterface> tab_interface_;
   std::unique_ptr<tabs::TabFeatures> tab_features_;
   testing::NiceMock<MockBrowserWindowInterface> mock_browser_window_interface_;
@@ -202,9 +173,8 @@ class OfferNotificationBubbleControllerImplTest
 
 TEST_F(OfferNotificationBubbleControllerImplTest, BubbleShown) {
   // Check that bubble is visible.
-  AutofillOfferData offer = CreateTestCardLinkedOffer(
-      /*merchant_origins=*/{GURL("https://www.example.com")},
-      /*eligible_instrument_ids=*/{123});
+  AutofillOfferData offer =
+      test::GetPromoCodeOfferData(GURL("https://www.example.com"));
   ShowBubble(offer);
   EXPECT_TRUE(controller()->GetOfferNotificationBubbleView());
 }
@@ -213,48 +183,32 @@ TEST_F(OfferNotificationBubbleControllerImplTest, BubbleShown) {
 // than kAutofillBubbleSurviveNavigationTime (5 seconds).
 TEST_F(OfferNotificationBubbleControllerImplTest,
        OfferBubbleDismissesOnNavigation) {
-  AutofillOfferData offer = CreateTestCardLinkedOffer(
-      /*merchant_origins=*/{GURL("https://www.example.com")},
-      /*eligible_instrument_ids=*/{123});
+  AutofillOfferData offer =
+      test::GetPromoCodeOfferData(GURL("https://www.example.com"));
   ShowBubble(offer);
   EXPECT_TRUE(controller()->GetOfferNotificationBubbleView());
   task_environment()->FastForwardBy(kAutofillBubbleSurviveNavigationTime -
                                     base::Seconds(1));
   controller()->ShowOfferNotificationIfApplicable(
-      offer, nullptr, {.notification_has_been_shown = true});
+      offer, {.notification_has_been_shown = true});
   // Ensure the bubble is still there if
   // kOfferNotificationBubbleSurviveNavigationTime hasn't been reached yet.
   EXPECT_TRUE(controller()->GetOfferNotificationBubbleView());
 
   task_environment()->FastForwardBy(base::Seconds(2));
   controller()->ShowOfferNotificationIfApplicable(
-      offer, nullptr, {.notification_has_been_shown = true});
+      offer, {.notification_has_been_shown = true});
   // Ensure new page does not have an active offer notification bubble.
   EXPECT_EQ(nullptr, controller()->GetOfferNotificationBubbleView());
 }
 
 TEST_F(OfferNotificationBubbleControllerImplTest,
        ShownOfferIsRetrievableFromController) {
-  AutofillOfferData offer = CreateTestCardLinkedOffer(
-      /*merchant_origins=*/{GURL("https://www.example.com")},
-      /*eligible_instrument_ids=*/{123});
+  AutofillOfferData offer =
+      test::GetPromoCodeOfferData(GURL("https://www.example.com"));
   ShowBubble(offer);
 
   EXPECT_TRUE(*controller()->GetOffer() == offer);
-}
-
-// Tests that the offer notification bubble will be shown, and coupon service
-// will not be called for a GPay promo code offer.
-TEST_F(OfferNotificationBubbleControllerImplTest, GPayPromoCode_BubbleShown) {
-  AutofillOfferData offer = CreateTestGPayPromoCodeOffer(
-      /*merchant_origins=*/{GURL("https://www.example.com")},
-      /*promo_code=*/"FREEFALL5678");
-  ShowBubble(offer);
-
-  EXPECT_TRUE(controller()->GetOfferNotificationBubbleView());
-  EXPECT_EQ(controller()->GetWindowTitle(),
-            l10n_util::GetStringUTF16(
-                IDS_AUTOFILL_GPAY_PROMO_CODE_OFFERS_REMINDER_TITLE));
 }
 
 // Tests that the offer notification bubble will be shown for a wallet direct

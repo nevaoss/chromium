@@ -812,7 +812,10 @@ public class MediaDrmBridge {
         try {
             byte[] scopeId =
                     keyType == MediaDrm.KEY_TYPE_RELEASE ? sessionId.keySetId() : sessionId.drmId();
-            assert scopeId != null;
+            if (scopeId == null) {
+                Log.e(TAG, "getKeyRequest(%s): scopeId is null for keyType %d", sessionId, keyType);
+                return null;
+            }
             request = mMediaDrm.getKeyRequest(scopeId, data, mime, keyType, optionalParameters);
         } catch (android.media.NotProvisionedException e) {
             Log.e(
@@ -826,10 +829,13 @@ public class MediaDrmBridge {
             // We just catch and log it, and let the player retry if they would like to.
             // Refer to crbug.com/537329064 for details.
             Log.e(TAG, "Failed to getKeyRequest().", e);
-        } catch (java.lang.IllegalStateException e) {
-            // We've seen both MediaDrmStateException and MediaDrmResetException happening.
-            // Since both are IllegalStateExceptions, so they will be handled here.
-            // See b/21307186 and crbug.com/1169050 for details.
+        } catch (Exception e) {
+            // In addition to IllegalStateException (MediaDrmStateException /
+            // MediaDrmResetException), getKeyRequestNative can throw undeclared checked
+            // MediaDrmExceptions such as ResourceBusyException via JNI when the DRM HAL returns
+            // ERROR_DRM_RESOURCE_BUSY (e.g. during KEY_TYPE_RELEASE when all OEMCrypto sessions
+            // are in use). Catch Exception since javac rejects catching checked exceptions not
+            // declared by MediaDrm.getKeyRequest(). See crbug.com/575562215.
             Log.e(TAG, "Failed to getKeyRequest().", e);
         }
 

@@ -56,9 +56,9 @@
 #include "components/infobars/content/content_infobar_manager.h"
 #include "components/infobars/core/confirm_infobar_delegate.h"
 #include "components/infobars/core/infobar.h"
+#include "components/optimization_guide/core/feature_registry/feature_keys.h"
 #include "components/optimization_guide/core/feature_registry/feature_registration.h"
 #include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
-#include "components/optimization_guide/core/optimization_guide_prefs.h"
 #include "components/optimization_guide/proto/features/contextual_cueing.pb.h"
 #include "components/prefs/pref_service.h"
 #include "components/private_insights/events/contextual_cue_log_event.pb.h"
@@ -174,10 +174,7 @@ class ContextualCueingControllerBrowserTestBase : public SigninBrowserTestBase,
   }
 
   ContextualCueingController* contextual_cueing_controller() {
-    return browser()
-        ->GetActiveTabInterface()
-        ->GetTabFeatures()
-        ->contextual_cueing_controller();
+    return ContextualCueingController::From(browser()->GetActiveTabInterface());
   }
 
   TestCueTarget* cue_target() {
@@ -199,7 +196,7 @@ class ContextualCueingControllerBrowserTestBase : public SigninBrowserTestBase,
 
   void RegisterTestCueTargetForTab(tabs::TabInterface* tab) {
     auto test_cue_target = std::make_unique<TestCueTarget>();
-    tab->GetTabFeatures()->contextual_cueing_controller()->RegisterCueTarget(
+    ContextualCueingController::From(tab)->RegisterCueTarget(
         CueTargetType::kGlic, std::move(test_cue_target));
   }
 
@@ -344,7 +341,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerTabListNeverTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   content::WebContents* background_contents =
@@ -453,7 +450,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerTabListOnlyIfMultipleTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   content::WebContents* background_contents =
@@ -531,7 +528,7 @@ IN_PROC_BROWSER_TEST_F(
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   content::WebContents* background_contents =
@@ -593,7 +590,7 @@ IN_PROC_BROWSER_TEST_F(
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   content::WebContents* background_contents =
@@ -771,14 +768,14 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
   // (will be in the background in final state).
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("chrome://settings"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   // Navigate to a new eligible tab to be in the foreground (current active
   // tab).
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.example.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   ukm::TestAutoSetUkmRecorder ukm_recorder;
@@ -901,7 +898,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   auto response = MakeCompleteResponse();
@@ -926,7 +923,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   auto response = MakeCompleteResponse();
@@ -950,7 +947,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest, Ineligible) {
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   cue_target()->eligible = false;
@@ -981,7 +978,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest, ShowCueAndClick) {
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -1059,7 +1056,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   // Make kGlic ineligible for the page and register a kContextualSearch target
@@ -1129,7 +1126,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   page_actions::PageActionController* page_action_controller =
@@ -1213,7 +1210,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   page_actions::PageActionController* page_action_controller =
@@ -1273,7 +1270,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   page_actions::PageActionController* page_action_controller =
@@ -1334,7 +1331,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   page_actions::PageActionController* page_action_controller =
@@ -1437,7 +1434,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMockOptGuideBrowserTest,
 #else
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   tabs::TabInterface* tab_1 = browser()->GetActiveTabInterface();
@@ -1485,7 +1482,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMockOptGuideBrowserTest,
   // Open new tab in foreground right away.
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.example.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   // Run the saved callback with the response while tab 1 is inactive.
@@ -1530,7 +1527,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMockOptGuideBrowserTest,
                        TabNavigatedAwayAfterModelExecution) {
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   optimization_guide::OptimizationGuideModelExecutionResultCallback
@@ -1583,7 +1580,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
                        FeaturePromoActive) {
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -1612,7 +1609,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 #else
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -1649,12 +1646,12 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
   // Add a second tab so we can check split view.
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.google.com/"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -1683,7 +1680,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest, HistorySyncOff) {
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -1707,13 +1704,13 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
   for (int i = 0; i < kMaxNumBackgroundTabs.Get(); ++i) {
     ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
         browser(), GURL(base::StringPrintf("https://www.google.com/%d", i)),
-        WindowOpenDisposition::NEW_FOREGROUND_TAB,
+        WindowOpenDisposition::kNewForegroundTab,
         ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
   }
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -1895,7 +1892,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
                        CueNotShowingBecauseSidePanelOpen) {
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -1932,7 +1929,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   page_actions::PageActionController* page_action_controller =
@@ -1978,7 +1975,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   cue_target()->is_persistent = true;
@@ -2025,7 +2022,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
                        CueNotShowingBecauseInfobarVisible) {
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -2056,7 +2053,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest, UserOptedOut) {
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   PrefService* prefs = browser()->GetProfile()->GetPrefs();
@@ -2084,7 +2081,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
                        DisabledByEnterprisePolicy) {
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   PrefService* prefs = browser()->GetProfile()->GetPrefs();
@@ -2117,7 +2114,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
   // Navigate to an eligible URL.
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   page_actions::PageActionController* page_action_controller =
@@ -2156,7 +2153,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
   // Navigate to page 1.
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.example.com/1"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   // Navigate to page 2.
@@ -2181,7 +2178,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
   }));
 
   // Perform a back/forward (history) navigation using the back button.
-  chrome::GoBack(browser(), WindowOpenDisposition::CURRENT_TAB);
+  chrome::GoBack(browser(), WindowOpenDisposition::kCurrentTab);
   content::WaitForLoadStop(
       browser()->GetTabStripModel()->GetActiveWebContents());
 
@@ -2195,7 +2192,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
   // 1. Navigate to a valid eligible URL
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -2229,7 +2226,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
   // 1. Navigate to a valid eligible URL
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -2290,7 +2287,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
   // 1. Navigate to a PDF document URL.
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
-      browser(), pdf_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      browser(), pdf_url, WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -2342,7 +2339,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
                        RecordsFallbackToTargetNameWhenCUJEmpty) {
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -2391,7 +2388,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTestWithAgeRestriction,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -2414,7 +2411,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTestWithAgeRestriction,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -2450,12 +2447,12 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerShowInSplitViewBrowserTest,
   // Add a second tab so we can check split view.
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.google.com/"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -2483,7 +2480,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
                        RecordsCueInteractionDismissed) {
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -2522,7 +2519,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
                        RecordsCueInteractionEditPrompt) {
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   base::HistogramTester histogram_tester;
@@ -2567,7 +2564,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   page_actions::PageActionController* first_controller =
@@ -2628,11 +2625,9 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
   // Second click invokes the action.
   action->InvokeAction();
 
-  TestCueTarget* second_cue_target =
-      static_cast<TestCueTarget*>(second_browser->GetActiveTabInterface()
-                                      ->GetTabFeatures()
-                                      ->contextual_cueing_controller()
-                                      ->GetTarget(CueTargetType::kGlic));
+  TestCueTarget* second_cue_target = static_cast<TestCueTarget*>(
+      ContextualCueingController::From(second_browser->GetActiveTabInterface())
+          ->GetTarget(CueTargetType::kGlic));
   ASSERT_TRUE(second_cue_target);
   ASSERT_TRUE(second_cue_target->HasClickData());
   EXPECT_EQ("Prompt",
@@ -2749,7 +2744,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
   // 2. Open and Load Second Tab (Foreground)
   GURL url2 = embedded_test_server()->GetURL("/title2.html");
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
-      browser(), url2, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      browser(), url2, WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   // Wait for second load evaluation to complete.
@@ -2841,8 +2836,7 @@ class TargetRegisteringObserver : public TabStripModelObserver {
                                                    CueIntrusiveness::kQuiet};
         non_mes_target->generate_result =
             MakeCompleteResponse().contextual_cues(0);
-        contents.tab->GetTabFeatures()
-            ->contextual_cueing_controller()
+        ContextualCueingController::From(contents.tab)
             ->RegisterCueTarget(CueTargetType::kTestSource,
                                 std::move(non_mes_target));
       }
@@ -2866,7 +2860,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
   // targets are eligible.
   GURL url1 = embedded_test_server()->GetURL("/title1.html");
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
-      browser(), url1, WindowOpenDisposition::NEW_BACKGROUND_TAB,
+      browser(), url1, WindowOpenDisposition::kNewBackgroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   optimization_guide::RetryForHistogramUntilCountReached(
@@ -2883,7 +2877,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
   // tab is inactive. The quiet-capable target evaluates successfully.
   GURL url2 = embedded_test_server()->GetURL("/title2.html");
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
-      browser(), url2, WindowOpenDisposition::NEW_BACKGROUND_TAB,
+      browser(), url2, WindowOpenDisposition::kNewBackgroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   // The background tab navigated to url2 and triggered quiet cue evaluation on
@@ -2942,7 +2936,7 @@ IN_PROC_BROWSER_TEST_F(
   // Deactivate tab 0 by opening a new foreground tab.
   GURL url2 = embedded_test_server()->GetURL("/title2.html");
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
-      browser(), url2, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      browser(), url2, WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   // Complete async eligibility checks for tab 0 while it is inactive.
@@ -3076,12 +3070,8 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
   non_mes_target->supported_intrusiveness = {CueIntrusiveness::kLoud,
                                              CueIntrusiveness::kQuiet};
   non_mes_target->generate_result = MakeCompleteResponse().contextual_cues(0);
-  browser()
-      ->GetActiveTabInterface()
-      ->GetTabFeatures()
-      ->contextual_cueing_controller()
-      ->RegisterCueTarget(CueTargetType::kTestSource,
-                          std::move(non_mes_target));
+  contextual_cueing_controller()->RegisterCueTarget(CueTargetType::kTestSource,
+                                                    std::move(non_mes_target));
 
   // Exhaust loud caps by showing a loud cue.
   service->OnCueShown(GURL("https://example.com"), CueTargetType::kGlic,
@@ -3109,7 +3099,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::CURRENT_TAB,
+      WindowOpenDisposition::kCurrentTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   optimization_guide::RetryForHistogramUntilCountReached(
@@ -3156,7 +3146,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::CURRENT_TAB,
+      WindowOpenDisposition::kCurrentTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   optimization_guide::RetryForHistogramUntilCountReached(
@@ -3178,11 +3168,8 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
   target->downgrades_to_quiet_on_dismiss = true;
   target->generate_result = MakeCompleteResponse().contextual_cues(0);
   TestCueTarget* target_ptr = target.get();
-  browser()
-      ->GetActiveTabInterface()
-      ->GetTabFeatures()
-      ->contextual_cueing_controller()
-      ->RegisterCueTarget(CueTargetType::kTestSource, std::move(target));
+  contextual_cueing_controller()->RegisterCueTarget(CueTargetType::kTestSource,
+                                                    std::move(target));
 
   class TestObserver : public page_actions::PageActionModelObserver {
    public:
@@ -3206,7 +3193,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::CURRENT_TAB,
+      WindowOpenDisposition::kCurrentTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   optimization_guide::RetryForHistogramUntilCountReached(
@@ -3218,14 +3205,9 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
   EXPECT_TRUE(observer.anchored_message_showing_);
 
   // Now dismiss the cue.
-  browser()
-      ->GetActiveTabInterface()
-      ->GetTabFeatures()
-      ->contextual_cueing_controller()
-      ->OnCueInteraction(ContextualCueingInteraction::kCueDismissed,
-                         CueTargetType::kTestSource,
-                         *target_ptr->generate_result, {}, {}, "cuj", {},
-                         "fake_id");
+  contextual_cueing_controller()->OnCueInteraction(
+      ContextualCueingInteraction::kCueDismissed, CueTargetType::kTestSource,
+      *target_ptr->generate_result, {}, {}, "cuj", {}, "fake_id");
 
   // The chip should still be visible, but anchored message is NOT showing.
   EXPECT_TRUE(observer.visible_);
@@ -3255,12 +3237,8 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
                                              CueIntrusiveness::kQuiet};
   non_mes_target->generate_result = MakeCompleteResponse().contextual_cues(0);
   TestCueTarget* target_ptr = non_mes_target.get();
-  browser()
-      ->GetActiveTabInterface()
-      ->GetTabFeatures()
-      ->contextual_cueing_controller()
-      ->RegisterCueTarget(CueTargetType::kTestSource,
-                          std::move(non_mes_target));
+  contextual_cueing_controller()->RegisterCueTarget(CueTargetType::kTestSource,
+                                                    std::move(non_mes_target));
 
   // User dismisses a cue.
   service->OnCueDismissed(CueTargetType::kGlic, /*record_ucb_stats=*/true);
@@ -3287,7 +3265,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::CURRENT_TAB,
+      WindowOpenDisposition::kCurrentTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   optimization_guide::RetryForHistogramUntilCountReached(
@@ -3324,7 +3302,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   PrefService* prefs = browser()->GetProfile()->GetPrefs();
@@ -3424,7 +3402,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   PrefService* prefs = browser()->GetProfile()->GetPrefs();
@@ -3474,7 +3452,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   PrefService* prefs = browser()->GetProfile()->GetPrefs();
@@ -3533,7 +3511,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   EXPECT_CALL(*mock_hats_service,

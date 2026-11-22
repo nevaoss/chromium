@@ -84,6 +84,8 @@ constexpr base::TimeDelta kZeroAnimationMs = base::Milliseconds(300);
 constexpr char kCrossFadeSmoothness[] =
     "Ash.Window.AnimationSmoothness.CrossFade";
 
+DEFINE_UI_CLASS_PROPERTY_KEY(bool, kHasCrossFadeAnimationKey, false)
+
 base::TimeDelta GetCrossFadeDuration(aura::Window* window,
                                      const gfx::RectF& old_bounds,
                                      const gfx::Rect& new_bounds) {
@@ -121,6 +123,7 @@ class CrossFadeObserver : public aura::WindowObserver,
       : window_(window),
         layer_(window->layer()),
         layer_owner_(std::move(layer_owner)) {
+    window_->SetProperty(kHasCrossFadeAnimationKey, true);
     window_->AddObserver(this);
 
     smoothness_tracker_ =
@@ -149,6 +152,7 @@ class CrossFadeObserver : public aura::WindowObserver,
     layer_owner_->root()->GetAnimator()->StopAnimating();
 
     window_->RemoveObserver(this);
+    window_->ClearProperty(kHasCrossFadeAnimationKey);
     window_ = nullptr;
     layer_ = nullptr;
   }
@@ -162,9 +166,10 @@ class CrossFadeObserver : public aura::WindowObserver,
   void OnWindowLayerRecreated(aura::Window* window) override {
     // If the window layer is recreated. |layer_| will hold the LayerAnimator we
     // were originally observing. Layer recreation is usually done when doing
-    // another window animation, so stop this current one and trigger
-    // OnImplicitAnimationsCompleted to delete ourselves.
-    layer_->GetAnimator()->StopAnimating();
+    // another window animation, so abort this current one to preserve the
+    // interrupted transform and trigger OnImplicitAnimationsCompleted to delete
+    // ourselves.
+    layer_->GetAnimator()->AbortAllAnimations();
   }
 
   // ui::ImplicitAnimationObserver:
@@ -286,12 +291,9 @@ void CrossFadeAnimationInternal(
   const gfx::Rect old_bounds(old_layer->bounds());
 
   gfx::Transform old_transform(old_layer->transform());
-  gfx::Transform old_transform_in_root;
-  old_transform_in_root.Translate(old_bounds.x(), old_bounds.y());
-  old_transform_in_root.PreConcat(old_transform);
-  old_transform_in_root.Translate(-old_bounds.x(), -old_bounds.y());
   gfx::RectF old_transformed_bounds =
-      old_transform_in_root.MapRect(gfx::RectF(old_bounds));
+      old_transform.MapRect(gfx::RectF(old_bounds.size())) +
+      gfx::Vector2dF(old_bounds.OffsetFromOrigin());
   const gfx::Rect new_bounds(window->bounds());
   const bool old_on_top = (old_bounds.width() > new_bounds.width());
 
@@ -309,8 +311,9 @@ void CrossFadeAnimationInternal(
 
   // Scale up the old layer while translating to new position.
   {
-    old_layer->GetAnimator()->StopAnimating();
+    old_layer->GetAnimator()->AbortAllAnimations();
     old_layer->SetTransform(old_transform);
+    old_layer->SetOpacity(kWindowAnimation_ShowOpacity);
     ui::ScopedLayerAnimationSettings settings(old_layer->GetAnimator());
     settings.SetTransitionDuration(animation_duration);
     settings.SetTweenType(animation_tween_type);
@@ -643,11 +646,17 @@ bool AnimateHideWindow(aura::Window* window) {
 }
 
 void CrossFadeAnimation(aura::Window* window,
-                        std::unique_ptr<ui::LayerTreeOwner> old_layer_owner) {
-  CrossFadeAnimationInternal(
-      window, std::move(old_layer_owner), /*animate_old_layer_transform=*/true,
-      /*duration=*/std::nullopt, /*tween_type=*/std::nullopt,
-      /*histogram_name=*/std::nullopt);
+                        std::unique_ptr<ui::LayerTreeOwner> old_layer_owner,
+                        std::optional<base::TimeDelta> duration,
+                        std::optional<gfx::Tween::Type> tween_type,
+                        std::optional<std::string> histogram_name) {
+  CrossFadeAnimationInternal(window, std::move(old_layer_owner),
+                             /*animate_old_layer_transform=*/true, duration,
+                             tween_type, std::move(histogram_name));
+}
+
+bool HasCrossFadeAnimation(aura::Window* window) {
+  return window->GetProperty(kHasCrossFadeAnimationKey);
 }
 
 void CrossFadeAnimationForFloatUnfloat(

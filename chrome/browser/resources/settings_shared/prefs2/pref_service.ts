@@ -55,12 +55,118 @@ const CATEGORY_DEFAULT_SYNTHETIC_PREFS: string[] = [
 ];
 
 function getSyntheticPrefs(): chrome.settingsPrivate.PrefObject[] {
-  return CATEGORY_DEFAULT_SYNTHETIC_PREFS.map(
-      category => ({
-        key: `synthetic.settings.category_default.${category}`,
-        type: chrome.settingsPrivate.PrefType.STRING,
-        value: 'default',
-      }));
+  return [
+    ...CATEGORY_DEFAULT_SYNTHETIC_PREFS.map(
+        category => ({
+          key: `synthetic.settings.category_default.${category}`,
+          type: chrome.settingsPrivate.PrefType.STRING,
+          value: 'default',
+        })),
+    {
+      key: 'synthetic.settings.autofill.credit_card_enabled',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+    },
+    {
+      key: 'synthetic.settings.autofill.enhanced_autofill_opted_in',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+    },
+    {
+      key: 'synthetic.settings.autofill.identity_docs_opted_in',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+    },
+    {
+      key: 'synthetic.settings.autofill.otp_filling',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+    },
+    {
+      key: 'synthetic.settings.autofill.profile_enabled',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+    },
+    {
+      key: 'synthetic.settings.autofill.shopping_opted_in',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+    },
+    {
+      key: 'synthetic.settings.autofill.travel_opted_in',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+    },
+    {
+      key: 'synthetic.settings.autofill.walletable_pass_detection_opted_in',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+    },
+    {
+      key: 'synthetic.settings.contextual_cueing.inline_cue_menu.enabled',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+    },
+    {
+      key: 'synthetic.settings.dns_over_https.secure_dns_toggle',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+    },
+    {
+      key: 'synthetic.settings.glic.experimental_triggering_enabled',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: true,
+    },
+    {
+      key: 'synthetic.settings.glic.fake_pref',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+    },
+    {
+      key: 'synthetic.settings.glic.web_actuation_disabled_for_enterprise',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+      enforcement: chrome.settingsPrivate.Enforcement.ENFORCED,
+      controlledBy: chrome.settingsPrivate.ControlledBy.DEVICE_POLICY,
+    },
+    {
+      key: 'synthetic.settings.glic.web_actuation_enabled',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+    },
+    {
+      key: 'synthetic.settings.omnibox_everywhere.show_shortcuts',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+    },
+    {
+      key: 'synthetic.settings.on_device_ai_enabled',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: true,
+    },
+    {
+      key: 'synthetic.settings.privacy_guide.history_sync',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+    },
+    {
+      key: 'synthetic.settings.search_aggregator_suggest',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: true,
+      enforcement: chrome.settingsPrivate.Enforcement.ENFORCED,
+      controlledBy: chrome.settingsPrivate.ControlledBy.USER_POLICY,
+    },
+    {
+      key: 'synthetic.settings.site_settings.anti_abuse',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+    },
+    {
+      key: 'synthetic.settings.site_settings.block_autoplay',
+      type: chrome.settingsPrivate.PrefType.BOOLEAN,
+      value: false,
+    },
+  ];
 }
 
 export class PrefService {

@@ -4,10 +4,11 @@
 
 #import "ios/chrome/browser/download/model/download_file_service_factory.h"
 
+#import <utility>
+
 #import "ios/chrome/browser/download/model/download_file_service.h"
 #import "ios/chrome/browser/download/model/download_record_service_factory.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
-#import "ios/chrome/browser/shared/model/profile/profile_keyed_service_factory_ios.h"
 
 DownloadFileServiceFactory::DownloadFileServiceFactory(PassKey key)
     : TypedProfileKeyedServiceFactoryIOS(

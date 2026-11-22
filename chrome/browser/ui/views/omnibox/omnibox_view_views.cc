@@ -597,7 +597,8 @@ void OmniboxViewViews::SetFocus(bool is_user_initiated) {
     // native textfield has `FocusBehavior::NEVER`. Delegate directly to the
     // popup view to open and focus the WebUI searchbox input.
     if (auto* popup_view = location_bar_view_->GetOmniboxPopupView()) {
-      popup_view->OnFocus(/*query_zps=*/is_user_initiated, select_all);
+      popup_view->OnFocus(/*query_zps=*/is_user_initiated, select_all,
+                          /*show_full_url=*/false);
     }
   } else {
     // On browser startup while WebUI is still initializing asynchronously,
@@ -608,12 +609,9 @@ void OmniboxViewViews::SetFocus(bool is_user_initiated) {
 
   // Re-focusing the already focused omnibox exits keyword mode, e.g. when the
   // user presses Ctrl+L while in keyword mode. Once the full WebUI omnibox is
-  // ready, `LocationBarView::FocusLocation()` no longer reaches here, but
-  // `LocationBarView::OnFocus()` does for `FocusManager` driven focus changes,
-  // including restoring focus when the browser window is reactivated while the
-  // WebUI popup held focus, e.g. by clicking on the page to blur the omnibox.
-  // Like `OnFocus()` for the native textfield, those must preserve keyword
-  // mode.
+  // ready, `LocationBarView` no longer reaches here, and the remaining caller,
+  // `search::FocusOmnibox()`, focuses it invisibly for NTP fakeboxes, which
+  // shouldn't exit keyword mode either.
   if (omnibox_already_focused && !is_full_webui_ready) {
     controller()->edit_model()->ClearKeyword();
   }
@@ -1699,25 +1697,11 @@ void OmniboxViewViews::OnMouseReleased(const ui::MouseEvent& event) {
                                   event.IsOnlyLeftMouseButton() &&
                                   click_gesture_requested_zps_;
     click_gesture_requested_zps_ |= should_query_zps;
-    if (location_bar_view_) {
-      // A left click that focuses the omnibox (or one on an empty omnibox)
-      // opens the suggestions dropdown. A right-click should focus the omnibox
-      // and select its text without showing suggestions, since the context menu
-      // follows this release.
-      location_bar_view_->OpenOmniboxPopup(should_query_zps);
-
-      // Transfer selection to the full webui popup (necessary when the popup
-      // is already open and double-click events are forwarded).
-      if (auto* popup_view = location_bar_view_->GetOmniboxPopupView();
-          popup_view && base::FeatureList::IsEnabled(
-                            omnibox::kWebUIOmniboxFullPopupDoubleClick)) {
-        if (preserve_matches) {
-          popup_view->SyncNativeStateToWebUIPreservingMatches();
-        } else {
-          popup_view->SyncNativeStateToWebUI(/*query_zps=*/false);
-        }
-      }
-    }
+    // A left click that focuses the omnibox (or one on an empty omnibox)
+    // opens the suggestions dropdown. A right-click should focus the omnibox
+    // and select its text without showing suggestions, since the context menu
+    // follows this release.
+    OpenFullWebUIOmniboxPopup(should_query_zps, preserve_matches);
   }
 }
 
@@ -1740,8 +1724,17 @@ void OmniboxViewViews::OnMouseCaptureLost() {
 void OmniboxViewViews::OnGestureEvent(ui::GestureEvent* event) {
   PermitExternalProtocolHandler();
 
+  const bool is_popup_open =
+      controller()->IsPopupOpen() ||
+      (IsFullWebUIOmnibox() && location_bar_view_ &&
+       location_bar_view_->GetOmniboxPopupView() &&
+       location_bar_view_->GetOmniboxPopupView()->IsOpen());
+  const bool is_tap_valid =
+      event->type() == ui::EventType::kGestureTap &&
+      (!IsFullWebUIOmniboxReady() || event->details().tap_count() == 1);
+
   const bool gesture_should_take_focus =
-      !HasFocus() && event->type() == ui::EventType::kGestureTap;
+      !is_popup_open && is_tap_valid && !HasFocus();
   if (gesture_should_take_focus) {
     select_all_on_gesture_tap_ = true;
 
@@ -1775,6 +1768,11 @@ void OmniboxViewViews::OnGestureEvent(ui::GestureEvent* event) {
       event->type() == ui::EventType::kGestureLongPress ||
       event->type() == ui::EventType::kGestureLongTap) {
     select_all_on_gesture_tap_ = false;
+  }
+
+  if (event->type() == ui::EventType::kGestureTap &&
+      IsFullWebUIOmniboxReady()) {
+    OpenFullWebUIOmniboxPopup(/*query_zps=*/true);
   }
 }
 
@@ -2382,7 +2380,7 @@ bool OmniboxViewViews::HandleKeyEvent(views::Textfield* textfield,
               OmniboxPopupSelection(
                   OmniboxPopupSelection::kNoMatch,
                   OmniboxPopupSelection::LineState::kFocusedButtonAim),
-              event.time_stamp(), WindowOpenDisposition::CURRENT_TAB,
+              event.time_stamp(), WindowOpenDisposition::kCurrentTab,
               /*via_keyboard=*/true);
           return true;
         }
@@ -2396,7 +2394,7 @@ bool OmniboxViewViews::HandleKeyEvent(views::Textfield* textfield,
             controller()->edit_model()->GetPopupSelection();
         if (selection.IsButtonFocused()) {
           controller()->edit_model()->OpenSelection(
-              selection, event.time_stamp(), WindowOpenDisposition::CURRENT_TAB,
+              selection, event.time_stamp(), WindowOpenDisposition::kCurrentTab,
               /*via_keyboard=*/true);
           return true;
         }
@@ -2635,6 +2633,27 @@ void OmniboxViewViews::TitleWasSet(content::NavigationEntry* entry) {
 
 void OmniboxViewViews::PermitExternalProtocolHandler() {
   ExternalProtocolHandler::PermitLaunchUrl();
+}
+
+void OmniboxViewViews::OpenFullWebUIOmniboxPopup(bool query_zps,
+                                                 bool preserve_matches) {
+  if (!location_bar_view_) {
+    return;
+  }
+  location_bar_view_->OpenOmniboxPopup(query_zps);
+
+  // Transfer selection to the full webui popup (necessary when the popup is
+  // already open and double-click events are forwarded).
+  if (auto* popup_view = location_bar_view_->GetOmniboxPopupView();
+      popup_view && base::FeatureList::IsEnabled(
+                        omnibox::kWebUIOmniboxFullPopupDoubleClick)) {
+    if (preserve_matches) {
+      popup_view->SyncNativeStateToWebUIPreservingMatches();
+    } else {
+      popup_view->SyncNativeStateToWebUI(/*query_zps=*/false,
+                                         /*show_full_url=*/false);
+    }
+  }
 }
 
 void OmniboxViewViews::PerformDrop(

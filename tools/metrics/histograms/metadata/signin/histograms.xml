@@ -110,6 +110,9 @@ chromium-metrics-reviews@google.com.
   <variant name="HistoryPage" summary="History Page entry point"/>
   <variant name="ProfileMenu" summary="Profile Menu entry point"/>
   <variant name="SendTabToSelf" summary="Send Tab to Self entry point"/>
+  <variant name="WhatsNewPage"
+      summary="What's New page &quot;Get Chrome for your phone&quot; entry
+               point"/>
 </variants>
 
 <!-- LINT.ThenChange(//chrome/browser/signin/cross_device_signin_promo_manager.cc:CrossDeviceSigninPromoEntryPointVariant) -->
@@ -914,7 +917,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.AccountType.SigninConsent" enum="SigninAccountType"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>jlebel@chromium.org</owner>
   <owner>chrome-signin-team@chromium.org</owner>
   <summary>
@@ -1123,7 +1126,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.AndroidGetAccountsTime{AndroidGetAccountsTypes}"
-    units="ms" expires_after="2027-02-14">
+    units="ms" expires_after="2027-04-18">
   <owner>bsazonov@chromium.org</owner>
   <owner>chrome-signin-mobile-team@google.com</owner>
   <summary>
@@ -1205,7 +1208,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.AvatarPillPromo.DurationBeforeClick" units="ms"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>rsult@google.com</owner>
   <owner>chrome-signin-team@google.com</owner>
   <summary>
@@ -1216,7 +1219,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.AvatarPillPromo.Shown"
-    enum="ProfileMenuAvatarButtonPromoType" expires_after="2027-02-14">
+    enum="ProfileMenuAvatarButtonPromoType" expires_after="2027-04-18">
   <owner>rsult@google.com</owner>
   <owner>chrome-signin-team@google.com</owner>
   <summary>
@@ -1344,7 +1347,7 @@ prefs when the profile is loaded.  -->
 <histogram
     name="Signin.BoundSessionCredentials.CookieRotationResult{SessionOrigin}{Trigger}"
     enum="BoundSessionCredentialsCookieRotationResult"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>alexilin@chromium.org</owner>
   <owner>msalama@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
@@ -1513,7 +1516,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.BoundSessionCredentials.ResumeThrottledRequestsTrigger"
-    enum="ResumeBlockedRequestsTrigger" expires_after="2027-02-14">
+    enum="ResumeBlockedRequestsTrigger" expires_after="2027-04-18">
   <owner>alexilin@chromium.org</owner>
   <owner>msalama@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
@@ -1949,6 +1952,9 @@ prefs when the profile is loaded.  -->
   <summary>
     Records the decision (allow to show or block reason) for showing the
     cross-device sign-in promo. Recorded for {CrossDeviceSigninPromoEntryPoint}.
+    For the What's New page, recorded once per page load when the page requests
+    its URL; that entry point skips the mobile device check, so HasMobileDevice
+    is never recorded for it.
   </summary>
   <token key="CrossDeviceSigninPromoEntryPoint"
       variants="CrossDeviceSigninPromoEntryPoint"/>
@@ -2223,7 +2229,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.Extensions.AccountExtensionsSignoutChoice"
-    enum="AccountExtensionsSignoutChoice" expires_after="2027-02-14">
+    enum="AccountExtensionsSignoutChoice" expires_after="2027-04-18">
   <owner>kelvinjiang@chromium.org</owner>
   <owner>rsult@google.com</owner>
   <owner>chrome-signin-team@google.com</owner>
@@ -2706,7 +2712,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.Intercept.ChromeSignin.RepromptCount" units="reprompts"
-    expires_after="2026-10-25">
+    expires_after="2027-05-01">
   <owner>rsult@google.com</owner>
   <owner>droger@chromium.org</owner>
   <summary>
@@ -3138,7 +3144,7 @@ the browser and content area. -->
 </histogram>
 
 <histogram name="Signin.ListFamilyMembersRequest.OverallLatency" units="ms"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>tju@google.com</owner>
   <owner>chrome-kids-eng@google.com</owner>
   <summary>
@@ -3926,7 +3932,7 @@ accounts .-->
 </histogram>
 
 <histogram name="Signin.SessionWithCookieSigninStatusUnknown.Duration"
-    units="ms" expires_after="2027-02-14">
+    units="ms" expires_after="2027-04-18">
   <owner>msarda@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
   <summary>
@@ -3970,7 +3976,7 @@ OAuth Multilogin call. -->
 </histogram>
 
 <histogram name="Signin.Settings.ChromeSigninSettingModification"
-    enum="ChromeSigninSettingModification" expires_after="2026-11-01">
+    enum="ChromeSigninSettingModification" expires_after="2027-05-01">
   <owner>rsult@google.com</owner>
   <owner>chrome-signin-team@google.com</owner>
   <summary>
@@ -4200,7 +4206,7 @@ OAuth Multilogin call. -->
 </histogram>
 
 <histogram name="Signin.SigninManager.SetPrimaryAccountSigninInStage"
-    enum="GaiaIntegrationState" expires_after="2027-02-14">
+    enum="GaiaIntegrationState" expires_after="2027-04-18">
   <owner>droger@chromium.org</owner>
   <owner>anthie@google.com</owner>
   <owner>chrome-signin-team@google.com</owner>

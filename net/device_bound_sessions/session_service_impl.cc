@@ -24,13 +24,11 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
 #include "base/types/expected_macros.h"
-#include "base/types/optional_util.h"
 #include "components/unexportable_keys/background_task_priority.h"
 #include "components/unexportable_keys/features.h"
 #include "components/unexportable_keys/service_error.h"
 #include "components/unexportable_keys/unexportable_key_id.h"
 #include "components/unexportable_keys/unexportable_key_service.h"
-#include "crypto/keypair.h"
 #include "crypto/sign.h"
 #include "net/base/features.h"
 #include "net/base/schemeful_site.h"
@@ -221,7 +219,7 @@ SessionServiceImpl::SessionServiceImpl(
       session_store_(store),
       restricted_sites_(restricted_sites),
       client_cert_handler_(std::move(client_cert_handler)),
-      sso_key_manager_(std::move(has_cookie_access_cb)) {
+      sso_key_manager_(key_service, std::move(has_cookie_access_cb)) {
   ignore_signing_quota_ = !features::kDeviceBoundSessionsSigningQuota.Get();
   CHECK(context_);
   CHECK(client_cert_handler_);
@@ -643,12 +641,7 @@ void SessionServiceImpl::CheckFederatedProviderKey(
   }
 
   std::optional<std::string> thumbprint =
-      base::OptionalFromExpected(
-          key_service_->GetSubjectPublicKeyInfo(*provider_key))
-          .and_then([](base::span<const uint8_t> spki) {
-            return crypto::keypair::PublicKey::FromSubjectPublicKeyInfo(spki);
-          })
-          .and_then(CreateJwkThumbprint);
+      GetJwkThumbprint(*key_service_, *provider_key);
   if (!thumbprint) {
     std::move(callback).Run(
         base::unexpected(SessionError::kInvalidFederatedKey));

@@ -54,6 +54,58 @@ export function getHtml(this: TopicFeedbackExportDialogElement) {
       </div>
     </section>
 
+    <section id="redactionSection">
+      <h2>Sites</h2>
+      <div class="secondary">
+        Uncheck a site to leave it out of the file. Internal and Workspace
+        sites are left out by default. Expand a site to leave out single pages.
+      </div>
+      ${this.previewState_ === 'loaded' && this.getDomains_().length === 0 ?
+          html`
+        <div id="noDomains" class="secondary">No browsing in this window.</div>
+      ` : ''}
+    </section>
+    <ul id="domainList">
+      ${this.getDomains_().map((domain, index) => html`
+        <li class="domain" ?excluded="${this.isDomainExcluded_(domain)}">
+          <div class="domain-row">
+            <cr-expand-button class="domain-expand" data-index="${index}"
+                ?expanded="${this.isDomainExpanded_(domain)}"
+                @expanded-changed="${this.onDomainExpandedChanged_}">
+              <span class="domain-name">${domain.domain}</span>
+              <span class="domain-count">
+                ${this.getDomainCountText_(domain)}
+              </span>
+            </cr-expand-button>
+            <cr-checkbox class="domain-checkbox" data-index="${index}"
+                ?checked="${!this.isDomainExcluded_(domain)}"
+                .ariaLabelOverride="Share ${domain.domain}"
+                @checked-changed="${this.onDomainCheckedChanged_}">
+            </cr-checkbox>
+          </div>
+          <cr-collapse ?opened="${this.isDomainExpanded_(domain)}">
+            ${this.isDomainExpanded_(domain) ? html`
+              <ul class="url-list">
+                ${domain.urls.map(url => html`
+                  <li>
+                    <cr-checkbox class="url-checkbox" data-url="${url.url}"
+                        ?checked="${this.isUrlIncluded_(domain, url)}"
+                        ?disabled="${this.isDomainExcluded_(domain)}"
+                        @checked-changed="${this.onUrlCheckedChanged_}">
+                      <div class="url-text">
+                        <span class="url-title">${url.title || url.url}</span>
+                        <span class="url">${url.url}</span>
+                      </div>
+                    </cr-checkbox>
+                  </li>
+                `)}
+              </ul>
+            ` : ''}
+          </cr-collapse>
+        </li>
+      `)}
+    </ul>
+
     <section id="coverageSection">
       <h2>Your ratings</h2>
       <div id="ratingStatus" ?complete="${this.areAllTopicsRated_()}">
@@ -88,58 +140,6 @@ export function getHtml(this: TopicFeedbackExportDialogElement) {
           .value="${this.missingTopics_}"
           @value-changed="${this.onMissingTopicsValueChanged_}">
       </cr-textarea>
-    </section>
-
-    <section id="redactionSection">
-      <h2>Sites</h2>
-      <div class="secondary">
-        Uncheck a site to leave it out of the file. Internal and Workspace
-        sites are left out by default. Expand a site to leave out single pages.
-      </div>
-      ${this.previewState_ === 'loaded' && this.getDomains_().length === 0 ?
-          html`
-        <div id="noDomains" class="secondary">No browsing in this window.</div>
-      ` : ''}
-      <ul id="domainList">
-        ${this.getDomains_().map((domain, index) => html`
-          <li class="domain" ?excluded="${this.isDomainExcluded_(domain)}">
-            <div class="domain-row">
-              <cr-expand-button class="domain-expand" data-index="${index}"
-                  ?expanded="${this.isDomainExpanded_(domain)}"
-                  @expanded-changed="${this.onDomainExpandedChanged_}">
-                <span class="domain-name">${domain.domain}</span>
-                <span class="domain-count">
-                  ${this.getDomainCountText_(domain)}
-                </span>
-              </cr-expand-button>
-              <cr-checkbox class="domain-checkbox" data-index="${index}"
-                  ?checked="${!this.isDomainExcluded_(domain)}"
-                  .ariaLabelOverride="Share ${domain.domain}"
-                  @checked-changed="${this.onDomainCheckedChanged_}">
-              </cr-checkbox>
-            </div>
-            <cr-collapse ?opened="${this.isDomainExpanded_(domain)}">
-              ${this.isDomainExpanded_(domain) ? html`
-                <ul class="url-list">
-                  ${domain.urls.map(url => html`
-                    <li>
-                      <cr-checkbox class="url-checkbox" data-url="${url.url}"
-                          ?checked="${this.isUrlIncluded_(domain, url)}"
-                          ?disabled="${this.isDomainExcluded_(domain)}"
-                          @checked-changed="${this.onUrlCheckedChanged_}">
-                        <div class="url-text">
-                          <span class="url-title">${url.title || url.url}</span>
-                          <span class="url">${url.url}</span>
-                        </div>
-                      </cr-checkbox>
-                    </li>
-                  `)}
-                </ul>
-              ` : ''}
-            </cr-collapse>
-          </li>
-        `)}
-      </ul>
     </section>
 
     <section id="privacySection">

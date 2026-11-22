@@ -2528,15 +2528,9 @@ targets.bundle(
     per_test_modifications = {
         "enterprise_companion_integration_tests": [
             "updater-tests-pool",
-            # Temporary for ATL97 outage (b/570133826).
-            "ci_only",
-            "experiments",
         ],
         "enterprise_companion_tests": [
             "updater-tests-pool",
-            # Temporary for ATL97 outage (b/570133826).
-            "ci_only",
-            "experiments",
         ],
     },
 )
@@ -6060,7 +6054,18 @@ targets.bundle(
     per_test_modifications = {
         "views_examples_unittests": [
             "skia_gold_test",
-            "skia_gold_bypass",
+            targets.mixin(
+                # TODO(crbug.com/574560342): Remove this precommit_args bypass
+                # once post-submit CI diffs are triaged.
+                # @chromium-luci's _apply_mixin overwrites precommit_args rather
+                # than appending, so retain skia_gold_test's precommit_args.
+                precommit_args = [
+                    "--gerrit-issue=${patch_issue}",
+                    "--gerrit-patchset=${patch_set}",
+                    "--buildbucket-id=${buildbucket_build_id}",
+                    "--bypass-skia-gold-functionality",
+                ],
+            ),
         ],
     },
 )
@@ -6638,9 +6643,6 @@ targets.bundle(
         ],
         "updater_tests_system": [
             targets.mixin(
-                # Temporary for ATL97 outage (b/570133826).
-                ci_only = True,
-                experiment_percentage = 100,
                 swarming = targets.swarming(
                     shards = 2,
                 ),

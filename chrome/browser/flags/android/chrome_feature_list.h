@@ -188,6 +188,7 @@ BASE_DECLARE_FEATURE(kDesktopAndroidLinkCapturing);
 BASE_DECLARE_FEATURE(kDesktopAndroidTWADeleteBrowserData);
 BASE_DECLARE_FEATURE(kDesktopAndroidTWADisclosures);
 BASE_DECLARE_FEATURE(kDesktopAndroidTWADisclosuresHelpLink);
+BASE_DECLARE_FEATURE(kDesktopAndroidWebAppHeaderAppName);
 BASE_DECLARE_FEATURE(kDesktopUAOnConnectedDisplay);
 BASE_DECLARE_FEATURE(kDeviceAuthenticatorAndroidx);
 BASE_DECLARE_FEATURE(kDisableGridTabSwitcher);
@@ -288,7 +289,6 @@ BASE_DECLARE_FEATURE(kReadAloudIPHMenuButtonHighlightCCT);
 BASE_DECLARE_FEATURE(kReadAloudServerExperiments);
 BASE_DECLARE_FEATURE(kReengagementNotification);
 BASE_DECLARE_FEATURE(kRemoveExtraHeadersOnCrossOriginRedirect);
-BASE_DECLARE_FEATURE(kRobustWindowManagementExperimental);
 BASE_DECLARE_FEATURE(kSafetyFrePromo);
 BASE_DECLARE_FEATURE(kScheduleWindowCleaning);
 BASE_DECLARE_FEATURE(kSessionRestoreAfterCrash);
@@ -317,6 +317,7 @@ BASE_DECLARE_FEATURE(kTabBottomSheetResizeWebview);
 BASE_DECLARE_FEATURE(kTabClosureCommittedMethodRefactor);
 BASE_DECLARE_FEATURE(kTabClosureMethodRefactor);
 BASE_DECLARE_FEATURE(kTabGroupActionsSubmenus);
+BASE_DECLARE_FEATURE(kTabGroupContextMenuLiveTitleUpdate);
 BASE_DECLARE_FEATURE(kTabOpenerTracking);
 BASE_DECLARE_FEATURE(kTabSearchForDesktop);
 BASE_DECLARE_FEATURE(kTabSharingToolbarAndroid);
@@ -364,7 +365,6 @@ BASE_DECLARE_FEATURE(kWebAppShortEdgesCutoutMode);
 BASE_DECLARE_FEATURE(kWebOtpCrossDeviceSimpleString);
 BASE_DECLARE_FEATURE(kWebUiAndroidTheming);
 BASE_DECLARE_FEATURE(kXplatSyncedSetupThemes);
-BASE_DECLARE_FEATURE(kYourSavedInfoSettingsPageAndroid);
 // go/keep-sorted end
 // BASE_DECLARE_FEATURE_END
 

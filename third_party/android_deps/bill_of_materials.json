@@ -362,7 +362,7 @@
     {
         "name": "coordinatorlayout",
         "group": "androidx.coordinatorlayout",
-        "version": "1.3.0"
+        "version": "1.4.0-SNAPSHOT"
     },
     {
         "name": "core",
@@ -1357,7 +1357,7 @@
     {
         "name": "extensions-xr",
         "group": "com.android.extensions.xr",
-        "version": "1.4.0"
+        "version": "1.5.0-alpha01"
     },
     {
         "name": "layoutlib-api",
@@ -1882,12 +1882,12 @@
     {
         "name": "grpc-api",
         "group": "io.grpc",
-        "version": "1.85.0"
+        "version": "1.85.1"
     },
     {
         "name": "grpc-stub",
         "group": "io.grpc",
-        "version": "1.85.0"
+        "version": "1.85.1"
     },
     {
         "name": "rxandroid",

@@ -71,7 +71,6 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "chrome/browser/signin/identity_test_environment_profile_adaptor.h"
 #include "chrome/browser/ui/ash/assistant/assistant_browser_delegate_impl.h"
 #include "chrome/browser/ui/ash/login/user_adding_screen.h"
 #include "chrome/browser/ui/ash/shelf/shelf_controller_helper.h"
@@ -205,7 +204,7 @@ IN_PROC_BROWSER_TEST_F(AppListClientImplBrowserTest, IsExtensionAppOpen) {
     content::CreateAndLoadWebContentsObserver app_loaded_observer;
     apps::AppServiceProxyFactory::GetForProfile(profile())->Launch(
         extension_app->id(),
-        apps::GetEventFlags(WindowOpenDisposition::NEW_WINDOW,
+        apps::GetEventFlags(WindowOpenDisposition::kNewWindow,
                             false /* preferred_containner */),
         apps::LaunchSource::kFromTest,
         std::make_unique<apps::WindowInfo>(
@@ -749,7 +748,7 @@ IN_PROC_BROWSER_TEST_F(AppListClientImplBrowserTest, OpenSearchResult) {
 }
 
 // Verifies that opening a URL search result from the Launcher with Ctrl+Alt
-// (which maps to WindowOpenDisposition::NEW_SPLIT_VIEW) works when a browser
+// (which maps to WindowOpenDisposition::kNewSplitView) works when a browser
 // has an unsplit active tab, and does not crash when the active tab is already
 // in a split view or when no regular browser window is open for the profile.
 IN_PROC_BROWSER_TEST_F(AppListClientImplBrowserTest,

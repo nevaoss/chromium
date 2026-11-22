@@ -36,6 +36,13 @@ BASE_DECLARE_FEATURE(kGlicDeferDownloadFilePickerToUserTakeover);
 // When disabled: localhost URLs are treated as safe.
 BASE_DECLARE_FEATURE(kGlicActorLocalhostIsSensitive);
 
+// When enabled, page actions that have passed main-frame origin gating and
+// target a subframe that is cross-origin to the tab's main frame (or has a
+// cross-origin ancestor) are evaluated against page-action origin gating as a
+// dry run (never blocking the action or prompting the user), and the outcome is
+// recorded to UMA.
+BASE_DECLARE_FEATURE(kGlicActorSubframeGatingDryRun);
+
 BASE_DECLARE_FEATURE(kGlicCrossOriginNavigationGating);
 // Feature params to kGlicCrossOriginNavigationGating to enable individual
 // checks for debugging.
@@ -51,7 +58,7 @@ BASE_DECLARE_FEATURE_PARAM(bool, kGlicPromptUserForNavigationToNewOrigins);
 // and performs active gating (blocking the navigation).
 BASE_DECLARE_FEATURE_PARAM(bool, kGlicConfirmNavigationToNewOriginsDarkLaunch);
 // Toggles whether novel origin gating is based on site (true) or origin
-// (false). Note that gating sensitive sites will still be origin based.
+// (false).
 BASE_DECLARE_FEATURE_PARAM(bool, kGlicNavigationGatingUseSiteNotOrigin);
 // Controls whether the component updater provided blocklist should be enforced.
 BASE_DECLARE_FEATURE_PARAM(bool, kGlicEnforceComponentUpdaterBlockListEntries);

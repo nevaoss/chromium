@@ -10,6 +10,7 @@
 #include "base/path_service.h"
 #include "base/scoped_observation.h"
 #include "base/strings/strcat.h"
+#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/simple_test_tick_clock.h"
 #include "base/test/test_future.h"
@@ -586,7 +587,7 @@ class AutoPictureInPictureTabHelperBrowserTest : public WebRtcTestBase {
         base::FilePath(base::FilePath::kCurrentDirectory),
         base::FilePath(kBlankPage));
     ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
-        browser, test_page_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+        browser, test_page_url, WindowOpenDisposition::kNewForegroundTab,
         ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
   }
 
@@ -595,7 +596,7 @@ class AutoPictureInPictureTabHelperBrowserTest : public WebRtcTestBase {
         base::FilePath(base::FilePath::kCurrentDirectory),
         base::FilePath(kBlankPage));
     ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
-        browser, test_page_url, WindowOpenDisposition::NEW_POPUP,
+        browser, test_page_url, WindowOpenDisposition::kNewPopup,
         ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
   }
 
@@ -987,6 +988,17 @@ class AutoPictureInPictureTabHelperBrowserTest : public WebRtcTestBase {
     return overlay_view;
   }
 
+  // Document PiP frame views show the auto-PiP setting bubble from a posted
+  // task (see DocumentPipFrameView::AddedToWidget() and
+  // PictureInPictureBrowserFrameView::AddedToWidget()), so the bubble's view
+  // may not exist yet when the enter-PiP notification ends the test's wait.
+  // Waits until the view exists, so tests can interact with it.
+  [[nodiscard]] bool WaitForAutoPipSettingView(
+      AutoPipSettingOverlayView* overlay_view) {
+    return base::test::RunUntil(
+        [&]() { return overlay_view->get_view_for_testing() != nullptr; });
+  }
+
   void CheckPromptResultUkmRecorded(GURL url,
                                     std::string_view expected_metric_name,
                                     PromptResult expected_prompt_result) {
@@ -1349,15 +1361,11 @@ IN_PROC_BROWSER_TEST_F(AutoPictureInPictureWithVideoPlaybackBrowserTest,
   // inside a remote iframe.
   SwitchToNewTabAndDontExpectAutopip();
 
-  // A remote iframe is not considered safe when Safe Browsing can verify it.
-  // Without Safe Browsing, the flag retains its fail-open default.
   auto* tab_helper =
       AutoPictureInPictureTabHelper::FromWebContents(web_contents);
-#if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
   EXPECT_FALSE(tab_helper->has_safe_url_);
-#else
-  EXPECT_TRUE(tab_helper->has_safe_url_);
-#endif  // BUILDFLAG(SAFE_BROWSING_AVAILABLE)
+  EXPECT_FALSE(tab_helper->IsEligibleForAutoPictureInPicture(
+      /*should_record_blocking_metrics=*/false));
 
   // Verify that `MeetsMediaEngagementConditions` returns false (even though the
   // mock high engagement is set to return true), since the video element is
@@ -1531,6 +1539,54 @@ IN_PROC_BROWSER_TEST_F(AutoPictureInPictureTabHelperBrowserTest,
 
   SwitchToNewTabAndBackAndExpectAutopip(/*should_video_pip=*/true,
                                         /*should_document_pip=*/false);
+}
+
+// Regression test for crbug.com/575048405.
+IN_PROC_BROWSER_TEST_F(AutoPictureInPictureTabHelperBrowserTest,
+                       DoesNotAutopip_CameraMicrophoneWithCrossOriginSubframe) {
+  LoadCameraMicrophonePage(browser(), "a.com");
+  content::WebContents* web_contents =
+      browser()->GetTabStripModel()->GetActiveWebContents();
+  content::RenderFrameHost* main_frame = web_contents->GetPrimaryMainFrame();
+  GetUserMediaAndAccept(web_contents);
+
+  // Detach the stream from the main frame's video element while keeping the
+  // MediaStream active, so the tab is still capturing camera/microphone but the
+  // main frame has no active MediaSession player.
+  ASSERT_TRUE(ExecJs(
+      main_frame, "document.getElementById('local-view').srcObject = null;"));
+
+  const GURL subframe_url = embedded_https_test_server().GetURL(
+      "b.com", base::FilePath(FILE_PATH_LITERAL("/"))
+                   .Append(kAutoVideoPipPage)
+                   .MaybeAsASCII());
+  content::TestNavigationObserver load_observer(web_contents);
+  ASSERT_TRUE(ExecJs(
+      main_frame,
+      content::JsReplace("const iframe = document.createElement('iframe');"
+                         "iframe.src = $1;"
+                         "document.body.appendChild(iframe);",
+                         subframe_url)));
+  load_observer.Wait();
+
+  content::RenderFrameHost* sub_frame = ChildFrameAt(main_frame, 0);
+  ASSERT_TRUE(sub_frame);
+
+  ASSERT_TRUE(ExecJs(sub_frame, R"(
+      window.autopipCallbackInvoked = false;
+      navigator.mediaSession.setActionHandler('enterpictureinpicture', () => {
+        window.autopipCallbackInvoked = true;
+        video.requestPictureInPicture();
+      });
+      playVideo();
+  )"));
+  WaitForMediaSessionPlaying(web_contents);
+
+  ASSERT_EQ(sub_frame,
+            content::MediaSession::Get(web_contents)->GetRoutedFrame());
+
+  SwitchToNewTabAndDontExpectAutopip();
+  EXPECT_EQ(false, EvalJs(sub_frame, "window.autopipCallbackInvoked"));
 }
 
 IN_PROC_BROWSER_TEST_F(AutoPictureInPictureTabHelperBrowserTest,
@@ -1798,6 +1854,7 @@ IN_PROC_BROWSER_TEST_P(AutoPictureInPictureDocumentPipBackendBrowserTest,
   auto* overlay_view = GetOverlayViewFromDocumentPipWindow();
   // The overlay should be shown.
   ASSERT_TRUE(overlay_view);
+  ASSERT_TRUE(WaitForAutoPipSettingView(overlay_view));
 
   // Verify that input has been blocked.
   CheckIfEventsAreForwarded(pip_contents, /*expect_events=*/false);
@@ -1831,6 +1888,7 @@ IN_PROC_BROWSER_TEST_P(AutoPictureInPictureDocumentPipBackendBrowserTest,
 
   auto* const overlay_view = GetOverlayViewFromDocumentPipWindow();
   ASSERT_TRUE(overlay_view);
+  ASSERT_TRUE(WaitForAutoPipSettingView(overlay_view));
   overlay_view->get_view_for_testing()->simulate_button_press_for_testing(
       AutoPipSettingView::UiResult::kAllowOnce);
 
@@ -3208,6 +3266,7 @@ IN_PROC_BROWSER_TEST_P(
 
   auto* const overlay_view = GetOverlayViewFromDocumentPipWindow();
   ASSERT_TRUE(overlay_view);
+  ASSERT_TRUE(WaitForAutoPipSettingView(overlay_view));
   overlay_view->get_view_for_testing()->simulate_button_press_for_testing(
       AutoPipSettingView::UiResult::kAllowOnce);
 
@@ -3285,6 +3344,7 @@ IN_PROC_BROWSER_TEST_P(
 
   auto* const overlay_view = GetOverlayViewFromDocumentPipWindow();
   ASSERT_TRUE(overlay_view);
+  ASSERT_TRUE(WaitForAutoPipSettingView(overlay_view));
   overlay_view->get_view_for_testing()->simulate_button_press_for_testing(
       AutoPipSettingView::UiResult::kAllowOnce);
 
@@ -4493,6 +4553,7 @@ IN_PROC_BROWSER_TEST_P(AutoPictureInPictureTabHelperHatsDocumentPipBrowserTest,
     case AutoPipSettingHelper::PromptResult::kBlock: {
       auto* overlay_view = GetOverlayViewFromDocumentPipWindow();
       ASSERT_TRUE(overlay_view);
+      ASSERT_TRUE(WaitForAutoPipSettingView(overlay_view));
       overlay_view->get_view_for_testing()->simulate_button_press_for_testing(
           GetParam().prompt_result == AutoPipSettingHelper::PromptResult::kBlock
               ? AutoPipSettingView::UiResult::kBlock
@@ -4514,9 +4575,9 @@ IN_PROC_BROWSER_TEST_P(AutoPictureInPictureTabHelperHatsDocumentPipBrowserTest,
   EXPECT_CALL(*hats_service,
               LaunchSurveyForWebContents(GetParam().trigger, web_contents, _, _,
                                          _, _, _, _))
-      .WillOnce(testing::DoAll(
-          testing::InvokeWithoutArgs([&]() { survey_launched.SetValue(); }),
-          testing::Return(HatsService::LaunchError::kNone)));
+      .WillOnce(
+          testing::DoAll([&]() { survey_launched.SetValue(); },
+                         testing::Return(HatsService::LaunchError::kNone)));
 
   SwitchToExistingTab(web_contents);
   EXPECT_TRUE(survey_launched.Wait());
@@ -4574,9 +4635,9 @@ IN_PROC_BROWSER_TEST_P(AutoPictureInPictureTabHelperHatsVideoPipBrowserTest,
   EXPECT_CALL(*hats_service,
               LaunchSurveyForWebContents(GetParam().trigger, web_contents, _, _,
                                          _, _, _, _))
-      .WillOnce(testing::DoAll(
-          testing::InvokeWithoutArgs([&]() { survey_launched.SetValue(); }),
-          testing::Return(HatsService::LaunchError::kNone)));
+      .WillOnce(
+          testing::DoAll([&]() { survey_launched.SetValue(); },
+                         testing::Return(HatsService::LaunchError::kNone)));
 
   SwitchToExistingTab(web_contents);
   EXPECT_TRUE(survey_launched.Wait());

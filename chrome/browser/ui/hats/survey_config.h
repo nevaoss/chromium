@@ -122,8 +122,6 @@ inline constexpr char kHatsSurveyTriggerSEHijacking[] =
 inline constexpr char kHatsSurveyTriggerSettingsPrivacy[] = "settings-privacy";
 inline constexpr char kHatsSurveyTriggerSettingsSecurity[] =
     "settings-security";
-inline constexpr char kHatsSurveyTriggerSettingsSecurityV2[] =
-    "settings-security-v2";
 inline constexpr char kHatsSurveyTriggerTrustSafetyPrivacySettings[] =
     "ts-privacy-settings";
 inline constexpr char kHatsSurveyTriggerTrustSafetyTrustedSurface[] =
@@ -344,6 +342,9 @@ using SurveyConfigs = base::flat_map<std::string, SurveyConfig>;
 // Get the list of active ongoing surveys and store into
 // |survey_configs_by_triggers_|.
 void GetActiveSurveyConfigs(SurveyConfigs& survey_configs_by_triggers_);
+
+// Returns all survey configs, including those whose feature is disabled.
+std::vector<SurveyConfig> GetAllSurveyConfigsForTesting();
 
 }  // namespace hats
 

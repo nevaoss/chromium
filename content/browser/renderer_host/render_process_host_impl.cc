@@ -1778,7 +1778,7 @@ RenderProcessHostImpl::RenderProcessHostImpl(
 
   widget_helper_ = new RenderWidgetHelper();
 
-  ChildProcessSecurityPolicyImpl::GetInstance()->Add(GetID(), browser_context);
+  ChildProcessSecurityPolicyImpl::GetInstance()->Add(GetID());
 
   CHECK(!BrowserMainRunner::ExitedMainMessageLoop());
   RegisterHost(GetID(), this);
@@ -1985,7 +1985,7 @@ bool RenderProcessHostImpl::Init() {
 
   // Find the renderer before creating the channel so if this fails early we
   // return without creating the channel.
-  base::FilePath renderer_path = ChildProcessHost::GetChildPath(flags);
+  base::FilePath renderer_path = ChildProcessHost::GetChildPath(flags, GetID());
   if (renderer_path.empty())
     return false;
 
@@ -2139,7 +2139,7 @@ bool RenderProcessHostImpl::Init() {
 #if BUILDFLAG(IS_WIN)
     std::unique_ptr<SandboxedProcessLauncherDelegate> sandbox_delegate =
         std::make_unique<RendererSandboxedProcessLauncherDelegateWin>(
-            *cmd_line, IsPdf(), IsJitDisabled());
+            *cmd_line, IsPdf(), IsJitDisabled(), GetID());
 #else
     std::unique_ptr<SandboxedProcessLauncherDelegate> sandbox_delegate =
         std::make_unique<RendererSandboxedProcessLauncherDelegate>();

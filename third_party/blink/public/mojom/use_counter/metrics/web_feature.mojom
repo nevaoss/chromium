@@ -5297,7 +5297,7 @@ enum WebFeature {
   kUAReplaceEndAddListener = 5980,
   kAdImageHDR = 5981,
   kAdVideoHDR = 5982,
-  kLocalNetworkAccessShouldTreatAsPublicAddressCsp = 5983,
+  kOBSOLETE_LocalNetworkAccessShouldTreatAsPublicAddressCsp = 5983,
   kCreateBytesModuleScript = 5984,
   kV8ModuleNamespaceMissingDefaultWithStarExport = 5985,
   kV8WasmGCAllocation = 5986,
@@ -5358,6 +5358,7 @@ enum WebFeature {
   kWebTransportExportKeyingMaterial = 6041,
   kOfflineAudioContextClose = 6042,
   kViewTransitionPreventSvgFilterPaint = 6043,
+  kMulticastControllerJoinGroupWithSourceAddress = 6044,
 
   // Add new features immediately above this line. Don't change the existing
   // numbers of any item, and don't reuse removed slots. Also don't add extra

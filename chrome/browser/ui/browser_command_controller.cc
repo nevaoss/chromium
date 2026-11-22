@@ -97,6 +97,7 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
+#include "chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_coordinator.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/web_applications/web_app_dialog_utils.h"
 #include "chrome/browser/ui/web_applications/web_app_launch_utils.h"
@@ -358,9 +359,21 @@ BrowserCommandController::BrowserCommandController(BrowserWindowInterface* bwi)
         base::BindRepeating(
             &BrowserCommandController::UpdateCommandsForFileSelectionDialogs,
             base::Unretained(this)));
+    local_pref_registrar_.Add(
+        prefs::kQRCodeGeneratorEnabled,
+        base::BindRepeating(
+            &BrowserCommandController::UpdateQRCodeGeneratorActionEnabledState,
+            base::Unretained(this)));
   }
 
   profile_pref_registrar_.Init(profile()->GetPrefs());
+#if !BUILDFLAG(IS_CHROMEOS)
+  profile_pref_registrar_.Add(
+      prefs::kDesktopSharingHubEnabled,
+      base::BindRepeating(
+          &BrowserCommandController::UpdateActionsForSharingHubPolicy,
+          base::Unretained(this)));
+#endif  // !BUILDFLAG(IS_CHROMEOS)
   profile_pref_registrar_.Add(
       bookmarks::prefs::kEditBookmarksEnabled,
       base::BindRepeating(
@@ -673,6 +686,17 @@ void BrowserCommandController::HandleCommandWithDisposition(
     base::TimeTicks time_stamp) {
   DCHECK(IsCommandEnabled(id)) << "Invalid/disabled command " << id;
 
+  // LINT.IfChange
+  // ===========================================================================
+  // When adding a new command below, you MUST also create a corresponding
+  // declarative ActionItem in the modern Actions framework. (Pure ActionItems
+  // added without legacy IDC_* commands are allowed).
+  //
+  // Quick Guide:
+  // 1. Map ID in //chrome/browser/ui/actions/chrome_action_id.h:
+  //    E(kActionFoo, IDC_FOO)
+  // 2. Wire callback in BrowserActions::Initialize...() (browser_actions.cc).
+  // ===========================================================================
   // The order of commands in this switch statement must match the function
   // declaration order in browser.h!
   switch (id) {
@@ -1296,6 +1320,10 @@ void BrowserCommandController::HandleCommandWithDisposition(
       SidePanelUI::From(browser_)->Show(SidePanelEntryId::kHistoryClusters,
                                         SidePanelOpenTrigger::kAppMenu);
       break;
+    case IDC_SHOW_TABS_FROM_OTHER_DEVICES_SIDE_PANEL:
+      SidePanelUI::From(browser_)->Show(SidePanelEntryId::kTabsFromOtherDevices,
+                                        SidePanelOpenTrigger::kAppMenu);
+      break;
     case IDC_SHOW_DOWNLOADS:
       ShowDownloads(webui::GetBrowserForOpeningWebUi(browser_));
       break;
@@ -1592,8 +1620,8 @@ void BrowserCommandController::HandleCommandWithDisposition(
       Profile* profile = browser_->GetProfile();
       signin::IdentityManager* identity_manager =
           IdentityManagerFactory::GetForProfile(profile);
-      DCHECK(
-          identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin));
+      CHECK(identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin),
+            base::NotFatalUntil::M162);
       NavigateToGoogleAccountPage(
           profile,
           identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin)
@@ -1644,6 +1672,7 @@ void BrowserCommandController::HandleCommandWithDisposition(
       LOG(WARNING) << "Received Unimplemented Command: " << id;
       break;
   }
+  // LINT.ThenChange(//chrome/browser/ui/actions/chrome_action_id.h)
 }
 
 void BrowserCommandController::AddCommandObserver(int id,
@@ -1910,6 +1939,9 @@ void BrowserCommandController::InitCommandState() {
   command_updater_->UpdateCommandEnabled(
       IDC_SHOW_HISTORY_CLUSTERS_SIDE_PANEL,
       (!guest_session && !profile()->IsSystemProfile()));
+  command_updater_->UpdateCommandEnabled(
+      IDC_SHOW_TABS_FROM_OTHER_DEVICES_SIDE_PANEL,
+      TabsFromOtherDevicesSidePanelCoordinator::IsSupported(profile()));
   command_updater_->UpdateCommandEnabled(IDC_SHOW_DOWNLOADS, true);
   command_updater_->UpdateCommandEnabled(IDC_SHOW_COMMENTS_SIDE_PANEL, true);
   command_updater_->UpdateCommandEnabled(IDC_FIND_AND_EDIT_MENU, true);
@@ -2468,8 +2500,6 @@ void BrowserCommandController::UpdateCommandsForFullscreenMode() {
   command_updater_->UpdateCommandEnabled(IDC_CHROME_TIPS, show_main_ui);
   command_updater_->UpdateCommandEnabled(IDC_CHROME_WHATS_NEW, show_main_ui);
 #endif
-  command_updater_->UpdateCommandEnabled(IDC_CONTENT_CONTEXT_SHARING_SUBMENU,
-                                         show_main_ui);
   command_updater_->UpdateCommandEnabled(IDC_SHARING_HUB, show_main_ui);
   command_updater_->UpdateCommandEnabled(IDC_SHARING_HUB_SCREENSHOT,
                                          show_main_ui);
@@ -2533,7 +2563,7 @@ void NonAllowlistedCommandsAreDisabled(const CommandUpdater* command_updater) {
     if (std::ranges::contains(kAllowlistedIds, id)) {
       continue;
     }
-    DCHECK(!command_updater->IsCommandEnabled(id));
+    CHECK(!command_updater->IsCommandEnabled(id), base::NotFatalUntil::M162);
   }
 }
 #endif
@@ -2547,7 +2577,8 @@ void BrowserCommandController::UpdateCommandsForLockedFullscreenMode() {
   bool is_locked_fullscreen =
       platform_util::IsBrowserLockedFullscreen(browser_);
   // Sanity check to make sure this function is called only on state change.
-  DCHECK_NE(is_locked_fullscreen, is_locked_fullscreen_);
+  CHECK_NE(is_locked_fullscreen, is_locked_fullscreen_,
+           base::NotFatalUntil::M162);
   if (is_locked_fullscreen == is_locked_fullscreen_) {
     return;
   }
@@ -2920,6 +2951,35 @@ void BrowserCommandController::UpdateCommandsForProfile() {
   if (auto* const profile_action =
           FindAction(kActionProfileSubmenu, browser_)) {
     profile_action->SetAccessibleName(accessible_name);
+  }
+}
+
+void BrowserCommandController::UpdateActionsForSharingHubPolicy() {
+#if !BUILDFLAG(IS_CHROMEOS)
+  // Update the visibility of the QR code generator, send tab to self, and copy
+  // link actions based on the sharing hub policy. This matches the fact that
+  // these actions' visibility in the app menu.
+  const bool sharing_enabled =
+      profile()->GetPrefs()->GetBoolean(prefs::kDesktopSharingHubEnabled);
+
+  auto update_action_visibility =
+      [this, &sharing_enabled](actions::ActionId action_id) {
+        if (auto* action_item = FindAction(action_id, browser_)) {
+          action_item->SetVisible(sharing_enabled);
+        }
+      };
+  update_action_visibility(kActionQrCodeGenerator);
+  update_action_visibility(kActionSendTabToSelf);
+  update_action_visibility(kActionCopyUrl);
+#endif  // !BUILDFLAG(IS_CHROMEOS)
+}
+
+void BrowserCommandController::UpdateQRCodeGeneratorActionEnabledState() {
+  bool qr_code_generator_enabled = g_browser_process->local_state()->GetBoolean(
+      prefs::kQRCodeGeneratorEnabled);
+  if (auto* qr_code_action_item =
+          FindAction(kActionQrCodeGenerator, browser_)) {
+    qr_code_action_item->SetEnabled(qr_code_generator_enabled);
   }
 }
 

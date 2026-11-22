@@ -776,7 +776,7 @@ bool ContentBrowserClient::ShouldDenyRequestOnCertificateError(
 
 base::OnceClosure ContentBrowserClient::SelectClientCertificate(
     BrowserContext* browser_context,
-    int process_id,
+    ChildProcessId process_id,
     WebContents* web_contents,
     net::SSLCertRequestInfo* cert_request_info,
     net::ClientCertIdentityList client_certs,
@@ -1033,16 +1033,15 @@ std::unique_ptr<NavigationUIData> ContentBrowserClient::GetNavigationUIData(
 
 #if BUILDFLAG(IS_WIN)
 
-bool ContentBrowserClient::PreSpawnChild(
-    sandbox::TargetConfig* config,
-    sandbox::mojom::Sandbox sandbox_type,
-    ChildSpawnFlags flags,
-    base::optional_ref<const ChildModule> child_module) {
+bool ContentBrowserClient::PreSpawnChild(sandbox::TargetConfig* config,
+                                         sandbox::mojom::Sandbox sandbox_type,
+                                         ChildSpawnFlags flags) {
   return true;
 }
 
-std::optional<ContentBrowserClient::ChildModule>
-ContentBrowserClient::GetChildModule() {
+std::optional<ContentBrowserClient::RendererSandboxPolicyExtension>
+ContentBrowserClient::GetRendererSandboxPolicyExtension(
+    ChildProcessId render_process_id) {
   return std::nullopt;
 }
 
@@ -1766,14 +1765,6 @@ bool ContentBrowserClient::ShouldPreconnectNavigation(
   return false;
 }
 
-bool ContentBrowserClient::IsFirstPartySetsEnabled() {
-  return true;
-}
-
-bool ContentBrowserClient::WillProvidePublicFirstPartySets() {
-  return false;
-}
-
 mojom::AlternativeErrorPageOverrideInfoPtr
 ContentBrowserClient::GetAlternativeErrorPageOverrideInfo(
     content::NavigationHandle& navigation_handle,
@@ -1794,7 +1785,17 @@ bool ContentBrowserClient::IsFileSystemURLNavigationAllowed(
   return false;
 }
 
-base::FilePath ContentBrowserClient::GetChildProcessPath(int flags) {
+#if BUILDFLAG(IS_ANDROID)
+bool ContentBrowserClient::IsContentSchemeURLNavigationAllowed(
+    const GURL& url) {
+  return !base::FeatureList::IsEnabled(
+      features::kBlockContentUriNavigationByDefault);
+}
+#endif
+
+base::FilePath ContentBrowserClient::GetChildProcessPath(
+    int flags,
+    ChildProcessId child_process_id) {
   return base::FilePath();
 }
 

@@ -259,7 +259,7 @@ void OpenLearnMoreURL(bool is_profile_list_empty,
           GURL(is_profile_list_empty
                    ? chrome::kSigninOnDesktopLearnMoreURL
                    : chrome::kAddNewProfileOnDesktopLearnMoreURL),
-          WindowOpenDisposition::NEW_FOREGROUND_TAB, ui::PAGE_TRANSITION_LINK),
+          WindowOpenDisposition::kNewForegroundTab, ui::PAGE_TRANSITION_LINK),
       /*navigation_handle_callback=*/{});
 }
 
@@ -717,7 +717,9 @@ void ProfilePickerHandler::HandleRemoveProfile(const base::ListValue& args) {
   }
 
   RecordProfilePickerAction(ProfilePickerAction::kDeleteProfile);
-  CHECK(profile_statistics_keep_alive_, base::NotFatalUntil::M162);
+  // TODO(crbug.com/576442273): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(profile_statistics_keep_alive_);
 
   // Deleting the profile may delete `this` (see See
   // https://crbug.com/40934491), if the profile picker was shown in a tab. Keep

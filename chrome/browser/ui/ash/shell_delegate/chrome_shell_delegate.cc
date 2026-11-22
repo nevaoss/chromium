@@ -246,7 +246,7 @@ ChromeShellDelegate::CreateScannerDelegate() const {
 }
 
 scoped_refptr<network::SharedURLLoaderFactory>
-ChromeShellDelegate::GetBrowserProcessUrlLoaderFactory() const {
+ChromeShellDelegate::GetBrowserProcessUrlLoaderFactory() {
   return g_browser_process->shared_url_loader_factory();
 }
 
@@ -396,7 +396,7 @@ bool ChromeShellDelegate::IsUiDevToolsStarted() const {
 void ChromeShellDelegate::StartUiDevTools() {
   base::FilePath output_dir;
   bool result = base::PathService::Get(ash::DIR_USER_DATA, &output_dir);
-  DCHECK(result);
+  CHECK(result, base::NotFatalUntil::M162);
 
   return ui_devtools::ServerHolder::GetInstance()->CreateUiDevTools(output_dir);
 }

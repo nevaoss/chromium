@@ -139,6 +139,7 @@
 #include "components/autofill/core/browser/ml_model/field_classification_model_handler.h"
 #include "components/autofill/core/browser/payments/payments_network_interface.h"
 #include "components/autofill/core/browser/permissions/autofill_policy_service.h"
+#include "components/autofill/core/browser/permissions/device_reauth_util.h"
 #include "components/autofill/core/browser/single_field_fillers/single_field_fill_router.h"
 #include "components/autofill/core/browser/studies/autofill_experiments.h"
 #include "components/autofill/core/browser/suggestions/suggestion_hiding_reason.h"
@@ -1424,7 +1425,7 @@ ChromeAutofillClient::ChromeAutofillClient(content::WebContents* web_contents)
                                            features::kAutofillAmbientAutofill)
                                    ? GetEntityDataManager()
                                    : nullptr) {
-    edm->SetReauthAvailability(SupportsDeviceReauth());
+    edm->SetReauthAvailability(SupportsDeviceReauth(*this));
   }
 }
 
@@ -1453,10 +1454,10 @@ void ChromeAutofillClient::ShowEmailVerifiedToast(const GURL& issuer) {
 
 void ChromeAutofillClient::ShowEmailVerificationPopup(
     const gfx::RectF& element_bounds,
-    const net::SchemefulSite& issuer_site,
+    const url::Origin& issuer_origin,
     const std::u16string& email,
     base::OnceCallback<void(EmailVerificationPermissionUiStatus)> callback) {
-  GetEmailVerificationController()->ShowPopup(element_bounds, issuer_site,
+  GetEmailVerificationController()->ShowPopup(element_bounds, issuer_origin,
                                               email, std::move(callback));
 }
 
@@ -1866,7 +1867,7 @@ void ChromeAutofillClient::OpenGmailForOtps() {
   static constexpr std::string_view kGmailUrl = "https://mail.google.com";
   web_contents()->OpenURL(
       content::OpenURLParams::CreateBrowserInitiated(
-          GURL(kGmailUrl), WindowOpenDisposition::NEW_FOREGROUND_TAB,
+          GURL(kGmailUrl), WindowOpenDisposition::kNewForegroundTab,
           ui::PAGE_TRANSITION_LINK),
       /*navigation_handle_callback=*/{});
 }

@@ -899,6 +899,25 @@ void FedCmAccountSelectionView::OnLoginToIdP(const GURL& idp_config_url,
   }
 }
 
+void FedCmAccountSelectionView::OnIdpPickerRowClicked(
+    const GURL& idp_config_url,
+    const GURL& idp_login_url,
+    const ui::Event& event) {
+  // The modal stays clickable while a pop-up is open. If the user clicks
+  // another IDP row, starting a second login would point the request at the
+  // new IDP while the pop-up still shows the first IDP's login page. Bringing
+  // that pop-up back would not be safe either: the user could enter the
+  // credentials of the IDP they just clicked on the other IDP's login page.
+  // So ignore the click.
+  // TODO(crbug.com/575549004): Decide on the UX for this case, e.g. closing
+  // the open pop-up or disabling the modal while a pop-up is open.
+  if (popup_window_) {
+    return;
+  }
+
+  OnLoginToIdP(idp_config_url, idp_login_url, event);
+}
+
 void FedCmAccountSelectionView::OnGotIt(const ui::Event& event) {
   if (input_protector_->IsPossiblyUnintendedInteraction(
           event, /*allow_key_events=*/false) ||
@@ -1734,6 +1753,14 @@ bool FedCmAccountSelectionView::ShowAmbientBubble(
   // TODO(crbug.com/567563304): Use the RP's frame as the requesting frame when
   // FedCM is invoked from an iframe.
   const GURL origin = main_frame->GetLastCommittedOrigin().GetURL();
+  // If all accounts would sign up rather than sign in, only the chip is shown,
+  // and the bubble opens when the user clicks it.
+  const bool bubble_starts_open = std::ranges::any_of(
+      accounts, [](const IdentityRequestAccountPtr& account) {
+        return account->idp_claimed_login_state.value_or(
+                   account->browser_trusted_login_state) ==
+               Account::LoginState::kSignIn;
+      });
   auto request =
       std::make_unique<ambient_signin::AmbientLoginPermissionRequest>(
           origin, origin,
@@ -1745,7 +1772,8 @@ bool FedCmAccountSelectionView::ShowAmbientBubble(
               ambient_bubble_weak_ptr_factory_.GetWeakPtr()),
           base::BindRepeating(
               &FedCmAccountSelectionView::OnAmbientBubbleDecided,
-              ambient_bubble_weak_ptr_factory_.GetWeakPtr()));
+              ambient_bubble_weak_ptr_factory_.GetWeakPtr()),
+          bubble_starts_open);
 
   // Set before adding the request, since the decided callback runs
   // synchronously if the request is rejected right away.

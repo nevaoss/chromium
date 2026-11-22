@@ -224,7 +224,6 @@ BASE_FEATURE_PARAM(int,
                    0);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 
-
 // Preloads a WebContents with a Top Chrome WebUI on BrowserView initialization,
 // so that it can be shown instantly at a later time when necessary.
 BASE_FEATURE(kPreloadTopChromeWebUI, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -317,32 +316,6 @@ BASE_FEATURE(kPasswordSaveUpdateDropdownMenuExperiment,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
-BASE_FEATURE(kSidePanelFlyoverAnimation,
-#if BUILDFLAG(IS_MAC)
-             base::FEATURE_DISABLED_BY_DEFAULT
-#else
-             base::FEATURE_ENABLED_BY_DEFAULT
-#endif
-);
-
-bool UseSidePanelFlyoverAnimation() {
-  return base::FeatureList::IsEnabled(kSidePanelFlyoverAnimation);
-}
-
-BASE_FEATURE_PARAM(int,
-                   kSidePanelFlyoverDurationMs,
-                   &kSidePanelFlyoverAnimation,
-                   "flyover_animation_duration_ms",
-                   350);
-
-BASE_FEATURE(kUseDefaultDeadlineWhenAnimatingBounds,
-#if BUILDFLAG(IS_MAC) && defined(ARCH_CPU_ARM64)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
-
 // Enables the management notice in the NTP footer if the custom policies are
 // set. This acts as a kill switch for "EnterpriseCustomLabelForBrowser" and
 // "EnterpriseLogoUrlForBrowser".
@@ -361,7 +334,6 @@ BASE_FEATURE(kManagedProfileRequiredInterstitial,
 
 BASE_FEATURE(kMigrateManagementPageToWebUIOnMobile,
              base::FEATURE_ENABLED_BY_DEFAULT);
-
 
 #if BUILDFLAG(IS_MAC)
 BASE_FEATURE(kViewsJSAppModalDialog, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -400,6 +372,11 @@ bool IsPageActionsElevatedToolbarEnabled() {
 }
 
 BASE_FEATURE(kByDateHistoryInSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kTabsFromOtherDevicesSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kTabsFromOtherDevicesSidePanelPinnedByDefault,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kNonMilestoneUpdateToast, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -566,7 +543,7 @@ BASE_FEATURE_PARAM(bool,
                    kAiOverlayDialogPageTools,
                    &kAiOverlayDialog,
                    "enable_page_tools",
-                   false);
+                   true);
 BASE_FEATURE_PARAM(bool,
                    kAiOverlayDialogNext,
                    &kAiOverlayDialog,

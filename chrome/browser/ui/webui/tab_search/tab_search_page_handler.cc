@@ -403,7 +403,7 @@ void TabSearchPageHandler::OpenRecentlyClosedEntry(int32_t session_id) {
       BrowserLiveTabContext::FindContextForWebContents(
           browser_->GetActiveTabInterface()->GetContents()),
       SessionID::FromSerializedValue(session_id),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB);
+      WindowOpenDisposition::kNewForegroundTab);
 }
 
 void TabSearchPageHandler::ReplaceActiveSplitTab(int32_t replacement_tab_id) {
@@ -683,7 +683,8 @@ void TabSearchPageHandler::AddRecentlyClosedEntries(
           }
 
           // Handle Group ID.
-          if (!recently_closed_split_view->group_id && tab->group.has_value()) {
+          if (!recently_closed_split_view->group_id && tab->group.has_value() &&
+              !tab->is_group_ephemeral) {
             recently_closed_split_view->group_id = tab->group.value().token();
           }
 
@@ -729,7 +730,7 @@ bool TabSearchPageHandler::AddRecentlyClosedTab(
   }
   tab_dedup_keys.insert(dedup_id);
 
-  if (tab->group.has_value()) {
+  if (tab->group.has_value() && !tab->is_group_ephemeral) {
     recently_closed_tab->group_id = tab->group.value().token();
     CreateTabGroupIfNotPresent(tab, tab_group_ids, tab_groups);
   }
@@ -869,7 +870,7 @@ TabSearchPageHandler::GetRecentlyClosedTab(sessions::tab_restore::Tab* tab,
   recently_closed_tab->last_active_elapsed_text =
       GetLastActiveElapsedText(last_active_time);
 
-  if (tab->group.has_value()) {
+  if (tab->group.has_value() && !tab->is_group_ephemeral) {
     recently_closed_tab->group_id = tab->group.value().token();
   }
 

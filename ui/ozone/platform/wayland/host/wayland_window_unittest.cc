@@ -89,7 +89,6 @@ using ::testing::_;
 using ::testing::DoAll;
 using ::testing::ElementsAre;
 using ::testing::Eq;
-using ::testing::InvokeWithoutArgs;
 using ::testing::Mock;
 using ::testing::Return;
 using ::testing::SaveArg;
@@ -1119,9 +1118,9 @@ void WaylandWindowTest::DoMinimizeTest(bool async_state) {
   // TODO(tonikito): Improve filtering of delegate notification here.
   ui::PlatformWindowState state;
   EXPECT_CALL(delegate_, OnWindowStateChanged(_, _))
-      .WillRepeatedly(DoAll(SaveArg<0>(&state), InvokeWithoutArgs([&]() {
-                              EXPECT_EQ(state, PlatformWindowState::kMinimized);
-                            })));
+      .WillRepeatedly(DoAll(SaveArg<0>(&state), [&]() {
+        EXPECT_EQ(state, PlatformWindowState::kMinimized);
+      }));
   SendConfigureEvent(surface_id_, {0, 0}, states);
 
   // And one last time to ensure the behaviour.
@@ -2943,6 +2942,41 @@ TEST_P(WaylandWindowTest, DispatchWindowMove) {
   });
   ui::GetWmMoveResizeHandler(*window_)->DispatchHostWindowDragMovement(
       HTCAPTION, gfx::Point());
+}
+
+// The compositor takes over the touch sequence that starts an interactive move
+// and need not send wl_touch.up for it, so it must be ended at the handoff.
+TEST_P(WaylandWindowTest, DispatchWindowMoveCancelsTouches) {
+  PostToServerAndWait([](wl::TestWaylandServerThread* server) {
+    wl_seat_send_capabilities(server->seat()->resource(),
+                              WL_SEAT_CAPABILITY_TOUCH);
+  });
+  ASSERT_TRUE(connection_->seat()->touch());
+
+  std::vector<EventType> touch_events;
+  EXPECT_CALL(delegate_, DispatchEvent(_))
+      .WillRepeatedly([&touch_events](Event* event) {
+        if (event->IsTouchEvent()) {
+          touch_events.push_back(event->type());
+        }
+      });
+
+  PostToServerAndWait([id = surface_id_](wl::TestWaylandServerThread* server) {
+    wl::MockSurface* surface = server->GetObject<wl::MockSurface>(id);
+    auto* touch_resource = server->seat()->touch()->resource();
+    wl_touch_send_down(touch_resource, server->GetNextSerial(),
+                       server->GetNextTime(), surface->resource(), /*id=*/0,
+                       wl_fixed_from_int(10), wl_fixed_from_int(10));
+    wl_touch_send_frame(touch_resource);
+  });
+  ASSERT_EQ(1u, connection_->event_source()->GetActiveTouchPointIds().size());
+
+  ui::GetWmMoveResizeHandler(*window_)->DispatchHostWindowDragMovement(
+      HTCAPTION, gfx::Point());
+
+  EXPECT_TRUE(connection_->event_source()->GetActiveTouchPointIds().empty());
+  EXPECT_THAT(touch_events, ::testing::ElementsAre(EventType::kTouchPressed,
+                                                   EventType::kTouchCancelled));
 }
 
 // Makes sure hit tests are converted into right edges.
@@ -5944,8 +5978,9 @@ TEST_P(WaylandWindowTest, HandleToplevelConfigureSyncCloseOnDeactivate) {
   // OnActivationChanged(false) — exactly what happens in production when a
   // WidgetObserver calls Widget::CloseNow() on deactivation, leading to
   // DesktopWindowTreeHostPlatform::OnClosed -> SetPlatformWindow(nullptr).
-  EXPECT_CALL(delegate_, OnActivationChanged(Eq(false)))
-      .WillOnce(InvokeWithoutArgs([this]() { window_.reset(); }));
+  EXPECT_CALL(delegate_, OnActivationChanged(Eq(false))).WillOnce([this]() {
+    window_.reset();
+  });
 
   // Don't try to talk to the server after the window has been torn down
   // mid-dispatch.
@@ -6012,11 +6047,10 @@ TEST_P(WaylandWindowTest, WaylandBubbleActivateBubbleUaf) {
   EXPECT_CALL(delegate_, OnActivationChanged(::testing::_))
       .Times(::testing::AnyNumber());
 
-  EXPECT_CALL(delegate_, OnActivationChanged(false))
-      .WillOnce(::testing::InvokeWithoutArgs([&]() {
-        wayland_bubble.reset();
-        window_.reset();
-      }));
+  EXPECT_CALL(delegate_, OnActivationChanged(false)).WillOnce([&]() {
+    wayland_bubble.reset();
+    window_.reset();
+  });
 
   // This should not crash and should return safely.
   window_->ActivateBubble(wayland_bubble->AsWaylandBubble());
@@ -6040,11 +6074,10 @@ TEST_P(WaylandWindowTest, WaylandBubbleRemoveBubbleUaf) {
   EXPECT_CALL(delegate_, OnActivationChanged(::testing::_))
       .Times(::testing::AnyNumber());
 
-  EXPECT_CALL(delegate_, OnActivationChanged(true))
-      .WillOnce(::testing::InvokeWithoutArgs([&]() {
-        wayland_bubble.reset();
-        window_.reset();
-      }));
+  EXPECT_CALL(delegate_, OnActivationChanged(true)).WillOnce([&]() {
+    wayland_bubble.reset();
+    window_.reset();
+  });
 
   // This should not crash and should return safely.
   window_->RemoveBubble(wayland_bubble->AsWaylandBubble());
@@ -6118,8 +6151,7 @@ TEST_P(WaylandWindowTest, WaylandToplevelWindowOnPaintAsActiveChangedUaf) {
   ASSERT_TRUE(toplevel_window);
 
   EXPECT_CALL(toplevel_delegate, OnPaintAsActiveChanged(::testing::_))
-      .WillOnce(
-          ::testing::InvokeWithoutArgs([&]() { toplevel_window.reset(); }));
+      .WillOnce([&]() { toplevel_window.reset(); });
 
   WaylandWindow::WindowStates window_states;
   window_states.is_activated = true;
@@ -6139,8 +6171,7 @@ TEST_P(WaylandWindowTest, WaylandToplevelWindowTriggerStateChangesUaf) {
 
   EXPECT_CALL(toplevel_delegate,
               OnWindowStateChanged(::testing::_, ::testing::_))
-      .WillOnce(
-          ::testing::InvokeWithoutArgs([&]() { toplevel_window.reset(); }));
+      .WillOnce([&]() { toplevel_window.reset(); });
 
   // This should not crash.
   toplevel_window->Maximize();

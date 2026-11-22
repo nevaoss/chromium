@@ -8,16 +8,15 @@
 #include <concepts>
 #include <utility>
 
-#include "base/check.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/no_destructor.h"
 #include "base/traits_bag.h"
 #include "base/types/pass_key.h"
 #include "components/keyed_service/core/service_access_type.h"
+#include "ios/chrome/browser/shared/model/profile/internal/refcounted_profile_keyed_service_factory_ios.h"
 #include "ios/chrome/browser/shared/model/profile/profile_ios.h"
 #include "ios/chrome/browser/shared/model/profile/profile_keyed_service_access.h"
 #include "ios/chrome/browser/shared/model/profile/profile_keyed_service_traits.h"
-#include "ios/chrome/browser/shared/model/profile/refcounted_profile_keyed_service_factory_ios.h"
 
 // LINT.IfChange(TypedRefcountedProfileKeyedServiceFactoryIOS)
 //
@@ -95,7 +94,6 @@ class TypedRefcountedProfileKeyedServiceFactoryIOS
   static scoped_refptr<Service> GetForProfile(ProfileIOS* profile)
     requires(sizeof...(AccessTraits) == 0)
   {
-    CHECK(profile);
     return GetInstance()->template GetServiceForProfileAs<Service>(
         profile,
         /*create=*/true);
@@ -115,9 +113,8 @@ class TypedRefcountedProfileKeyedServiceFactoryIOS
                                               ServiceAccessType access_type)
     requires(sizeof...(AccessTraits) != 0)
   {
-    CHECK(profile);
     if (access_type == ServiceAccessType::IMPLICIT_ACCESS) {
-      if (ServiceAccessChecker<AccessTraits...>::Reject(*profile)) {
+      if (!profile || ServiceAccessChecker<AccessTraits...>::Reject(*profile)) {
         return nullptr;
       }
     }
@@ -132,7 +129,6 @@ class TypedRefcountedProfileKeyedServiceFactoryIOS
   static scoped_refptr<Service> GetForProfileIfExists(ProfileIOS* profile)
     requires(sizeof...(AccessTraits) == 0)
   {
-    CHECK(profile);
     return GetInstance()->template GetServiceForProfileAs<Service>(
         profile,
         /*create=*/false);
@@ -151,9 +147,8 @@ class TypedRefcountedProfileKeyedServiceFactoryIOS
       ServiceAccessType access_type)
     requires(sizeof...(AccessTraits) != 0)
   {
-    CHECK(profile);
     if (access_type == ServiceAccessType::IMPLICIT_ACCESS) {
-      if (ServiceAccessChecker<AccessTraits...>::Reject(*profile)) {
+      if (!profile || ServiceAccessChecker<AccessTraits...>::Reject(*profile)) {
         return nullptr;
       }
     }

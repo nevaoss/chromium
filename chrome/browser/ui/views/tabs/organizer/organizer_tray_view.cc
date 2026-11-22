@@ -20,7 +20,6 @@
 #include "chrome/browser/ui/views/frame/shadow_frame_view.h"
 #include "chrome/browser/ui/views/tabs/organizer/layout_constants.h"
 #include "chrome/browser/ui/views/tabs/organizer/organizer_panel_controls_view.h"
-#include "chrome/browser/ui/views/tabs/organizer/organizer_panel_view.h"
 #include "ui/base/interaction/element_tracker.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/compositor/layer.h"
@@ -159,25 +158,11 @@ void OrganizerTrayView::UpdatePanelClipAndShadow() {
   // be by how close the lower trailing corner is to its full size.
   const double key_corner =
       base::i18n::IsRTL() ? corners.lower_left() : corners.lower_right();
-  shadow_frame_->SetShadowOpacity(key_corner / bg->default_radius());
+  shadow_frame_->SetShadowOpacity(
+      std::min(1.0, key_corner / bg->default_radius()));
 }
 
-bool OrganizerTrayView::IsPositionInWindowCaption(const gfx::Point& point) {
-  const auto in_controls =
-      views::View::ConvertPointToTarget(this, controls_view_, point);
-  if (controls_view_->HitTestPoint(in_controls) &&
-      controls_view_->IsPositionInWindowCaption(in_controls)) {
-    return true;
-  }
-
-  if (auto* panel = views::AsViewClass<OrganizerPanelView>(panel_view_)) {
-    const auto in_panel = views::View::ConvertPointToTarget(this, panel, point);
-    if (panel->HitTestPoint(in_panel) &&
-        panel->IsPositionInWindowCaption(in_panel)) {
-      return true;
-    }
-  }
-
+bool OrganizerTrayView::IsPositionInWindowCaption(const gfx::Point&) {
   return false;
 }
 
@@ -291,7 +276,7 @@ void OrganizerTrayView::Layout(PassKey) {
   double opacity = 1.0;
   const int exclusion_width = top_leading_exclusion_.width();
   const int actual_width = width();
-  if (exclusion_width > 0 && actual_width < target_width_) {
+  if (actual_width < target_width_) {
     const int controls_preferred_width =
         controls_view_->GetPreferredSize().width();
     const int required_width =

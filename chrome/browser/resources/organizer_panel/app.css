@@ -16,20 +16,32 @@
 
 :host([vertical-tabs-enabled]) {
   --organizer-divider-color:
-      var(--color-sys-on-header-divider, var(--cr-fallback-color-divider));
+      var(--color-organizer-panel-divider,
+          var(--color-sys-on-header-divider, var(--cr-fallback-color-divider)));
 }
 
 #searchField {
+  --color-toolbar-search-field-background-hover:
+      var(--color-sys-state-hover-on-subtle);
   --cr-toolbar-search-field-background: var(--color-toolbar);
+  --cr-toolbar-search-field-icon-color: var(--color-toolbar-button-icon);
+  --cr-toolbar-search-field-input-text-color: var(--color-toolbar-text);
+  --cr-toolbar-search-field-prompt-color: var(--color-toolbar-text);
+  --cr-toolbar-search-field-term-margin: 0 6px;
   flex-shrink: 0;
   margin: 12px;
   margin-top: 4px;
+  padding: 0 4px;
   width: auto;
 }
 
 #shortcut {
-  color: var(--cr-secondary-text-color);
-  margin-inline-end: 12px;
+  align-items: center;
+  color: var(--color-organizer-panel-foreground-subtle,
+      var(--cr-secondary-text-color));
+  display: flex;
+  height: 100%;
+  padding-right: 12px;
 }
 
 #list {

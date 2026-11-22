@@ -24,6 +24,7 @@
 #include "base/i18n/rtl.h"
 #include "base/i18n/tag_converters.h"
 #include "base/location.h"
+#include "base/logging.h"
 #include "base/memory/ref_counted.h"
 #include "base/notreached.h"
 #include "base/strings/stringprintf.h"
@@ -34,7 +35,6 @@
 #include "base/values.h"
 #include "chrome/browser/ash/customization/customization_document.h"
 #include "chrome/browser/ash/login/fjord_oobe/fjord_oobe_util.h"
-#include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chromeos/ash/components/browser_context_helper/browser_context_types.h"
 #include "content/public/browser/browser_thread.h"
@@ -299,8 +299,7 @@ void GetAndMergeKeyboardLayoutsForLocale(input_method::InputMethodUtil* util,
   layouts->insert(layouts->end(), layouts_from_locale.begin(),
                   layouts_from_locale.end());
   if (selected_locale->empty() && !layouts_from_locale.empty()) {
-    *selected_locale =
-        util->GetInputMethodDescriptorFromId(layouts_from_locale[0])->id();
+    *selected_locale = layouts_from_locale[0];
   }
 }
 
@@ -321,6 +320,18 @@ void GetKeyboardLayoutsForResolvedLocale(
                                       &layouts);
   GetAndMergeKeyboardLayoutsForLocale(util, resolved_locale, &selected,
                                       &layouts);
+  // `GetAndMergeKeyboardLayoutsForLocale` only considers XKB keyboard layouts.
+  // For locales whose input methods are exclusively non-XKB IMEs (e.g. "hi",
+  // "km", "zh-CN"), `selected` remains empty, so fall back to the first
+  // hardware keyboard layout.
+  if (selected.empty()) {
+    CHECK(!layouts.empty());
+    LOG(WARNING) << "No XKB keyboard layout found for requested_locale='"
+                 << requested_locale << "', resolved_locale='"
+                 << resolved_locale << "'; falling back to '" << layouts[0]
+                 << "'";
+    selected = layouts[0];
+  }
 
   base::ListValue input_methods_list;
   std::set<std::string> input_methods_added;
@@ -436,6 +447,7 @@ void AdjustUILanguageList(std::string_view selected,
 }  // namespace
 
 void ResolveUILanguageList(
+    const base::i18n::LanguageTag& application_locale,
     std::unique_ptr<locale_util::LanguageSwitchResult> language_switch_result,
     input_method::InputMethodManager& input_method_manager,
     UILanguageListResolvedCallback callback) {
@@ -448,7 +460,7 @@ void ResolveUILanguageList(
   base::ThreadPool::PostTask(
       FROM_HERE, {base::MayBlock()},
       base::BindOnce(&ResolveLanguageListInThreadPool,
-                     g_browser_process->GetApplicationLocale(),
+                     std::string(application_locale.tag_string()),
                      std::move(language_switch_result),
                      base::SequencedTaskRunner::GetCurrentDefault(),
                      std::move(descriptors), std::move(callback)));

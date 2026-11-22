@@ -108,8 +108,7 @@ suite('OmniboxEverywhereOmniboxTest', () => {
   test(
       'sets is-dragging-file attribute on dragenter and removes on dragleave',
       async () => {
-        const inputWrapper = omnibox.shadowRoot.querySelector('#inputWrapper');
-        assertTrue(!!inputWrapper);
+        const inputWrapper = omnibox.$.inputWrapper;
 
         assertFalse(omnibox.hasAttribute('is-dragging-file'));
 
@@ -145,12 +144,8 @@ suite('OmniboxEverywhereOmniboxTest', () => {
         const dataTransfer = new DataTransfer();
         dataTransfer.items.add(file);
 
-        const input = omnibox.shadowRoot.querySelector('#input')!;
-        input.dispatchEvent(new CustomEvent('searchbox-input-files-pasted', {
-          detail: {files: dataTransfer.files},
-          bubbles: true,
-          composed: true,
-        }));
+        const input = omnibox.$.input;
+        input.fire('searchbox-input-files-pasted', {files: dataTransfer.files});
 
         assertTrue(openComposeboxCalled);
         const files = detailHolder.state!.files;
@@ -200,21 +195,16 @@ suite('OmniboxEverywhereOmniboxTest', () => {
         assertTrue(!!composeButton);
         assertFalse(composeButton.hasAttribute('has-user-input'));
 
-        const input = omnibox.shadowRoot.querySelector('#input')!;
-        input.dispatchEvent(new CustomEvent('searchbox-input-text-updated', {
-          detail: {value: 'test query', isComposing: false},
-          bubbles: true,
-          composed: true,
-        }));
+        const input = omnibox.$.input;
+        input.fire(
+            'searchbox-input-text-updated',
+            {value: 'test query', isComposing: false});
         await microtasksFinished();
 
         assertTrue(composeButton.hasAttribute('has-user-input'));
 
-        input.dispatchEvent(new CustomEvent('searchbox-input-text-updated', {
-          detail: {value: '', isComposing: false},
-          bubbles: true,
-          composed: true,
-        }));
+        input.fire(
+            'searchbox-input-text-updated', {value: '', isComposing: false});
         await microtasksFinished();
 
         assertFalse(composeButton.hasAttribute('has-user-input'));
@@ -503,12 +493,8 @@ suite('OmniboxEverywhereOmniboxTest', () => {
         const dataTransfer = new DataTransfer();
         dataTransfer.items.add(
             new File(['foo'], 'foo.png', {type: 'image/png'}));
-        const input = omnibox.shadowRoot.querySelector('#input')!;
-        input.dispatchEvent(new CustomEvent('searchbox-input-files-pasted', {
-          detail: {files: dataTransfer.files},
-          bubbles: true,
-          composed: true,
-        }));
+        const input = omnibox.$.input;
+        input.fire('searchbox-input-files-pasted', {files: dataTransfer.files});
         await microtasksFinished();
 
         assertFalse(openComposeboxCalled);
@@ -611,9 +597,7 @@ suite('OmniboxEverywhereOmniboxTest', () => {
       });
 
   test('balanced layout and element clearances', () => {
-    const inputWrapper =
-        omnibox.shadowRoot.querySelector<HTMLElement>('#inputWrapper');
-    assertTrue(!!inputWrapper);
+    const inputWrapper = omnibox.$.inputWrapper;
     const wrapperStyle = window.getComputedStyle(inputWrapper);
     assertEquals('16px', wrapperStyle.borderRadius);
     assertEquals('6px', wrapperStyle.paddingTop);
@@ -633,9 +617,7 @@ suite('OmniboxEverywhereOmniboxTest', () => {
     assertEquals(
         '36px', window.getComputedStyle(composeButton).marginInlineEnd);
 
-    const profileIcon =
-        omnibox.shadowRoot.querySelector<HTMLElement>('#profileIcon');
-    assertTrue(!!profileIcon);
+    const profileIcon = omnibox.$.profileIcon;
     assertEquals('16px', window.getComputedStyle(profileIcon).top);
   });
 
@@ -1267,6 +1249,45 @@ suite('OmniboxEverywhereComposeboxTest', () => {
     assertEquals('test composebox query', composebox.getInputElement().input);
   });
 
+  test(
+      'composebox input clears cancel icon and flips caret in RTL',
+      async () => {
+        const inputEl = composebox.getInputElement();
+        const textarea = inputEl.shadowRoot.querySelector('textarea')!;
+        const caret = inputEl.shadowRoot.querySelector<HTMLElement>('#caret')!;
+        const cancelIcon = inputEl.shadowRoot.querySelector<HTMLElement>(
+            '[part~="cancel-icon"]')!;
+        assertTrue(!!textarea);
+        assertTrue(!!caret);
+        assertTrue(!!cancelIcon);
+
+        textarea.focus();
+        textarea.dispatchEvent(new FocusEvent('focus'));
+        await microtasksFinished();
+
+        const ltrCaretLeft = caret.getBoundingClientRect().left;
+
+        textarea.dir = 'rtl';
+        await microtasksFinished();
+        const rtlCaretRect = caret.getBoundingClientRect();
+        assertTrue(rtlCaretRect.left > ltrCaretLeft);
+        assertTrue(
+            rtlCaretRect.right <= cancelIcon.getBoundingClientRect().left);
+        assertTrue(
+            textarea.getBoundingClientRect().right <=
+                cancelIcon.getBoundingClientRect().left,
+            'Composebox input overlapped cancel icon in RTL');
+
+        textarea.dir = 'ltr';
+        await microtasksFinished();
+        assertTrue(
+            Math.abs(caret.getBoundingClientRect().left - ltrCaretLeft) < 2);
+        assertTrue(
+            textarea.getBoundingClientRect().right <=
+                cancelIcon.getBoundingClientRect().left,
+            'Composebox input overlapped cancel icon in LTR');
+      });
+
   test('submitting query clears composebox input', async () => {
     composebox.setInputText('test composebox query');
     await microtasksFinished();
@@ -1282,8 +1303,7 @@ suite('OmniboxEverywhereComposeboxTest', () => {
   test(
       'sets is-dragging-file attribute on dragenter and removes on dragleave',
       async () => {
-        const dropZone = composebox.shadowRoot.querySelector('#composebox');
-        assertTrue(!!dropZone);
+        const dropZone = composebox.$.composebox;
 
         assertFalse(composebox.hasAttribute('is-dragging-file'));
 
@@ -1320,8 +1340,7 @@ suite('OmniboxEverywhereComposeboxTest', () => {
       value: dataTransfer,
     });
 
-    const dropZone = composebox.shadowRoot.querySelector('#composebox')!;
-    assertTrue(!!dropZone);
+    const dropZone = composebox.$.composebox;
     dropZone.dispatchEvent(pasteEvent);
 
     await testProxy.handler.whenCalled('addFileContext');
@@ -1342,7 +1361,7 @@ suite('OmniboxEverywhereComposeboxTest', () => {
   test('cancel button title reflects input and file state', async () => {
     const cancelIcon =
         composebox.getInputElement().shadowRoot.querySelector<HTMLElement>(
-            '#cancelIcon')!;
+            '#cancelIcon');
     assertTrue(!!cancelIcon);
     assertEquals('Close AI Mode', cancelIcon.getAttribute('title'));
 
@@ -2222,11 +2241,9 @@ suite('OmniboxEverywhereAppTest', () => {
             appWithMv.shadowRoot.querySelector('omnibox-everywhere-omnibox');
         const mvContainer = appWithMv.shadowRoot.querySelector<HTMLElement>(
             '#mostVisitedContainer');
-        const content =
-            appWithMv.shadowRoot.querySelector<HTMLElement>('#content');
+        const content = appWithMv.$.content;
         assertTrue(!!searchbox);
         assertTrue(!!mvContainer);
-        assertTrue(!!content);
         assertFalse(appWithMv.hasAttribute('show-voice-search-overlay_'));
 
         searchbox.fire('open-voice-search');
@@ -2652,7 +2669,7 @@ suite('OmniboxEverywhereAppTest', () => {
 
         const cancelIcon =
             composebox.getInputElement().shadowRoot.querySelector<HTMLElement>(
-                '#cancelIcon')!;
+                '#cancelIcon');
         assertTrue(!!cancelIcon);
         cancelIcon.click();
         await microtasksFinished();
@@ -2685,8 +2702,7 @@ suite('OmniboxEverywhereAppTest', () => {
 
         assertTrue(app.hasAttribute('show-voice-search-overlay_'));
 
-        const content = app.shadowRoot.querySelector('#content');
-        assertTrue(!!content);
+        const content = app.$.content;
         assertEquals('none', window.getComputedStyle(content).display);
 
         const voiceSearch = app.shadowRoot.querySelector('#voiceSearch');
@@ -3290,9 +3306,7 @@ suite('OmniboxEverywhereProfileIconTest', () => {
       'profile icon is not clickable when profile picker is disabled',
       async () => {
         await createProfileIcon(false);
-        const container = profileIcon.shadowRoot.querySelector<HTMLElement>(
-            '#profileContainer');
-        assertTrue(!!container);
+        const container = profileIcon.$.profileContainer;
         assertEquals('BUTTON', container.tagName);
         assertFalse(container.classList.contains('clickable'));
         assertEquals('true', container.getAttribute('aria-disabled'));
@@ -3306,9 +3320,7 @@ suite('OmniboxEverywhereProfileIconTest', () => {
 
   test('profile icon is clickable when profile picker is enabled', async () => {
     await createProfileIcon(true);
-    const container =
-        profileIcon.shadowRoot.querySelector<HTMLElement>('#profileContainer');
-    assertTrue(!!container);
+    const container = profileIcon.$.profileContainer;
     assertTrue(container.classList.contains('clickable'));
     assertEquals('false', container.getAttribute('aria-disabled'));
     assertEquals(
@@ -3798,4 +3810,27 @@ suite('OmniboxEverywhereContextMenuTest', () => {
         assertTrue(!!composebox);
         assertFalse(composebox.isPendingScreenshot);
       });
+
+  test('input does not overspill profile icon in RTL or LTR', async () => {
+    const omnibox = app.shadowRoot.querySelector('omnibox-everywhere-omnibox')!;
+    omnibox.removeAttribute('compose-button-enabled');
+    const profileIcon =
+        omnibox.shadowRoot.querySelector('omnibox-everywhere-profile-icon')!;
+    profileIcon.setAttribute('is-enterprise-profile', '');
+    await microtasksFinished();
+
+    const inputEl = omnibox.$.input.inputElement;
+    assertTrue(!!inputEl);
+
+    for (const inputWritingDirection of ['rtl', 'ltr']) {
+      inputEl.dir = inputWritingDirection;
+      await microtasksFinished();
+      const inputRect = inputEl.getBoundingClientRect();
+      const profileRect = profileIcon.getBoundingClientRect();
+      assertTrue(
+          inputRect.right <= profileRect.left,
+          `Input right (${inputRect.right}) overspilled profile icon left (${
+              profileRect.left}) for dir=${inputWritingDirection}`);
+    }
+  });
 });

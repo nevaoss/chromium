@@ -124,7 +124,8 @@ ci.builder(
     gn_args = gn_args.config(
         configs = [
             "release_builder",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             "linux",
             "x64",
@@ -502,9 +503,6 @@ ci.thin_tester(
         mixins = [
             "finch-chromium-swarming-pool",
             "mac_default_arm64",
-            # Temporary for ATL97 outage (b/570133826).
-            "ci_only",
-            "experiments",
         ],
     ),
     ssd = None,
@@ -664,9 +662,6 @@ fyi_ios_builder(
             "out_dir_arg",
             "xcode_27_main",
             "xctest",
-            # Temporary for ATL97 outage (b/570133826).
-            "ci_only",
-            "experiments",
         ],
     ),
     builderless = True,
@@ -1461,7 +1456,8 @@ fyi_ios_builder(
     gn_args = gn_args.config(
         configs = [
             "release_builder_blink",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             "ios_simulator",
             "arm64",
@@ -1519,7 +1515,8 @@ fyi_ios_builder(
     gn_args = gn_args.config(
         configs = [
             "release_builder_blink",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             "ios_simulator",
             "arm64",
@@ -2035,7 +2032,8 @@ ci.builder(
     gn_args = gn_args.config(
         configs = [
             "release_builder",
-            "try_builder",
+            "dcheck_always_on",
+            "minimal_symbols",
             "remoteexec",
             "win",
             "x64",

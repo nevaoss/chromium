@@ -10,7 +10,6 @@
 
 #include <array>
 #include <cstdint>
-#include <deque>
 #include <list>
 #include <map>
 #include <memory>
@@ -136,6 +135,7 @@
 #include "services/network/public/mojom/cookie_access_observer.mojom.h"
 #include "services/network/public/mojom/fetch_api.mojom-forward.h"
 #include "services/network/public/mojom/mdns_responder.mojom.h"
+#include "services/network/public/mojom/restricted_device_bound_sessions.mojom-forward.h"
 #include "services/network/public/mojom/shared_dictionary_access_observer.mojom.h"
 #include "services/network/public/mojom/trust_token_access_observer.mojom.h"
 #include "services/network/public/mojom/url_loader_network_service_observer.mojom-forward.h"
@@ -2096,6 +2096,13 @@ class CONTENT_EXPORT RenderFrameHostImpl
       const url::Origin& origin,
       net::CookieSettingOverrides cookie_setting_overrides);
 
+  // Binds a RestrictedDeviceBoundSessionManager for the current document.
+  // Blink asks only when CanUseDeviceBoundSessionJsApi() is true, so this
+  // reports a bad message otherwise, like CreateWebUsbService().
+  void BindRestrictedDeviceBoundSessionManager(
+      mojo::PendingReceiver<network::mojom::RestrictedDeviceBoundSessionManager>
+          receiver);
+
   // Requires the following preconditions, reporting a bad message otherwise.
   //
   // 1. This frame's top-frame origin must be potentially trustworthy and
@@ -2210,6 +2217,14 @@ class CONTENT_EXPORT RenderFrameHostImpl
   const std::optional<network::ConnectionAllowlist>&
   required_connection_allowlist() const {
     return required_connection_allowlist_;
+  }
+
+  // Whether the current document may bind
+  // network.mojom.RestrictedDeviceBoundSessionManager. NavigationRequest
+  // computed this at commit and sent the same value to the renderer in
+  // CommitNavigationParams.
+  bool CanUseDeviceBoundSessionJsApi() const {
+    return document_associated_data_->can_use_device_bound_session_js_api();
   }
 
   bool IsCredentialless() const override;
@@ -2520,6 +2535,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
   enum class UnboundedElementAuth {
     kDenied,
     kAllowedOpenWeb,
+    // A non-privileged subframe, allowed by permissions policy, whose outermost
+    // main frame is privileged. Unlike kAllowedOpenWeb, this does not require
+    // user activation.
+    kAllowedByPrivilegedMainFrame,
     kAllowedPrivileged,
   };
   UnboundedElementAuth GetUnboundedElementAuth() const;
@@ -3112,12 +3131,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // Subframe: RenderWidgetHost is owned by this RenderFrameHost.
   RenderWidgetHostImpl* GetLocalRenderWidgetHost() const;
 
-  // Called by `SharedStorageHeaderObserver` to add operation deferral callbacks
-  // to `deferred_shared_storage_header_callbacks_` to be run by
-  // `RunDeferredSharedStorageHeaderCallbacks()` after commit.
-  void AddDeferredSharedStorageHeaderCallback(
-      base::OnceCallback<void(NavigationOrDocumentHandle*)> callback);
-
   // Find the frame that triggered the beforeunload handler to run in this
   // frame, which might be the frame itself or its ancestor.  This will
   // return the frame that is navigating, or the main frame if beforeunload was
@@ -3518,6 +3531,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
       mojom::DidCommitSameDocumentNavigationParamsPtr same_document_params)
       override;
   void DidOpenDocumentInputStream(const GURL& url) override;
+  void DidCommitDocumentReplacement() override;
   // |initiator_navigation_state_keep_alive_handle| is needed to ensure that the
   // NavigationStateKeepAlive of the initiator RenderFrameHost can still be
   // retrieved even if the RenderFrameHost has been deleted.
@@ -4467,12 +4481,21 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // cases when a FrameTree embeds another FrameTree are not reflected here.
   const unsigned int depth_ = 0u;
 
-  // The FrameNavigationEntry for the current document in this RenderFrameHost,
-  // shared with any NavigationEntries that reference it. Updated after every
+  // The FrameNavigationEntry for the document currently committed in this
+  // RenderFrameHost, shared with any NavigationEntries that reference it.
+  // Updated when the initial NavigationEntry is created and after every
   // commit.
-  // For now, there are cases when this can be null (e.g., initial state, or
-  // cases from https://crbug.com/608402 when the FrameNavigationEntry is
-  // missing for a frame).
+  //
+  // This can differ from `GetLastCommittedEntry()->GetFrameEntry()` during a
+  // multi-frame history navigation: as soon as the first frame commits,
+  // `GetLastCommittedEntry()` advances to the target NavigationEntry, so for
+  // frames whose navigation is still pending, `GetLastCommittedEntry()` holds
+  // the target FrameNavigationEntry while `last_committed_frame_entry_` still
+  // reflects the currently committed document.
+  //
+  // For now, there are cases when this can be null (e.g., before the first
+  // commit in a subframe, or cases from https://crbug.com/608402 when the
+  // FrameNavigationEntry is missing for a frame).
   // TODO(crbug.com/40217743): Ensure this is always set, and use it to
   // avoid separately storing the last committed URL and origin here.
   scoped_refptr<FrameNavigationEntry> last_committed_frame_entry_;
@@ -5471,11 +5494,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
 
   // Listens for changes to DeviceBoundSessions on this page.
   std::unique_ptr<DeviceBoundSessionObserver> device_bound_session_observer_;
-
-  // Deferred shared storage operations to run after navigation commit in the
-  // event of a race between navigation and subresource request(s).
-  std::deque<base::OnceCallback<void(NavigationOrDocumentHandle*)>>
-      deferred_shared_storage_header_callbacks_;
 
 #if BUILDFLAG(IS_ANDROID)
   // Holds a reference to a pending remote WebAuthn RP ID validation while one

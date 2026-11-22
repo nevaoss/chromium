@@ -894,8 +894,6 @@ component("platform") {
     "fonts/unicode_range_set.cc",
     "fonts/unicode_range_set.h",
     "fonts/utf16_ragel_iterator.h",
-    "fonts/utf16_text_iterator.cc",
-    "fonts/utf16_text_iterator.h",
     "fonts/vdmx_parser.cc",
     "fonts/vdmx_parser.h",
     "fonts/web_font_decoder.h",
@@ -940,6 +938,7 @@ component("platform") {
     "geometry/physical_offset.h",
     "geometry/physical_size.cc",
     "geometry/physical_size.h",
+    "geometry/progress_clamping.h",
     "geometry/skia_geometry_utils.h",
     "geometry/stroke_data.cc",
     "geometry/stroke_data.h",
@@ -3151,7 +3150,6 @@ source_set("unit_tests") {
   visibility = [ "//third_party/blink/renderer/*" ]
   sources = [
     "graphics/animation_worklet_mutator_dispatcher_impl_test.cc",
-    "graphics/canvas_2d_resource_provider_test.cc",
     "graphics/canvas_hibernation_handler_test.cc",
     "graphics/canvas_non_2d_resource_provider_test.cc",
     "graphics/canvas_resource_dispatcher_test.cc",

@@ -264,7 +264,7 @@ BASE_FEATURE(kEnforceGamepadPermissionsPolicy,
 // Note: This feature remains disabled if
 // blink::features::kTreatMhtmlInitialDocumentLoadsAsCrossDocument is disabled.
 BASE_FEATURE(kEnforceSameDocumentOriginInvariants,
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Content counterpart of ExperimentalContentSecurityPolicyFeatures in
 // third_party/blink/renderer/platform/runtime_enabled_features.json5. Enables
@@ -676,12 +676,6 @@ BASE_FEATURE(kReloadHiddenTabsWithCrashedSubframes,
 );
 
 BASE_FEATURE(kRendererCancellationThrottleImprovements,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// When enabled, allows a navigation to resume even if the renderer process for
-// its speculative RFH is killed. This only works for navigations that have not
-// yet received the response and picked the final RFH to commit in.
-BASE_FEATURE(kResumeNavigationWithSpeculativeRFHProcessGone,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, the browser will try to swap to a new SiteInstance if there is

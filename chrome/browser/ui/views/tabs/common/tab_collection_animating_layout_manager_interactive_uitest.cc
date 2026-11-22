@@ -68,6 +68,15 @@ class HorizontalTabCollectionAnimatingLayoutManagerInteractiveUiTest
                : nullptr;
   }
 
+  void LayoutAndFinishAnimations() {
+    auto* controller = GetController();
+    CHECK(controller);
+    controller->animation_coordinator().AnimationEnded(nullptr);
+    auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
+    CHECK(browser_view && browser_view->GetWidget());
+    browser_view->GetWidget()->LayoutRootViewIfNecessary();
+  }
+
   void CreateHorizontalOverflowingTabs() {
     SetWindowWidth(600);
     const views::ScrollView* scroll_view = nullptr;
@@ -239,15 +248,14 @@ IN_PROC_BROWSER_TEST_F(
             views::AsViewClass<UnpinnedTabContainerView>(unpinned->view());
         ASSERT_NE(unpinned_container, nullptr);
 
-        auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
-        browser_view->GetWidget()->LayoutRootViewIfNecessary();
+        LayoutAndFinishAnimations();
 
         const int initial_strip_width =
             tab_strip_view->GetPreferredSize({}).width();
         EXPECT_GT(initial_strip_width, 0);
 
-        ASSERT_TRUE(AddTabAtIndex(-1, GURL(url::kAboutBlankURL),
-                                  ui::PAGE_TRANSITION_TYPED));
+        chrome::AddTabAt(browser(), GURL(url::kAboutBlankURL), -1,
+                         /*foreground=*/true);
 
         EXPECT_TRUE(TabCollectionAnimatingLayoutManager::IsViewAnimating(
             unpinned_container));

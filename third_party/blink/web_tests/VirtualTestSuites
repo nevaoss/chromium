@@ -1730,7 +1730,8 @@
     ],
     "exclusive_tests": "ALL",
     "args": [
-      "--isolated-context-origins=https://devtools.oopif.test"
+      "--isolated-context-origins=https://devtools.oopif.test",
+      "--enable-features=SourceSpecificMulticastInDirectSockets"
     ],
     "expires": "never"
   },
@@ -3440,6 +3441,20 @@
       "katabolism-finch@google.com"
     ]
   },
+  {
+    "prefix": "scaled-oopif-effect-surfaces",
+    "platforms": ["Linux", "Mac", "Win"],
+    "bases": [
+      "http/tests/html/backdrop-filter-scaled-iframe-repaint.html"
+    ],
+    "args": [
+      "--enable-threaded-compositing",
+      "--enable-features=SizeOopifEffectSurfacesAtExternalScale",
+      "--disable-features=TreesInViz"
+    ],
+    "owners": ["gerchiko@microsoft.com"],
+    "expires": "Apr 13, 2027"
+  },
   "The threaded virtual suite tests with threaded compositing, which is the",
   "configuration that we ship.  Because this is testing what we ship (in a way",
   "that the default configuration does not), this virtual suite never expires.",
@@ -3478,6 +3493,7 @@
       "external/wpt/css/css-overflow/scroll-markers/scroll-markers-updated-by-programmatic-scroll.html",
       "external/wpt/css/cssom-view/overflow-hidden-smooth-scroll-crash.html",
       "external/wpt/css/cssom-view/scroll-behavior-smooth-after-hiding-iframe.html",
+      "external/wpt/css/filter-effects/animation",
       "external/wpt/fetch/compression-dictionary/dictionary-fetch-timing-001.tentative.https.html",
       "external/wpt/fetch/compression-dictionary/dictionary-fetch-timing-002.tentative.https.html",
       "external/wpt/fetch/compression-dictionary/dictionary-fetch-with-link-element.tentative.https.html",
@@ -4742,6 +4758,25 @@
       "--enable-features=ScriptSrcHashesV1"
     ],
     "expires": "Jul 1, 2026"
+  },
+  {
+    "prefix": "csp-embedded-enforcement-trusted-types",
+    "owners": [
+      "vizlatin@microsoft.com"
+    ],
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win"
+    ],
+    "bases": [
+      "external/wpt/content-security-policy/embedded-enforcement/subsumption_algorithm-trusted_types.tentative.html"
+    ],
+    "exclusive_tests": "ALL",
+    "args": [
+      "--enable-features=CSPEmbeddedEnforcementTrustedTypes"
+    ],
+    "expires": "Feb 1, 2027"
   },
   {
     "prefix": "unrestricted-spellcheck",

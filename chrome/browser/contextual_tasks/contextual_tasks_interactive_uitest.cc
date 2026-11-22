@@ -259,8 +259,12 @@ class ContextualTasksInteractiveUiTestBase
     change.type = StateChange::Type::kExistsAndConditionTrue;
     change.where = element;
     change.test_function =
-        "(el) => { const r = el.getBoundingClientRect(); return r.width > 0 && "
-        "r.height > 0; }";
+        "(el) => { const rect = el.getBoundingClientRect(); "
+        "const left = Math.max(0, rect.x); "
+        "const top = Math.max(0, rect.y); "
+        "const right = Math.min(rect.x + rect.width, window.innerWidth); "
+        "const bottom = Math.min(rect.y + rect.height, window.innerHeight); "
+        "return right > left && bottom > top; }";
     change.event = kElementExistsEvent;
     return WaitForStateChange(contents_id, change);
   }
@@ -1118,9 +1122,13 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksPinnedToolbarInteractiveUiTest,
       InstrumentNonTabWebView(kCustomizeChromeWebContentsId,
                               kCustomizeChromeSidePanelWebViewElementId),
       // Step 2: Toggle pinning for Contextual Tasks via Customize Chrome WebUI.
+      WaitForJsResultAt(
+          kCustomizeChromeWebContentsId, kContextualTasksToggle,
+          "(el) => { const r = el.getBoundingClientRect(); return r.width > 0 "
+          "&& r.height > 0; }"),
+      ScrollIntoView(kCustomizeChromeWebContentsId, kContextualTasksToggle),
       WaitForElementVisible(kCustomizeChromeWebContentsId,
                             kContextualTasksToggle),
-      ScrollIntoView(kCustomizeChromeWebContentsId, kContextualTasksToggle),
       ClickElement(kCustomizeChromeWebContentsId, kContextualTasksToggle),
       WaitForShow(kPinnedToolbarActionShowSidePanelContextualTasksElementId),
 
@@ -4636,8 +4644,14 @@ class ContextualTasksEphemeralToolbarInteractiveUiTest
 //  (6) Contextual Tasks side panel reopens and restores the same task and
 //      side panel contents.
 //  (7) Ephemeral toolbar button hides while the side panel is open.
+// TODO(https://crbug.com/576301341): Flaky on ChromeOS debug builders.
+#if BUILDFLAG(IS_CHROMEOS) && !defined(NDEBUG)
+#define MAYBE_EphemeralToolbarButtonReopen DISABLED_EphemeralToolbarButtonReopen
+#else
+#define MAYBE_EphemeralToolbarButtonReopen EphemeralToolbarButtonReopen
+#endif
 IN_PROC_BROWSER_TEST_P(ContextualTasksEphemeralToolbarInteractiveUiTest,
-                       EphemeralToolbarButtonReopen) {
+                       MAYBE_EphemeralToolbarButtonReopen) {
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayId);
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kReopenedSidePanelId);
@@ -5963,8 +5977,10 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksSidePanelTabStateInteractiveUiTest,
         // Reopen the panel on tab0 as the ephemeral toolbar button does.
         GetPanelController()->Show(
             /*transition_from_tab=*/false,
-            omnibox::ChromeAimEntryPoint::
-                DESKTOP_CHROME_COBROWSE_TOOLBAR_BUTTON);
+            omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT,
+            /*use_no_animation=*/false, /*open_time_ticks=*/std::nullopt,
+            ContextualTasksPanelController::EntrySource::
+                kEphemeralToolbarButton);
       }),
       WaitForShow(kContextualTasksSidePanelWebViewElementId), Do([&]() {
         EXPECT_EQ(shared_task_id_, GetTaskIdForTab(0));

@@ -1886,7 +1886,7 @@ TEST_F(ContextualTasksUiServiceTest, Navigation_ToNewTab_Allowed) {
   content::Referrer referrer;
   content::OpenURLParams params =
       content::OpenURLParams::CreateRendererInitiated(
-          navigated_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+          navigated_url, WindowOpenDisposition::kNewForegroundTab,
           ui::PAGE_TRANSITION_AUTO_TOPLEVEL, referrer,
           web_contents->GetPrimaryMainFrame()
               ->GetCurrentInitiatorNavigationState());
@@ -2399,8 +2399,8 @@ TEST_F(ContextualTasksUiServiceTest,
           aim_eligibility_service_.get()),
       /*cookie_synchronizer=*/nullptr);
   base::Uuid task_id = base::Uuid::GenerateRandomV4();
-  omnibox::ChromeAimEntryPoint entry_point =
-      omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_TOOLBAR_BUTTON;
+  omnibox::ChromeAimEntryPoint entry_point = omnibox::ChromeAimEntryPoint::
+      DESKTOP_CHROME_COBROWSE_PINNED_TOOLBAR_BUTTON;
 
   // Set the entry point for the task.
   service.SetInitialEntryPointForTask(task_id, entry_point);
@@ -2413,7 +2413,7 @@ TEST_F(ContextualTasksUiServiceTest,
 
   std::string source_value;
   EXPECT_TRUE(net::GetValueForKeyInQuery(url, "source", &source_value));
-  EXPECT_EQ(source_value, "chrome.crn.cct");
+  EXPECT_EQ(source_value, "chrome.crn.ccpt");
 }
 
 TEST_F(ContextualTasksUiServiceTest,
@@ -3304,8 +3304,7 @@ TEST_F(
                     BrowserWindowInterface* browser) {
         EXPECT_EQ(external_url, params.url);
         // CURRENT_TAB should be converted to NEW_FOREGROUND_TAB.
-        EXPECT_EQ(WindowOpenDisposition::NEW_FOREGROUND_TAB,
-                  params.disposition);
+        EXPECT_EQ(WindowOpenDisposition::kNewForegroundTab, params.disposition);
         run_loop.Quit();
       });
 
@@ -3341,13 +3340,12 @@ TEST_F(
                     const blink::mojom::WindowFeatures& features,
                     BrowserWindowInterface* browser) {
         EXPECT_EQ(external_url, params.url);
-        EXPECT_EQ(WindowOpenDisposition::NEW_BACKGROUND_TAB,
-                  params.disposition);
+        EXPECT_EQ(WindowOpenDisposition::kNewBackgroundTab, params.disposition);
         run_loop.Quit();
       });
 
   content::OpenURLParams open_params(external_url, content::Referrer(),
-                                     WindowOpenDisposition::NEW_BACKGROUND_TAB,
+                                     WindowOpenDisposition::kNewBackgroundTab,
                                      ui::PageTransition::PAGE_TRANSITION_LINK,
                                      /*is_renderer_initiated=*/true);
 
@@ -3539,7 +3537,7 @@ TEST_F(
 
   webui::SetBrowserWindowInterface(panel_contents.get(), &browser);
 
-  service_for_nav_->SetIsWebContentsInSidePanelForTesting(true);
+  service_for_nav_->SetSidePanelWebContentsForTesting(panel_contents.get());
 
   GURL citation_url("https://example.com/article#:~:text=sample+text");
 
@@ -3625,7 +3623,7 @@ TEST_F(
 
   webui::SetBrowserWindowInterface(panel_contents.get(), &browser);
 
-  service_for_nav_->SetIsWebContentsInSidePanelForTesting(true);
+  service_for_nav_->SetSidePanelWebContentsForTesting(panel_contents.get());
 
   GURL citation_url("https://example.com/article#:~:text=sample+text");
 
@@ -3639,8 +3637,7 @@ TEST_F(
                     const blink::mojom::WindowFeatures& features,
                     BrowserWindowInterface* target_browser) {
         EXPECT_EQ(citation_url, params.url);
-        EXPECT_EQ(WindowOpenDisposition::NEW_FOREGROUND_TAB,
-                  params.disposition);
+        EXPECT_EQ(WindowOpenDisposition::kNewForegroundTab, params.disposition);
         run_loop.Quit();
       });
 
@@ -3716,8 +3713,7 @@ TEST_F(
                     const blink::mojom::WindowFeatures& features,
                     BrowserWindowInterface* target_browser) {
         EXPECT_EQ(organic_url, params.url);
-        EXPECT_EQ(WindowOpenDisposition::NEW_FOREGROUND_TAB,
-                  params.disposition);
+        EXPECT_EQ(WindowOpenDisposition::kNewForegroundTab, params.disposition);
         run_loop.Quit();
       });
 
@@ -3851,7 +3847,7 @@ TEST_F(
 
   webui::SetBrowserWindowInterface(panel_contents.get(), &browser);
 
-  service_for_nav_->SetIsWebContentsInSidePanelForTesting(true);
+  service_for_nav_->SetSidePanelWebContentsForTesting(panel_contents.get());
 
   GURL citation_url("https://example.com/article#:~:text=sample+text");
 
@@ -3908,7 +3904,7 @@ TEST_F(
 
   webui::SetBrowserWindowInterface(panel_contents.get(), &browser);
 
-  service_for_nav_->SetIsWebContentsInSidePanelForTesting(true);
+  service_for_nav_->SetSidePanelWebContentsForTesting(panel_contents.get());
 
   GURL new_citation_url(
       "https://new-citation.example.com/paper#:~:text=sample+citation");
@@ -4075,8 +4071,7 @@ TEST_F(
                     const blink::mojom::WindowFeatures& features,
                     BrowserWindowInterface* browser) {
         EXPECT_EQ(shopping_url, params.url);
-        EXPECT_EQ(WindowOpenDisposition::NEW_FOREGROUND_TAB,
-                  params.disposition);
+        EXPECT_EQ(WindowOpenDisposition::kNewForegroundTab, params.disposition);
         run_loop.Quit();
       });
 
@@ -4116,8 +4111,7 @@ TEST_F(
                     const blink::mojom::WindowFeatures& features,
                     BrowserWindowInterface* browser) {
         EXPECT_EQ(organic_url, params.url);
-        EXPECT_EQ(WindowOpenDisposition::NEW_FOREGROUND_TAB,
-                  params.disposition);
+        EXPECT_EQ(WindowOpenDisposition::kNewForegroundTab, params.disposition);
         run_loop.Quit();
       });
 
@@ -5313,7 +5307,7 @@ TEST_F(ContextualTasksUiServiceTest,
   GURL target_url("https://target.example.com/");
   content::OpenURLParams params =
       content::OpenURLParams::CreateBrowserInitiated(
-          target_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+          target_url, WindowOpenDisposition::kNewForegroundTab,
           ui::PAGE_TRANSITION_LINK);
 
   real_service_->OpenUrlForTesting(params, blink::mojom::WindowFeatures(),

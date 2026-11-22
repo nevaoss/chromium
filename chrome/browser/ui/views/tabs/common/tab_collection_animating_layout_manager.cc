@@ -506,6 +506,15 @@ views::SizeBounds TabCollectionAnimatingLayoutManager::GetAvailableHostSize()
   // horizontal-wrapping-vertically axes, or bounded by available parent width
   // for horizontal axis, to support dynamic tab shrinking and scrolling.
   if (IsVerticalOrWrappingVertically()) {
+    if (const auto* parent_layout_manager =
+            GetParentAnimatingLayoutManager(host_view())) {
+      if (auto it =
+              parent_layout_manager->target_view_layout_map_.find(host_view());
+          it != parent_layout_manager->target_view_layout_map_.end() &&
+          it->second.bounds.width() > 0) {
+        return views::SizeBounds(it->second.bounds.width(), {});
+      }
+    }
     return views::SizeBounds(std::max(host_view()->width(), 0), {});
   }
 
@@ -620,7 +629,8 @@ void TabCollectionAnimatingLayoutManager::ResetViewsToTargetLayout(
 
 void TabCollectionAnimatingLayoutManager::AnimateAndDestroyChildView(
     views::View* child_view) {
-  DCHECK(std::ranges::contains(host_view()->children(), child_view));
+  CHECK(std::ranges::contains(host_view()->children(), child_view),
+        base::NotFatalUntil::M162);
   child_view->SetCanProcessEventsWithinSubtree(false);
   child_view->SetFocusBehavior(views::View::FocusBehavior::NEVER);
   child_view->SetProperty(kPendingDeletion, true);
@@ -871,7 +881,8 @@ views::ProposedLayout TabCollectionAnimatingLayoutManager::InterpolateLayout(
     // in the start layout.
     gfx::Rect* previous_collection_bounds =
         child_view->GetProperty(kPreviousCollectionBounds);
-    DCHECK(!target_view_layout_map_.contains(child_view));
+    CHECK(!target_view_layout_map_.contains(child_view),
+          base::NotFatalUntil::M162);
     if (previous_collection_bounds &&
         !start_view_layout_map_.contains(child_view)) {
       const gfx::Rect start_bounds =

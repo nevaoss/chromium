@@ -75,8 +75,6 @@ component("ui_data_pack") {
   ]
 
   defines = [ "IS_UI_DATA_PACK_IMPL" ]
-
-  configs += [ "//build/config/compiler:wexit_time_destructors" ]
 }
 
 buildflag_header("buildflags") {
@@ -109,6 +107,10 @@ source_set("constants") {
 # (ideally none).
 source_set("types") {
   sources = [ "window_open_disposition.h" ]
+
+  # TODO(crbug.com/373551504): Remove once the `WindowOpenDisposition` alias is
+  # removed.
+  public_deps = [ "//ui/base/mojom" ]
   if (!is_ios) {
     sources += [ "ui_base_types.h" ]
   }
@@ -474,10 +476,7 @@ component("base") {
     sources += [ "resource/resource_bundle_fuchsia.cc" ]
   }
 
-  configs += [
-    "//build/config/compiler:prevent_unsafe_narrowing",
-    "//build/config/compiler:wexit_time_destructors",
-  ]
+  configs += [ "//build/config/compiler:prevent_unsafe_narrowing" ]
 
   defines = [ "IS_UI_BASE_IMPL" ]
 

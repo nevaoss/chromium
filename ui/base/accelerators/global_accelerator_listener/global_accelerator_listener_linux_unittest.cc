@@ -12,6 +12,7 @@
 
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
+#include "base/memory/ref_counted.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/nix/xdg_util.h"
@@ -20,6 +21,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/values.h"
 #include "components/dbus/utils/read_value.h"
 #include "components/dbus/utils/variant.h"
 #include "components/dbus/utils/write_value.h"
@@ -803,6 +805,21 @@ TEST(GlobalAcceleratorListenerLinuxTest, BindsCommandAddedAfterUpToDateList) {
 
 namespace {
 
+class FakeStateStore : public GlobalAcceleratorListener::StateStore {
+ public:
+  using Data = base::RefCountedData<base::DictValue>;
+
+  explicit FakeStateStore(scoped_refptr<Data> data) : data_(std::move(data)) {}
+  ~FakeStateStore() override = default;
+
+  // GlobalAcceleratorListener::StateStore:
+  base::DictValue Load() override { return data_->data.Clone(); }
+  void Save(base::DictValue state) override { data_->data = std::move(state); }
+
+ private:
+  scoped_refptr<Data> data_;
+};
+
 struct BindCall {
   // In the order they were sent, so duplicates can be detected.
   std::vector<std::string> ids;
@@ -811,14 +828,19 @@ struct BindCall {
 };
 
 constexpr uint32_t kResponseCancelled = 1;
+constexpr uint32_t kResponseOther = 2;
+constexpr char kOtherProfileId[] = "other_profile_id";
+// This is computed based on `kExtensionId` and `kOtherProfileId`.
+constexpr char kOtherProfilePrefix[] = "21E88D02747614A1D6F5D8535A0B9CB0";
 constexpr char kRequestInterface[] = "org.freedesktop.portal.Request";
 constexpr char kResponseSignal[] = "Response";
 
-// Returns the portal shortcut ID of `command_name` for `kExtensionId` in
-// `kProfileId`. This uses the hard-coded `kSessionId` so that tests fail if the
-// ID ever changes.
-std::string Id(std::string_view command_name) {
-  return base::StrCat({kSessionId, "-", command_name});
+// Returns the portal shortcut ID of `command_name` with `prefix`, which
+// defaults to the prefix for `kExtensionId` in `kProfileId`. Hard-coded
+// prefixes are used so that tests fail if the ID ever changes.
+std::string Id(std::string_view command_name,
+               std::string_view prefix = kSessionId) {
+  return base::StrCat({prefix, "-", command_name});
 }
 
 }  // namespace
@@ -889,6 +911,7 @@ class GlobalAcceleratorListenerLinuxBindTest : public testing::Test {
       command_map[name] = std::move(command);
     }
     GlobalAcceleratorListener* listener = listener_.get();
+    listener->SetStateStore(std::make_unique<FakeStateStore>(state_));
     listener->OnCommandsChanged(kExtensionId, profile_id, command_map,
                                 gfx::kNullAcceleratedWidget, base::DoNothing());
     WaitForPortalIdle();
@@ -926,6 +949,16 @@ class GlobalAcceleratorListenerLinuxBindTest : public testing::Test {
 
   bool IsBound() const { return bind_state() == BindState::kBound; }
 
+  bool HasSession() const { return !!listener_->session_; }
+
+  std::optional<int> StoredState(const std::string& id) const {
+    const base::DictValue* entry = state_->data.FindDict(id);
+    if (!entry) {
+      return std::nullopt;
+    }
+    return entry->FindInt("state");
+  }
+
   void ClearCalls() {
     method_calls_.clear();
     bind_calls_.clear();
@@ -937,6 +970,8 @@ class GlobalAcceleratorListenerLinuxBindTest : public testing::Test {
   scoped_refptr<dbus::MockBus> mock_bus_;
   scoped_refptr<dbus::MockObjectProxy> global_shortcuts_proxy_;
   std::unique_ptr<GlobalAcceleratorListenerLinux> listener_;
+  scoped_refptr<FakeStateStore::Data> state_ =
+      base::MakeRefCounted<FakeStateStore::Data>();
 
   // IDs returned by ListShortcuts. Successfully bound IDs are appended, like a
   // real portal persists them.
@@ -1177,8 +1212,8 @@ TEST_F(GlobalAcceleratorListenerLinuxBindTest, RebindsAfterFailedBind) {
                {MakeCommand("first", /*global=*/true),
                 MakeCommand("second", /*global=*/true, ui::VKEY_8)});
   ASSERT_EQ(bind_calls_.size(), 2u);
-  EXPECT_THAT(bind_calls_[1].ids,
-              testing::UnorderedElementsAre(Id("first"), Id("second")));
+  // The declined shortcut is not offered again.
+  EXPECT_THAT(bind_calls_[1].ids, testing::ElementsAre(Id("second")));
 }
 
 // Adding a command while a bind is in flight binds the complete set once the
@@ -1244,6 +1279,8 @@ TEST_F(GlobalAcceleratorListenerLinuxBindTest, BindsOnlyGlobalCommands) {
 
   ASSERT_EQ(bind_calls_.size(), 1u);
   EXPECT_THAT(bind_calls_[0].ids, testing::ElementsAre(Id("global")));
+  EXPECT_EQ(StoredState(Id("global")), 1);
+  EXPECT_FALSE(StoredState(Id("local")));
 }
 
 // Shortcuts reported by ListShortcuts must not be sent twice.
@@ -1277,6 +1314,201 @@ TEST_F(GlobalAcceleratorListenerLinuxBindTest, UntrackedListedShortcuts) {
   EXPECT_THAT(bind_calls_[0].ids,
               testing::UnorderedElementsAre("untracked-id", Id("global")));
   EXPECT_EQ(bind_calls_[0].descriptions["untracked-id"], "Listed");
+}
+
+// Every bind replaces the shortcuts that the portal has stored for the app, so
+// shortcuts of profiles that aren't loaded must still be bound. Otherwise
+// switching between profiles shows the dialog on every start on GNOME.
+TEST_F(GlobalAcceleratorListenerLinuxBindTest, KeepsShortcutsOfOtherProfiles) {
+  CreateListener();
+  LoadCommands(kProfileId, {MakeCommand("global", /*global=*/true)});
+  ASSERT_EQ(bind_calls_.size(), 1u);
+  EXPECT_THAT(bind_calls_[0].ids, testing::ElementsAre(Id("global")));
+
+  // Like GNOME, don't list any shortcuts, so that the shortcut of the unloaded
+  // profile can only come from the state store.
+  ClearCalls();
+  listed_ids_.clear();
+  CreateListener();
+  LoadCommands(kOtherProfileId,
+               {MakeCommand("global", /*global=*/true, ui::VKEY_8)});
+  ASSERT_EQ(bind_calls_.size(), 1u);
+  EXPECT_THAT(bind_calls_[0].ids,
+              testing::UnorderedElementsAre(Id("global"),
+                                            Id("global", kOtherProfilePrefix)));
+  // The shortcut of the unloaded profile keeps its description, but no
+  // preferred trigger is sent for it.
+  EXPECT_EQ(bind_calls_[0].descriptions[Id("global")], "Description");
+  EXPECT_FALSE(bind_calls_[0].triggers.contains(Id("global")));
+  EXPECT_THAT(bind_calls_[0].triggers,
+              testing::Contains(testing::Pair(Id("global", kOtherProfilePrefix),
+                                              "CTRL+SHIFT+8")));
+
+  ClearCalls();
+  listed_ids_.clear();
+  CreateListener();
+  LoadCommands(kProfileId, {MakeCommand("global", /*global=*/true)});
+  ASSERT_EQ(bind_calls_.size(), 1u);
+  EXPECT_THAT(bind_calls_[0].ids,
+              testing::UnorderedElementsAre(Id("global"),
+                                            Id("global", kOtherProfilePrefix)));
+  EXPECT_EQ(StoredState(Id("global")), 1);
+  EXPECT_EQ(StoredState(Id("global", kOtherProfilePrefix)), 1);
+}
+
+// If the user cancels the dialog, the shortcut is not offered again on the
+// next start, but it is offered again when its accelerator changes.
+TEST_F(GlobalAcceleratorListenerLinuxBindTest, DeclinedShortcutNotOffered) {
+  bind_response_codes_ = {kResponseCancelled};
+  CreateListener();
+  LoadCommands(kProfileId, {MakeCommand("global", /*global=*/true)});
+  EXPECT_EQ(bind_calls_.size(), 1u);
+  EXPECT_EQ(StoredState(Id("global")), 2);
+
+  ClearCalls();
+  CreateListener();
+  LoadCommands(kProfileId, {MakeCommand("global", /*global=*/true)});
+  EXPECT_EQ(CountCreateSessionCalls(), 0u);
+  EXPECT_TRUE(bind_calls_.empty());
+
+  // Changing the accelerator offers the shortcut again.
+  LoadCommands(kProfileId,
+               {MakeCommand("global", /*global=*/true, ui::VKEY_9)});
+  ASSERT_EQ(bind_calls_.size(), 1u);
+  EXPECT_THAT(bind_calls_[0].ids, testing::ElementsAre(Id("global")));
+  EXPECT_EQ(StoredState(Id("global")), 1);
+}
+
+// Making a declined command non-global and then global again offers it again.
+TEST_F(GlobalAcceleratorListenerLinuxBindTest, ToggleGlobalReoffersDeclined) {
+  bind_response_codes_ = {kResponseCancelled};
+  CreateListener();
+  LoadCommands(kProfileId, {MakeCommand("global", /*global=*/true)});
+  EXPECT_EQ(StoredState(Id("global")), 2);
+
+  LoadCommands(kProfileId, {MakeCommand("global", /*global=*/false)});
+  EXPECT_FALSE(StoredState(Id("global")));
+
+  ClearCalls();
+  LoadCommands(kProfileId, {MakeCommand("global", /*global=*/true)});
+  ASSERT_EQ(bind_calls_.size(), 1u);
+  EXPECT_EQ(StoredState(Id("global")), 1);
+}
+
+// Declining a new shortcut must not deactivate previously accepted shortcuts.
+TEST_F(GlobalAcceleratorListenerLinuxBindTest, DeclineKeepsKnownShortcuts) {
+  CreateListener();
+  LoadCommands(kProfileId, {MakeCommand("global", /*global=*/true)});
+
+  // Like GNOME, don't list any shortcuts, so that the known state can only come
+  // from the state store.
+  ClearCalls();
+  listed_ids_.clear();
+  bind_response_codes_ = {kResponseCancelled};
+  CreateListener();
+  LoadCommands(kOtherProfileId,
+               {MakeCommand("global", /*global=*/true, ui::VKEY_8)});
+  ASSERT_EQ(bind_calls_.size(), 2u);
+  EXPECT_THAT(bind_calls_[0].ids,
+              testing::UnorderedElementsAre(Id("global"),
+                                            Id("global", kOtherProfilePrefix)));
+  EXPECT_THAT(bind_calls_[1].ids, testing::ElementsAre(Id("global")));
+  EXPECT_EQ(StoredState(Id("global")), 1);
+  EXPECT_EQ(StoredState(Id("global", kOtherProfilePrefix)), 2);
+}
+
+// Some backends, e.g. xdg-desktop-portal-gnome without GNOME Shell (as used by
+// niri), show the dialog but always respond with code 2
+// (kRequestCancelledOther). The shortcut must not be offered again on the next
+// start.
+TEST_F(GlobalAcceleratorListenerLinuxBindTest, OtherResponseDeclinesShortcut) {
+  bind_response_codes_ = {kResponseOther};
+  CreateListener();
+  LoadCommands(kProfileId, {MakeCommand("global", /*global=*/true)});
+  ASSERT_EQ(bind_calls_.size(), 1u);
+  EXPECT_EQ(StoredState(Id("global")), 2);
+  // Nothing is left to bind, so the session is closed.
+  EXPECT_FALSE(HasSession());
+
+  ClearCalls();
+  CreateListener();
+  LoadCommands(kProfileId, {MakeCommand("global", /*global=*/true)});
+  EXPECT_EQ(CountCreateSessionCalls(), 0u);
+  EXPECT_TRUE(bind_calls_.empty());
+}
+
+// If the portal shows the dialog for known shortcuts only, e.g. because its
+// stored shortcuts were reset, and it's cancelled, the known shortcuts are
+// declined so that the dialog isn't shown on every start.
+TEST_F(GlobalAcceleratorListenerLinuxBindTest, CancelDeclinesKnownShortcuts) {
+  CreateListener();
+  LoadCommands(kProfileId, {MakeCommand("global", /*global=*/true)});
+  EXPECT_EQ(StoredState(Id("global")), 1);
+
+  ClearCalls();
+  listed_ids_.clear();
+  bind_response_codes_ = {kResponseCancelled};
+  CreateListener();
+  LoadCommands(kProfileId, {MakeCommand("global", /*global=*/true)});
+  ASSERT_EQ(bind_calls_.size(), 1u);
+  EXPECT_EQ(StoredState(Id("global")), 2);
+  EXPECT_FALSE(HasSession());
+
+  ClearCalls();
+  CreateListener();
+  LoadCommands(kProfileId, {MakeCommand("global", /*global=*/true)});
+  EXPECT_EQ(CountCreateSessionCalls(), 0u);
+  EXPECT_TRUE(bind_calls_.empty());
+}
+
+// Response code 2 may be returned without showing a dialog, e.g. if the backend
+// isn't ready yet, so it must not decline known shortcuts. They're bound again
+// on the next start.
+TEST_F(GlobalAcceleratorListenerLinuxBindTest,
+       OtherResponseKeepsKnownShortcuts) {
+  CreateListener();
+  LoadCommands(kProfileId, {MakeCommand("global", /*global=*/true)});
+  EXPECT_EQ(StoredState(Id("global")), 1);
+
+  ClearCalls();
+  listed_ids_.clear();
+  bind_response_codes_ = {kResponseOther};
+  CreateListener();
+  LoadCommands(kProfileId, {MakeCommand("global", /*global=*/true)});
+  // There's no retry, since nothing was declined.
+  ASSERT_EQ(bind_calls_.size(), 1u);
+  EXPECT_EQ(StoredState(Id("global")), 1);
+
+  ClearCalls();
+  CreateListener();
+  LoadCommands(kProfileId, {MakeCommand("global", /*global=*/true)});
+  ASSERT_EQ(bind_calls_.size(), 1u);
+  EXPECT_THAT(bind_calls_[0].ids, testing::ElementsAre(Id("global")));
+  EXPECT_EQ(StoredState(Id("global")), 1);
+}
+
+// If the retry without the declined new shortcuts shows the dialog again and
+// it's cancelled too, the known shortcuts are declined as well, instead of
+// showing the dialog on every start.
+TEST_F(GlobalAcceleratorListenerLinuxBindTest,
+       CancelledRetryDeclinesKnownShortcuts) {
+  CreateListener();
+  LoadCommands(kProfileId, {MakeCommand("first", /*global=*/true)});
+
+  ClearCalls();
+  listed_ids_.clear();
+  bind_response_codes_ = {kResponseCancelled, kResponseCancelled};
+  CreateListener();
+  LoadCommands(kProfileId,
+               {MakeCommand("first", /*global=*/true),
+                MakeCommand("second", /*global=*/true, ui::VKEY_8)});
+  ASSERT_EQ(bind_calls_.size(), 2u);
+  EXPECT_THAT(bind_calls_[0].ids,
+              testing::UnorderedElementsAre(Id("first"), Id("second")));
+  EXPECT_THAT(bind_calls_[1].ids, testing::ElementsAre(Id("first")));
+  EXPECT_EQ(StoredState(Id("first")), 2);
+  EXPECT_EQ(StoredState(Id("second")), 2);
+  EXPECT_FALSE(HasSession());
 }
 
 }  // namespace ui

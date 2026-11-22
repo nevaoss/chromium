@@ -193,7 +193,7 @@ class RecentTabsSubMenuModelTest : public InProcessBrowserTest {
 
   void AddTabToBrowser(const GURL& tab_url) {
     ui_test_utils::NavigateToURLWithDisposition(
-        browser(), tab_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+        browser(), tab_url, WindowOpenDisposition::kNewForegroundTab,
         ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
   }
 
@@ -201,7 +201,7 @@ class RecentTabsSubMenuModelTest : public InProcessBrowserTest {
                                      const GURL& url) {
     ui_test_utils::BrowserCreatedObserver browser_created_observer;
     ui_test_utils::NavigateToURLWithDisposition(
-        browser, url, WindowOpenDisposition::NEW_WINDOW,
+        browser, url, WindowOpenDisposition::kNewWindow,
         ui_test_utils::BROWSER_TEST_WAIT_FOR_BROWSER);
     BrowserWindowInterface* new_browser = browser_created_observer.Wait();
     ui_test_utils::WaitUntilBrowserBecomeActive(new_browser);
@@ -521,7 +521,7 @@ IN_PROC_BROWSER_TEST_F(RecentTabsSubMenuModelTest,
       AddBrowser(browser(), {GURL("about:blank?0")});
   ui_test_utils::NavigateToURLWithDisposition(
       new_browser, GURL("about:blank?1"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
 
   new_browser->GetTabStripModel()->ActivateTabAt(0);
@@ -571,7 +571,7 @@ IN_PROC_BROWSER_TEST_F(RecentTabsSubMenuModelTest,
   for (int i = 1; i <= 7; ++i) {
     ui_test_utils::NavigateToURLWithDisposition(
         new_browser, GURL("about:blank?" + base::NumberToString(i)),
-        WindowOpenDisposition::NEW_FOREGROUND_TAB,
+        WindowOpenDisposition::kNewForegroundTab,
         ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
   }
 
@@ -671,7 +671,7 @@ IN_PROC_BROWSER_TEST_F(RecentTabsSubMenuModelTest,
   for (int i = 1; i <= 3; ++i) {
     ui_test_utils::NavigateToURLWithDisposition(
         new_browser, GURL("about:blank?" + base::NumberToString(i)),
-        WindowOpenDisposition::NEW_FOREGROUND_TAB,
+        WindowOpenDisposition::kNewForegroundTab,
         ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
   }
 
@@ -797,13 +797,13 @@ IN_PROC_BROWSER_TEST_F(RecentTabsSubMenuModelTest,
   // Add 2 tabs and close them.
   ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("http://wnd/tab0"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_TAB |
           ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
 
   ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("http://wnd/tab1"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
 
   browser()->tab_strip_model()->CloseSelectedTabs();
@@ -813,7 +813,7 @@ IN_PROC_BROWSER_TEST_F(RecentTabsSubMenuModelTest,
       AddBrowser(browser(), {GURL("http://wnd1/tab0")});
   ui_test_utils::NavigateToURLWithDisposition(
       new_browser, GURL("http://wnd1/tab1"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
   chrome::GroupTab(new_browser);
   chrome::CloseWindow(new_browser);
@@ -1216,4 +1216,28 @@ IN_PROC_BROWSER_TEST_F(RecentTabsSubMenuModelWithOtherDeviceTabsInAppMenuTest,
     EXPECT_NE(l10n_util::GetStringUTF16(IDS_YOUR_DEVICES), item.title());
     EXPECT_NE(RecentTabItem::Type::kDevice, item.type());
   }
+}
+
+IN_PROC_BROWSER_TEST_F(RecentTabsSubMenuModelTest,
+                       RecentlyClosedEphemeralGroupTabAndWindow) {
+  Init();
+  ASSERT_TRUE(browser()->tab_strip_model()->SupportsTabGroups());
+  DisableSync();
+
+  TabRestoreServiceFactory::GetForProfile(browser()->GetProfile());
+
+  AddTabToBrowser(GURL("http://foo/1"));
+  AddTabToBrowser(GURL("http://foo/2"));
+
+  // Put tabs 1 and 2 into an ephemeral group and close tab 2.
+  browser()->tab_strip_model()->AddToNewGroup({1, 2}, /*is_ephemeral=*/true);
+  browser()->tab_strip_model()->CloseWebContentsAt(
+      2, TabCloseTypes::CLOSE_CREATE_HISTORICAL_TAB);
+
+  RecentTabsSubMenuModel model(nullptr, browser());
+  // Index 4 is the first item under "Recently closed". It should be a command
+  // (tab) with no group minor icon.
+  ASSERT_GT(model.GetItemCount(), 4u);
+  EXPECT_EQ(ui::MenuModel::TYPE_COMMAND, model.GetTypeAt(4));
+  EXPECT_TRUE(model.GetMinorIconAt(4).IsEmpty());
 }

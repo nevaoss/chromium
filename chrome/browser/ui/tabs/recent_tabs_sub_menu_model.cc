@@ -41,6 +41,7 @@
 #include "chrome/browser/ui/toolbar/app_menu_model.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/side_panel/history_clusters/history_clusters_side_panel_coordinator.h"
+#include "chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_coordinator.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/favicon_base/favicon_types.h"
 #include "components/history/core/common/pref_names.h"
@@ -288,6 +289,7 @@ bool RecentTabsSubMenuModel::ExecuteCustomCommand(int command_id,
   // Supported custom commands.
   static constexpr auto custom_commands = base::MakeFixedFlatSet<int>(
       {IDC_SHOW_HISTORY, IDC_SHOW_HISTORY_CLUSTERS_SIDE_PANEL,
+       IDC_SHOW_TABS_FROM_OTHER_DEVICES_SIDE_PANEL,
        IDC_RECENT_TABS_LOGIN_FOR_DEVICE_TABS, IDC_RECENT_TABS_SEE_DEVICE_TABS});
 
   if (!custom_commands.contains(command_id)) {
@@ -298,11 +300,17 @@ bool RecentTabsSubMenuModel::ExecuteCustomCommand(int command_id,
           browser_->GetProfile())) {
     return false;
   }
+  if (command_id == IDC_SHOW_TABS_FROM_OTHER_DEVICES_SIDE_PANEL &&
+      !TabsFromOtherDevicesSidePanelCoordinator::IsSupported(
+          browser_->GetProfile())) {
+    return false;
+  }
   if (log_menu_metrics_callback_) {
     log_menu_metrics_callback_.Run(command_id);
   }
 
   if (command_id == IDC_SHOW_HISTORY_CLUSTERS_SIDE_PANEL ||
+      command_id == IDC_SHOW_TABS_FROM_OTHER_DEVICES_SIDE_PANEL ||
       command_id == IDC_SHOW_HISTORY) {
     actions::ActionInvocationContext context =
         actions::ActionInvocationContext::Builder()
@@ -337,7 +345,7 @@ void RecentTabsSubMenuModel::ExecuteCommand(int command_id, int event_flags) {
   CHECK(context);
 
   WindowOpenDisposition disposition = ui::DispositionFromEventFlags(
-      event_flags, WindowOpenDisposition::NEW_FOREGROUND_TAB);
+      event_flags, WindowOpenDisposition::kNewForegroundTab);
 
   if (IsCommandType(CommandType::Tab, command_id)) {
     const TabItems& tab_items = *GetTabVectorForCommandId(command_id);
@@ -398,6 +406,7 @@ void RecentTabsSubMenuModel::Build() {
   // The menu contains:
   // - History to open the full history tab.
   // - History to open in side panel.
+  // - Tabs from other devices to open in side panel.
   // - Separator
   // - Recent tabs header
   // - A list of local recently closed tabs, groups, and/or windows.
@@ -421,6 +430,16 @@ void RecentTabsSubMenuModel::Build() {
                      features::IsRoundedIconsEnabled()
                          ? vector_icons::kHistoryIcon
                          : vector_icons::kHistoryChromeRefreshOldIcon);
+    }
+    if (TabsFromOtherDevicesSidePanelCoordinator::IsSupported(
+            browser_->GetProfile())) {
+      InsertItemWithStringIdAt(next_command_id++,
+                               IDC_SHOW_TABS_FROM_OTHER_DEVICES_SIDE_PANEL,
+                               IDS_SIDE_PANEL_SHOW_TABS_FROM_OTHER_DEVICES);
+      SetCommandIcon(this, IDC_SHOW_TABS_FROM_OTHER_DEVICES_SIDE_PANEL,
+                     features::IsRoundedIconsEnabled()
+                         ? kDevicesIcon
+                         : kDevicesChromeRefreshOldIcon);
     }
   }
 
@@ -593,7 +612,7 @@ void RecentTabsSubMenuModel::BuildLocalTabItem(
   // visual_data should only be populated if the tab was part of a tab group
   // when closed. We shouldn't set the minor icon for the item most recently
   // closed, as this creates visual clutter alongside the shortcut text.
-  if (tab.group_visual_data.has_value() &&
+  if (tab.group_visual_data.has_value() && !tab.is_group_ephemeral &&
       curr_model_index > recent_tabs_title_index_.value() + 1) {
     const ui::ColorProvider* color_provider =
         BrowserWindow::FromBrowser(browser_)->GetColorProvider();

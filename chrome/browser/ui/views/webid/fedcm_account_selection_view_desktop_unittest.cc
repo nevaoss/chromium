@@ -80,6 +80,7 @@ class TestAccountSelectionView : public AccountSelectionViewBase,
     kError,
     kRequestPermission,
     kLoading,
+    kIdpPicker,
   };
 
   ~TestAccountSelectionView() override = default;
@@ -136,6 +137,14 @@ class TestAccountSelectionView : public AccountSelectionViewBase,
     show_back_button_ = true;
     sheet_type_ = SheetType::kRequestPermission;
     account_ids_ = {account->id};
+  }
+
+  void ShowIdpPicker(const std::vector<IdentityProviderDataPtr>& idp_list,
+                     const gfx::Image& rp_icon,
+                     bool show_back_button) override {
+    sheet_type_ = SheetType::kIdpPicker;
+    account_ids_ = {};
+    show_back_button_ = show_back_button;
   }
 
   std::string GetDialogTitle() const override { return std::string(); }
@@ -401,7 +410,9 @@ class StubAccountSelectionViewDelegate : public AccountSelectionView::Delegate {
     }
   }
   void OnLoginToIdP(const GURL& idp_config_url,
-                    const GURL& idp_login_url) override {}
+                    const GURL& idp_login_url) override {
+    ++login_to_idp_count_;
+  }
   void OnMoreDetails() override {}
   void OnAccountsDisplayed() override { ++accounts_displayed_count_; }
   void OnNativeAppResult(const std::string& token) override {}
@@ -421,6 +432,7 @@ class StubAccountSelectionViewDelegate : public AccountSelectionView::Delegate {
     return selected_account_id_;
   }
   int GetAccountsDisplayedCount() const { return accounts_displayed_count_; }
+  int GetLoginToIdpCount() const { return login_to_idp_count_; }
 
   void SetOnDismissClosure(base::OnceClosure on_dismiss) {
     on_dismiss_ = std::move(on_dismiss);
@@ -431,6 +443,7 @@ class StubAccountSelectionViewDelegate : public AccountSelectionView::Delegate {
   std::optional<DismissReason> dismiss_reason_;
   std::optional<std::string> selected_account_id_;
   int accounts_displayed_count_ = 0;
+  int login_to_idp_count_ = 0;
   base::OnceClosure on_dismiss_;
 };
 
@@ -2382,6 +2395,40 @@ TEST_F(FedCmAccountSelectionViewDesktopTest, AccountChooserResultMetric) {
                                       0);
 }
 
+// Tests that clicking an IDP row on the IDP picker while a login pop-up is
+// already open is ignored: it neither starts another login nor brings the open
+// pop-up back, since that pop-up may show a different IDP's login page. Other
+// ways of logging in to an IDP are not affected.
+TEST_F(FedCmAccountSelectionViewDesktopTest,
+       IdpPickerRowClickWhilePopupIsOpenIsIgnored) {
+  std::unique_ptr<TestFedCmAccountSelectionView> controller =
+      CreateAndShow(accounts_, blink::mojom::RpMode::kActive);
+  OpenLoginToIdpPopup(controller.get());
+  EXPECT_EQ(delegate_->GetLoginToIdpCount(), 1);
+
+  EXPECT_CALL(*controller->GetPopupWindow(), ResizeAndFocusPopupWindow())
+      .Times(0);
+  controller->OnIdpPickerRowClicked(GURL(kConfigUrl), GURL(kLoginUrl),
+                                    CreateMouseEvent());
+  EXPECT_EQ(delegate_->GetLoginToIdpCount(), 1);
+
+  // OnLoginToIdP(), used by the existing login flows, still notifies the
+  // delegate.
+  controller->OnLoginToIdP(GURL(kConfigUrl), GURL(kLoginUrl),
+                           CreateMouseEvent());
+  EXPECT_EQ(delegate_->GetLoginToIdpCount(), 2);
+}
+
+// Tests that clicking an IDP row on the IDP picker logs in to that IDP when no
+// pop-up is open.
+TEST_F(FedCmAccountSelectionViewDesktopTest, IdpPickerRowClickLogsInToIdp) {
+  std::unique_ptr<TestFedCmAccountSelectionView> controller =
+      CreateAndShow(accounts_, blink::mojom::RpMode::kActive);
+  controller->OnIdpPickerRowClicked(GURL(kConfigUrl), GURL(kLoginUrl),
+                                    CreateMouseEvent());
+  EXPECT_EQ(delegate_->GetLoginToIdpCount(), 1);
+}
+
 // Tests that for active modes, going from an accounts dialog to an error dialog
 // does not reset the account selection view since the error UI has a modal.
 TEST_F(FedCmAccountSelectionViewDesktopTest,
@@ -3288,6 +3335,36 @@ TEST_F(FedCmAccountSelectionViewAmbientBubbleTest,
   ASSERT_EQ(request->federated_credentials().size(), 2u);
   EXPECT_EQ(request->federated_credentials()[0].account_name, u"John Doe");
   EXPECT_EQ(request->federated_credentials()[1].account_name, u"Jane Doe");
+}
+
+TEST_F(FedCmAccountSelectionViewAmbientBubbleTest,
+       SignUpAccountsStartWithOnlyChip) {
+  accounts_ = CreateAccounts(
+      {{kAccountId1, LoginState::kSignUp}, {kAccountId2, LoginState::kSignUp}},
+      idp_data_);
+  std::unique_ptr<TestFedCmAccountSelectionView> controller =
+      CreateAndShow(accounts_);
+
+  // Only the chip is shown, and the bubble opens when the user clicks it.
+  ambient_signin::AmbientLoginPermissionRequest* request =
+      WaitForAmbientBubble();
+  ASSERT_TRUE(request);
+  EXPECT_FALSE(request->ShouldBubbleStartOpen());
+}
+
+TEST_F(FedCmAccountSelectionViewAmbientBubbleTest,
+       BubbleStartsOpenIfAnyAccountSignsIn) {
+  accounts_ = CreateAccounts(
+      {{kAccountId1, LoginState::kSignUp}, {kAccountId2, LoginState::kSignIn}},
+      idp_data_);
+  std::unique_ptr<TestFedCmAccountSelectionView> controller =
+      CreateAndShow(accounts_);
+
+  // The bubble opens along with the chip.
+  ambient_signin::AmbientLoginPermissionRequest* request =
+      WaitForAmbientBubble();
+  ASSERT_TRUE(request);
+  EXPECT_TRUE(request->ShouldBubbleStartOpen());
 }
 
 TEST_F(FedCmAccountSelectionViewAmbientBubbleTest,

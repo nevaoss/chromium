@@ -18,6 +18,7 @@
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/webgpu_swap_buffer_provider.h"
+#include "third_party/blink/renderer/platform/graphics/graphics_types_3d.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
 #define BINDINGS_GL_PROTOTYPES 0
@@ -1369,8 +1370,9 @@ class MODULES_EXPORT WebGLRenderingContextWebGPUBase
   // deletion.
   bool ValidateObject(const char* function_name, const WebGLObject* object);
 
-  // Similar to ValidateObject but returns GL_INVALID_VALUE instead of
-  // GL_OPERATION_ERROR when a deleted object is used.
+  // Similar to ValidateObject, but deleted programs and shaders are accepted
+  // until the GL object is really deleted, and GL_INVALID_VALUE is returned
+  // instead of GL_INVALID_OPERATION once it is.
   bool ValidateProgramOrShader(const char* function_name,
                                const WebGLObject* object);
 
@@ -1462,6 +1464,12 @@ class MODULES_EXPORT WebGLRenderingContextWebGPUBase
   Member<WebGLBuffer> element_array_buffer_binding_;
 
   Member<WebGLProgram> program_binding_;
+
+  // WebGL-specific pixel store parameters, set with pixelStorei. The standard
+  // pixel store parameters are kept by ANGLE.
+  bool unpack_flip_y_ = false;
+  bool unpack_premultiply_alpha_ = false;
+  GLenum unpack_colorspace_conversion_ = GC3D_BROWSER_DEFAULT_WEBGL;
 };
 
 }  // namespace blink

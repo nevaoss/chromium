@@ -149,8 +149,10 @@
 #include "base/test/simple_test_tick_clock.h"
 #include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
 #include "chrome/browser/ash/system_web_apps/test_support/test_system_web_app_installation.h"
+#include "chrome/browser/ui/chromeos/locked_state/locked_state_controller.h"
 #include "chrome/browser/ui/immersive/immersive_mode_controller.h"
 #include "chrome/browser/ui/views/frame/immersive_mode_controller_chromeos.h"
+#include "chrome/common/chrome_features.h"
 #include "chromeos/ui/frame/immersive/immersive_fullscreen_controller_test_api.h"
 #include "ui/aura/client/cursor_client.h"
 #include "ui/aura/client/cursor_shape_client.h"
@@ -1302,7 +1304,7 @@ class DetachToBrowserTabDragControllerTest
   // Returns true if the tab dragging info is correctly set on the attached
   // browser window.
   bool IsTabDraggingInfoSet(TabStrip* attached_tabstrip) {
-    DCHECK(attached_tabstrip);
+    CHECK(attached_tabstrip, base::NotFatalUntil::M162);
 #if BUILDFLAG(IS_CHROMEOS)
     aura::Window* dragged_window =
         test::GetWindowForTabStrip(attached_tabstrip);
@@ -1316,7 +1318,7 @@ class DetachToBrowserTabDragControllerTest
   // Returns true if the tab dragging info is correctly cleared on the attached
   // browser window.
   bool IsTabDraggingInfoCleared(TabStrip* attached_tabstrip) {
-    DCHECK(attached_tabstrip);
+    CHECK(attached_tabstrip, base::NotFatalUntil::M162);
 #if BUILDFLAG(IS_CHROMEOS)
     aura::Window* dragged_window =
         test::GetWindowForTabStrip(attached_tabstrip);
@@ -5922,14 +5924,14 @@ class DraggedWindowObserver : public aura::WindowObserver {
   }
 
   void StartObserving(aura::Window* window) {
-    DCHECK(!window_);
+    CHECK(!window_, base::NotFatalUntil::M162);
     window_ = window;
     window_->AddObserver(this);
   }
 
   // aura::WindowObserver:
   void OnWindowDestroying(aura::Window* window) override {
-    DCHECK_EQ(window_, window);
+    CHECK_EQ(window_, window, base::NotFatalUntil::M162);
     window_->RemoveObserver(this);
     window_ = nullptr;
   }
@@ -5937,7 +5939,7 @@ class DraggedWindowObserver : public aura::WindowObserver {
   void OnWindowPropertyChanged(aura::Window* window,
                                const void* key,
                                intptr_t old) override {
-    DCHECK_EQ(window_, window);
+    CHECK_EQ(window_, window, base::NotFatalUntil::M162);
     if (key == ash::kIsDraggingTabsKey) {
       if (!window_->GetProperty(ash::kIsDraggingTabsKey)) {
         // It should be triggered by TabDragController::ClearTabDraggingInfo()
@@ -7198,8 +7200,28 @@ IN_PROC_BROWSER_TEST_P(DetachToBrowserTabDragControllerTest,
 #if BUILDFLAG(IS_CHROMEOS)
 // Runs tests with a tabbed system web app that is locked for OnTask. This is
 // not related to normal web browsers.
-using DetachToBrowserTabDragControllerTestWithOnTaskLocked =
-    DetachToBrowserTabDragControllerTestWithTabbedSystemApp;
+class DetachToBrowserTabDragControllerTestWithOnTaskLocked
+    : public DetachToBrowserTabDragControllerTestWithTabbedSystemApp {
+ public:
+  DetachToBrowserTabDragControllerTestWithOnTaskLocked() {
+    scoped_feature_list_.InitWithFeatureState(
+        features::kUseUnifiedLockedStateController,
+        std::string_view(std::get<1>(GetParam())).contains("unified"));
+  }
+
+  void LockForOnTask(BrowserWindowInterface* browser) {
+    if (features::IsUseUnifiedLockedStateControllerEnabled()) {
+      chromeos::LockedStateController::From(browser)->Lock(
+          chromeos::LockedState::kOnTaskPrepared);
+    } else {
+      ash::boca::OnTaskLockedController::From(browser)->set_locked_for_on_task(
+          true);
+    }
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
 
 IN_PROC_BROWSER_TEST_P(DetachToBrowserTabDragControllerTestWithOnTaskLocked,
                        DoesNotMoveTabOnDrag) {
@@ -7217,8 +7239,7 @@ IN_PROC_BROWSER_TEST_P(DetachToBrowserTabDragControllerTestWithOnTaskLocked,
   EXPECT_EQ(BrowserWindowInterface::Type::TYPE_APP, browser()->GetType());
 
   // Lock the app for OnTask and set up app for testing drag behavior.
-  ash::boca::OnTaskLockedController::From(browser())->set_locked_for_on_task(
-      true);
+  LockForOnTask(browser());
   AddTabsAndResetBrowser(browser(), /*additional_tabs=*/3, GetAppUrl());
   TabStripModel* const tab_strip_model = browser()->GetTabStripModel();
   ASSERT_EQ("0 1 2 3", IDString(tab_strip_model));
@@ -7252,8 +7273,7 @@ IN_PROC_BROWSER_TEST_P(DetachToBrowserTabDragControllerTestWithOnTaskLocked,
   EXPECT_EQ(BrowserWindowInterface::Type::TYPE_APP, browser()->GetType());
 
   // Lock the app for OnTask and set up app for testing drag behavior.
-  ash::boca::OnTaskLockedController::From(browser())->set_locked_for_on_task(
-      true);
+  LockForOnTask(browser());
   AddTabsAndResetBrowser(browser(), /*additional_tabs=*/3, GetAppUrl());
 
   // Drag tab away from tab strip and verify it is not detached.
@@ -7282,8 +7302,7 @@ IN_PROC_BROWSER_TEST_P(DetachToBrowserTabDragControllerTestWithOnTaskLocked,
   EXPECT_EQ(BrowserWindowInterface::Type::TYPE_APP, browser()->GetType());
 
   // Lock the app for OnTask.
-  ash::boca::OnTaskLockedController::From(browser())->set_locked_for_on_task(
-      true);
+  LockForOnTask(browser());
   const gfx::Rect& initial_bounds =
       browser()->GetWindow()->GetNativeWindow()->bounds();
 
@@ -7362,7 +7381,10 @@ INSTANTIATE_TEST_SUITE_P(
     DetachToBrowserTabDragControllerTestWithOnTaskLocked,
     ::testing::Combine(
         /*kTearOffWebAppTabOpensWebAppWindow=*/::testing::Values(false),
-        /*input_source=*/::testing::Values("mouse", "touch")));
+        /*input_source=*/::testing::Values("mouse",
+                                           "touch",
+                                           "mouse_unified",
+                                           "touch_unified")));
 INSTANTIATE_TEST_SUITE_P(
     TabDragging,
     DetachToBrowserTabDragControllerTestWithTabbedWebApp,

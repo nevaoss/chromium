@@ -6,7 +6,6 @@ import './settings_ui/settings_ui.js';
 
 export {CrPolicyPrefIndicatorElement} from '/shared/settings/controls/cr_policy_pref_indicator.js';
 export {ExtensionControlledIndicatorElement} from '/shared/settings/controls/extension_controlled_indicator.js';
-export {DEFAULT_CHECKED_VALUE, DEFAULT_UNCHECKED_VALUE} from '/shared/settings/controls/settings_boolean_control_mixin.js';
 export {ExtensionControlBrowserProxyImpl} from '/shared/settings/extension_control_browser_proxy.js';
 export type {ExtensionControlBrowserProxy} from '/shared/settings/extension_control_browser_proxy.js';
 export {LifetimeBrowserProxyImpl} from '/shared/settings/lifetime_browser_proxy.js';
@@ -17,8 +16,6 @@ export {ChromeSigninAccessPoint, ChromeSigninUserChoice, PageStatus, SignedInSta
 export type {ChromeSigninUserChoiceInfo, StoredAccount, SyncBrowserProxy, SyncPrefs, SyncStatus} from '/shared/settings/people_page/sync_browser_proxy.js';
 export {prefToString, stringToPrefValue} from '/shared/settings/prefs/pref_util.js';
 export {SettingsPrefsElement} from '/shared/settings/prefs/prefs.js';
-export {PrefsMixin} from '/shared/settings/prefs/prefs_mixin.js';
-export type {PrefsMixinInterface} from '/shared/settings/prefs/prefs_mixin.js';
 export {CrSettingsPrefs} from '/shared/settings/prefs/prefs_types.js';
 export {PrefService} from '/shared/settings/prefs2/pref_service.js';
 export {PrefServiceObserverMixin} from '/shared/settings/prefs2/pref_service_observer_mixin.js';
@@ -48,6 +45,7 @@ export {PluralStringProxyImpl} from 'chrome://resources/js/plural_string_proxy.j
 export {getTrustedHTML} from 'chrome://resources/js/static_types.js';
 export {SettingsAboutPageElement} from './about_page/about_page.js';
 export {ControlledRadioButtonElement} from './controls/controlled_radio_button.js';
+export {DEFAULT_CHECKED_VALUE, DEFAULT_UNCHECKED_VALUE} from './controls/settings_boolean_control_mixin.js';
 export {SettingsDropdownMenuElement} from './controls/settings_dropdown_menu.js';
 export {SettingsRadioGroupElement} from './controls/settings_radio_group.js';
 export {SettingsToggleButtonElement} from './controls/settings_toggle_button.js';

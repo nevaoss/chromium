@@ -831,6 +831,8 @@ source_set("extensions") {
       "api/image_writer_private/xz_extractor.h",
       "api/image_writer_private/zip_extractor.cc",
       "api/image_writer_private/zip_extractor.h",
+      "api/image_writer_private/zstd_extractor.cc",
+      "api/image_writer_private/zstd_extractor.h",
       "api/language_settings_private/language_settings_private_api.cc",
       "api/language_settings_private/language_settings_private_api.h",
       "api/language_settings_private/language_settings_private_delegate.cc",
@@ -2198,6 +2200,7 @@ source_set("unit_tests") {
       "api/image_writer_private/write_from_file_operation_unittest.cc",
       "api/image_writer_private/write_from_url_operation_unittest.cc",
       "api/image_writer_private/xz_extractor_unittest.cc",
+      "api/image_writer_private/zstd_extractor_unittest.cc",
       "api/language_settings_private/language_settings_private_api_unittest.cc",
       "api/language_settings_private/language_settings_private_delegate_unittest.cc",
       "api/passwords_private/password_access_auth_timeout_handler_unittest.cc",
@@ -2746,15 +2749,8 @@ source_set("browser_tests") {
       ]
     }
   } else {
-    sources += [
-      "api/contextual_tasks_private/contextual_tasks_messaging_browsertest.cc",
-      "api/contextual_tasks_private/contextual_tasks_private_apitest.cc",
-    ]
-
     deps += [
-      "//chrome/browser/contextual_tasks:test_support",
-      "//chrome/browser/contextual_tasks:ui",
-      "//chrome/browser/contextual_tasks:user_data",
+      "//chrome/browser/extensions/api/contextual_tasks_private:browser_tests",
       "//chrome/browser/ui:browser_command_controller",
       "//chrome/browser/ui:browser_commands",
       "//chrome/browser/ui:browser_tabstrip",
@@ -2875,6 +2871,7 @@ source_set("browser_tests") {
       "//chrome/browser/ui/apps",
       "//chrome/browser/ui/ash/shelf",
       "//chrome/browser/ui/ash/system_web_apps",
+      "//chrome/browser/ui/chromeos/locked_state",
       "//chrome/browser/ui/login",
       "//chrome/browser/ui/views/notifications",
       "//chrome/browser/ui/webui/ash/parent_access:test_support",
@@ -2885,6 +2882,7 @@ source_set("browser_tests") {
       "//chromeos/ash/components/dbus/cec_service",
       "//chromeos/ash/components/dbus/image_burner",
       "//chromeos/ash/components/dbus/shill",
+      "//chromeos/ash/components/dbus/userdataauth:userdataauth_proto",
       "//chromeos/ash/components/disks:test_support",
       "//chromeos/ash/components/platform_keys",
       "//chromeos/ash/components/policy/device_policy:test_support",
@@ -2892,6 +2890,7 @@ source_set("browser_tests") {
       "//chromeos/ash/components/system",
       "//chromeos/ash/experiences/arc:arc_test_support",
       "//chromeos/ash/experiences/arc:notification_test_support",
+      "//chromeos/ash/experiences/extensions/common/api",
       "//chromeos/components/kiosk:test_support",
       "//chromeos/constants",
       "//chromeos/dbus/constants",

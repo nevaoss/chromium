@@ -13,7 +13,6 @@
 #include "chrome/browser/chromeos/policy/dlp/dlp_content_restriction_set.h"
 #include "chrome/browser/chromeos/policy/dlp/dlp_rules_manager.h"
 #include "chrome/browser/chromeos/policy/dlp/dlp_rules_manager_factory.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/webui/ash/dlp_internals/dlp_internals.mojom.h"
 #include "chrome/common/chrome_paths.h"
 #include "chromeos/dbus/dlp/dlp_client.h"
@@ -185,11 +184,8 @@ dlp_internals::mojom::EventDestinationPtr EventDestinationToMojo(
 }  // namespace
 
 DlpInternalsPageHandler::DlpInternalsPageHandler(
-    mojo::PendingReceiver<dlp_internals::mojom::PageHandler> receiver,
-    Profile* profile)
-    : receiver_(this, std::move(receiver)), profile_(profile) {
-  DCHECK(profile_);
-
+    mojo::PendingReceiver<dlp_internals::mojom::PageHandler> receiver)
+    : receiver_(this, std::move(receiver)) {
   auto* rules_manager = DlpRulesManagerFactory::GetForPrimaryProfile();
   auto* reporting_manager =
       rules_manager ? rules_manager->GetReportingManager() : nullptr;
@@ -274,7 +270,7 @@ void DlpInternalsPageHandler::GetContentRestrictionsInfo(
   std::vector<dlp_internals::mojom::WebContentsInfoPtr> info_mojo_array;
 
   for (const auto& web_contents_info : info_vector) {
-    DCHECK(web_contents_info.web_contents);
+    CHECK(web_contents_info.web_contents, base::NotFatalUntil::M162);
     info_mojo_array.push_back(dlp_internals::mojom::WebContentsInfo::New(
         web_contents_info.web_contents->GetLastCommittedURL(),
         RestrictionSetToMojo(web_contents_info.restriction_set),

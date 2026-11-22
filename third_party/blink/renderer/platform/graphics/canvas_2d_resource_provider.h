@@ -21,7 +21,6 @@
 #include "components/viz/common/gpu/raster_context_provider.h"
 #include "gpu/command_buffer/client/client_shared_image.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
-#include "third_party/blink/renderer/platform/graphics/canvas_2d_color_params.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_snapshot_info.h"
 #include "third_party/blink/renderer/platform/graphics/flush_for_image_listener.h"
@@ -119,27 +118,6 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
       RasterMode raster_mode,
       gpu::SharedImageUsageSet shared_image_usage_flags,
       base::OnceClosure context_lost_callback = {});
-  static std::unique_ptr<Canvas2DResourceProvider> CreateWithClear(
-      gfx::Size size,
-      viz::SharedImageFormat format,
-      SkAlphaType alpha_type,
-      const gfx::ColorSpace& color_space,
-      base::WeakPtr<WebGraphicsContext3DProviderWrapper>
-          context_provider_wrapper,
-      RasterMode raster_mode,
-      gpu::SharedImageUsageSet shared_image_usage_flags,
-      base::OnceClosure context_lost_callback = {}) {
-    return CreateWithClear(size, format, alpha_type, color_space,
-                           gfx::HDRMetadata(), context_provider_wrapper,
-                           raster_mode, shared_image_usage_flags,
-                           std::move(context_lost_callback));
-  }
-  static std::unique_ptr<Canvas2DResourceProvider> CreateWithClear(
-      gfx::Size size,
-      const Canvas2DColorParams& color_params,
-      base::WeakPtr<WebGraphicsContext3DProviderWrapper>,
-      RasterMode raster_mode,
-      gpu::SharedImageUsageSet shared_image_usage_flags);
 
   static std::unique_ptr<Canvas2DResourceProvider>
   CreateWithClearForSoftwareCompositor(
@@ -153,20 +131,16 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
 
   ~Canvas2DResourceProvider() override;
 
-  gpu::SharedImageUsageSet GetSharedImageUsageFlags() const;
   bool unused_resources_reclaim_timer_is_running_for_testing() const;
   bool HasUnusedResourcesForTesting() const;
   bool IsSingleBuffered() const;
 
   bool IsAccelerated() const { return is_accelerated_; }
-  bool IsSoftware() const { return is_software_; }
+  bool IsSoftware() const { return image_pool_->GetImageInfo().is_software; }
 
-  viz::SharedImageFormat GetSharedImageFormat() const { return format_; }
-  const gfx::ColorSpace& GetColorSpace() const { return color_space_; }
-  const gfx::HDRMetadata& GetHdrMetadata() const { return hdr_metadata_; }
-  SkAlphaType GetAlphaType() const { return alpha_type_; }
-  gfx::Size Size() const { return size_; }
-
+  viz::SharedImageFormat GetSharedImageFormat() const {
+    return image_pool_->GetImageInfo().format;
+  }
 
   int NumInflightResourcesForTesting() const { return num_inflight_resources_; }
   base::ByteSize EstimatedSizeInBytes() const;
@@ -218,6 +192,7 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
 
   void ClearUnusedResources();
   bool IsGpuContextLost() const;
+  gfx::Size Size() const { return image_pool_->GetImageInfo().size; }
 
   // WebGraphicsContext3DProviderWrapper::DestructionObserver implementation.
   void OnContextDestroyed() override;
@@ -281,7 +256,6 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
   scoped_refptr<StaticBitmapImage> cached_snapshot_;
 
   const bool is_accelerated_;
-  const bool is_software_;
   bool is_cleared_ = false;
   bool notified_context_lost_ = false;
 
@@ -300,10 +274,6 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
   int num_inflight_resources_ = 0;
   int max_inflight_resources_ = 0;
 
-  gfx::Size size_;
-  viz::SharedImageFormat format_;
-  SkAlphaType alpha_type_;
-  gfx::ColorSpace color_space_;
   gfx::HDRMetadata hdr_metadata_;
 
   base::OnceClosure context_lost_callback_;

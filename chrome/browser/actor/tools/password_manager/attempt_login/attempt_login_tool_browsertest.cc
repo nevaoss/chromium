@@ -156,7 +156,6 @@ class ActorAttemptLoginToolTest : public ActorToolsTest {
     scoped_feature_list_.InitWithFeatures(
         /*enabled_features=*/
         {password_manager::features::kActorLogin,
-         password_manager::features::kActorLoginQualityLogs,
          password_manager::features::kBiometricTouchToFill,
          features::kGlicActor},
         // TODO(crbug.com/480920277): Remove the FedCM flag once the prototyping
@@ -1357,7 +1356,7 @@ IN_PROC_BROWSER_TEST_F(ActorAttemptLoginToolFederatedTest,
   const GURL other_url =
       embedded_https_test_server().GetURL("example.com", "/actor/blank.html");
   ui_test_utils::NavigateToURLWithDisposition(
-      browser(), other_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      browser(), other_url, WindowOpenDisposition::kNewForegroundTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
 
   content::CreateAndLoadWebContentsObserver web_contents_observer(

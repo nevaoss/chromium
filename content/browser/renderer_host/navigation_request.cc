@@ -161,6 +161,7 @@
 #include "net/base/features.h"
 #include "net/base/filename_util.h"
 #include "net/base/ip_endpoint.h"
+#include "net/base/is_potentially_trustworthy.h"
 #include "net/base/load_flags.h"
 #include "net/base/net_errors.h"
 #include "net/base/registry_controlled_domains/registry_controlled_domain.h"
@@ -1087,6 +1088,36 @@ net::StorageAccessApiStatus ShouldLoadWithStorageAccess(
   return net::StorageAccessApiStatus::kAccessViaAPI;
 }
 
+// Whether a document that commits `origin` with `isolation_info` in a process
+// with `process_lock` may bind
+// network.mojom.RestrictedDeviceBoundSessionManager. Uses only facts that do
+// not change for the document's life. The network service CHECKs the origin and
+// isolation facts, and checks the site-level cookie setting on every use
+// instead.
+bool ComputeCanUseDeviceBoundSessionJsApi(
+    const ProcessLock& process_lock,
+    const url::Origin& origin,
+    const net::IsolationInfo& isolation_info) {
+  if (!base::FeatureList::IsEnabled(features::kDeviceBoundSessionJsApi)) {
+    return false;
+  }
+  // A RenderFrameHostImpl's process does not change, so its lock is fixed for
+  // the document's life. PDF and sandboxed processes may not access origin
+  // data, as in ChildProcessSecurityPolicyImpl::CanAccessDataForOrigin(). That
+  // call returns false here for an origin the process has not committed yet,
+  // because RenderFrameHostImpl::UpdatePermissionsForNavigation() adds the
+  // origin to the process's committed origins later.
+  if (process_lock.is_pdf() || process_lock.is_sandboxed()) {
+    return false;
+  }
+  // TODO(crbug.com/353772143): When DBSC supports partitioned cookies, let
+  // third-party contexts through, so that each sees the sessions in its own
+  // cookie partition.
+  return !origin.opaque() && net::IsOriginPotentiallyTrustworthy(origin) &&
+         !isolation_info.nonce().has_value() &&
+         isolation_info.site_for_cookies().IsFirstParty(origin.GetURL());
+}
+
 const char* BeforeUnloadExecutionModeToString(
     NavigationHandle::BeforeUnloadExecutionMode mode) {
   switch (mode) {
@@ -1428,7 +1459,8 @@ std::unique_ptr<NavigationRequest> NavigationRequest::CreateRendererInitiated(
           /*isolated_app_policy=*/std::nullopt,
           /*internal_scroll_to_text_fragment=*/std::nullopt,
           /*is_secure_context_root=*/false,
-          blink::mojom::ScriptInjectionPolicy::kNone);
+          blink::mojom::ScriptInjectionPolicy::kNone,
+          /*can_use_device_bound_session_js_api=*/false);
 #if !BUILDFLAG(IS_ANDROID)
   CHECK(!GetContentClient()->browser()->IsInitialWebUIURL(common_params->url));
 #endif
@@ -1602,7 +1634,8 @@ NavigationRequest::CreateForSynchronousRendererCommit(
           /*isolated_app_policy=*/std::nullopt,
           /*internal_scroll_to_text_fragment=*/std::nullopt,
           /*is_secure_context_root=*/false,
-          blink::mojom::ScriptInjectionPolicy::kNone);
+          blink::mojom::ScriptInjectionPolicy::kNone,
+          /*can_use_device_bound_session_js_api=*/false);
   blink::mojom::BeginNavigationParamsPtr begin_params =
       blink::mojom::BeginNavigationParams::New();
   std::unique_ptr<NavigationRequest> navigation_request(new NavigationRequest(
@@ -2391,11 +2424,6 @@ NavigationRequest::~NavigationRequest() {
   }
 #endif
 
-  if (is_deferred_on_fenced_frame_url_mapping_) {
-    CHECK(NeedFencedFrameURLMapping());
-    GetFencedFrameURLMap().RemoveObserverForURN(common_params_->url, this);
-  }
-
   RecordEarlyRenderFrameHostSwapMetrics();
 
   if (IsNavigationStarted()) {
@@ -2593,13 +2621,6 @@ void NavigationRequest::BeginNavigation() {
         !is_fenced_frame);
 
     FencedFrameURLMapping& fenced_frame_urls_map = GetFencedFrameURLMap();
-
-    // If the mapping finishes synchronously, OnFencedFrameURLMappingComplete
-    // will be synchronously called and will reset
-    // `is_deferred_on_fenced_frame_url_mapping_` to false.
-    is_deferred_on_fenced_frame_url_mapping_ = true;
-
-    fenced_frame_url_mapping_start_time_ = base::TimeTicks::Now();
 
     // OnFencedFrameURLMappingComplete() and BeginNavigationImpl() will be
     // invoked after this.
@@ -2801,7 +2822,6 @@ void NavigationRequest::OnFencedFrameURLMappingComplete(
   TRACE_EVENT("navigation",
               "NavigationRequest::OnFencedFrameURLMappingComplete",
               perfetto::Flow::FromPointer(this));
-  is_deferred_on_fenced_frame_url_mapping_ = false;
 
   // The URL mapping might have failed (e.g. because the urn is invalid):
   if (!properties.has_value()) {
@@ -2856,9 +2876,9 @@ void NavigationRequest::OnFencedFrameURLMappingComplete(
     commit_params_->original_url = mapped_url_value;
   }
 
-  // Store the browser's view of the fenced frame properties along with any
-  // embedder context for shared storage in the`NavigationRequest`. Upon commit,
-  // it will be stored in the fenced frame root `FrameTreeNode`.
+  // Store the browser's view of the fenced frame properties in the
+  // `NavigationRequest`. Upon commit, it will be stored in the fenced frame
+  // root `FrameTreeNode`.
   fenced_frame_properties_ = properties;
 
   // For urns loaded into iframes, we disable certain aspects of fenced frames:
@@ -2866,16 +2886,6 @@ void NavigationRequest::OnFencedFrameURLMappingComplete(
   if (!frame_tree_node_->IsFencedFrameRoot()) {
     CHECK(blink::features::IsAllowURNsInIframeEnabled());
     fenced_frame_properties_->AdjustPropertiesForUrnIframe();
-  }
-
-  // This implies the URN is created from shared storage.
-  if (fenced_frame_properties_->shared_storage_budget_metadata()) {
-    base::TimeDelta time_spent_in_fenced_frame_url_mapping =
-        base::TimeTicks::Now() - fenced_frame_url_mapping_start_time_;
-
-    base::UmaHistogramTimes(
-        "Storage.SharedStorage.Timing.UrlMappingDuringNavigation",
-        time_spent_in_fenced_frame_url_mapping);
   }
 
   BeginNavigationImpl();  // DO NOT ADD CODE after this, because it might have
@@ -4186,6 +4196,12 @@ bool NavigationRequest::HasSameSiteAdAncestor() {
     return false;
   }
 
+  // A main frame has no ad ancestor. Return before GetOriginToCommit(), which
+  // CHECKs for a RenderFrameHost that a page activation does not have yet.
+  if (!frame_tree_node_->parent()) {
+    return false;
+  }
+
   std::optional<url::Origin> target_origin =
       state_ < WILL_PROCESS_RESPONSE ? GetTentativeOriginAtRequestTime()
                                      : GetOriginToCommit();
@@ -4252,9 +4268,9 @@ void NavigationRequest::RecordAdExclusionResultHistogram() {
 
   // Only navigations that call OnResponseStarted() get an ad decision. Others
   // skip it. This includes commits without a URL loader (for example
-  // about:blank, about:srcdoc, and MHTML subframes from the archive), and
-  // back-forward cache and prerender activations. These navigations do not get
-  // a process from the ad exclusion, so there is no result to record.
+  // about:blank, about:srcdoc, and MHTML subframes from the archive). These
+  // navigations do not get a process from the ad exclusion, so there is no
+  // result to record.
   if (!exclude_ad_from_origin_keyed_process_.has_value()) {
     return;
   }
@@ -7702,6 +7718,10 @@ void NavigationRequest::CommitNavigation() {
   commit_params_->load_with_storage_access = ShouldLoadWithStorageAccess(
       begin_params(), common_params(), frame_tree_node()->current_frame_host(),
       did_encounter_cross_origin_redirect(), GetURL(), response());
+  commit_params_->can_use_device_bound_session_js_api =
+      ComputeCanUseDeviceBoundSessionJsApi(
+          GetRenderFrameHost()->GetProcess()->GetProcessLock(),
+          origin_to_commit, isolation_info_for_subresources_);
 
   auto common_params = common_params_->Clone();
   auto commit_params = commit_params_.Clone();
@@ -10811,9 +10831,10 @@ bool NavigationRequest::IsInPrimaryMainFrame() const {
   return GetNavigatingFrameType() == FrameType::kPrimaryMainFrame;
 }
 
-const std::optional<base::UnguessableToken>&
+const std::optional<blink::ToolInvocationToken>&
 NavigationRequest::GetScriptToolInvocationId() const {
-  static const std::optional<base::UnguessableToken> empty_id = std::nullopt;
+  static const std::optional<blink::ToolInvocationToken> empty_id =
+      std::nullopt;
   if (!begin_params_) {
     return empty_id;
   }
@@ -11834,10 +11855,6 @@ void NavigationRequest::NotifyCookiesAccessed(
     CookieAccessDetails::Source source) {
   TRACE_EVENT("navigation", "NavigationRequest::NotifyCookiesAccessed",
               perfetto::Flow::FromPointer(this));
-  std::optional<base::ElapsedTimer> timer;
-  if (base::ShouldRecordSubsampledMetric(0.01)) {
-    timer.emplace();
-  }
   for (auto& details : details_vector) {
     // TODO(crbug.com/40520047): We should not send information to the current
     // frame about (potentially unrelated) ongoing navigation, but at the moment
@@ -11869,11 +11886,6 @@ void NavigationRequest::NotifyCookiesAccessed(
         }
       }
     }
-  }
-  if (timer) {
-    base::UmaHistogramCustomMicrosecondsTimes(
-        "Browser.CookieAccessObserver.NavigationRequest.Duration.Subsampled",
-        timer->Elapsed(), base::Microseconds(1), base::Seconds(1), 100);
   }
 }
 

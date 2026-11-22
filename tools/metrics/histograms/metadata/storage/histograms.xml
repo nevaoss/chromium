@@ -1350,7 +1350,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Storage.DeclarativePerformanceObserver.StoreReportResult"
     enum="DeclarativePerformanceObserverStoreReportResult"
-    expires_after="2026-12-19">
+    expires_after="2027-04-18">
   <owner>sisidovski@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -1545,6 +1545,33 @@ chromium-metrics-reviews@google.com.
     <variant name="Directory" summary="Requested permission to a directory"/>
     <variant name="File" summary="Requested permission to a file"/>
   </token>
+</histogram>
+
+<histogram name="Storage.InMemoryFileRegistry.FindResult"
+    enum="InMemoryFileRegistryFindResult" expires_after="2027-09-30">
+  <owner>yuhengh@chromium.org</owner>
+  <owner>chrome-synapse-team@google.com</owner>
+  <summary>
+    Records the outcome of looking up a file in storage::InMemoryFileRegistry,
+    which holds files in browser process memory so that they can be handed to a
+    page without being written to disk. Lookups fail for files that were evicted
+    under memory pressure. Recorded each time a file is looked up, e.g. when the
+    page reads it.
+  </summary>
+</histogram>
+
+<histogram name="Storage.InMemoryFileRegistry.RegisterResult"
+    enum="InMemoryFileRegistryRegisterResult" expires_after="2027-09-30">
+  <owner>yuhengh@chromium.org</owner>
+  <owner>chrome-synapse-team@google.com</owner>
+  <summary>
+    Records the outcome of registering a file with
+    storage::InMemoryFileRegistry, which holds files in browser process memory
+    so that they can be handed to a page without being written to disk.
+    Registration fails if holding the file would exceed the registry's memory
+    limit, which shrinks under memory pressure. Recorded each time a file is
+    registered.
+  </summary>
 </histogram>
 
 <histogram name="Storage.InterestGroup.AdComponentRenderURLSize" units="bytes"

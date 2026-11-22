@@ -1969,10 +1969,10 @@
         Shared tabs
       </message>
       <message name="IDS_IOS_COMPOSEBOX_MENU_SUBITITLE_AIM" desc="The Composebox menu option subtitle for AIM. [iOS only].">
-        Smarter, faster answers
+        Brainstorm and summarize
       </message>
       <message name="IDS_IOS_COMPOSEBOX_MENU_SUBITITLE_CANVAS" desc="The Composebox menu option subtitle for canvas. [iOS only].">
-        Code, write or make slides
+        Build and code
       </message>
       <message name="IDS_IOS_COMPOSEBOX_MENU_SUBITITLE_IMAGE_GENERATION" desc="The Composebox menu option subtitle for image generation. [iOS only].">
         Visualize and edit
@@ -3497,6 +3497,21 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       </message>
       <message name="IDS_IOS_FIRST_RUN_DEFAULT_BROWSER_SCREEN_SECOND_STEP" desc="Text of the row indicating the second step of setting the default browser [iOS only]">
         Tap <ph name="BEGIN_BOLD">BEGIN_BOLD</ph>Default Browser App<ph name="END_BOLD">END_BOLD</ph>
+      </message>
+      <message name="IDS_IOS_FIRST_RUN_DEFAULT_BROWSER_SCREEN_SWITCHER_DRIVE_PHOTOS_ROW" translateable="false" desc="Text of the row on the Android switcher Default Browser screen in First Run explaining Google Drive and Photos integration [iOS only]">
+        Quick-save to Google Drive and Photos
+      </message>
+      <message name="IDS_IOS_FIRST_RUN_DEFAULT_BROWSER_SCREEN_SWITCHER_MAPS_ROW" translateable="false" desc="Text of the row on the Android switcher Default Browser screen in First Run explaining Google Maps integration [iOS only]">
+        Open Google Maps seamlessly
+      </message>
+      <message name="IDS_IOS_FIRST_RUN_DEFAULT_BROWSER_SCREEN_SWITCHER_SUBTITLE" translateable="false" desc="Subtitle of the Android switcher Default Browser screen on First Run explaining the default browser feature's utility on iPhone [iOS only]">
+        Built for iPhone to work seamlessly with your favorite apps
+      </message>
+      <message name="IDS_IOS_FIRST_RUN_DEFAULT_BROWSER_SCREEN_SWITCHER_SUBTITLE_IPAD" translateable="false" desc="Subtitle of the Android switcher Default Browser screen on First Run explaining the default browser feature's utility on iPad [iOS only]">
+        Built for iPad to work seamlessly with your favorite apps
+      </message>
+      <message name="IDS_IOS_FIRST_RUN_DEFAULT_BROWSER_SCREEN_SWITCHER_YOUTUBE_ROW" translateable="false" desc="Text of the row on the Android switcher Default Browser screen in First Run explaining YouTube links integration [iOS only]">
+        Launch YouTube links instantly
       </message>
       <message name="IDS_IOS_FIRST_RUN_GUIDED_TOUR_NTP_IPH_TEXT" desc="Text of the Guided Tour IPH for the NTP step focusing on the tab grid." meaning="Title-cased">
           See and manage everything you have open
@@ -5540,6 +5555,24 @@ You can restart anytime.
       <message name="IDS_IOS_NOTIFICATIONS_TITLE" desc="Title for Notifications settings menu.">
         Notifications
       </message>
+      <message name="IDS_IOS_NTP_CUSTOMIZATION_PROMO_PRIMARY_BUTTON_TITLE" desc="The title for the primary button of the NTP customization sheet. [iOS only]">
+        Try it now
+      </message>
+      <message name="IDS_IOS_NTP_CUSTOMIZATION_PROMO_SECONDARY_BUTTON_TITLE" desc="The title for the secondary button of the NTP customization sheet. [iOS only]">
+        No thanks
+      </message>
+      <message name="IDS_IOS_NTP_CUSTOMIZATION_PROMO_SUBTITLE" desc="The subtitle of the NTP customization promo sheet. [iOS only]">
+          Switch to a layout built for quick searches
+      </message>
+      <message name="IDS_IOS_NTP_CUSTOMIZATION_PROMO_TITLE" desc="The title of the NTP customization promo sheet. [iOS only]">
+          Try a focused new tab page
+      </message>
+      <message name="IDS_IOS_NTP_CUSTOMIZATION_SNACKBAR_ACTION" desc="The message of the snackbar action to undo the NTP customization. [iOS only]">
+          Undo
+      </message>
+      <message name="IDS_IOS_NTP_CUSTOMIZATION_SNACKBAR_MESSAGE" desc="The message of the displayed snackbar once the NTP customization is done. [iOS only]">
+          Focused new tab page applied
+      </message>
       <message name="IDS_IOS_NTP_FEED_SIGNIN_FULL_PROMO_BODY" desc="The text on the body of the new tab page Feed Signin Promo, explaining that users will see more relevant content if they enable sync. [iOS only]">
         Sync for the most relevant content based on your interests.
       </message>
@@ -6612,9 +6645,6 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_POST_RESTORE_SIGN_IN_FULLSCREEN_SECONDARY_ACTION" desc="The secondary action text of the fullscreen, post restore sign-in promo. [iOS only]">
         Don't sign in
-      </message>
-      <message name="IDS_IOS_PRICE_INSIGHTS_PRICE_TRACK_UNSUBSCRIBE_ERROR_ALERT_DESCRIPTION" desc="The description that informs the user that an error occurred during the price tracking unsubscription process.">
-          Couldn't untrack the price.
       </message>
       <message name="IDS_IOS_PRICE_NOTIFICAITONS_PRICE_TRACK_TRACKABLE_ITEM_IS_TRACKED" desc="Table element description explaining that the current website contains an item that the user is already tracking">
         You're already tracking this product.

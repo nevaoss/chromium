@@ -209,6 +209,7 @@ source_set("impl") {
     "//components/history/core/browser",
     "//components/keyed_service/core",
     "//components/omnibox/browser",
+    "//components/omnibox/common",
     "//components/omnibox/common:features",
     "//components/optimization_guide/core:model_execution",
     "//components/optimization_guide/proto:optimization_guide_proto",
@@ -462,6 +463,7 @@ source_set("ui_impl") {
     "//chrome/browser/ui/omnibox",
     "//chrome/browser/ui/select_file_policy",
     "//chrome/browser/ui/tabs:tabs_public",
+    "//chrome/browser/ui/webui:theme_source",
     "//chrome/browser/ui/webui:webui_util",
     "//chrome/browser/ui/webui/cr_components/composebox",
     "//chrome/browser/ui/webui/cr_components/searchbox",
@@ -774,7 +776,10 @@ source_set("unit_tests") {
   }
 
   if (enable_extensions_core) {
-    sources += [ "contextual_tasks_url_loader_throttle_unittest.cc" ]
+    sources += [
+      "contextual_tasks_extension_service_worker_handler_unittest.cc",
+      "contextual_tasks_url_loader_throttle_unittest.cc",
+    ]
     if (!is_android) {
       sources += [ "contextual_tasks_extensions_container_unittest.cc" ]
     }
@@ -798,6 +803,7 @@ source_set("unit_tests") {
     "//chrome/browser/sync",
     "//chrome/browser/tab_list",
     "//chrome/browser/tab_list:test_support",
+    "//chrome/browser/themes",
     "//chrome/browser/ui:test_support",
     "//chrome/browser/ui/actions",
     "//chrome/browser/ui/actions:actions_headers",
@@ -818,6 +824,7 @@ source_set("unit_tests") {
     "//components/contextual_tasks/public",
     "//components/contextual_tasks/public:test_support",
     "//components/omnibox/browser:test_support",
+    "//components/omnibox/common",
     "//components/omnibox/common:features",
     "//components/optimization_guide/core:test_support",
     "//components/optimization_guide/proto:optimization_guide_proto",

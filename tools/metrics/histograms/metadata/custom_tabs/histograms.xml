@@ -509,7 +509,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CustomTabs.PageContent.Eligibility"
-    enum="CustomTabsPageContentEligibility" expires_after="2027-02-14">
+    enum="CustomTabsPageContentEligibility" expires_after="2027-04-18">
   <owner>jinsukkim@google.com</owner>
   <owner>tivi@google.com</owner>
   <owner>chrome-connective-tissue@google.com</owner>
@@ -521,7 +521,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CustomTabs.PageContent.Outcome"
-    enum="CustomTabsPageContentExtractionResult" expires_after="2027-02-14">
+    enum="CustomTabsPageContentExtractionResult" expires_after="2027-04-18">
   <owner>jinsukkim@google.com</owner>
   <owner>tivi@google.com</owner>
   <owner>chrome-connective-tissue@google.com</owner>
@@ -533,7 +533,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CustomTabs.PageContent.RequestedTypes"
-    enum="CustomTabsPageContentRequestedType" expires_after="2027-02-14">
+    enum="CustomTabsPageContentRequestedType" expires_after="2027-04-18">
   <owner>jinsukkim@google.com</owner>
   <owner>tivi@google.com</owner>
   <owner>chrome-connective-tissue@google.com</owner>
@@ -541,18 +541,6 @@ chromium-metrics-reviews@google.com.
     Records each content type (APC, Screenshot, or File) requested inside the
     custom bottom bar view click map from Embedder. Android only. Logged once
     per button click.
-  </summary>
-</histogram>
-
-<histogram name="CustomTabs.PageInsights.Event" enum="PageInsightsEvent"
-    expires_after="2024-12-08">
-  <owner>jinsukkim@chromium.org</owner>
-  <owner>chrome-connective-tissue@google.com</owner>
-  <summary>
-    Recorded only on Android. Holds the interaction that the user has with Page
-    Insights BottomSheet, such as invoking PIH manually or by being auto
-    triggered, the bottom sheet's states and when it is dismissed, and
-    interactions with xSurface views.
   </summary>
 </histogram>
 

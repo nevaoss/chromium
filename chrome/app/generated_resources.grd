@@ -9537,6 +9537,19 @@ Keep your key file in a safe place. You will need it to create new versions of y
           Customize toolbar
         </message>
       </if>
+      <message name="IDS_SIDE_PANEL_SHOW_TABS_FROM_OTHER_DEVICES" desc="Title of the menu item for showing the 'Tabs from other devices' side panel entry.">
+        Show tabs from other devices in side panel
+      </message>
+      <if expr="use_titlecase">
+        <message name="IDS_SIDE_PANEL_TABS_FROM_OTHER_DEVICES_TITLE" desc="Title of the 'Tabs from other devices' side panel entry.">
+          Tabs From Other Devices
+        </message>
+      </if>
+      <if expr="not use_titlecase">
+        <message name="IDS_SIDE_PANEL_TABS_FROM_OTHER_DEVICES_TITLE" desc="Title of the 'Tabs from other devices' side panel entry.">
+          Tabs from other devices
+        </message>
+      </if>
       <message name="IDS_SIDE_PANEL_TOOLBAR_BUTTON_CXMENU_UNPIN" desc="The label of the context menu item for unpinning a side panel toolbar button.">
         Unpin
       </message>
@@ -10252,6 +10265,10 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_LENS_COBROWSE_CURRENT_TAB_IPH_DESCRIPTION" desc="Informs user that the content and URL of their current tab is shared with Google to get more relevant answers.">
         The page title, URL, and content of your current tab is shared with Google to give you more relevant answers. You can add or remove tabs as you browse.
       </message>
+      <!-- TODO(crbug.com/576221905): Mark as translatable. -->
+      <message name="IDS_LENS_SELECTION_SUGGESTION_DEFAULT_LABEL" desc="Default label for the Google Lens smart selection suggestion." translateable="false">
+        Search with Google Lens
+      </message>
 
       <!--Tooltip strings -->
       <message name="IDS_TOOLTIP_BACK" desc="The tooltip for back button">
@@ -10690,17 +10707,8 @@ Keep your key file in a safe place. You will need it to create new versions of y
           <message name="IDS_TAB_GROUP_MORE_OPTIONS" desc="In Title Case: The tooltip for the button in a tab group item that opens the options menu.">
             More options
           </message>
-          <message name="IDS_ORGANIZER_PANEL_CLOSE_TAB_SEARCH" desc="In Title Case: The label for the close button and context menu item in the organizer panel to close tab search.">
+          <message name="IDS_ORGANIZER_PANEL_CLOSE_TAB_SEARCH" desc="In Title Case: The label for the close button in the organizer panel to close tab search.">
             Close Tab Search
-          </message>
-          <message name="IDS_ORGANIZER_PANEL_GO_BACK_TO_OPEN_TABS" desc="In Title Case: The label for the context menu item in the organizer panel to go back to open tabs.">
-            Go Back to Open Tabs
-          </message>
-          <message name="IDS_ORGANIZER_PANEL_EXPAND_ALL" desc="In Title Case: The label for the context menu item in the organizer panel that expands all sections.">
-            Expand All
-          </message>
-          <message name="IDS_ORGANIZER_PANEL_COLLAPSE_ALL" desc="In Title Case: The label for the context menu item in the organizer panel that collapses all sections.">
-            Collapse All
           </message>
         </then>
         <else>
@@ -10710,17 +10718,8 @@ Keep your key file in a safe place. You will need it to create new versions of y
           <message name="IDS_TAB_GROUP_MORE_OPTIONS" desc="The tooltip for the button in a tab group item that opens the options menu.">
             More options
           </message>
-          <message name="IDS_ORGANIZER_PANEL_CLOSE_TAB_SEARCH" desc="The label for the close button and context menu item in the organizer panel to close tab search.">
+          <message name="IDS_ORGANIZER_PANEL_CLOSE_TAB_SEARCH" desc="The label for the close button in the organizer panel to close tab search.">
             Close tab search
-          </message>
-          <message name="IDS_ORGANIZER_PANEL_GO_BACK_TO_OPEN_TABS" desc="The label for the context menu item in the organizer panel to go back to open tabs.">
-            Go back to open tabs
-          </message>
-          <message name="IDS_ORGANIZER_PANEL_EXPAND_ALL" desc="The label for the context menu item in the organizer panel that expands all sections.">
-            Expand all
-          </message>
-          <message name="IDS_ORGANIZER_PANEL_COLLAPSE_ALL" desc="The label for the context menu item in the organizer panel that collapses all sections.">
-            Collapse all
           </message>
         </else>
       </if>
@@ -10742,8 +10741,8 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_ORGANIZER_PANEL_SHOW_ALL" desc="The label for the menu item in an organizer panel list section header that shows all items in the section.">
         Show all
       </message>
-      <message name="IDS_ORGANIZER_PANEL_SHOW_SOME" desc="The label for the menu item in an organizer panel list section header that limits the section to showing a few items.">
-        Show some
+      <message name="IDS_ORGANIZER_PANEL_SHOW_SOME" desc="The label for the menu item in an organizer panel list section header that limits the section to showing the most recent items.">
+        Show most recent
       </message>
       <message name="IDS_ORGANIZER_PANEL_OPTIONS" desc="The tooltip for the button in an organizer panel section header that opens the options menu.">
         Options
@@ -12346,10 +12345,10 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
           Remove from group
         </message>
         <message name="IDS_TAB_CXMENU_FOCUS_TAB_GROUP" desc="The label of the tab context menu item for focusing the tab group containing the tab.">
-          Focus on tab group
+          Focus on group
         </message>
         <message name="IDS_TAB_CXMENU_UNFOCUS_TAB_GROUP" desc="The label of the tab context menu item for unfocusing the tab group containing the tab.">
-          Unfocus tab group
+          Unfocus group
         </message>
         <message name="IDS_TAB_CXMENU_FOCUS_TABS" desc="The label of the tab context menu item for focusing one or more tabs. [ICU Syntax]">
           {NUM_TABS, plural, =1 {Focus on tab} other {Focus on tabs}}
@@ -12485,10 +12484,10 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
           Remove From Group
         </message>
         <message name="IDS_TAB_CXMENU_FOCUS_TAB_GROUP" desc="In Title Case: The label of the tab context menu item for focusing the tab group containing the tab.">
-          Focus on Tab Group
+          Focus on Group
         </message>
         <message name="IDS_TAB_CXMENU_UNFOCUS_TAB_GROUP" desc="In Title Case: The label of the tab context menu item for unfocusing the tab group containing the tab.">
-          Unfocus Tab Group
+          Unfocus Group
         </message>
         <message name="IDS_TAB_CXMENU_FOCUS_TABS" desc="In Title Case: The label of the tab context menu item for focusing one or more tabs. [ICU Syntax]">
           {NUM_TABS, plural, =1 {Focus on Tab} other {Focus on Tabs}}
@@ -12821,6 +12820,9 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
         <message name="IDS_NEW_TAB_IN_GROUP_NO_NAME" desc="The label of a context menu item for adding a new tab into an existing group with no name.">
           {NUM_TABS, plural, =1 {New tab in 1 tab} other {New tab in # tabs}}
         </message>
+        <message name="IDS_NEW_TAB_BUTTON_CXMENU_NEW_TAB" desc="The label of a context menu item for opening a new tab.">
+          New tab
+        </message>
         <message name="IDS_NEW_TAB_GROUP" desc="The label of a context menu item for creating a new tab group.">
           New tab group
         </message>
@@ -12840,6 +12842,9 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
         </message>
         <message name="IDS_NEW_TAB_IN_GROUP_NO_NAME" desc="The label of a context menu item for adding a new tab into an existing group with no name.">
           {NUM_TABS, plural, =1 {New Tab in 1 Tab} other {New Tab in # Tabs}}
+        </message>
+        <message name="IDS_NEW_TAB_BUTTON_CXMENU_NEW_TAB" desc="In Title Case: The label of a context menu item for opening a new tab.">
+          New Tab
         </message>
         <message name="IDS_NEW_TAB_GROUP" desc="The label of a context menu item for creating a new tab group.">
           New Tab Group
@@ -19360,6 +19365,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
     </message>
     <message name="IDS_ACCOUNT_SELECTION_BACK" desc="Title of the button that lets the user go back to a previous sheet.">
       Back
+    </message>
+    <message name="IDS_ACCOUNT_SELECTION_IDP_PICKER_BODY" desc="Text to prompt a user to choose an identity provider to sign in with, shown above a list of identity providers. Placeholder text that is not translated yet." translateable="false">
+      Choose a provider to continue
     </message>
     <message name="IDS_SIGNIN_CONTINUE" desc="Title of the button that allows the user to continue with signing in to an account from an identity provider.">
       Continue

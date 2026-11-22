@@ -10,7 +10,6 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
 #include "base/no_destructor.h"
@@ -31,6 +30,7 @@
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
+#include "chrome/browser/glic/public/glic_provider_metrics.h"
 #include "chrome/browser/glic/public/service/glic_instance_coordinator.h"
 #include "chrome/browser/glic/service/metrics/glic_instance_metrics.h"
 #include "chrome/browser/profiles/profile.h"
@@ -102,6 +102,8 @@ GlicPageHandler::GlicPageHandler(
     : host_(host),
       webui_contents_(webui_contents),
       browser_context_(webui_contents->GetBrowserContext()),
+      metric_reporter_(
+          Profile::FromBrowserContext(webui_contents->GetBrowserContext())),
       receiver_(this, std::move(receiver)),
       page_(std::move(page)) {
   VLOG(1) << "Glic [PageHandler] Constructor";
@@ -242,24 +244,24 @@ void GlicPageHandler::Zoom(mojom::ZoomAction zoom_action, ZoomSource source) {
   }
 
   // Log the aggregate base metric for reporting continuity.
-  base::UmaHistogramEnumeration("Glic.ZoomAction", action_metric);
+  metric_reporter_.RecordEnumeration("ZoomAction", action_metric);
 
   // Log the sliced metric.
   const char* zoom_action_by_source_metric_name;
   switch (source) {
     case ZoomSource::kHotkey:
-      zoom_action_by_source_metric_name = "Glic.ZoomAction.Hotkey";
+      zoom_action_by_source_metric_name = "ZoomAction.Hotkey";
       break;
     case ZoomSource::kHotkeyWithShift:
-      zoom_action_by_source_metric_name = "Glic.ZoomAction.HotkeyWithShift";
+      zoom_action_by_source_metric_name = "ZoomAction.HotkeyWithShift";
       break;
     case ZoomSource::kScroll:
-      zoom_action_by_source_metric_name = "Glic.ZoomAction.Scroll";
+      zoom_action_by_source_metric_name = "ZoomAction.Scroll";
       break;
   }
 
-  base::UmaHistogramEnumeration(zoom_action_by_source_metric_name,
-                                action_metric);
+  metric_reporter_.RecordEnumeration(zoom_action_by_source_metric_name,
+                                     action_metric);
 
   page_->Zoom(zoom_action);
 }
@@ -284,7 +286,7 @@ void GlicPageHandler::OpenDisabledByAdminLinkAndClosePanel() {
   std::unique_ptr<NavigateParams> params = std::make_unique<NavigateParams>(
       Profile::FromBrowserContext(browser_context_), disabled_by_admin_link_url,
       ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
-  params->disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+  params->disposition = WindowOpenDisposition::kNewForegroundTab;
   glic::NavigateAsync(std::move(params), base::DoNothing());
   host().ClosePanel();
   base::RecordAction(
@@ -309,7 +311,7 @@ void GlicPageHandler::OpenLinkInPopup(const GURL& url,
   std::unique_ptr<NavigateParams> params = std::make_unique<NavigateParams>(
       Profile::FromBrowserContext(browser_context_), url,
       ui::PAGE_TRANSITION_LINK);
-  params->disposition = WindowOpenDisposition::NEW_POPUP;
+  params->disposition = WindowOpenDisposition::kNewPopup;
   params->opened_by_another_window = true;
   params->window_features.bounds = gfx::Rect(x, y, popup_width, popup_height);
   glic::NavigateAsync(std::move(params), base::DoNothing());
@@ -322,7 +324,7 @@ void GlicPageHandler::OpenLinkInNewTab(const GURL& url) {
   std::unique_ptr<NavigateParams> params = std::make_unique<NavigateParams>(
       Profile::FromBrowserContext(browser_context_), url,
       ui::PAGE_TRANSITION_LINK);
-  params->disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+  params->disposition = WindowOpenDisposition::kNewForegroundTab;
   glic::NavigateAsync(std::move(params), base::DoNothing());
 }
 
@@ -350,7 +352,7 @@ void GlicPageHandler::OpenHelpCenterTopicAndClosePanel(
   auto params = std::make_unique<NavigateParams>(
       Profile::FromBrowserContext(browser_context_), help_url,
       ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
-  params->disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+  params->disposition = WindowOpenDisposition::kNewForegroundTab;
   glic::Navigate(std::move(params));
   host().ClosePanel();
 }

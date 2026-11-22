@@ -154,6 +154,7 @@
 #include "chrome/browser/ui/views/side_panel/history_clusters/history_clusters_side_panel_coordinator.h"
 #include "chrome/browser/ui/views/side_panel/reading_list/reading_list_side_panel_coordinator.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_coordinator.h"
+#include "chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_coordinator.h"
 #include "chrome/browser/ui/views/tabs/groups/recent_activity_bubble_dialog_view.h"
 #include "chrome/browser/ui/views/tabs/tab_strip_action_container.h"
 #include "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h"
@@ -453,12 +454,15 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
                                                                      browser);
 
 #if BUILDFLAG(IS_CHROMEOS)
-  locked_state_controller_ =
-      GetUserDataFactory().CreateInstance<chromeos::LockedStateController>(
-          *browser, browser);
-  on_task_locked_controller_ =
-      GetUserDataFactory().CreateInstance<ash::boca::OnTaskLockedController>(
-          *browser, browser);
+  if (features::IsUseUnifiedLockedStateControllerEnabled()) {
+    locked_state_controller_ =
+        GetUserDataFactory().CreateInstance<chromeos::LockedStateController>(
+            *browser, browser);
+  } else {
+    on_task_locked_controller_ =
+        GetUserDataFactory().CreateInstance<ash::boca::OnTaskLockedController>(
+            *browser, browser);
+  }
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if defined(USE_AURA)
@@ -562,7 +566,7 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
   // instantiated in this block (please keep this list ordered without taking
   // into consideration buildflags, repeating buildflags is ok):
   if (browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL) {
-    if (base::FeatureList::IsEnabled(features::kAiOverlayDialog)) {
+    if (ttc::AiOverlayDialogController::IsEnabledForProfile(profile)) {
       ai_overlay_dialog_controller_ =
           GetUserDataFactory()
               .CreateInstance<ttc::AiOverlayDialogControllerViews>(*browser,
@@ -913,6 +917,12 @@ void BrowserWindowFeatures::InitPostWindowConstruction(
               .CreateInstance<HistoryClustersSidePanelCoordinator>(
                   *browser, browser, profile);
     }
+    if (TabsFromOtherDevicesSidePanelCoordinator::IsSupported(profile)) {
+      tabs_from_other_devices_side_panel_coordinator_ =
+          GetUserDataFactory()
+              .CreateInstance<TabsFromOtherDevicesSidePanelCoordinator>(
+                  *browser, browser, profile);
+    }
   }
 
   reading_list_side_panel_coordinator_ =
@@ -1186,6 +1196,7 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
   toast_service_.reset();
   synced_window_delegate_.reset();
   skills_ui_window_controller_.reset();
+  tabs_from_other_devices_side_panel_coordinator_.reset();
   reading_list_side_panel_coordinator_.reset();
   history_side_panel_coordinator_.reset();
   history_clusters_side_panel_coordinator_.reset();

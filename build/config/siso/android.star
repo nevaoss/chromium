@@ -209,10 +209,10 @@ def __step_config(ctx, step_config):
                 "*.pak",
                 "*.sql",
             ],
-            # *.dex files are intermediate files used in incremental builds.
+            # *.dex and intermediate.dex.jar files are intermediate files used in incremental builds.
             # Fo remote actions, let's ignore them, assuming remote cache hits compensate.
-            "ignore_extra_input_pattern": ".*\\.dex",
-            "ignore_extra_output_pattern": ".*\\.dex",
+            "ignore_extra_input_pattern": ".*\\.dex(\\.jar)?",
+            "ignore_extra_output_pattern": ".*\\.dex(\\.jar)?",
             "remote": remote_run,
             "restat_content": True,
             "platform_ref": "large",
@@ -243,7 +243,9 @@ def __step_config(ctx, step_config):
             "command_prefix": platform.python_bin + " ../../build/android/gyp/trace_event_bytecode_rewriter.py",
             "handler": "android_trace_event_bytecode_rewriter",
             "remote": remote_run,
-            "restat_content": True,
+            # The GN action declares only an empty .stamp output that
+            # downstream proguard steps depend on.
+            "restat_content": False,
             "platform_ref": "large",
             "timeout": "10m",
             "remote_command": platform.remote_python_bin,

@@ -374,11 +374,17 @@ BASE_FEATURE(kAudioFocusDuckFlash,
 #endif
 );
 
-// Immediately pauses AudioRendererMixer's underlying output sink when all
-// inputs are removed on explicit player pauses instead of waiting for the
-// 10-second mixer pause delay.
+// Pauses AudioRendererMixer's underlying output sink shortly after all inputs
+// are removed on explicit player pauses instead of waiting for the 10-second
+// mixer pause delay.
 BASE_FEATURE(kAudioRendererMixerImmediatePause,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// How long to wait before that pause. Resuming within it keeps the stream
+// running. Zero pauses synchronously.
+const base::FeatureParam<base::TimeDelta>
+    kAudioRendererMixerImmediatePauseDelay{&kAudioRendererMixerImmediatePause,
+                                           "delay", base::TimeDelta()};
 
 // Allows the AutoPictureInPictureTabHelper to automatically enter
 // picture-in-picture when a webpage is occluded by another window.
@@ -447,6 +453,8 @@ const base::FeatureParam<double>
 
 BASE_FEATURE(kCastStreamingHardwareHevc, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Controls the maximum video bitrate for Cast Streaming mirroring sessions.
+// Configurable via chrome://flags/#cast-streaming-max-video-bitrate.
 BASE_FEATURE(kCastStreamingMaxVideoBitrate, base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<int> kCastStreamingMaxVideoBitrateMbps{
     &kCastStreamingMaxVideoBitrate, "max_bitrate_mbps", 5};
@@ -796,6 +804,11 @@ BASE_FEATURE(kMatchSourceAudioChannelLayout, base::FEATURE_DISABLED_BY_DEFAULT);
 // Factories to determine isPowerEfficient = true/false.
 BASE_FEATURE(kMediaCapabilitiesQueryGpuFactories,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+// When enabled, MediaCapabilities enforces strict W3C specification checks
+// for single-codec and application/* MIME types in IsValidMimeType().
+BASE_FEATURE(kMediaCapabilitiesStrictMimeTypeValidation,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enable Media Capabilities with finch-parameters.
 BASE_FEATURE(kMediaCapabilitiesWithParameters,
@@ -1658,6 +1671,11 @@ BASE_FEATURE(kMediaFoundationD3D11VideoCapture,
 
 // Enable zero-copy based on MediaFoundation video capture with D3D11.
 BASE_FEATURE(kMediaFoundationD3D11VideoCaptureZeroCopy,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, the MediaFoundation D3D11 video capture path backs its capture
+// buffer pool with shared image instead of GMB.
+BASE_FEATURE(kMediaFoundationD3D11VideoCaptureUseSharedImage,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kMediaFoundationD3DVideoProcessing,

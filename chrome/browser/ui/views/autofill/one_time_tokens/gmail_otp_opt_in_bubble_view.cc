@@ -76,6 +76,8 @@ DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(GmailOtpOptInBubbleView, kTurnOnButtonId);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(GmailOtpOptInBubbleView,
                                       kNoThanksButtonId);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(GmailOtpOptInBubbleView, kCloseButtonId);
+DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(GmailOtpOptInBubbleView,
+                                      kDescriptionLabelId);
 
 GmailOtpOptInBubbleView::GmailOtpOptInBubbleView(
     views::BubbleAnchor anchor,
@@ -115,6 +117,7 @@ GmailOtpOptInBubbleView::GmailOtpOptInBubbleView(
 
   description_label_ = AddChildView(
       views::Builder<views::StyledLabel>()
+          .SetProperty(views::kElementIdentifierKey, kDescriptionLabelId)
           .SetText(description_text)
           .SetDefaultTextStyle(views::style::STYLE_BODY_4)
           .SetDefaultEnabledColorId(ui::kColorSysOnSurfaceSubtle)
@@ -175,7 +178,7 @@ void GmailOtpOptInBubbleView::OnLearnMoreLinkClicked() {
   web_contents()->OpenURL(
       content::OpenURLParams::CreateBrowserInitiated(
           chrome::GetSettingsUrl(chrome::kContactInfoSubPage),
-          WindowOpenDisposition::NEW_FOREGROUND_TAB, ui::PAGE_TRANSITION_LINK),
+          WindowOpenDisposition::kNewForegroundTab, ui::PAGE_TRANSITION_LINK),
       /*navigation_handle_callback=*/{});
 }
 

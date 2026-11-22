@@ -213,6 +213,30 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Cookie.DeleteAllMatchingInfoAsync.HasSingleMatchingDomain"
+    enum="Boolean" expires_after="2027-04-04">
+  <owner>sisidovski@chromium.org</owner>
+  <owner>src/net/cookies/OWNERS</owner>
+  <summary>
+    Records whether a cookie deletion request passed to
+    CookieMonster::DeleteAllMatchingInfoAsync matched cookies constrained to a
+    single registrable domain (eTLD+1). Recorded once per call to
+    CookieMonster::DeleteAllMatchingInfoAsync.
+  </summary>
+</histogram>
+
+<histogram name="Cookie.DeleteCanonicalCookie.Duration" units="microseconds"
+    expires_after="2027-04-04">
+  <owner>sisidovski@chromium.org</owner>
+  <owner>src/net/cookies/OWNERS</owner>
+  <summary>
+    Records the time spent executing CookieMonster::DeleteCanonicalCookie.
+    Recorded once per call to CookieMonster::DeleteCanonicalCookie.
+
+    Not reported for clients with low-resolution clocks.
+  </summary>
+</histogram>
+
 <histogram name="Cookie.DomainHasNonASCII" enum="Boolean"
     expires_after="2024-11-17">
   <owner>johannhof@chromium.org</owner>
@@ -332,44 +356,6 @@ chromium-metrics-reviews@google.com.
     Cookie.ExpirationDurationMinutesSecure.Subsampled to 400 days in minutes as
     that's the cap on cookie max-age.
   </summary>
-</histogram>
-
-<histogram name="Cookie.FirstPartySets.{Context}.DelayedQueriesCount"
-    units="queries" expires_after="2026-11-29">
-  <owner>cfredric@chromium.org</owner>
-  <owner>kaustubhag@chromium.org</owner>
-  <summary>
-    The number of queries that were delayed (i.e. answered asynchronously
-    instead of synchronously).
-
-    Recorded once during initialization, for each context. (This means once per
-    browser-run in the browser process; and once each time the Network Service
-    is started.) The metric is emitted even when First-Party Sets is disabled.
-  </summary>
-  <token key="Context">
-    <variant name="Browser"/>
-  </token>
-</histogram>
-
-<histogram name="Cookie.FirstPartySets.{Context}.MostDelayedQueryDelta"
-    units="ms" expires_after="2027-04-11">
-  <owner>cfredric@chromium.org</owner>
-  <owner>kaustubhag@chromium.org</owner>
-  <summary>
-    The length of time between when the first asynchronous query was received,
-    and when asynchronous queries started to be answered.
-
-    Recorded once during initialization, for each context. (This means once per
-    browser-run in the browser process; and once each time the Network Service
-    is started.) Recorded for all clients, even those with low-resolution
-    clocks.
-
-    If the context was initialized before any queries were made (including if
-    the feature is disabled entirely), 0 is recorded.
-  </summary>
-  <token key="Context">
-    <variant name="Browser"/>
-  </token>
 </histogram>
 
 <histogram name="Cookie.FromStorageWithValidLength.{CallSite}.Subsampled"

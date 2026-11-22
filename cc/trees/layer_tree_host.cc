@@ -151,6 +151,7 @@ LayerTreeHost::LayerTreeHost(InitParams params, CompositorMode mode)
       pending_commit_state_(std::make_unique<CommitState>()),
       thread_unsafe_commit_state_(params.mutator_host),
       settings_(*params.settings),
+      memory_policy_(settings_.memory_policy),
       id_(s_layer_tree_host_sequence_number.GetNext() + 1),
       task_graph_runner_(params.task_graph_runner),
       mutator_host_(params.mutator_host),
@@ -1482,9 +1483,6 @@ void LayerTreeHost::SetViewportRectAndScale(
     float device_scale_factor,
     const viz::LocalSurfaceId& local_surface_id_from_parent) {
   TRACE_EVENT("cc", __PRETTY_FUNCTION__);
-  const viz::LocalSurfaceId previous_local_surface_id =
-      pending_commit_state()->local_surface_id_from_parent;
-  SetLocalSurfaceIdFromParent(local_surface_id_from_parent);
 
   const auto size_track =
       perfetto::NamedTrack::FromPointer("LayerTreeHostSize", this);
@@ -1519,19 +1517,24 @@ void LayerTreeHost::SetViewportRectAndScale(
   // If a new viz::LocalSurfaceId has been provided, and the viewport has
   // changed, we need not begin new frames until it has activated.
   if (local_surface_id_from_parent.is_valid() &&
-      previous_local_surface_id != local_surface_id_from_parent &&
+      pending_commit_state()->local_surface_id_from_parent !=
+          local_surface_id_from_parent &&
       device_viewport_rect_changed) {
     SetTargetLocalSurfaceId(local_surface_id_from_parent);
   }
 
   if (device_viewport_rect_changed || painted_device_scale_factor_changed ||
       device_scale_factor_changed) {
-    SetPropertyTreesNeedRebuild();
     // Urgent because we want resize to be reflected immediately. For instance
     // if a side panel is expanding / contracting, we want the content to reflow
-    // as quickly as possible.
+    // as quickly as possible. Request the urgent commit before
+    // SetPropertyTreesNeedRebuild() and SetLocalSurfaceIdFromParent() so their
+    // non-urgent commit/layer-update requests coalesce into this urgent request
+    // rather than dispatching a non-urgent request first.
     SetNeedsCommit(/*urgent=*/true);
+    SetPropertyTreesNeedRebuild();
   }
+  SetLocalSurfaceIdFromParent(local_surface_id_from_parent);
 }
 
 void LayerTreeHost::SetVisualDeviceViewportIntersectionRect(
@@ -1552,6 +1555,16 @@ void LayerTreeHost::SetVisualDeviceViewportSize(
   pending_commit_state()->visual_device_viewport_size =
       visual_device_viewport_size;
   SetNeedsCommit();
+}
+
+void LayerTreeHost::SetMemoryPolicy(const ManagedMemoryPolicy& policy) {
+  DCHECK(IsMainThread());
+  if (memory_policy_ == policy) {
+    return;
+  }
+
+  memory_policy_ = policy;
+  proxy_->SetMemoryPolicy(policy);
 }
 
 void LayerTreeHost::SetMaxSafeAreaInsets(
@@ -1713,7 +1726,12 @@ void LayerTreeHost::SetExternalPageScaleFactor(
     return;
   }
 
-  pending_commit_state()->external_page_scale_factor = page_scale_factor;
+  if (pending_commit_state()->external_page_scale_factor != page_scale_factor) {
+    // External scale affects surface contents scale, but not transform
+    // geometry.
+    property_trees()->effect_tree_mutable().set_needs_update(true);
+    pending_commit_state()->external_page_scale_factor = page_scale_factor;
+  }
   pending_commit_state()->is_external_pinch_gesture_active =
       is_external_pinch_gesture_active;
   SetNeedsCommit();

@@ -4,6 +4,8 @@
 
 #import "ios/chrome/browser/device_sharing/model/device_sharing_manager_factory.h"
 
+#import <utility>
+
 #import "ios/chrome/browser/device_sharing/model/device_sharing_manager.h"
 #import "ios/chrome/browser/device_sharing/model/device_sharing_manager_impl.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
@@ -17,7 +19,7 @@ std::unique_ptr<KeyedService> BuildDeviceSharingManager(ProfileIOS* profile) {
 // static
 DeviceSharingManagerFactory::TestingFactory
 DeviceSharingManagerFactory::GetDefaultFactory() {
-  return base::BindRepeating(&BuildDeviceSharingManager);
+  return base::BindOnce(&BuildDeviceSharingManager);
 }
 
 DeviceSharingManagerFactory::DeviceSharingManagerFactory(PassKey key)

@@ -513,10 +513,9 @@ TEST_F(ChromotingHostTest, LoginBackOffTriggersIfClientsDoNotAuthenticate) {
     EXPECT_CALL(*session, SetEventHandler(_))
         .Times(AnyNumber())
         .WillRepeatedly(SaveArg<0>(&session_event_handler));
-    EXPECT_CALL(*session, Close(_, _, _))
-        .WillOnce(InvokeWithoutArgs([&session_event_handler]() {
-          session_event_handler->OnSessionStateChange(Session::CLOSED);
-        }));
+    EXPECT_CALL(*session, Close(_, _, _)).WillOnce([&session_event_handler]() {
+      session_event_handler->OnSessionStateChange(Session::CLOSED);
+    });
     // Simulate the incoming connection.
     host_->OnIncomingSession(session.release(), &response, &rejection_reason,
                              &rejection_location);
@@ -560,12 +559,11 @@ TEST_F(ChromotingHostTest, LoginBackOffExtendsWhenRejectedWhileActive) {
     EXPECT_CALL(*session, SetEventHandler(_))
         .Times(AnyNumber())
         .WillRepeatedly(SaveArg<0>(&session_event_handler));
-    EXPECT_CALL(*session, Close(_, _, _))
-        .WillOnce(InvokeWithoutArgs([&session_event_handler]() {
-          if (session_event_handler) {
-            session_event_handler->OnSessionStateChange(Session::CLOSED);
-          }
-        }));
+    EXPECT_CALL(*session, Close(_, _, _)).WillOnce([&session_event_handler]() {
+      if (session_event_handler) {
+        session_event_handler->OnSessionStateChange(Session::CLOSED);
+      }
+    });
     host_->OnIncomingSession(session.release(), &response, &rejection_reason,
                              &rejection_location);
     EXPECT_EQ(response, protocol::SessionManager::ACCEPT);
@@ -609,10 +607,9 @@ TEST_F(ChromotingHostTest, LoginBackOffResetsIfClientsAuthenticate) {
     EXPECT_CALL(*session, SetEventHandler(_))
         .Times(AnyNumber())
         .WillRepeatedly(SaveArg<0>(&session_event_handler));
-    EXPECT_CALL(*session, Close(_, _, _))
-        .WillOnce(InvokeWithoutArgs([&session_event_handler]() {
-          session_event_handler->OnSessionStateChange(Session::CLOSED);
-        }));
+    EXPECT_CALL(*session, Close(_, _, _)).WillOnce([&session_event_handler]() {
+      session_event_handler->OnSessionStateChange(Session::CLOSED);
+    });
     // Simulate the incoming connection.
     host_->OnIncomingSession(session.release(), &response, &rejection_reason,
                              &rejection_location);
@@ -638,10 +635,9 @@ TEST_F(ChromotingHostTest, LoginBackOffResetsIfClientsAuthenticate) {
   EXPECT_CALL(*session, SetEventHandler(_))
       .Times(AnyNumber())
       .WillRepeatedly(SaveArg<0>(&session_event_handler));
-  EXPECT_CALL(*session, Close(_, _, _))
-      .WillOnce(InvokeWithoutArgs([&session_event_handler]() {
-        session_event_handler->OnSessionStateChange(Session::CLOSED);
-      }));
+  EXPECT_CALL(*session, Close(_, _, _)).WillOnce([&session_event_handler]() {
+    session_event_handler->OnSessionStateChange(Session::CLOSED);
+  });
   host_->OnIncomingSession(session.release(), &response, &rejection_reason,
                            &rejection_location);
   EXPECT_EQ(response, protocol::SessionManager::ACCEPT);
@@ -652,12 +648,12 @@ TEST_F(ChromotingHostTest, LoginBackOffResetsIfClientsAuthenticate) {
   ShutdownHost();
 }
 
-// Flaky on all platforms.  http://crbug.com/1265894
-TEST_F(ChromotingHostTest, DISABLED_OnSessionRouteChange) {
+TEST_F(ChromotingHostTest, OnSessionRouteChange) {
   StartHost();
 
-  ExpectClientConnected(0);
+  auto future = ExpectClientConnected(0);
   SimulateClientConnection(0, true, false);
+  future->Get();
 
   std::string channel_name("ChannelName");
   protocol::TransportRoute route;

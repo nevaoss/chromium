@@ -19,6 +19,7 @@
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/prefetch_service_delegate.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/common/child_process_id.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "net/cookies/cookie_setting_override.h"
@@ -91,6 +92,7 @@ class AwContentBrowserClient : public content::ContentBrowserClient {
   void RenderProcessWillLaunch(content::RenderProcessHost* host) override;
   bool IsExplicitNavigation(ui::PageTransition transition) override;
   bool IsHandledURL(const GURL& url) override;
+  bool IsContentSchemeURLNavigationAllowed(const GURL& url) override;
   bool ForceSniffingFileUrlsForHtml() override;
   void AppendExtraCommandLineSwitches(base::CommandLine* command_line,
                                       int child_process_id) override;
@@ -113,7 +115,7 @@ class AwContentBrowserClient : public content::ContentBrowserClient {
       const url::Origin& caller_origin) override;
   base::OnceClosure SelectClientCertificate(
       content::BrowserContext* browser_context,
-      int process_id,
+      content::ChildProcessId process_id,
       content::WebContents* web_contents,
       net::SSLCertRequestInfo* cert_request_info,
       net::ClientCertIdentityList client_certs,

@@ -1276,18 +1276,17 @@ IN_PROC_BROWSER_TEST_F(ContextMenuForSupervisedUsersBrowserTest,
 }
 
 #if BUILDFLAG(IS_CHROMEOS)
+// TODO(crbug.com/438540029): Rename this test suite to "TrustedPinned" to
+// disambiguate between LockedFullscreen (which is for extension API) and OnTask
+// locked (which is for class tools).
 class ContextMenuForLockedFullscreenBrowserTest
     : public ContextMenuBrowserTest,
       public testing::WithParamInterface<bool> {
  public:
   ContextMenuForLockedFullscreenBrowserTest() {
-    if (is_unified_locked_state_controller_enabled_) {
-      scoped_feature_list_.InitAndEnableFeature(
-          features::kUseUnifiedLockedStateController);
-    } else {
-      scoped_feature_list_.InitAndDisableFeature(
-          features::kUseUnifiedLockedStateController);
-    }
+    scoped_feature_list_.InitWithFeatureState(
+        features::kUseUnifiedLockedStateController,
+        is_unified_locked_state_controller_enabled_);
   }
 
  protected:
@@ -1349,17 +1348,17 @@ class ContextMenuForLockedFullscreenBrowserTest
 
     // Set up browser for testing / validating page navigation command states.
     OpenUrlWithDisposition(GURL("chrome://new-tab-page/"),
-                           WindowOpenDisposition::CURRENT_TAB);
+                           WindowOpenDisposition::kCurrentTab);
     OpenUrlWithDisposition(GURL("chrome://version/"),
-                           WindowOpenDisposition::CURRENT_TAB);
+                           WindowOpenDisposition::kCurrentTab);
     OpenUrlWithDisposition(GURL("about:blank"),
-                           WindowOpenDisposition::CURRENT_TAB);
+                           WindowOpenDisposition::kCurrentTab);
 
     // Go back by one page to ensure the forward command is also available for
     // testing purposes.
     content::TestNavigationObserver navigation_observer(
         browser()->GetTabStripModel()->GetActiveWebContents());
-    chrome::GoBack(browser(), WindowOpenDisposition::CURRENT_TAB);
+    chrome::GoBack(browser(), WindowOpenDisposition::kCurrentTab);
     navigation_observer.Wait();
     ASSERT_TRUE(chrome::CanGoBack(browser()));
     ASSERT_TRUE(chrome::CanGoForward(browser()));

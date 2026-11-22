@@ -57,28 +57,14 @@ class ToolController {
  private:
   Profile* GetProfile();
 
-  void Navigate(const base::DictValue& arguments,
-                ToolResponseCallback callback);
-  void PerformSearch(const base::DictValue& arguments,
-                     ToolResponseCallback callback);
-  void GoBack(ToolResponseCallback callback);
-  void GoForward(ToolResponseCallback callback);
-  void ReloadPage(ToolResponseCallback callback);
-  void FindAndHighlight(const base::DictValue& arguments,
-                        ToolResponseCallback callback);
-  void PlayVideo(ToolResponseCallback callback);
-  void PauseVideo(ToolResponseCallback callback);
-  void SeekToTimestamp(const base::DictValue& arguments,
-                       ToolResponseCallback callback);
-  void TranslatePage(const base::DictValue& arguments,
-                     ToolResponseCallback callback);
+  // Tool implementations. Please keep sorted, with a tool's completion
+  // callbacks directly after it.
   void ClickElement(const base::DictValue& arguments,
                     ToolResponseCallback callback);
-  void SetText(const base::DictValue& arguments, ToolResponseCallback callback);
-  void SelectOption(const base::DictValue& arguments,
-                    ToolResponseCallback callback);
-  void ScrollPage(const base::DictValue& arguments,
-                  ToolResponseCallback callback);
+  void CloseCurrentTab(ToolResponseCallback callback);
+  void CloseGeminiPanel(ToolResponseCallback callback);
+  void FindAndHighlight(const base::DictValue& arguments,
+                        ToolResponseCallback callback);
   void GetScreenshot(ToolResponseCallback callback);
   void OnGetScreenshotUrlChecked(base::WeakPtr<content::Page> page,
                                  ToolResponseCallback callback,
@@ -88,22 +74,31 @@ class ToolController {
       base::expected<
           std::unique_ptr<page_content_annotations::FetchPageContextResult>,
           page_content_annotations::FetchPageContextErrorDetails> result);
-  void PromptGeminiPanel(const base::DictValue& arguments,
-                         ToolResponseCallback callback);
-  void CloseGeminiPanel(ToolResponseCallback callback);
-  void CloseCurrentTab(ToolResponseCallback callback);
-  void SwitchTab(const base::DictValue& arguments,
-                 ToolResponseCallback callback);
-  void SetFullscreen(bool fullscreen, ToolResponseCallback callback);
-
-  // TODO(crbug.com/470475787): The actor tool backing this hasn't been
-  // ported to Android yet (see `skip_android_unmigrated_actor_files` in
-  // //chrome/browser/actor/BUILD.gn), so it's neither declared to the model
-  // nor dispatched there. Drop the guard once it is.
-#if !BUILDFLAG(IS_ANDROID)
+  void GoBack(ToolResponseCallback callback);
+  void GoForward(ToolResponseCallback callback);
+  void Navigate(const base::DictValue& arguments,
+                ToolResponseCallback callback);
   void OpenKnownPage(const base::DictValue& arguments,
                      ToolResponseCallback callback);
-#endif
+  void PauseVideo(ToolResponseCallback callback);
+  void PerformSearch(const base::DictValue& arguments,
+                     ToolResponseCallback callback);
+  void PlayVideo(ToolResponseCallback callback);
+  void PromptGeminiPanel(const base::DictValue& arguments,
+                         ToolResponseCallback callback);
+  void ReloadPage(ToolResponseCallback callback);
+  void ScrollPage(const base::DictValue& arguments,
+                  ToolResponseCallback callback);
+  void SeekToTimestamp(const base::DictValue& arguments,
+                       ToolResponseCallback callback);
+  void SelectOption(const base::DictValue& arguments,
+                    ToolResponseCallback callback);
+  void SetFullscreen(bool fullscreen, ToolResponseCallback callback);
+  void SetText(const base::DictValue& arguments, ToolResponseCallback callback);
+  void SwitchTab(const base::DictValue& arguments,
+                 ToolResponseCallback callback);
+  void TranslatePage(const base::DictValue& arguments,
+                     ToolResponseCallback callback);
 
   // Runs the tool request returned by `create_action` against the contents
   // tracked by the session (see

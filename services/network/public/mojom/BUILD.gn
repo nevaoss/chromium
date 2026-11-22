@@ -1914,6 +1914,10 @@ mojom("mojom_permissions_policy") {
           cpp = "::network::ParsedPermissionsPolicyDeclaration"
         },
         {
+          mojom = "network.mojom.PermissionsPolicyFeaturesBitset"
+          cpp = "::network::PermissionsPolicyFeaturesBitset"
+        },
+        {
           mojom = "network.mojom.PermissionsPolicy"
           cpp = "::network::PermissionsPolicy"
           default_constructible = false
@@ -1967,6 +1971,7 @@ mojom("mojom") {
     "proxy_lookup_client.mojom",
     "proxy_resolving_socket.mojom",
     "reporting_service.mojom",
+    "restricted_device_bound_sessions.mojom",
     "restricted_udp_socket.mojom",
     "socket_broker.mojom",
     "socket_connection_tracker.mojom",

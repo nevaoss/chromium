@@ -281,7 +281,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.Audio.ApmCaptureOutputLevelPeakRms"
-    units="dBFS (negated)" expires_after="2027-01-17">
+    units="dBFS (negated)" expires_after="2027-04-18">
   <owner>peah@chromium.org</owner>
   <owner>webrtc-audio-uma@google.com</owner>
   <summary>
@@ -847,7 +847,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.BWE.InitialVsConvergedDiff" units="kbps"
-    expires_after="2026-12-20">
+    expires_after="2027-04-18">
   <owner>holmer@chromium.org</owner>
   <summary>
     The difference between the bandwidth estimate at 2 seconds and 20 seconds
@@ -991,7 +991,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.Call.EstimatedSendBitrateInKbps" units="kbps"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>holmer@chromium.org</owner>
   <summary>
     Average estimated send bitrate during a call, counted from first packet sent
@@ -1243,6 +1243,20 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="WebRTC.DesktopCapture.Win.WgcWindowFallbackSelectSource"
+    enum="WebRtcFallbackSelectSourceResult" expires_after="2027-10-16">
+  <owner>agpalak@chromium.org</owner>
+  <owner>rtc-meet-in-chrome@google.com</owner>
+  <summary>
+    Records the combined SelectSource() results of the primary WGC window
+    capturer and the secondary fallback window capturer, on every SelectSource()
+    call of a WGC window capturer with fallback enabled. The primary counts as
+    failed if it failed in this call or permanently failed earlier, in which
+    case it is not called again. Only recorded on Windows when the
+    WebRtcWgcWindowCroppingFallback feature is enabled.
+  </summary>
+</histogram>
+
 <histogram name="WebRTC.DesktopCapture.Win.{Capturer}CapturerFrameTime"
     units="ms" expires_after="2027-02-01">
   <owner>alcooper@chromium.org</owner>
@@ -1410,7 +1424,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.PeerConnection.DtlsHandshakeError"
-    enum="DtlsHandshakeError" expires_after="2027-02-14">
+    enum="DtlsHandshakeError" expires_after="2027-04-18">
   <owner>danilchap@chromium.org</owner>
   <owner>webrtc-dev@chromium.org</owner>
   <summary>
@@ -1485,7 +1499,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.PeerConnection.Duration.Worker" units="microseconds"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>handellm@google.com</owner>
   <owner>webrtc-dev@chromium.org</owner>
   <summary>
@@ -1595,7 +1609,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.PeerConnection.NegotiatedFeedbackType"
-    enum="PeerConnectionRtcpFeedbackType" expires_after="2027-02-14">
+    enum="PeerConnectionRtcpFeedbackType" expires_after="2027-04-18">
   <owner>danilchap@chromium.org</owner>
   <owner>webrtc-dev@chromium.org</owner>
   <summary>
@@ -1963,7 +1977,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.Screenshare.FullScreenFindEditorResult"
-    enum="FullScreenFindEditorResult" expires_after="2027-02-14">
+    enum="FullScreenFindEditorResult" expires_after="2027-04-18">
   <owner>agpalak@chromium.org</owner>
   <owner>tovep@chromium.org</owner>
   <owner>rtc-meet-in-chrome@google.com</owner>

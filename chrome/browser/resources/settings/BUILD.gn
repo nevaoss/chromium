@@ -273,8 +273,7 @@ build_webui("build") {
     "clear_browsing_data_dialog/other_google_data_dialog.ts",
     "controls/controlled_button.html.ts",
     "controls/controlled_button.ts",
-    "controls/pref_key_observer_mixin.ts",
-    "controls/pref_key_observer_mixin_lit.ts",
+    "controls/settings_boolean_control_mixin.ts",
     "controls/settings_dropdown_menu.html.ts",
     "controls/settings_dropdown_menu.ts",
     "controls/settings_slider.html.ts",
@@ -715,11 +714,19 @@ build_webui("build") {
     "site_settings/settings_category_default_radio_group.css",
     "site_settings/site_settings_shared.css",
     "site_settings/site_settings_shared_lit.css",
+    "site_settings/zoom_levels.css",
     "system_page/system_page.css",
   ]
 
   mojo_files_deps = [ "//components/autofill/core/browser/data_model/autofill_ai:mojo_bindings_ts__generator" ]
   mojo_files = [ "$root_gen_dir/components/autofill/core/browser/data_model/autofill_ai/autofill_ai_enums.mojom-webui.ts" ]
+  if (!is_chromeos) {
+    mojo_files_deps +=
+        [ "//chrome/browser/accessibility:mojo_bindings_ts__generator" ]
+    mojo_files += [
+      "$root_gen_dir/chrome/browser/accessibility/page_colors.mojom-webui.ts",
+    ]
+  }
 
   ts_composite = true
   ts_definitions = [

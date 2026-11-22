@@ -27,6 +27,7 @@
 #include "chrome/browser/autofill/autofill_entity_data_manager_factory.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/extensions/api/autofill_private/autofill_ai_util.h"
+#include "chrome/browser/extensions/api/autofill_private/autofill_private_event_router_factory.h"
 #include "chrome/browser/extensions/api/autofill_private/autofill_util.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
@@ -60,6 +61,7 @@
 #include "components/autofill/core/browser/payments/virtual_card_enrollment_flow.h"
 #include "components/autofill/core/browser/payments/virtual_card_enrollment_manager.h"
 #include "components/autofill/core/browser/permissions/autofill_ai/autofill_ai_permission_util.h"
+#include "components/autofill/core/browser/permissions/device_reauth_util.h"
 #include "components/autofill/core/browser/studies/autofill_experiments.h"
 #include "components/autofill/core/browser/ui/addresses/autofill_address_util.h"
 #include "components/autofill/core/common/autofill_features.h"
@@ -68,12 +70,10 @@
 #include "components/autofill/core/common/autofill_regexes.h"
 #include "components/autofill/core/common/dense_set.h"
 #include "components/consent_auditor/consent_auditor.h"
-#include "components/device_reauth/device_auth_availability_checker.h"
 #include "components/device_reauth/device_authenticator.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/one_time_tokens/core/browser/gmail_otp_backend.h"
 #include "components/one_time_tokens/core/browser/user_data_processing_consent_states.h"
-#include "components/password_manager/core/browser/features/password_features.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/strings/grit/components_branded_strings.h"
 #include "components/strings/grit/components_strings.h"
@@ -283,6 +283,9 @@ AutofillPrivateExtensionFunction::address_data_manager() {
 
 autofill::ContentAutofillClient*
 AutofillPrivateExtensionFunction::autofill_client() {
+  if (browser_context()) {
+    AutofillPrivateEventRouterFactory::GetForProfile(browser_context());
+  }
   return autofill::ContentAutofillClient::FromWebContents(
       GetSenderWebContents());
 }
@@ -293,6 +296,7 @@ AutofillPrivateExtensionFunction::entity_data_manager() {
   if (!context) {
     return nullptr;
   }
+  AutofillPrivateEventRouterFactory::GetForProfile(context);
   Profile* profile = Profile::FromBrowserContext(context);
   return profile ? autofill::AutofillEntityDataManagerFactory::GetForProfile(
                        profile)
@@ -1105,16 +1109,7 @@ AutofillPrivateCheckIfDeviceAuthAvailableFunction::Run() {
   autofill::ContentAutofillClient* client =
       autofill::ContentAutofillClient::FromWebContents(GetSenderWebContents());
   if (client) {
-    bool is_available = false;
-    if (base::FeatureList::IsEnabled(
-            password_manager::features::kDeviceReauthRefactor)) {
-      is_available = autofill::IsDeviceAuthAvailable(
-          client->GetDeviceAuthAvailabilityChecker().get());
-    } else {
-      is_available = autofill::IsDeviceAuthAvailable(
-          client->GetDeviceAuthenticator().get());
-    }
-    return RespondNow(WithArguments(is_available));
+    return RespondNow(WithArguments(autofill::SupportsDeviceReauth(*client)));
   }
 #endif  // BUILDFLAG (IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS)
   return RespondNow(Error(base::StrCat(

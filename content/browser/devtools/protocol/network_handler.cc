@@ -1066,8 +1066,6 @@ Network::CookieExemptionReason GetProtocolCookieExemptionReason(
       return Network::CookieExemptionReasonEnum::EnterprisePolicy;
     case net::CookieInclusionStatus::ExemptionReason::kStorageAccess:
       return Network::CookieExemptionReasonEnum::StorageAccess;
-    case net::CookieInclusionStatus::ExemptionReason::kTopLevelStorageAccess:
-      return Network::CookieExemptionReasonEnum::TopLevelStorageAccess;
     case net::CookieInclusionStatus::ExemptionReason::kScheme:
       return Network::CookieExemptionReasonEnum::Scheme;
     case net::CookieInclusionStatus::ExemptionReason::
@@ -2018,6 +2016,10 @@ String BuildProtocolDeviceBoundSessionFetchResult(
         kAttestationSigningError:
       return protocol::Network::DeviceBoundSessionFetchResultEnum::
           AttestationSigningError;
+    case net::device_bound_sessions::SessionError::ErrorType::
+        kFederatedRegistrationRedirected:
+      return protocol::Network::DeviceBoundSessionFetchResultEnum::
+          FederatedRegistrationRedirected;
   }
 }
 // LINT.ThenChange(//third_party/blink/public/devtools_protocol/domains/Network.pdl:DeviceBoundSessionFetchResult)

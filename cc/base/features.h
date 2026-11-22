@@ -231,6 +231,7 @@ CC_BASE_EXPORT BASE_DECLARE_FEATURE(kHighFramerateRequestFromClient);
 // samt pool.
 CC_BASE_EXPORT bool IsEligibleForThrottleMainFrameTo60Hz();
 CC_BASE_EXPORT void SetIsEligibleForThrottleMainFrameTo60Hz(bool is_eligible);
+CC_BASE_EXPORT bool IsThrottleMainFrameTo60HzEnabled(bool is_webview);
 
 // When enabled, the LayerTreeHost will expect to use layer lists instead of
 // layer trees by default; the caller can explicitly opt into enabled or
@@ -352,6 +353,13 @@ CC_BASE_EXPORT BASE_DECLARE_FEATURE(kDeferMainFrameBeforeCommitWithPendingTree);
 // destination, not only kSrcOver.
 CC_BASE_EXPORT BASE_DECLARE_FEATURE(
     kOmitTransparentSolidQuadsForNoopBlendModes);
+
+// When enabled, a view transition capture surface without nested capture
+// surfaces only produces a single render pass, which is used for both capture
+// and display, instead of a separate capture render pass in addition to the
+// regular render pass.
+CC_BASE_EXPORT BASE_DECLARE_FEATURE(
+    kViewTransitionsAvoidDuplicateCaptureRenderPass);
 
 }  // namespace features
 

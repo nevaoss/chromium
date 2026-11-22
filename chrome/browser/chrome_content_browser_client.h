@@ -24,7 +24,6 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
-#include "base/types/optional_ref.h"
 #include "base/values.h"
 #include "build/build_config.h"
 #include "chrome/browser/startup_data.h"
@@ -40,6 +39,7 @@
 #include "content/public/browser/legacy_tech_cookie_issue_details.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/alternative_error_page_override_info.mojom-forward.h"
+#include "content/public/common/child_process_id.h"
 #include "media/base/picture_in_picture_events_info.h"
 #include "media/media_buildflags.h"
 #include "media/mojo/mojom/speech_recognizer.mojom.h"
@@ -488,7 +488,7 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
 #endif
   base::OnceClosure SelectClientCertificate(
       content::BrowserContext* browser_context,
-      int process_id,
+      content::ChildProcessId process_id,
       content::WebContents* web_contents,
       net::SSLCertRequestInfo* cert_request_info,
       net::ClientCertIdentityList client_certs,
@@ -590,12 +590,12 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       content::PosixFileDescriptorInfo* mappings) override;
 #endif  // BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_MAC)
 #if BUILDFLAG(IS_WIN)
-  bool PreSpawnChild(
-      sandbox::TargetConfig* config,
-      sandbox::mojom::Sandbox sandbox_type,
-      ChildSpawnFlags flags,
-      base::optional_ref<const ChildModule> child_module) override;
-  std::optional<ChildModule> GetChildModule() override;
+  bool PreSpawnChild(sandbox::TargetConfig* config,
+                     sandbox::mojom::Sandbox sandbox_type,
+                     ChildSpawnFlags flags) override;
+  std::optional<content::ContentBrowserClient::RendererSandboxPolicyExtension>
+  GetRendererSandboxPolicyExtension(
+      content::ChildProcessId render_process_id) override;
   std::wstring GetAppContainerSidForSandboxType(
       sandbox::mojom::Sandbox sandbox_type,
       AppContainerFlags flags) override;
@@ -1055,7 +1055,6 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   void OnWebContentsCreated(content::WebContents* web_contents) override;
 
   bool IsFindInPageDisabledForOrigin(const url::Origin& origin) override;
-  bool WillProvidePublicFirstPartySets() override;
 
   bool ShouldPreconnectNavigation(
       content::RenderFrameHost* render_frame_host) override;
@@ -1070,12 +1069,6 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       content::BrowserContext* browser_context,
       int32_t error_code) override;
 
-  void OnSharedStorageWorkletHostCreated(
-      content::RenderFrameHost* rfh) override;
-
-  void OnSharedStorageSelectURLCalled(
-      content::RenderFrameHost* main_rfh) override;
-
   bool ShouldSendOutermostOriginToRenderer(
       const url::Origin& outermost_origin) override;
 
@@ -1083,7 +1076,13 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       content::BrowserContext* browser_context,
       const GURL& url) override;
 
-  base::FilePath GetChildProcessPath(int flags) override;
+#if BUILDFLAG(IS_ANDROID)
+  bool IsContentSchemeURLNavigationAllowed(const GURL& url) override;
+#endif
+
+  base::FilePath GetChildProcessPath(
+      int flags,
+      content::ChildProcessId child_process_id) override;
 
   bool AreIsolatedWebAppsEnabled(
       content::BrowserContext* browser_context) override;
@@ -1137,8 +1136,6 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
 
   bool IsClearWindowNameForNewBrowsingContextGroupAllowed(
       content::BrowserContext* browser_context) override;
-
-  void SetIsMinimalMode(bool minimal) override;
 
   bool UseOutermostMainFrameOrEmbedderForSubCaptureTargets() const override;
 
@@ -1459,10 +1456,6 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   std::unique_ptr<FetchKeepAliveProcessManager>
       fetch_keepalive_process_manager_;
 #endif
-
-  // Tracks whether the browser was started in "minimal" mode (as opposed to
-  // full browser mode), where most subsystems are not initialized.
-  bool is_minimal_mode_ = false;
 
   std::unique_ptr<MainThreadStackSamplingProfiler> sampling_profiler_;
 

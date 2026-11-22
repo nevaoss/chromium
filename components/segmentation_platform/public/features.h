@@ -184,17 +184,40 @@ extern const base::FeatureParam<bool> kNewTabPageCustomizationV2ShowPromo;
 extern const base::FeatureParam<int>
     kNewTabPageCustomizationV2PromoDisplayIntervalDays;
 
-// Feature flag for Magic Stack Tips V2 on iOS.
-BASE_DECLARE_FEATURE(kMagicStackTipsV2Ios);
+// Feature flags for the new Magic Stack Tips on iOS (NTP Theme, NTP
+// Customization, Tips notification).
+BASE_DECLARE_FEATURE(kMagicStackNTPThemeTipIos);
+BASE_DECLARE_FEATURE(kMagicStackNTPCustomizationTipIos);
+BASE_DECLARE_FEATURE(kMagicStackTipsNotificationTipIos);
 
-// Parameter to control whether the Actionable variation of Magic Stack Tips V2
-// is shown on iOS.
-extern const base::FeatureParam<bool> kMagicStackTipsV2IosActionable;
-extern const char kMagicStackTipsV2IosActionableParam[];
+// Parameter to control whether the Actionable variation of the NTP Theme tip is
+// shown on iOS.
+extern const base::FeatureParam<bool> kMagicStackNTPThemeTipIosActionable;
+extern const char kMagicStackNTPThemeTipIosActionableParam[];
 
-// Returns true if the Actionable variation of Magic Stack Tips V2 is enabled or
+// Parameter to control whether the Actionable variation of the NTP
+// Customization tip is shown on iOS.
+extern const base::FeatureParam<bool>
+    kMagicStackNTPCustomizationTipIosActionable;
+extern const char kMagicStackNTPCustomizationTipIosActionableParam[];
+
+// Parameter to control whether the Actionable variation of the Tips
+// Notification tip is shown on iOS.
+extern const base::FeatureParam<bool>
+    kMagicStackTipsNotificationTipIosActionable;
+extern const char kMagicStackTipsNotificationTipIosActionableParam[];
+
+// Returns true if the Actionable variation of the NTP Theme tip is enabled or
 // false for the Non-Actionable variation.
-bool IsMagicStackTipsV2IosActionableEnabled();
+bool IsMagicStackNTPThemeTipIosActionableEnabled();
+
+// Returns true if the Actionable variation of the NTP Customization tip is
+// enabled or false for the Non-Actionable variation.
+bool IsMagicStackNTPCustomizationTipIosActionableEnabled();
+
+// Returns true if the Actionable variation of the Tips Notification tip is
+// enabled or false for the Non-Actionable variation.
+bool IsMagicStackTipsNotificationTipIosActionableEnabled();
 
 }  // namespace segmentation_platform::features
 

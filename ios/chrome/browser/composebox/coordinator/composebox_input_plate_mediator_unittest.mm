@@ -49,7 +49,6 @@
 #import "ios/chrome/browser/composebox/public/composebox_attachment_selection.h"
 #import "ios/chrome/browser/composebox/public/composebox_focus_params.h"
 #import "ios/chrome/browser/composebox/public/composebox_input_plate_controls.h"
-#import "ios/chrome/browser/composebox/public/composebox_model_option.h"
 #import "ios/chrome/browser/composebox/public/features.h"
 #import "ios/chrome/browser/composebox/ui/composebox_input_item.h"
 #import "ios/chrome/browser/composebox/ui/composebox_input_plate_consumer.h"
@@ -854,7 +853,7 @@ TEST_F(ComposeboxInputPlateMediatorTest, UploadsPDFFilesWithPDFMimeType) {
   EXPECT_CALL(*raw_mock, StartFileContextUploadFlow(testing::_, testing::_,
                                                     "application/pdf",
                                                     testing::_, testing::_))
-      .WillOnce(testing::InvokeWithoutArgs([&called]() { called = true; }));
+      .WillOnce([&called]() { called = true; });
 
   [test_mediator processFileURL:file_gurl isPDF:YES];
   ASSERT_TRUE(base::test::RunUntil([&]() { return called; }));
@@ -895,7 +894,7 @@ TEST_F(ComposeboxInputPlateMediatorTest, UploadsRawFilesWithDynamicMimeType) {
   EXPECT_CALL(*raw_mock,
               StartFileContextUploadFlow(testing::_, testing::_, "text/plain",
                                          testing::_, testing::_))
-      .WillOnce(testing::InvokeWithoutArgs([&called]() { called = true; }));
+      .WillOnce([&called]() { called = true; });
 
   [test_mediator processFileURL:file_gurl isPDF:NO];
   ASSERT_TRUE(base::test::RunUntil([&]() { return called; }));
@@ -922,7 +921,7 @@ TEST_F(ComposeboxInputPlateMediatorTest, AwaitingSignalsSetOnFocus) {
       initWithEntrypoint:ComposeboxEntrypoint::kOther
                    query:nil
                 toolMode:ComposeboxMode::kRegularSearch
-               modelMode:ComposeboxModelOption::kNone
+               modelMode:omnibox::ModelMode::MODEL_MODE_UNSPECIFIED
           attachmentList:selection];
 
   [mediator_ applyFocusParams:params];
@@ -949,7 +948,7 @@ TEST_F(ComposeboxInputPlateMediatorTest, AwaitingSignalsClearedOnItemRemoval) {
       initWithEntrypoint:ComposeboxEntrypoint::kOther
                    query:nil
                 toolMode:ComposeboxMode::kRegularSearch
-               modelMode:ComposeboxModelOption::kNone
+               modelMode:omnibox::ModelMode::MODEL_MODE_UNSPECIFIED
           attachmentList:selection];
 
   [mediator_ applyFocusParams:params];
@@ -986,7 +985,7 @@ TEST_F(ComposeboxInputPlateMediatorTest, AwaitingSignalsClearedOnItemError) {
       initWithEntrypoint:ComposeboxEntrypoint::kOther
                    query:nil
                 toolMode:ComposeboxMode::kRegularSearch
-               modelMode:ComposeboxModelOption::kNone
+               modelMode:omnibox::ModelMode::MODEL_MODE_UNSPECIFIED
           attachmentList:selection];
 
   [mediator_ applyFocusParams:params];
@@ -1024,7 +1023,7 @@ TEST_F(ComposeboxInputPlateMediatorTest,
       initWithEntrypoint:ComposeboxEntrypoint::kOther
                    query:nil
                 toolMode:ComposeboxMode::kRegularSearch
-               modelMode:ComposeboxModelOption::kNone
+               modelMode:omnibox::ModelMode::MODEL_MODE_UNSPECIFIED
           attachmentList:selection];
 
   [mediator_ applyFocusParams:params];
@@ -1064,7 +1063,7 @@ TEST_F(ComposeboxInputPlateMediatorTest, LogsOmniboxMetricOnNTP) {
       initWithEntrypoint:ComposeboxEntrypoint::kOther
                    query:nil
                 toolMode:ComposeboxMode::kRegularSearch
-               modelMode:ComposeboxModelOption::kNone
+               modelMode:omnibox::ModelMode::MODEL_MODE_UNSPECIFIED
           attachmentList:nil];
   [mediator_ applyFocusParams:params];
 
@@ -1100,7 +1099,7 @@ TEST_F(ComposeboxInputPlateMediatorTest, LogsOmniboxMetricOnStartSurface) {
       initWithEntrypoint:ComposeboxEntrypoint::kOther
                    query:nil
                 toolMode:ComposeboxMode::kRegularSearch
-               modelMode:ComposeboxModelOption::kNone
+               modelMode:omnibox::ModelMode::MODEL_MODE_UNSPECIFIED
           attachmentList:nil];
   [mediator_ applyFocusParams:params];
 
@@ -2293,6 +2292,7 @@ TEST_F(ComposeboxInputPlateMediatorTest,
   EXPECT_EQ(delegate.reloadAutocompleteCallCount, 2U);
   EXPECT_FALSE(delegate.lastReloadAutocompleteRestarting);
 }
+
 // Tests that an auto-added tab stays in `kDeferred` without starting an upload,
 // and that removing it does not call `DeleteFile` on the session controller.
 TEST_F(ComposeboxInputPlateMediatorTest,
@@ -2395,8 +2395,8 @@ TEST_F(ComposeboxInputPlateMediatorTest,
 
   bool create_search_url_called = false;
   EXPECT_CALL(*raw_mock_session, CreateSearchUrl(testing::_, testing::_))
-      .WillOnce(testing::InvokeWithoutArgs(
-          [&create_search_url_called]() { create_search_url_called = true; }));
+      .WillOnce(
+          [&create_search_url_called]() { create_search_url_called = true; });
 
   [mediator sendText:@"test query"];
 
@@ -2474,8 +2474,8 @@ TEST_F(ComposeboxInputPlateMediatorTest,
 
   bool create_search_url_called = false;
   EXPECT_CALL(*raw_mock_session, CreateSearchUrl(testing::_, testing::_))
-      .WillOnce(testing::InvokeWithoutArgs(
-          [&create_search_url_called]() { create_search_url_called = true; }));
+      .WillOnce(
+          [&create_search_url_called]() { create_search_url_called = true; });
 
   [mediator sendText:@"test query"];
   EXPECT_EQ(item.state, ComposeboxInputItemState::kLoading);
@@ -2682,4 +2682,168 @@ TEST_F(ComposeboxInputPlateMediatorTest,
   EXPECT_OCMOCK_VERIFY(assistant_recorder);
 }
 
+// Tests that in Co-browse mode, after sending a follow-up query (which promotes
+// the auto-added initial page in the active tab) and navigating the same tab to
+// a new URL, focusing the omnibox auto-attaches the new page while preserving
+// the promoted initial page in Shared tabs.
+TEST_F(ComposeboxInputPlateMediatorTest,
+       CobrowseAutoAttachesNewPageAfterSameTabNavigationAndFollowup) {
+  SetAIMEligible(true);
+  SetDSEGoogle(true);
+  StubPageContextExtraction();
+
+  auto mock_session =
+      std::make_unique<testing::NiceMock<TestContextualSearchSessionHandle>>();
+  TestContextualSearchSessionHandle* raw_mock_session = mock_session.get();
+  testing::NiceMock<contextual_search::MockContextualSearchContextController>
+      mock_controller;
+  ON_CALL(*raw_mock_session, GetController())
+      .WillByDefault(testing::Return(&mock_controller));
+
+  ComposeboxInputPlateMediator* mediator =
+      CreateMediator(std::move(mock_session));
+
+  TestComposeboxInputPlateConsumer* consumer =
+      [[TestComposeboxInputPlateConsumer alloc] init];
+  mediator.consumer = consumer;
+
+  base::ScopedClosureRunner disconnect_runner(base::BindOnce(^{
+    [mediator disconnect];
+  }));
+
+  web::FakeWebState* active_web_state =
+      static_cast<web::FakeWebState*>(web_state_list_->GetActiveWebState());
+  ASSERT_TRUE(active_web_state);
+  const GURL page_a_url("https://www.example.com/page1");
+  const GURL page_b_url("https://www.example.com/page2");
+  active_web_state->SetVisibleURL(page_a_url);
+  active_web_state->SetTitle(u"Page 1");
+  active_web_state->SetContentIsHTML(true);
+  active_web_state->SetContentsMimeType("text/html");
+
+  // 1. Focus the omnibox in Co-browse mode: Page A is auto-attached.
+  [mediator setOmniboxFocused:YES];
+  ASSERT_EQ(consumer.items.count, 1U);
+  EXPECT_EQ(consumer.items[0].tabURL, page_a_url);
+  EXPECT_TRUE(consumer.items[0].isAutoAdded);
+
+  // 2. Send a follow-up query: Page A is promoted (`isAutoAdded == NO`), and
+  // the omnibox unfocuses.
+  [mediator sendText:@"Summarize Page 1"];
+  EXPECT_FALSE(consumer.items[0].isAutoAdded);
+  [mediator setOmniboxFocused:NO];
+  ASSERT_EQ(consumer.items.count, 1U);
+
+  // 3. Navigate the same active tab to Page B while the omnibox is unfocused.
+  active_web_state->SetVisibleURL(page_b_url);
+  active_web_state->SetTitle(u"Page 2");
+  web::FakeNavigationContext nav_context;
+  nav_context.SetHasCommitted(true);
+  nav_context.SetIsSameDocument(false);
+  active_web_state->OnNavigationFinished(&nav_context);
+  active_web_state->OnPageLoaded(web::PageLoadCompletionStatus::SUCCESS);
+
+  // While unfocused, Page B is not auto-added yet, and Page A remains.
+  ASSERT_EQ(consumer.items.count, 1U);
+  EXPECT_EQ(consumer.items[0].tabURL, page_a_url);
+
+  // 4. Focus the omnibox again: Page B must be auto-attached alongside Page A.
+  [mediator setOmniboxFocused:YES];
+  ASSERT_EQ(consumer.items.count, 2U);
+  EXPECT_EQ(consumer.items[0].tabURL, page_a_url);
+  EXPECT_FALSE(consumer.items[0].isAutoAdded);
+  EXPECT_EQ(consumer.items[1].tabURL, page_b_url);
+  EXPECT_TRUE(consumer.items[1].isAutoAdded);
+  EXPECT_EQ(mediator.currentUIInputState.sharedTabs.count, 2U);
+
+  // 5. Remove historical Page A from Shared tabs, then unfocus and refocus the
+  // omnibox: Page B must still auto-attach and remain in Shared tabs.
+  [mediator
+      removeSharedTabWithInputItemIdentifier:consumer.items[0].identifier];
+  [mediator setOmniboxFocused:NO];
+  [mediator setOmniboxFocused:YES];
+  ASSERT_EQ(consumer.items.count, 1U);
+  EXPECT_EQ(consumer.items[0].tabURL, page_b_url);
+  EXPECT_TRUE(consumer.items[0].isAutoAdded);
+  ASSERT_EQ(mediator.currentUIInputState.sharedTabs.count, 1U);
+  EXPECT_EQ(mediator.currentUIInputState.sharedTabs[0].URL, page_b_url);
+}
+
+// Tests that when the same tab has both a promoted earlier page (Page A) and a
+// newly attached current page (Page B), deselecting the tab in the Tab Picker
+// removes only the current page (Page B) and preserves Page A, and removing the
+// historical Page A does not block the current page of the tab from
+// auto-attaching.
+TEST_F(ComposeboxInputPlateMediatorTest,
+       TabPickerDeselectAfterSameTabNavigationKeepsPromotedPage) {
+  SetAIMEligible(true);
+  SetDSEGoogle(true);
+  StubPageContextExtraction();
+
+  auto mock_session =
+      std::make_unique<testing::NiceMock<TestContextualSearchSessionHandle>>();
+  TestContextualSearchSessionHandle* raw_mock_session = mock_session.get();
+  testing::NiceMock<contextual_search::MockContextualSearchContextController>
+      mock_controller;
+  ON_CALL(*raw_mock_session, GetController())
+      .WillByDefault(testing::Return(&mock_controller));
+
+  ComposeboxInputPlateMediator* mediator =
+      CreateMediator(std::move(mock_session));
+
+  TestComposeboxInputPlateConsumer* consumer =
+      [[TestComposeboxInputPlateConsumer alloc] init];
+  mediator.consumer = consumer;
+
+  base::ScopedClosureRunner disconnect_runner(base::BindOnce(^{
+    [mediator disconnect];
+  }));
+
+  web::FakeWebState* active_web_state =
+      static_cast<web::FakeWebState*>(web_state_list_->GetActiveWebState());
+  ASSERT_TRUE(active_web_state);
+  web::WebStateID active_id = active_web_state->GetUniqueIdentifier();
+  const GURL page_a_url("https://www.example.com/page1");
+  const GURL page_b_url("https://www.example.com/page2");
+  active_web_state->SetVisibleURL(page_a_url);
+  active_web_state->SetTitle(u"Page 1");
+  active_web_state->SetContentIsHTML(true);
+  active_web_state->SetContentsMimeType("text/html");
+
+  // Attach Page A and promote it via a query.
+  [mediator setOmniboxFocused:YES];
+  ASSERT_EQ(consumer.items.count, 1U);
+  [mediator sendText:@"Summarize Page 1"];
+  [mediator setOmniboxFocused:NO];
+
+  // Navigate the same tab to Page B and focus to auto-attach Page B.
+  active_web_state->SetVisibleURL(page_b_url);
+  active_web_state->SetTitle(u"Page 2");
+  web::FakeNavigationContext nav_context;
+  nav_context.SetHasCommitted(true);
+  nav_context.SetIsSameDocument(false);
+  active_web_state->OnNavigationFinished(&nav_context);
+  [mediator setOmniboxFocused:YES];
+  ASSERT_EQ(consumer.items.count, 2U);
+
+  // Deselecting the tab in the Tab Picker removes Page B (the tab's current
+  // page) but keeps historical Page A.
+  [mediator attachTabSelection:ComposeboxTabSelection{}];
+  ASSERT_EQ(consumer.items.count, 1U);
+  EXPECT_EQ(consumer.items[0].tabURL, page_a_url);
+  EXPECT_TRUE([mediator isWebStateIDRemoved:active_id]);
+
+  // Re-attach Page B via the Tab Picker, then explicitly remove historical
+  // Page A (`consumer.items[0]`). Removing historical Page A must not mark
+  // `active_id` as removed since the tab is currently on Page B.
+  [mediator
+      attachTabSelection:ComposeboxTabSelection{.selected_ids = {active_id}}];
+  ASSERT_EQ(consumer.items.count, 2U);
+  EXPECT_FALSE([mediator isWebStateIDRemoved:active_id]);
+
+  [mediator removeItem:consumer.items[0]];
+  ASSERT_EQ(consumer.items.count, 1U);
+  EXPECT_EQ(consumer.items[0].tabURL, page_b_url);
+  EXPECT_FALSE([mediator isWebStateIDRemoved:active_id]);
+}
 }  // namespace

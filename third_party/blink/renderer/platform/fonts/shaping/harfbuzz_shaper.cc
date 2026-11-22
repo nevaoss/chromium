@@ -59,11 +59,11 @@
 #include "third_party/blink/renderer/platform/fonts/shaping/harfbuzz_face.h"
 #include "third_party/blink/renderer/platform/fonts/shaping/shape_result_run.h"
 #include "third_party/blink/renderer/platform/fonts/small_caps_iterator.h"
-#include "third_party/blink/renderer/platform/fonts/utf16_text_iterator.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/text/text_break_iterator.h"
 #include "third_party/blink/renderer/platform/wtf/deque.h"
 #include "third_party/blink/renderer/platform/wtf/math_extras.h"
+#include "third_party/blink/renderer/platform/wtf/text/code_point_iterator.h"
 #include "third_party/blink/renderer/platform/wtf/text/format.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 #include "third_party/blink/renderer/platform/wtf/text/unicode.h"
@@ -187,7 +187,7 @@ FontFallbackPriority ApplyFontVariantEmojiOnFallbackPriority(
     FontVariantEmoji font_variant_emoji) {
   // font-variant-emoji property should not override emoji variation selectors,
   // see https://www.w3.org/TR/css-fonts-4/#font-variant-emoji-prop.
-  if (!HasVSFallbackPriority(curr_font_fallback_priority)) {
+  if (!HasVsFallbackPriority(curr_font_fallback_priority)) {
     if (font_variant_emoji == kEmojiVariantEmoji) {
       return FontFallbackPriority::kEmojiEmoji;
     }
@@ -412,12 +412,12 @@ BufferSlice ComputeSlice(RangeContext* range_data,
 inline bool IsLastFontToShape(
     HarfBuzzShaper::FallbackFontStage fallback_stage) {
   return fallback_stage == HarfBuzzShaper::kLast ||
-         fallback_stage == HarfBuzzShaper::kLastIgnoreVS;
+         fallback_stage == HarfBuzzShaper::kLastIgnoreVs;
 }
 
 inline bool StageNeedsQueueReset(
     HarfBuzzShaper::FallbackFontStage fallback_stage) {
-  return fallback_stage == HarfBuzzShaper::kLastWithVS;
+  return fallback_stage == HarfBuzzShaper::kLastWithVs;
 }
 
 HarfBuzzShaper::FallbackFontStage ChangeStageToLast(
@@ -425,24 +425,24 @@ HarfBuzzShaper::FallbackFontStage ChangeStageToLast(
   switch (fallback_stage) {
     case HarfBuzzShaper::kIntermediate:
       return HarfBuzzShaper::kLast;
-    case HarfBuzzShaper::kIntermediateWithVS:
-      return HarfBuzzShaper::kLastWithVS;
-    case HarfBuzzShaper::kIntermediateIgnoreVS:
-      return HarfBuzzShaper::kLastIgnoreVS;
+    case HarfBuzzShaper::kIntermediateWithVs:
+      return HarfBuzzShaper::kLastWithVs;
+    case HarfBuzzShaper::kIntermediateIgnoreVs:
+      return HarfBuzzShaper::kLastIgnoreVs;
     default:
       return fallback_stage;
   }
 }
 
-HarfBuzzShaper::FallbackFontStage ChangeStageToVS(
+HarfBuzzShaper::FallbackFontStage ChangeStageToVs(
     HarfBuzzShaper::FallbackFontStage fallback_stage) {
   switch (fallback_stage) {
     case HarfBuzzShaper::kIntermediate:
-      return HarfBuzzShaper::kIntermediateWithVS;
+      return HarfBuzzShaper::kIntermediateWithVs;
     case HarfBuzzShaper::kLast:
-      return HarfBuzzShaper::kLastWithVS;
-    case HarfBuzzShaper::kIntermediateWithVS:
-    case HarfBuzzShaper::kLastWithVS:
+      return HarfBuzzShaper::kLastWithVs;
+    case HarfBuzzShaper::kIntermediateWithVs:
+    case HarfBuzzShaper::kLastWithVs:
       return fallback_stage;
     default:
       // We should not call this function on the second fallback pass.
@@ -607,8 +607,8 @@ void HarfBuzzShaper::ExtractShapeResults(
       // We revisit when HarfBuzz decides how to solve this more generally.
       // https://github.com/harfbuzz/harfbuzz/issues/2889
       glyph_result = kNotDef;
-    } else if (glyph_id == kUnmatchedVSGlyphId) {
-      fallback_stage = ChangeStageToVS(fallback_stage);
+    } else if (glyph_id == kUnmatchedVsGlyphId) {
+      fallback_stage = ChangeStageToVs(fallback_stage);
       glyph_result = kNotDef;
     } else {
       glyph_result = kShaped;
@@ -741,10 +741,14 @@ bool HarfBuzzShaper::CollectFallbackHintChars(
     }
 
     // !text_.Is8Bit()...
-    UChar32 hint_char;
-    UTF16TextIterator iterator(
+    CodePointIterator::Utf16 iterator(
         text_.Span16().subspan(it->start_index_, it->num_characters_));
-    while (iterator.Consume(hint_char)) {
+    const CodePointIterator::Utf16 end = iterator.EndForThis();
+    for (; iterator != end; ++iterator) {
+      UChar32 hint_char = *iterator;
+      if (U_IS_SURROGATE(hint_char)) [[unlikely]] {
+        hint_char = uchar::kReplacementCharacter;
+      }
       hint.push_back(hint_char);
       num_chars_added++;
       // Determine if we can take a shortcut and not fill the hint list
@@ -755,7 +759,6 @@ bool HarfBuzzShaper::CollectFallbackHintChars(
       if (!needs_hint_list && !unicode::IsCommonOrInheritedScript(hint_char)) {
         return true;
       }
-      iterator.Advance();
     }
   }
   return num_chars_added > 0;
@@ -939,9 +942,9 @@ void HarfBuzzShaper::ShapeSegment(
         // for the base codepoint of unshaped variation sequences, so we need to
         // restart the fallback queue and set the variation selector mode to
         // `kIgnoreVariationSelector`.
-        DCHECK_EQ(fallback_stage, kLastWithVS);
+        DCHECK_EQ(fallback_stage, kLastWithVs);
         fallback_iterator.Reset();
-        fallback_stage = kIntermediateIgnoreVS;
+        fallback_stage = kIntermediateIgnoreVs;
         variation_selector_mode = kIgnoreVariationSelector;
       }
 

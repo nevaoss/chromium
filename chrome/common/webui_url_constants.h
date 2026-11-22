@@ -124,6 +124,7 @@ inline constexpr char kChromeUIDevToolsBlankPath[] = "blank";
 inline constexpr char kChromeUIDevToolsBundledPath[] = "bundled";
 inline constexpr char kChromeUIDevToolsCustomPath[] = "custom";
 inline constexpr char kChromeUIDevToolsHost[] = "devtools";
+inline constexpr char kChromeUIDevToolsRemoteHost[] = "devtools-remote";
 inline constexpr char kChromeUIDevToolsRemotePath[] = "remote";
 inline constexpr char kChromeUIDevToolsURL[] =
     "devtools://devtools/bundled/inspector.html";
@@ -433,6 +434,10 @@ inline constexpr char kChromeUISearchSettingsPath[] = "/search";
 inline constexpr char kChromeUITabSearchHost[] = "tab-search.top-chrome";
 inline constexpr char kChromeUITabSearchURL[] =
     "chrome://tab-search.top-chrome/";
+inline constexpr char kChromeUITabsFromOtherDevicesSidePanelHost[] =
+    "tabs-from-other-devices.top-chrome";
+inline constexpr char kChromeUITabsFromOtherDevicesSidePanelURL[] =
+    "chrome://tabs-from-other-devices.top-chrome/";
 inline constexpr char kChromeUIUntrustedReadAnythingSidePanelHost[] =
     "read-anything-side-panel.top-chrome";
 inline constexpr char kChromeUIUntrustedReadAnythingSidePanelURL[] =

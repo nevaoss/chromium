@@ -33,13 +33,11 @@
     },
   },
   'amd_radeon_rx_5500_xt': {
-    'ci_only': True,
     'swarming': {
       'dimensions': {
         'gpu': '1002:7340',
       },
     },
-    'experiment_percentage': 100,
   },
   'android': {
     'swarming': {
@@ -60,13 +58,11 @@
     ],
   },
   'chrome-finch-swarming-pool': {
-    'ci_only': True,
     'swarming': {
       'dimensions': {
         'pool': 'chrome.tests.finch',
       },
     },
-    'experiment_percentage': 100,
   },
   'chrome-flame-fleet-pool': {
     'swarming': {
@@ -172,6 +168,9 @@
     'args': [
       '--test-launcher-filter-file=../../testing/buildbot/filters/chromeos.reven.chromeos_integration_tests.filter',
     ],
+  },
+  'experiments': {
+    'experiment_percentage': 100,
   },
   'gce': {
     'swarming': {
@@ -449,13 +448,11 @@
     },
   },
   'intel_uhd_630_or_770': {
-    'ci_only': True,
     'swarming': {
       'dimensions': {
         'gpu': '8086:9bc5|8086:4680',
       },
     },
-    'experiment_percentage': 100,
   },
   'ios_runtime_cache_18_5': {
     'swarming': {
@@ -1142,11 +1139,23 @@
       },
     },
   },
+  'win_gpu_ai_wpt_dimensions': {
+    'fail_if_unused': False,
+    'swarming': {
+      'dimensions': {
+        'cpu': 'x86-64',
+        'gpu': '10de|8086|1002:7340|1002:744c|1002:7480|1002:7550',
+        'os': 'Windows',
+      },
+    },
+  },
   'win_gpu_gemma4_ai_wpt_dimensions': {
     'fail_if_unused': False,
     'swarming': {
       'dimensions': {
+        'cpu': 'x86-64',
         'gpu': '10de',
+        'os': 'Windows',
       },
     },
   },

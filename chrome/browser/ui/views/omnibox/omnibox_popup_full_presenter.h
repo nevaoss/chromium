@@ -61,9 +61,7 @@ class OmniboxPopupFullPresenter : public OmniboxPopupPresenterBase,
   bool ShouldEvictOnHide() const override;
   bool ShouldSizeWebViewToPreferredHeight() const override;
   bool ShouldDrawShadowInWebUI() const override;
-  bool ShouldHideForInitialLayout() const override;
 
-  bool IsDeactivating() const override;
   bool ShouldReceiveFocus() const override;
 
  protected:
@@ -122,7 +120,8 @@ class OmniboxPopupFullPresenter : public OmniboxPopupPresenterBase,
   void AppMenuClosed() override;
 
   // ui::EventObserver:
-  // Handles click events and determines if the popup should be deactivated.
+  // Handles click and touch events and determines if the popup should be
+  // deactivated.
   void OnEvent(const ui::Event& event) override;
 
   // Focuses the native Views content, underlying WebContents, and DOM input.
@@ -185,7 +184,6 @@ class OmniboxPopupFullPresenter : public OmniboxPopupPresenterBase,
 
   // Whether the "first shown" metrics have been logged at least once.
   bool logged_first_shown_metric_ = false;
-  bool is_deactivating_ = false;
 
   base::WeakPtrFactory<OmniboxPopupFullPresenter> weak_factory_{this};
 };

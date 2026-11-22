@@ -361,7 +361,7 @@ tools/metrics/histograms/metadata/stability/enums.xml
 </histogram>
 
 <histogram name="PerformanceMonitor.AverageCPU10.UtilityProcess.{Subtype}"
-    units="1/100 %" expires_after="2027-02-13">
+    units="1/100 %" expires_after="2027-04-18">
   <owner>anthonyvd@chromium.org</owner>
   <owner>fdoray@chromium.org</owner>
   <owner>pmonette@chromium.org</owner>
@@ -2026,7 +2026,7 @@ tools/metrics/histograms/metadata/stability/enums.xml
 </histogram>
 
 <histogram name="PowerML.SmartDimModel.RequestCanceledDuration" units="ms"
-    expires_after="2027-02-14">
+    expires_after="2027-04-18">
   <owner>amoylan@chromium.org</owner>
   <owner>napper@chromium.org</owner>
   <owner>pmalani@chromium.org</owner>

@@ -1,7 +1,7 @@
 Name: WebGPU Conformance Test Suite
 Short Name: webgpu-cts
 Version: N/A
-Revision: e325d0bcc2cb785c4eab1d908339019215bd9462
+Revision: e97492c38728b11ee336bf3ddf513cb27f1331ed
 Update Mechanism: Autoroll
 URL: https://gpuweb.github.io/cts/
 SOURCE CODE: git clone https://github.com/gpuweb/cts.git

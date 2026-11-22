@@ -14,7 +14,6 @@
 #import "components/feature_engagement/public/tracker.h"
 #import "components/feature_engagement/test/mock_tracker.h"
 #import "components/omnibox/browser/test_location_bar_model.h"
-#import "components/send_tab_to_self/features.h"
 #import "components/send_tab_to_self/metrics_util.h"
 #import "components/variations/scoped_variations_ids_provider.h"
 #import "components/variations/variations_ids_provider.h"
@@ -53,6 +52,7 @@
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/shared/public/commands/send_tab_to_self_commands.h"
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
+#import "ios/chrome/browser/shared/public/commands/tab_picker_commands.h"
 #import "ios/chrome/browser/shared/public/commands/toolbar_commands.h"
 #import "ios/chrome/browser/sync/model/sync_service_factory.h"
 #import "ios/chrome/browser/toolbar/legacy/ui_bundled/fullscreen/toolbars_size_browser_agent.h"
@@ -192,6 +192,10 @@ class LocationBarCoordinatorTest : public PlatformTest {
         startDispatchingToTarget:mock_contextual_panel_entrypoint_iph_handler
                      forProtocol:@protocol(
                                      ContextualPanelEntrypointIPHCommands)];
+    id tab_picker_commands_handler =
+        OCMProtocolMock(@protocol(TabPickerCommands));
+    [dispatcher startDispatchingToTarget:tab_picker_commands_handler
+                             forProtocol:@protocol(TabPickerCommands)];
 
     // Set up application and settings handler mocks.
     id mock_application_handler = OCMProtocolMock(@protocol(SceneCommands));
@@ -280,7 +284,7 @@ TEST_F(LocationBarCoordinatorTest, LoadGoogleUrl) {
 
   GURL url("https://www.google.com/");
   ui::PageTransition transition = ui::PAGE_TRANSITION_TYPED;
-  WindowOpenDisposition disposition = WindowOpenDisposition::SWITCH_TO_TAB;
+  WindowOpenDisposition disposition = WindowOpenDisposition::kSwitchToTab;
   [coordinator_ start];
   [coordinator_ loadGURLFromLocationBar:url
                                  postContent:nil
@@ -316,7 +320,7 @@ TEST_F(LocationBarCoordinatorTest, LoadNonGoogleUrl) {
 
   GURL url("https://www.nongoogle.com/");
   ui::PageTransition transition = ui::PAGE_TRANSITION_TYPED;
-  WindowOpenDisposition disposition = WindowOpenDisposition::CURRENT_TAB;
+  WindowOpenDisposition disposition = WindowOpenDisposition::kCurrentTab;
   [coordinator_ start];
   [coordinator_ loadGURLFromLocationBar:url
                                  postContent:nil
@@ -406,32 +410,9 @@ TEST_F(LocationBarCoordinatorTest, MultipleTriggersAIHubNewBadge) {
   [coordinator_ stop];
 }
 
-// Test that locationBarCanSendTabToSelf returns NO when the feature flag is
-// disabled.
-TEST_F(LocationBarCoordinatorTest, CanSendTabToSelfDisabledByFeatureFlag) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndDisableFeature(
-      send_tab_to_self::kSendTabToSelfExtraEntryPoints);
-
-  [coordinator_ start];
-
-  auto fake_web_state = std::make_unique<web::FakeWebState>();
-  fake_web_state->SetCurrentURL(GURL("http://test/"));
-
-  id partial_mock_coordinator = OCMPartialMock(coordinator_);
-  OCMStub([partial_mock_coordinator webState]).andReturn(fake_web_state.get());
-
-  EXPECT_FALSE([partial_mock_coordinator locationBarCanSendTabToSelf]);
-}
-
-// Test that locationBarCanSendTabToSelf returns NO when the feature flag is
-// enabled but there is no active web state or SendTabToSelfSyncService does not
-// offer it.
+// Test that `locationBarCanSendTabToSelf` returns NO when there is no active
+// web state or `SendTabToSelfSyncService` does not offer it.
 TEST_F(LocationBarCoordinatorTest, CanSendTabToSelfNoService) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeature(
-      send_tab_to_self::kSendTabToSelfExtraEntryPoints);
-
   [coordinator_ start];
 
   auto fake_web_state = std::make_unique<web::FakeWebState>();
@@ -445,13 +426,9 @@ TEST_F(LocationBarCoordinatorTest, CanSendTabToSelfNoService) {
   EXPECT_FALSE([partial_mock_coordinator locationBarCanSendTabToSelf]);
 }
 
-// Test that locationBarSendTabToSelfTapped triggers the browser coordinator
+// Test that `locationBarSendTabToSelfTapped` triggers the browser coordinator
 // command to show the UI and notifies the feature engagement tracker.
 TEST_F(LocationBarCoordinatorTest, SendTabToSelfTapped) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeature(
-      send_tab_to_self::kSendTabToSelfExtraEntryPoints);
-
   [coordinator_ start];
 
   auto fake_web_state = std::make_unique<web::FakeWebState>();

@@ -21,7 +21,12 @@ import android.window.InputTransferToken;
 import androidx.annotation.RequiresApi;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.jni_zero.JniUniquePtr;
+
 import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.omnibox.suggestions.SuggestionsOmtInputAnchor.NativeOmtInputReceiverState;
+import org.chromium.ui.base.DeviceInput;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -77,29 +82,28 @@ class SuggestionsOmtOverlayView extends SurfaceView implements SurfaceHolder.Cal
 
     private final View.OnLayoutChangeListener mLayoutChangeListener =
             (v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) ->
-                    updateOverlayState();
+                    updateOverlayVisualState();
 
     private final RecyclerView.OnScrollListener mScrollListener =
             new RecyclerView.OnScrollListener() {
                 @Override
                 public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
-                    updateOverlayState();
+                    updateOverlayVisualState();
                 }
             };
 
     /**
-     * Native memory address of the allocated {@code OmtInputReceiverState} struct holding the
-     * native {@code AInputReceiver}, input transfer tokens, and touch transfer callback.
+     * Owned handle to the allocated {@code OmtInputReceiverState} struct holding the native {@code
+     * AInputReceiver}, input transfer tokens, and touch transfer callback.
      *
      * <p>Initialized in {@link #surfaceCreated(SurfaceHolder)} via {@link
-     * SuggestionsOmtInputAnchor.Natives#registerInputReceiver} and released in {@link
-     * #surfaceDestroyed(SurfaceHolder)} via {@link
-     * SuggestionsOmtInputAnchor.Natives#unregisterInputReceiver}.
+     * SuggestionsOmtInputAnchor.Natives#registerInputReceiver} and destroyed in {@link
+     * #surfaceDestroyed(SurfaceHolder)} via {@link JniUniquePtr#destroy()}.
      *
      * <p>Threading and Concurrency: Written and cleared exclusively on the background input thread
      * ({@link #mInputHandler}) to serialize native receiver setup and teardown.
      */
-    private long mNativeReceiverState;
+    private @Nullable JniUniquePtr<NativeOmtInputReceiverState> mNativeReceiverState;
 
     /**
      * Constructs a new overlay view and starts its dedicated background input looper thread.
@@ -138,7 +142,7 @@ class SuggestionsOmtOverlayView extends SurfaceView implements SurfaceHolder.Cal
                 this, new ViewGroup.LayoutParams(mDropdown.getWidth(), mDropdown.getHeight()));
         mDropdown.addOnLayoutChangeListener(mLayoutChangeListener);
         mDropdown.addOnScrollListener(mScrollListener);
-        updateOverlayState();
+        updateOverlayVisualState();
     }
 
     /** Detaches the overlay view from its parent and resets active touch transfer state. */
@@ -164,9 +168,56 @@ class SuggestionsOmtOverlayView extends SurfaceView implements SurfaceHolder.Cal
      *
      * <p>Must be called on the UI thread.
      */
-    void updateOverlayState() {
-        // TODO(https://crbug.com/499179551): Synchronize overlay bounds and visibility with
-        // mDropdown state.
+    void updateOverlayVisualState() {
+        matchSuggestionsDropdownPlacement();
+
+        // Require the host window to hold focus so focusable popups or dialogs displayed over part
+        // of the dropdown are not blocked from receiving outside-touch dismissal events by the
+        // overlay's Z-order-on-top surface. However, when ACTION_DOWN hits the overlay surface,
+        // InputDispatcher shifts input focus to the overlay's surface token and dispatches
+        // MSG_WINDOW_FOCUS_CHANGED(false) to ViewRootImpl, setting mAttachInfo.mHasWindowFocus to
+        // false until transferTouchGesture returns focus to the main window. Treating an active
+        // touch transfer as focused prevents layout callbacks during that transient window-focus
+        // loss from hiding the SurfaceView and destroying its SurfaceControl/AInputReceiver
+        // mid-gesture.
+        boolean isVisible =
+                mDropdown.isShown()
+                        && mDropdown.getWindowVisibility() == View.VISIBLE
+                        && (mDropdown.hasWindowFocus() || isTouchTransferActive());
+        boolean isIdle = mDropdown.getScrollState() == RecyclerView.SCROLL_STATE_IDLE;
+        boolean hasBounds = mDropdown.getWidth() > 0 && mDropdown.getHeight() > 0;
+        // Enable overlay only when the dropdown is visible, stationary (IDLE),
+        // no precision pointing devices are connected, and layout bounds are positive and
+        // non-empty.
+        boolean shouldBeVisible =
+                isVisible && isIdle && !DeviceInput.supportsPrecisionPointer() && hasBounds;
+        setVisibility(shouldBeVisible ? View.VISIBLE : View.GONE);
+    }
+
+    private void matchSuggestionsDropdownPlacement() {
+        setTranslationX(mDropdown.getLeft());
+        setTranslationY(mDropdown.getTop());
+        ViewGroup.LayoutParams layoutParams = getLayoutParams();
+        int targetWidth = mDropdown.getWidth();
+        int targetHeight = mDropdown.getHeight();
+        if (layoutParams != null
+                && (layoutParams.width != targetWidth || layoutParams.height != targetHeight)) {
+            layoutParams.width = targetWidth;
+            layoutParams.height = targetHeight;
+            // OnLayoutChangeListener fires synchronously inside mDropdown.layout() while the parent
+            // ViewGroup is iterating through its children in onLayout(). Because this overlay was
+            // added after mDropdown, it has already been measured with its old LayoutParams in the
+            // current traversal and is about to have its own layout() called next in the parent's
+            // loop. Calling setLayoutParams() synchronously during layout sets PFLAG_FORCE_LAYOUT /
+            // PFLAG_LAYOUT_REQUIRED, which the subsequent layout() call immediately clears using
+            // the stale measured dimensions, causing ViewRootImpl to drop the layout request.
+            // Posting defers requestLayout() until after performLayout() finishes.
+            if (isInLayout()) {
+                mMainHandler.post(() -> setLayoutParams(layoutParams));
+            } else {
+                setLayoutParams(layoutParams);
+            }
+        }
     }
 
     void onTouchTransferred() {
@@ -186,7 +237,11 @@ class SuggestionsOmtOverlayView extends SurfaceView implements SurfaceHolder.Cal
         // Looper queue. For fast taps or flings, ACTION_UP completes before the queued focus
         // messages are processed. Posting the reset places it at the tail of the FIFO queue
         // so in-flight focus transitions from the transfer are processed before clearing state.
-        mMainHandler.post(() -> mTouchTransferActive.set(false));
+        mMainHandler.post(
+                () -> {
+                    mTouchTransferActive.set(false);
+                    updateOverlayVisualState();
+                });
     }
 
     @Override
@@ -225,10 +280,9 @@ class SuggestionsOmtOverlayView extends SurfaceView implements SurfaceHolder.Cal
         mSurfaceGeneration.incrementAndGet();
         mInputHandler.post(
                 () -> {
-                    if (mNativeReceiverState != 0) {
-                        SuggestionsOmtInputAnchorJni.get()
-                                .unregisterInputReceiver(mNativeReceiverState);
-                        mNativeReceiverState = 0;
+                    if (mNativeReceiverState != null) {
+                        mNativeReceiverState.destroy();
+                        mNativeReceiverState = null;
                     }
                 });
     }

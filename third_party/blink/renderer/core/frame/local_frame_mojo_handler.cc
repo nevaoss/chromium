@@ -403,6 +403,12 @@ void LocalFrameMojoHandler::ClosePageForTesting() {
   ClosePage(base::DoNothing());
 }
 
+void LocalFrameMojoHandler::FlushLocalFrameHostForTesting() {
+  if (local_frame_host_remote_.is_bound()) {
+    local_frame_host_remote_.FlushForTesting();
+  }
+}
+
 mojom::blink::BackForwardCacheControllerHost&
 LocalFrameMojoHandler::BackForwardCacheControllerHostRemote() {
   return *back_forward_cache_controller_host_remote_.get();
@@ -1004,7 +1010,7 @@ void LocalFrameMojoHandler::JavaScriptExecuteRequestInIsolatedWorld(
 }
 
 void LocalFrameMojoHandler::InvokeScriptToolForInspector(
-    const base::UnguessableToken& invocation_id,
+    const ToolInvocationToken& invocation_id,
     const String& tool_name,
     const String& input_arguments,
     InvokeScriptToolForInspectorCallback callback) {
@@ -1030,7 +1036,7 @@ void LocalFrameMojoHandler::InvokeScriptToolForInspector(
 }
 
 void LocalFrameMojoHandler::NotifyInspectorOfCrossDocumentScriptToolResult(
-    const base::UnguessableToken& invocation_id) {
+    const ToolInvocationToken& invocation_id) {
   auto* model_context = ModelContextSupplement::modelContext(*GetDocument());
   model_context->GetCrossDocumentScriptToolResult(invocation_id,
                                                   base::DoNothing());

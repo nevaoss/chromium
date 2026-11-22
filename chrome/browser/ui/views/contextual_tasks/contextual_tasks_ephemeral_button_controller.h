@@ -92,8 +92,22 @@ class ContextualTasksEphemeralButtonController
   base::CallbackListSubscription RegisterShouldUpdateButtonPosition(
       ShouldUpdateButtonPositionCallbackList::CallbackType callback);
 
+  enum class RemovalReason {
+    kContextMenu,
+    kAutoDismissed,
+    kTaskDisassociated,
+  };
+
   bool ShouldShowEphemeralButton();
+  bool ShouldShowPinnedButtonActiveIndicator();
+  bool IsPanelOpen() const {
+    return is_contextual_tasks_panel_open_ &&
+           !is_hiding_contextual_tasks_panel_;
+  }
   void RemoveEphemeralButtonForCurrentTask();
+  std::optional<RemovalReason> removal_reason() const {
+    return removal_reason_;
+  }
   bool HasAutoDismissTimerForTesting(SessionID tab_id) const;
   void SetTaskRunnerForTesting(
       scoped_refptr<base::SequencedTaskRunner> task_runner);
@@ -108,20 +122,29 @@ class ContextualTasksEphemeralButtonController
   void OnActiveTabChange(BrowserWindowInterface* browser_window_interface);
   void OnSidePanelAlignmentChanged();
   void MaybeNotifyVisibilityShouldChange();
+  void UpdatePinnedButtonActiveIndicator();
   void UpdateActiveTabObservation();
   void OnTabDiscarded(tabs::TabInterface* tab,
                       content::WebContents* old_contents,
                       content::WebContents* new_contents);
   base::TimeDelta GetAutoDismissDuration() const;
+  void StartAutoDismissTimerForTab(SessionID tab_id);
   void OnAutoDismissTimerFired(SessionID tab_id);
+  void ClearTabEligibility(SessionID tab_id);
+  bool IsTaskEligibleForEphemeralButton(const base::Uuid& task_id);
+  void HideTaskSidePanel();
+  void MaybeCleanUpUnusedSidePanelWebContents();
   void DismissEphemeralButtonForTab(SessionID tab_id);
+  void DisassociateNavigatedTab();
   void CancelAutoDismissTimersForActiveTask();
+  void MarkActiveTaskTabsEligible();
 
   bool is_contextual_tasks_panel_open_ = false;
   bool is_hiding_contextual_tasks_panel_ = false;
+  std::optional<RemovalReason> removal_reason_;
   raw_ptr<AimEligibilityService> aim_eligibility_service_;
 
-  // Tabs associated to a task whose side panel was dismissed by the user. All
+  // Tabs associated to a task whose side panel was shown or dismissed. All
   // of the task's tabs are recorded rather than the task itself, because a
   // zero-state task with no thread is destroyed as soon as it loses its last
   // tab, which would otherwise take the button down with it.

@@ -368,7 +368,7 @@ bool ChromeOsReimplNavigationCapturingThrottle::MaybeCreateAndAdd(
   // same (app/non-app) context as its opener.
   WindowOpenDisposition disposition =
       GetLinkCapturingSourceDisposition(contents);
-  if (disposition == WindowOpenDisposition::NEW_POPUP &&
+  if (disposition == WindowOpenDisposition::kNewPopup &&
       !contents->GetLastCommittedURL().is_valid()) {
     return false;
   }
@@ -559,16 +559,15 @@ ThrottleCheckResult ChromeOsReimplNavigationCapturingThrottle::HandleRequest() {
       profile_keep_alive = std::make_unique<ScopedProfileKeepAlive>(
           &profile_.get(), ProfileKeepAliveOrigin::kAppWindow);
     }
-    auto weak_this = weak_ptr_factory_.GetWeakPtr();
     handle->GetWebContents()->ClosePage();
-    if (!weak_this) {
-      return content::NavigationThrottle::CANCEL_AND_IGNORE;
-    }
+    // NOTE: ClosePage() can cancel navigations and destroy `this`.
   }
 
+  // NOTE: `this` MIGHT BE DESTROYED HERE BY THE `ClosePage()` ABOVE.
+  // Do not use `this` or any fields in the code below.
   proxy->LaunchAppWithUrl(
       launch_app_id,
-      GetEventFlags(WindowOpenDisposition::NEW_WINDOW,
+      GetEventFlags(WindowOpenDisposition::kNewWindow,
                     /*prefer_container=*/true),
       redirected_url, launch_source,
       std::make_unique<WindowInfo>(display::kDefaultDisplayId),

@@ -661,7 +661,7 @@
     "includes": [4410],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/new_tab_page_extension/resources.grd": {
-    "META": {"sizes": {"includes": [20]}},
+    "META": {"sizes": {"includes": [80]}},
     "includes": [4415],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/new_tab_page_instant/resources.grd": {
@@ -827,6 +827,14 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/side_panel/shared/resources.grd": {
     "META": {"sizes": {"includes": [18],}},
     "includes": [4920],
+  },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/side_panel/tabs_from_other_devices/code_cache_resources.grd": {
+    "META": {"sizes": {"includes": [10],}},
+    "includes": [4930],
+  },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/side_panel/tabs_from_other_devices/resources.grd": {
+    "META": {"sizes": {"includes": [10],}},
+    "includes": [4935],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/signin/batch_upload/resources.grd": {
     "META": {"sizes": {"includes": [10]}},

@@ -240,7 +240,7 @@ public class OmniboxFeatures {
             newBooleanParam(sOmniboxMultimodalInput, "use_ask_hint_for_ntp", false);
 
     public static final BooleanCachedFeatureParam sShowNtpPlusButton =
-            newBooleanParam(sOmniboxMultimodalInput, "show_ntp_plus_button", false);
+            newBooleanParam(sOmniboxMultimodalInput, "show_ntp_plus_button", true);
 
     public static final BooleanCachedFeatureParam sFocusFuseboxFromNtpPlusButton =
             newBooleanParam(sOmniboxMultimodalInput, "focus_fusebox_from_ntp_plus_button", false);
@@ -273,6 +273,12 @@ public class OmniboxFeatures {
             newFlag(
                     OmniboxFeatureList.OMNIBOX_DISABLE_TABS_FOR_CANVAS,
                     FeatureState.ENABLED_IN_PROD);
+
+    /** Shows a close button on open tab suggestions in the Android Tab Search overlay. */
+    public static final CachedFlag sAndroidTabSearchCloseTabButton =
+            newFlag(
+                    OmniboxFeatureList.ANDROID_TAB_SEARCH_CLOSE_TAB_BUTTON,
+                    FeatureState.DISABLED_IN_PROD);
 
     public static final IntCachedFeatureParam sTouchDownTriggerMaxPrefetchesPerSession =
             newIntParam(

@@ -92,8 +92,7 @@ class OmniboxPopupPresenterBase
   // for managing the lifecycle of the returned blocker (typically via
   // std::unique_ptr). Returns nullptr if
   // `omnibox::kOmniboxKeepOpenOnFileSelection` is disabled.
-  virtual std::unique_ptr<OmniboxPopupDeactivationBlocker>
-  CreateDeactivationBlocker();
+  std::unique_ptr<OmniboxPopupDeactivationBlocker> CreateDeactivationBlocker();
   virtual void OnFileSelectionClosed();
   virtual void NotifyEscapeKeyPressed() {}
   bool has_active_blockers() const { return deactivation_blockers_count_ > 0; }
@@ -175,8 +174,6 @@ class OmniboxPopupPresenterBase
                                          const gfx::Size& prompt_size) override;
   OmniboxController* GetOmniboxController() override;
 
-  views::Widget* get_widget_for_testing() { return widget_.get(); }
-
   views::Widget* GetWidget() const { return widget_.get(); }
 
   void set_widget_for_testing(std::unique_ptr<views::Widget> widget) {
@@ -202,9 +199,6 @@ class OmniboxPopupPresenterBase
   // Returns true if a permission prompt is showing or being dismissed,
   // which should prevent out-of-focus activation events from hiding the popup.
   bool IsPermissionPromptPreventingClose() const;
-
-  // Returns true if the presenter is currently deactivating.
-  virtual bool IsDeactivating() const;
 
   // Returns whether the WebUI content view receives focus.
   virtual bool ShouldReceiveFocus() const;

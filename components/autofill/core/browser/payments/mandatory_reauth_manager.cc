@@ -164,31 +164,7 @@ bool MandatoryReauthManager::ShouldOfferOptin(
   // If the device authenticator is not present or we can not authenticate with
   // biometric or screen lock, there will be no way to re-auth if the user
   // enrolls, so return that we should not offer mandatory re-auth opt-in.
-  bool is_auth_available = false;
-  if (base::FeatureList::IsEnabled(
-          password_manager::features::kDeviceReauthRefactor)) {
-    std::unique_ptr<device_reauth::DeviceAuthAvailabilityChecker> checker =
-        client_->GetDeviceAuthAvailabilityChecker();
-    is_auth_available = checker &&
-#if BUILDFLAG(IS_ANDROID)
-                        checker->GetBiometricAvailabilityStatus() !=
-                            BiometricStatus::kUnavailable;
-#else
-                        checker->CanAuthenticateWithBiometricOrScreenLock();
-#endif  // BUILDFLAG(IS_ANDROID)
-  } else {
-    std::unique_ptr<device_reauth::DeviceAuthenticator> authenticator =
-        client_->GetDeviceAuthenticator();
-    is_auth_available = authenticator &&
-#if BUILDFLAG(IS_ANDROID)
-                        authenticator->GetBiometricAvailabilityStatus() !=
-                            BiometricStatus::kUnavailable;
-#else
-                        authenticator
-                            ->CanAuthenticateWithBiometricOrScreenLock();
-#endif  // BUILDFLAG(IS_ANDROID)
-  }
-  if (!is_auth_available) {
+  if (!IsDeviceAuthenticationSupported()) {
     LogMandatoryReauthOfferOptInDecision(
         MandatoryReauthOfferOptInDecision::kNoSupportedReauthMethod);
     return false;
@@ -311,10 +287,7 @@ void MandatoryReauthManager::OnUserClosedOptInPrompt() {
 
 MandatoryReauthAuthenticationMethod
 MandatoryReauthManager::GetAuthenticationMethod() {
-  if (base::FeatureList::IsEnabled(
-          password_manager::features::kDeviceReauthRefactor)) {
-    std::unique_ptr<device_reauth::DeviceAuthAvailabilityChecker> checker =
-        client_->GetDeviceAuthAvailabilityChecker();
+  auto get_method = [](auto checker) {
     if (!checker) {
       return MandatoryReauthAuthenticationMethod::kUnknown;
     }
@@ -337,32 +310,11 @@ MandatoryReauthManager::GetAuthenticationMethod() {
     }
     return MandatoryReauthAuthenticationMethod::kUnsupportedMethod;
 #endif  // BUILDFLAG(IS_ANDROID)
-  }
-
-  std::unique_ptr<device_reauth::DeviceAuthenticator> authenticator =
-      client_->GetDeviceAuthenticator();
-  if (!authenticator) {
-    return MandatoryReauthAuthenticationMethod::kUnknown;
-  }
-#if BUILDFLAG(IS_ANDROID)
-  switch (authenticator->GetBiometricAvailabilityStatus()) {
-    case BiometricStatus::kBiometricsAvailable:
-      return MandatoryReauthAuthenticationMethod::kBiometric;
-    case BiometricStatus::kOnlyLskfAvailable:
-      return MandatoryReauthAuthenticationMethod::kScreenLock;
-    case BiometricStatus::kUnavailable:
-      return MandatoryReauthAuthenticationMethod::kUnsupportedMethod;
-  }
-#else
-  // Order matters here.
-  if (authenticator->CanAuthenticateWithBiometrics()) {
-    return MandatoryReauthAuthenticationMethod::kBiometric;
-  }
-  if (authenticator->CanAuthenticateWithBiometricOrScreenLock()) {
-    return MandatoryReauthAuthenticationMethod::kScreenLock;
-  }
-  return MandatoryReauthAuthenticationMethod::kUnsupportedMethod;
-#endif  // BUILDFLAG(IS_ANDROID)
+  };
+  return base::FeatureList::IsEnabled(
+             password_manager::features::kDeviceReauthRefactor)
+             ? get_method(client_->GetDeviceAuthAvailabilityChecker())
+             : get_method(client_->GetDeviceAuthenticator());
 }
 
 PaymentsDataManager& MandatoryReauthManager::GetPaymentsDataManager() {

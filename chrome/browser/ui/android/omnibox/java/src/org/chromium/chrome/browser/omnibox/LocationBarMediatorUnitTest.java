@@ -384,9 +384,9 @@ public class LocationBarMediatorUnitTest {
         lenient().doReturn(true).when(mSearchEngineService).isDefaultSearchEngineGoogle();
         lenient().doReturn("Google").when(mSearchEngineService).getSearchEngineName();
         lenient()
-                .doReturn("Search Google or type URL")
+                .doReturn(R.string.omnibox_empty_hint_with_dse_name)
                 .when(mSearchEngineService)
-                .getOmniboxHintString();
+                .getOmniboxHintStringRes();
         // Defaults to an eligible client: native only hands over a config when the AI Mode entry
         // point is permitted, so a non-null value is what "AIM eligible" looks like in Java.
         mAiModeButtonUiConfigSupplier.set(createTestAiModeButtonUiConfig());
@@ -3665,7 +3665,6 @@ public class LocationBarMediatorUnitTest {
         // Case 2: Yahoo (Non-Google)
         clearInvocations(mUrlCoordinator);
         doReturn("Yahoo").when(mSearchEngineService).getSearchEngineName();
-        doReturn("Search Yahoo or type URL").when(mSearchEngineService).getOmniboxHintString();
         observer.onSearchEngineNameChanged();
         verify(mUrlCoordinator).setUrlBarHintText(eq("Search Yahoo or type URL"));
     }
@@ -4649,7 +4648,7 @@ public class LocationBarMediatorUnitTest {
         input.setAutocompleteState(AutocompleteState.ENABLED);
         mMediator.beginInput(input);
 
-        mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_DPAD_DOWN, mKeyEvent);
+        assertFalse(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_DPAD_DOWN, mKeyEvent));
         assertAutocompleteState(AutocompleteState.ENABLED);
     }
 
@@ -4675,8 +4674,22 @@ public class LocationBarMediatorUnitTest {
         input.setAutocompleteState(AutocompleteState.ENABLED);
         mMediator.beginInput(input);
 
-        mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_DPAD_UP, mKeyEvent);
+        assertFalse(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_DPAD_UP, mKeyEvent));
         assertAutocompleteState(AutocompleteState.ENABLED);
+    }
+
+    @Test
+    public void testHandleKeyNavigationEvent_dpadInStandbyWhenTextWrapping_notHandled() {
+        doReturn(KeyEvent.KEYCODE_DPAD_DOWN).when(mKeyEvent).getKeyCode();
+        doReturn(KeyEvent.ACTION_DOWN).when(mKeyEvent).getAction();
+        mUrlTextWrappingSupplier.set(true);
+
+        var input = mSessionState.getAutocompleteInput();
+        input.setAutocompleteState(AutocompleteState.STANDBY);
+        mMediator.beginInput(input);
+
+        assertFalse(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_DPAD_DOWN, mKeyEvent));
+        assertAutocompleteState(AutocompleteState.STANDBY);
     }
 
     @Test

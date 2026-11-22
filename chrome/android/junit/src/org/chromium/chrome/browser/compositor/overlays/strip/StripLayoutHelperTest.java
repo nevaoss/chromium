@@ -4314,19 +4314,6 @@ public class StripLayoutHelperTest {
     }
 
     @Test
-    public void testSelectedTabClose_AutoSelectOnCloseChange() {
-        // Initialize and select the tab at index 2.
-        initializeTest(/* tabIndex= */ 2);
-
-        // Fake a close button click on the tab at index 2
-        closeTabAt(/* index= */ 2);
-
-        // Verify the tab to the right was selected (Same is the current index, since the current
-        // tab has been removed).
-        verify(mModel).setIndex(eq(2), anyInt());
-    }
-
-    @Test
     public void testChangingModelClearsTabHoverState() {
         // Initialize hover card, then hover on a tab.
         initializeTabHoverTest();
@@ -7491,6 +7478,86 @@ public class StripLayoutHelperTest {
         // A view with no width is skipped, so drops on either side of it insert after it.
         assertEquals(views[2], mStripLayoutHelper.getLinkInsertionView(title.getDrawX() - 1f));
         assertEquals(views[2], mStripLayoutHelper.getLinkInsertionView(title.getDrawX() + 1f));
+    }
+
+    @Test
+    public void testGetLinkDropTabToLoadInto() {
+        doTestGetLinkDropTabToLoadInto(/* rtl= */ false);
+    }
+
+    @Test
+    public void testGetLinkDropTabToLoadInto_Rtl() {
+        doTestGetLinkDropTabToLoadInto(/* rtl= */ true);
+    }
+
+    private void doTestGetLinkDropTabToLoadInto(boolean rtl) {
+        initializeTest(rtl, /* incognito= */ false, /* tabIndex= */ 0, /* numTabs= */ 5);
+        resizeStripAndUpdateLayout(STRIP_WIDTH);
+        StripLayoutView[] views = mStripLayoutHelper.getStripLayoutViewsForTesting();
+
+        // The middle half loads into the tab.
+        assertEquals(
+                views[2],
+                mStripLayoutHelper.getLinkDropTabToLoadInto(getLinkDropX(views[2], 0.3f)));
+        assertEquals(
+                views[2],
+                mStripLayoutHelper.getLinkDropTabToLoadInto(getLinkDropX(views[2], 0.7f)));
+
+        // The leading and trailing quarters open a new tab instead.
+        assertNull(mStripLayoutHelper.getLinkDropTabToLoadInto(getLinkDropX(views[2], 0.1f)));
+        assertNull(mStripLayoutHelper.getLinkDropTabToLoadInto(getLinkDropX(views[2], 0.9f)));
+    }
+
+    @Test
+    public void testGetLinkDropTabToLoadInto_OverGroupTitle() {
+        initializeTest(/* tabIndex= */ 0);
+        groupTabs(1, 3, TAB_GROUP_ID_1);
+        resizeStripAndUpdateLayout(STRIP_WIDTH);
+        StripLayoutView[] views = mStripLayoutHelper.getStripLayoutViewsForTesting();
+        assertTrue(views[1] instanceof StripLayoutGroupTitle);
+
+        assertNull(mStripLayoutHelper.getLinkDropTabToLoadInto(getLinkDropX(views[1], 0.5f)));
+    }
+
+    @Test
+    public void testGetLinkDropTabToLoadInto_PinnedTab() {
+        initializeTest(/* tabIndex= */ 0);
+        resizeStripAndUpdateLayout(STRIP_WIDTH);
+        StripLayoutTab[] tabs = mStripLayoutHelper.getStripLayoutTabsForTesting();
+        tabs[0].setIsPinned(true);
+
+        // Loading into a pinned tab is allowed.
+        assertEquals(
+                tabs[0], mStripLayoutHelper.getLinkDropTabToLoadInto(getLinkDropX(tabs[0], 0.5f)));
+    }
+
+    @Test
+    public void testHandleLinkDrop_LoadsIntoTab() {
+        initializeTest(/* tabIndex= */ 0);
+        resizeStripAndUpdateLayout(STRIP_WIDTH);
+        StripLayoutView[] views = mStripLayoutHelper.getStripLayoutViewsForTesting();
+        Tab tab = mModel.getTabAt(2);
+
+        mStripLayoutHelper.handleLinkDrop(getLinkDropX(views[2], 0.5f), JUnitTestGURLs.EXAMPLE_URL);
+
+        ArgumentCaptor<LoadUrlParams> captor = ArgumentCaptor.forClass(LoadUrlParams.class);
+        verify(tab).loadUrl(captor.capture());
+        assertEquals(JUnitTestGURLs.EXAMPLE_URL.getSpec(), captor.getValue().getUrl());
+        assertEquals("The tab should be selected.", 2, mModel.index());
+        verify(mTabCreator, never()).createNewTab(any(), anyInt(), any(), anyInt());
+    }
+
+    @Test
+    public void testHandleLinkDrop_TabMissingFromModel_OpensNewTab() {
+        initializeTest(/* tabIndex= */ 0);
+        resizeStripAndUpdateLayout(STRIP_WIDTH);
+        StripLayoutTab[] tabs = mStripLayoutHelper.getStripLayoutTabsForTesting();
+        Tab tab = mModel.getTabAt(2);
+        when(mModel.getTabById(tabs[2].getTabId())).thenReturn(null);
+
+        // If the tab under the drop isn't in the model, the link opens in a new tab instead.
+        verifyLinkDropInsertsAt(getLinkDropX(tabs[2], 0.6f), /* expectedIndex= */ 3);
+        verify(tab, never()).loadUrl(any());
     }
 
     @Test

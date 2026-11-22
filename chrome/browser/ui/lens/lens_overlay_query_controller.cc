@@ -385,8 +385,7 @@ void LensOverlayQueryController::StartQueryFlow(
   if (lens::features::
           IsLensOverlayNonBlockingPrivacyNoticeForImageSearchEnabled() &&
       invocation_source_ ==
-          lens::LensOverlayInvocationSource::kContentAreaContextMenuImage &&
-      !lens::DidUserGrantLensOverlayNeededPermissions(profile_)) {
+          lens::LensOverlayInvocationSource::kContentAreaContextMenuImage) {
     initial_query_restricted_ = true;
   }
 
@@ -1065,8 +1064,9 @@ void LensOverlayQueryController::
         int sequence_id,
         scoped_refptr<lens::RefCountedLensOverlayClientLogs> ref_counted_logs,
         lens::ImageData image_data) {
-  DCHECK_EQ(query_controller_state_,
-            QueryControllerState::kAwaitingFullImageResponse);
+  CHECK_EQ(query_controller_state_,
+           QueryControllerState::kAwaitingFullImageResponse,
+           base::NotFatalUntil::M162);
   PrepareImageDataForFullImageRequest(ref_counted_logs, image_data);
 
   // Create the request.
@@ -1076,7 +1076,8 @@ void LensOverlayQueryController::
 
   // The request ID is guaranteed to exist since it is set in the constructor
   // of latest_full_image_request_data_.
-  DCHECK(latest_full_image_request_data_->request_id_);
+  CHECK(latest_full_image_request_data_->request_id_,
+        base::NotFatalUntil::M162);
   request_context.mutable_request_id()->CopyFrom(
       *latest_full_image_request_data_->request_id_);
 
@@ -1096,8 +1097,9 @@ void LensOverlayQueryController::
 
 void LensOverlayQueryController::CreateOAuthHeadersAndTryPerformFullPageRequest(
     int sequence_id) {
-  DCHECK_EQ(query_controller_state_,
-            QueryControllerState::kAwaitingFullImageResponse);
+  CHECK_EQ(query_controller_state_,
+           QueryControllerState::kAwaitingFullImageResponse,
+           base::NotFatalUntil::M162);
 
   // If there is already a pending access token fetcher, we purposefully
   // override it since we no longer care about the previous request.
@@ -1172,8 +1174,9 @@ void LensOverlayQueryController::FullImageFetchResponseHandler(
     return;
   }
 
-  DCHECK_EQ(query_controller_state_,
-            QueryControllerState::kAwaitingFullImageResponse);
+  CHECK_EQ(query_controller_state_,
+           QueryControllerState::kAwaitingFullImageResponse,
+           base::NotFatalUntil::M162);
 
   CHECK(full_image_endpoint_fetcher_);
   full_image_endpoint_fetcher_.reset();
@@ -1286,11 +1289,9 @@ void LensOverlayQueryController::PrepareAndFetchPageContentRequest() {
     return;
   }
 
-  // If the initial query was restricted in the non-blocking image context menu
-  // flow, block the page content request. Subsequent queries will be allowed
-  // since the privacy notice will have been shown.
-  if (initial_query_restricted_ && !initial_page_content_blocked_) {
-    initial_page_content_blocked_ = true;
+  // If the query was restricted in the image context menu flow, block the page
+  // content request.
+  if (initial_query_restricted_) {
     return;
   }
 
@@ -1657,22 +1658,6 @@ void LensOverlayQueryController::SendInteraction(
   // image request / response handlers.
   pending_interaction_callback_.Reset();
 
-  // If in the non-blocking image context menu flow, the full screenshot and
-  // page content were blocked during the initial request, but they are allowed
-  // for subsequent requests since the privacy notice has been shown. Send them
-  // now before handling the interaction.
-  if (initial_query_restricted_ && selection_type != lens::INJECTED_IMAGE &&
-      !deferred_screenshot_and_page_context_sent_) {
-    pending_interaction_callback_ = base::BindOnce(
-        &LensOverlayQueryController::SendInteraction,
-        weak_ptr_factory_.GetWeakPtr(), query_start_time, std::move(region),
-        query_text, object_id, selection_type, additional_search_query_params,
-        region_bytes, media_type);
-    PrepareAndFetchFullImageRequest();
-    PrepareAndFetchPageContentRequest();
-    deferred_screenshot_and_page_context_sent_ = true;
-    return;
-  }
 
   // If the cluster info is missing add the interaction to the pending callback
   // to be sent once the cluster info is available.
@@ -2284,7 +2269,8 @@ LensOverlayQueryController::CreateInteractionRequest(
   server_request.mutable_client_logs()->CopyFrom(client_logs);
   // The request ID is guaranteed to exist since it is set in the constructor
   // of latest_interaction_request_data_.
-  DCHECK(latest_interaction_request_data_->request_id_);
+  CHECK(latest_interaction_request_data_->request_id_,
+        base::NotFatalUntil::M162);
 
   lens::LensOverlayRequestContext request_context;
   request_context.mutable_request_id()->CopyFrom(

@@ -53,8 +53,8 @@
 #include "components/live_caption/pref_names.h"
 #include "components/media_router/common/pref_names.h"
 #include "components/omnibox/browser/omnibox_prefs.h"
+#include "components/optimization_guide/core/feature_registry/feature_keys.h"
 #include "components/optimization_guide/core/feature_registry/feature_registration.h"
-#include "components/optimization_guide/core/optimization_guide_prefs.h"
 #include "components/password_manager/core/common/password_manager_pref_names.h"
 #include "components/payments/core/payment_prefs.h"
 #include "components/performance_manager/public/user_tuning/prefs.h"
@@ -675,6 +675,10 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
 #endif
 #if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_ANDROID)
   (*s_allowlist)[::prefs::kToastAlertLevel] = settings_api::PrefType::kNumber;
+  (*s_allowlist)[::prefs::kRequestedPageColors] =
+      settings_api::PrefType::kNumber;
+  (*s_allowlist)[::prefs::kApplyPageColorsOnlyOnIncreasedContrast] =
+      settings_api::PrefType::kBoolean;
 #endif
 
   (*s_allowlist)[::prefs::kCaretBrowsingEnabled] =

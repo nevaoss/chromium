@@ -13,7 +13,7 @@ import type {TabInfo} from 'chrome://resources/mojo/components/omnibox/browser/s
 import {assertDeepEquals, assertEquals, assertFalse, assertNotReached, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {createSuggestTemplateInfo} from 'chrome://webui-test/cr_components/searchbox/searchbox_test_utils.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
-import {$$, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
+import {$$, eventToPromise, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 import {createDefaultInputState, TestSearchboxBrowserProxy} from './test_searchbox_browser_proxy.js';
 
@@ -89,13 +89,23 @@ function getTextOffsetLeft(
   return context.measureText(input.value.substring(0, offset)).width;
 }
 
+// Returns the width of the part of `input` that shows text, i.e. its content
+// box. Doesn't use `clientWidth`: for text fields, it already excludes the
+// inline padding while the InputClientRectWithoutInlinePadding Blink feature
+// is enabled (the default), but includes it otherwise.
+function getVisibleTextWidth(input: HTMLInputElement|HTMLTextAreaElement):
+    number {
+  const style = getComputedStyle(input);
+  return input.offsetWidth - parseFloat(style.paddingLeft) -
+      parseFloat(style.paddingRight) - parseFloat(style.borderLeftWidth) -
+      parseFloat(style.borderRightWidth);
+}
+
 // Asserts that `offset` is inside the part of `input` that is scrolled into
 // view, allowing 1px for rounding.
 function assertTextOffsetVisible(
     input: HTMLInputElement|HTMLTextAreaElement, offset: number) {
-  const style = getComputedStyle(input);
-  const visibleWidth = input.clientWidth - parseFloat(style.paddingLeft) -
-      parseFloat(style.paddingRight);
+  const visibleWidth = getVisibleTextWidth(input);
   const offsetLeft = getTextOffsetLeft(input, offset);
   assertTrue(
       offsetLeft >= input.scrollLeft - 1 &&
@@ -116,6 +126,15 @@ suite('OmniboxPopupSearchboxTest', function() {
   let handler: TestMock<OmniboxPopupPageHandlerRemote>&
       OmniboxPopupPageHandlerRemote;
   let callbackRouter: OmniboxPopupPageRemote;
+
+  suiteSetup(async () => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'layout_constants_v0.css';
+    const loaded = eventToPromise('load', link);
+    document.head.appendChild(link);
+    await loaded;
+  });
 
   setup(async () => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
@@ -1052,7 +1071,7 @@ suite('OmniboxPopupSearchboxTest', function() {
         document, 'visibilityState', {value: 'hidden', configurable: true});
 
     // Trigger dedicated `setFocus` IPC while document is hidden.
-    callbackRouter.setFocus(true, false, false);
+    callbackRouter.setFocus(true, false, false, /*showFullUrl=*/ false);
     await microtasksFinished();
 
     assertFalse(searchbox.shadowRoot.activeElement === searchbox.$.input);
@@ -1084,7 +1103,9 @@ suite('OmniboxPopupSearchboxTest', function() {
 
     // Trigger dedicated `setFocus` IPC (e.g. refocusing or clicking top
     // chrome).
-    callbackRouter.setFocus(true, /*queryZps=*/ false, /*selectAll=*/ false);
+    callbackRouter.setFocus(
+        true, /*queryZps=*/ false, /*selectAll=*/ false,
+        /*showFullUrl=*/ false);
     await microtasksFinished();
 
     // Verify existing sub-selection range is preserved and not clobbered to
@@ -1110,13 +1131,45 @@ suite('OmniboxPopupSearchboxTest', function() {
     assertEquals(15, input.selectionEnd);
 
     // Trigger dedicated `setFocus` IPC with selectAll = true.
-    callbackRouter.setFocus(true, /*queryZps=*/ false, /*selectAll=*/ true);
+    callbackRouter.setFocus(
+        true, /*queryZps=*/ false, /*selectAll=*/ true, /*showFullUrl=*/ false);
     await microtasksFinished();
 
     // Verify all text is selected.
     assertEquals(searchbox.$.input, searchbox.shadowRoot.activeElement);
     assertEquals(0, input.selectionStart);
     assertEquals(testUrl.length, input.selectionEnd);
+  });
+
+  test('SetFocus_ShowFullUrlUnelidesThenSelectsAll', async () => {
+    const displayUrl = 'example.com';
+    const fullUrl = 'https://www.example.com/';
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
+      text: displayUrl,
+      fullUrl: fullUrl,
+      permanentDisplayText: displayUrl,
+      selection: {start: 0, end: displayUrl.length},
+      userInputInProgress: false,
+      isFocused: true,
+      matchesUpdate: MatchesUpdate.kDefault,
+    }));
+    await microtasksFinished();
+
+    const input = searchbox.getInputElement().inputElement;
+    assertEquals(displayUrl, input.value);
+
+    // Trigger dedicated `setFocus` IPC with showFullUrl = true (Ctrl+L /
+    // Cmd+L from outside the WebUI): the URL unelides, then all of it is
+    // selected.
+    callbackRouter.setFocus(
+        true, /*queryZps=*/ false, /*selectAll=*/ true,
+        /*showFullUrl=*/ true);
+    await microtasksFinished();
+
+    assertEquals(searchbox.$.input, searchbox.shadowRoot.activeElement);
+    assertEquals(fullUrl, input.value);
+    assertEquals(0, input.selectionStart);
+    assertEquals(fullUrl.length, input.selectionEnd);
   });
 
   test('SetFocus_RequeriesZpsWhenSteadyStateAndDropdownClosed', async () => {
@@ -1134,7 +1187,8 @@ suite('OmniboxPopupSearchboxTest', function() {
     assertFalse(searchbox.dropdownIsVisible);
     testProxy.handler.resetResolver('queryAutocomplete');
 
-    callbackRouter.setFocus(true, /*queryZps=*/ true, /*selectAll=*/ false);
+    callbackRouter.setFocus(
+        true, /*queryZps=*/ true, /*selectAll=*/ false, /*showFullUrl=*/ false);
     await microtasksFinished();
 
     const input = searchbox.getInputElement().inputElement;
@@ -1162,7 +1216,8 @@ suite('OmniboxPopupSearchboxTest', function() {
     searchbox.dropdownIsVisible = true;
     testProxy.handler.resetResolver('queryAutocomplete');
 
-    callbackRouter.setFocus(true, /*queryZps=*/ true, /*selectAll=*/ false);
+    callbackRouter.setFocus(
+        true, /*queryZps=*/ true, /*selectAll=*/ false, /*showFullUrl=*/ false);
     await microtasksFinished();
 
     const input = searchbox.getInputElement().inputElement;
@@ -1186,7 +1241,8 @@ suite('OmniboxPopupSearchboxTest', function() {
     searchbox.dropdownIsVisible = true;
     testProxy.handler.resetResolver('queryAutocomplete');
 
-    callbackRouter.setFocus(true, /*queryZps=*/ true, /*selectAll=*/ false);
+    callbackRouter.setFocus(
+        true, /*queryZps=*/ true, /*selectAll=*/ false, /*showFullUrl=*/ false);
     await microtasksFinished();
 
     const input = searchbox.getInputElement().inputElement;
@@ -1211,7 +1267,9 @@ suite('OmniboxPopupSearchboxTest', function() {
     assertFalse(searchbox.dropdownIsVisible);
     testProxy.handler.resetResolver('queryAutocomplete');
 
-    callbackRouter.setFocus(true, /*queryZps=*/ false, /*selectAll=*/ false);
+    callbackRouter.setFocus(
+        true, /*queryZps=*/ false, /*selectAll=*/ false,
+        /*showFullUrl=*/ false);
     await microtasksFinished();
 
     const input = searchbox.getInputElement().inputElement;
@@ -1299,9 +1357,12 @@ suite('OmniboxPopupSearchboxTest', function() {
     assertEquals(longText.length, inputElement.selectionEnd);
     // Verify scroll position was adjusted to show cursor at the end.
     // The browser clamps scrollLeft to max (scrollWidth - clientWidth).
-    assertEquals(
-        inputElement.scrollWidth - inputElement.clientWidth,
-        inputElement.scrollLeft);
+    // scrollLeft can be fractional while scrollWidth and clientWidth are
+    // rounded.
+    assertTrue(
+        Math.abs(
+            inputElement.scrollLeft -
+            (inputElement.scrollWidth - inputElement.clientWidth)) <= 1);
   });
 
   test('SetInputStateScrollsBackToTextStart', async () => {
@@ -1375,6 +1436,15 @@ suite('OmniboxPopupSearchboxTest', function() {
     assertTextOffsetVisible(input, start);
     // Scroll only as far as the selection start needs.
     assertTrue(input.scrollLeft < input.scrollWidth - input.clientWidth);
+    // That is, just far enough to show the selection start (and the 1px caret
+    // there) at the end of the visible text, which the AIM button padding
+    // doesn't count towards.
+    assertFalse(isVisible(searchbox.$.composeButton));
+    const startRight = getTextOffsetLeft(input, start) + 1 - input.scrollLeft;
+    assertTrue(
+        Math.abs(getVisibleTextWidth(input) - startRight) <= 1,
+        `selection start at ${startRight}px, visible width ${
+            getVisibleTextWidth(input)}px`);
   });
 
   test('SetInputStateKeepsBackwardSelection', async () => {
@@ -2028,7 +2098,9 @@ suite('OmniboxPopupSearchboxTest', function() {
    assertTrue(searchbox.dropdownIsVisible);
 
    // Receiving `setFocus(false)` via Mojo IPC triggers focus-loss cleanup.
-   callbackRouter.setFocus(false, /*queryZps=*/ false, /*selectAll=*/ false);
+   callbackRouter.setFocus(
+       false, /*queryZps=*/ false, /*selectAll=*/ false,
+       /*showFullUrl=*/ false);
    await microtasksFinished();
    assertFalse(searchbox.dropdownIsVisible);
  });
@@ -3920,7 +3992,8 @@ suite('OmniboxPopupSearchboxTest', function() {
          // Defocus / blur the omnibox (handleFocusLost_ clears autocomplete
          // matches).
          callbackRouter.setFocus(
-             false, /*queryZps=*/ false, /*selectAll=*/ false);
+             false, /*queryZps=*/ false, /*selectAll=*/ false,
+             /*showFullUrl=*/ false);
          await microtasksFinished();
 
          // Verify autocomplete result was cleared on the searchbox component.
@@ -4179,7 +4252,8 @@ suite('OmniboxPopupSearchboxTest', function() {
 
  test('FocusLostHidesAimButton', async () => {
    // Explicitly set focus and enable AIM button visibility.
-   callbackRouter.setFocus(true, /*queryZps=*/ false, /*selectAll=*/ false);
+   callbackRouter.setFocus(
+       true, /*queryZps=*/ false, /*selectAll=*/ false, /*showFullUrl=*/ false);
    testProxy.page.setAimButtonVisible(true);
    await microtasksFinished();
 
@@ -4188,13 +4262,16 @@ suite('OmniboxPopupSearchboxTest', function() {
    assertTrue(isVisible(composeButton));
 
    // When focus is lost, AIM button should be hidden.
-   callbackRouter.setFocus(false, /*queryZps=*/ false, /*selectAll=*/ false);
+   callbackRouter.setFocus(
+       false, /*queryZps=*/ false, /*selectAll=*/ false,
+       /*showFullUrl=*/ false);
    await microtasksFinished();
 
    assertFalse(isVisible(composeButton));
 
    // Refocus, then type text into the Omnibox.
-   callbackRouter.setFocus(true, /*queryZps=*/ true, /*selectAll=*/ false);
+   callbackRouter.setFocus(
+       true, /*queryZps=*/ true, /*selectAll=*/ false, /*showFullUrl=*/ false);
    searchbox.getInputElement().setInputText('temporary text');
    testProxy.page.setAimButtonVisible(true);
    await microtasksFinished();
@@ -4203,7 +4280,9 @@ suite('OmniboxPopupSearchboxTest', function() {
 
    // If focus is lost with temporary text in the Omnibox, then AIM button
    // should be hidden.
-   callbackRouter.setFocus(false, /*queryZps=*/ false, /*selectAll=*/ false);
+   callbackRouter.setFocus(
+       false, /*queryZps=*/ false, /*selectAll=*/ false,
+       /*showFullUrl=*/ false);
    await microtasksFinished();
 
    assertFalse(isVisible(composeButton));
@@ -5347,7 +5426,7 @@ suite('OmniboxPopupSearchboxTest', function() {
    const input = searchbox.getInputElement().inputElement;
 
    // Simulate click 1 (select all on mouseup).
-   searchbox.getInputElement().dispatchEvent(new MouseEvent('mousedown', {
+   input.dispatchEvent(new MouseEvent('mousedown', {
      button: 0,
      buttons: 1,
      clientX: 10,
@@ -5371,7 +5450,7 @@ suite('OmniboxPopupSearchboxTest', function() {
    assertEquals(testText.length, input.selectionEnd);
 
    // Simulate click 2 (double-click word selection of 'hello').
-   searchbox.getInputElement().dispatchEvent(new MouseEvent('mousedown', {
+   input.dispatchEvent(new MouseEvent('mousedown', {
      button: 0,
      buttons: 1,
      clientX: 10,
@@ -5488,7 +5567,7 @@ suite('OmniboxPopupSearchboxTest', function() {
    assertEquals(searchbox.$.input, searchbox.shadowRoot.activeElement);
 
    // Blur the searchbox while keeping the popup open (e.g. draft text).
-   callbackRouter.setFocus(false, false, false);
+   callbackRouter.setFocus(false, false, false, /*showFullUrl=*/ false);
    await microtasksFinished();
    assertEquals(null, searchbox.shadowRoot.activeElement);
 
@@ -5514,6 +5593,23 @@ suite('OmniboxPopupSearchboxTest', function() {
    assertEquals(text.length, input.selectionEnd);
  });
 
+ // Returns points at the vertical center of the input, across the 18px at the
+ // end of the input row that are left empty while the AIM button is hidden.
+ function getTrailingGapPoints(): Array<{x: number, y: number}> {
+   const row = $$<HTMLElement>(searchbox.$.input, '#inputInnerContainer');
+   assertTrue(!!row);
+   const rowRect = row.getBoundingClientRect();
+   const inputRect = searchbox.$.input.inputElement.getBoundingClientRect();
+   const y = inputRect.top + inputRect.height / 2;
+   const isRtl = getComputedStyle(row).direction === 'rtl';
+   const points = [];
+   for (let i = 0; i < 18; i++) {
+     points.push(
+         {x: isRtl ? rowRect.left + i + 0.5 : rowRect.right - i - 0.5, y});
+   }
+   return points;
+ }
+
  suite('SecondClickOnAllSelectedElidedUrl', () => {
    const elidedText = 'example.com/path';
    const fullUrl = 'https://www.example.com/path';
@@ -5537,17 +5633,32 @@ suite('OmniboxPopupSearchboxTest', function() {
    });
 
    function dispatchMouseEvent(
-       target: EventTarget, type: string, clientX: number) {
+       target: EventTarget, type: string, clientX: number, detail = 1) {
      const rect = input.getBoundingClientRect();
      target.dispatchEvent(new MouseEvent(type, {
        button: 0,
        buttons: type === 'mousedown' ? 1 : 0,
        clientX,
        clientY: rect.top + rect.height / 2,
-       detail: 1,
+       detail,
        bubbles: true,
        composed: true,
      }));
+   }
+
+   // Returns what a click on the icon lands on, and the click's client X. The
+   // icon has `pointer-events: none`, so a click on it lands on the row behind
+   // it. The row isn't focusable, so `OmniboxFullAppElement` prevents the
+   // press's default action, and neither the caret nor the focus moves.
+   function getRowBehindIcon(): {target: Element, x: number} {
+     const iconRect = searchbox.$.input.$.icon.getBoundingClientRect();
+     const x = iconRect.left + iconRect.width / 2;
+     const target = searchbox.$.input.shadowRoot.elementFromPoint(
+         x, iconRect.top + iconRect.height / 2);
+     assertTrue(!!target);
+     assertTrue(searchbox.$.input.shadowRoot.contains(target));
+     assertFalse(target === input);
+     return {target, x};
    }
 
    // Returns a client X coordinate over the input at which a click places the
@@ -5658,6 +5769,98 @@ suite('OmniboxPopupSearchboxTest', function() {
      assertEquals(intranetFullUrl, input.value);
      assertEquals('https://foo'.length, input.selectionStart);
      assertEquals('https://foo'.length, input.selectionEnd);
+   });
+
+   test('UnelidesOnClickInTrailingGapPlacingCaretAtEnd', async () => {
+     // The AIM button is hidden by default, leaving a gap at the end of the
+     // row. Like in Views, a click in it lands on the input.
+     assertFalse(isVisible(searchbox.$.composeButton));
+     const {x, y} = getTrailingGapPoints()[9]!;
+     const target = searchbox.$.input.shadowRoot.elementFromPoint(x, y);
+     assertEquals(input, target);
+
+     dispatchMouseEvent(input, 'mousedown', x);
+     dispatchMouseEvent(document, 'mouseup', x);
+     await microtasksFinished();
+
+     // The gap is past the end of the text, so the caret ends up at the end of
+     // the unelided URL.
+     assertEquals(fullUrl, input.value);
+     assertEquals(fullUrl.length, input.selectionStart);
+     assertEquals(fullUrl.length, input.selectionEnd);
+   });
+
+   test('ClickInTrailingGapKeepsCaretInViewForLongUrl', async () => {
+     const longElidedText = 'example.com/' +
+         'foo/bar/baz/eggs/spam/'.repeat(20);
+     const longFullUrl = 'https://www.' + longElidedText;
+     callbackRouter.setInputState(createDefaultOmniboxInputState({
+       text: longElidedText,
+       fullUrl: longFullUrl,
+       isFocused: true,
+       selection: {start: 0, end: longElidedText.length},
+     }));
+     await microtasksFinished();
+     input.focus();
+     assertEquals(longElidedText, input.value);
+     assertTrue(input.scrollWidth > input.clientWidth);
+     // Like after any select-all, the start of the URL is shown.
+     assertEquals(0, input.scrollLeft);
+
+     const {x} = getTrailingGapPoints()[9]!;
+     dispatchMouseEvent(input, 'mousedown', x);
+     dispatchMouseEvent(document, 'mouseup', x);
+     await microtasksFinished();
+
+     // The caret is placed at the last visible character, before the gap, which
+     // uneliding shifts by the elided prefix. Like in Views, the input scrolls
+     // to keep the caret in view.
+     assertEquals(longFullUrl, input.value);
+     const caret = input.selectionStart!;
+     assertEquals(caret, input.selectionEnd);
+     assertTrue(caret > prefixLength, `caret at ${caret}`);
+     assertTrue(caret < longFullUrl.length, `caret at ${caret}`);
+     assertTextOffsetVisible(input, caret);
+     // Scrolled only as far as needed, so the caret sits at the end of the
+     // visible text.
+     const caretRight = getTextOffsetLeft(input, caret) + 1 - input.scrollLeft;
+     assertTrue(
+         Math.abs(getVisibleTextWidth(input) - caretRight) <= 1,
+         `caret at ${caretRight}px, visible width ${
+             getVisibleTextWidth(input)}px`);
+   });
+
+   test('ClickBesideInputDoesNotCorruptTextOnNextKeystroke', async () => {
+     const {target, x} = getRowBehindIcon();
+     dispatchMouseEvent(target, 'mousedown', x);
+     dispatchMouseEvent(document, 'mouseup', x);
+     await microtasksFinished();
+
+     // The elided URL stays all selected, so that typing replaces all of it,
+     // rather than all but the last `prefixLength` characters of the unelided
+     // URL.
+     assertEquals(elidedText, input.value);
+     assertEquals(0, input.selectionStart);
+     assertEquals(elidedText.length, input.selectionEnd);
+     assertTrue(document.execCommand('insertText', false, 'h'));
+     await microtasksFinished();
+     assertEquals('h', input.value);
+   });
+
+   test('DoubleClickBesideInputKeepsElidedUrlSelected', async () => {
+     const {target, x} = getRowBehindIcon();
+     dispatchMouseEvent(target, 'mousedown', x);
+     dispatchMouseEvent(document, 'mouseup', x);
+     dispatchMouseEvent(target, 'mousedown', x, /*detail=*/ 2);
+     dispatchMouseEvent(document, 'mouseup', x, /*detail=*/ 2);
+     await microtasksFinished();
+
+     // Blink doesn't select a word for a press beside the input, so the
+     // selection isn't collapsed for it either. Typing then still replaces all
+     // of the elided URL, rather than going in front of it.
+     assertEquals(elidedText, input.value);
+     assertEquals(0, input.selectionStart);
+     assertEquals(elidedText.length, input.selectionEnd);
    });
  });
 
@@ -5818,7 +6021,19 @@ suite('OmniboxPopupSearchboxTest', function() {
        `${step}: leading edge`);
    assertEquals(inputRect.left, mirrorRect.left, `${step}: left edge`);
    assertEquals(inputRect.right, mirrorRect.right, `${step}: right edge`);
-   assertEquals(input.clientWidth, mirror.clientWidth, `${step}: clientWidth`);
+   // The text areas (inside the padding) and the max scroll offsets must match
+   // too. Unlike for #mirror, the input's clientWidth excludes its padding, so
+   // compare the max scroll offsets rather than the client widths.
+   const inputStyle = getComputedStyle(input);
+   const mirrorStyle = getComputedStyle(mirror);
+   assertEquals(
+       inputStyle.paddingLeft, mirrorStyle.paddingLeft, `${step}: paddingLeft`);
+   assertEquals(
+       inputStyle.paddingRight, mirrorStyle.paddingRight,
+       `${step}: paddingRight`);
+   assertEquals(
+       input.scrollWidth - input.clientWidth,
+       mirror.scrollWidth - mirror.clientWidth, `${step}: max scrollLeft`);
    assertEquals(input.scrollLeft, mirror.scrollLeft, `${step}: scrollLeft`);
  }
 
@@ -5871,6 +6086,138 @@ suite('OmniboxPopupSearchboxTest', function() {
          await microtasksFinished();
          assertTrue(isVisible(searchbox.$.composeButton));
          assertMirrorAlignedWithInput(uiDir, 'after showing again');
+       });
+ });
+
+ // The popup stays open, but unfocused, when the user edits the text and then
+ // clicks into the page. Like the input (whose own text is transparent), the
+ // #mirror must then elide its overflowing end with an ellipsis, at the same
+ // scroll offset and within the same box as the input.
+ test('MirrorElidesOverflowingTextWhenUnfocused', async () => {
+   const text = 'https://example.com/' +
+       'foo/bar/baz/eggs/spam/'.repeat(20);
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text,
+     urlEmphasis: {
+       deemphasisMode: UrlDeemphasisMode.kAllButHost,
+       textIsUrl: true,
+       schemeRange: {start: 0, end: 5},
+       hostRange: {start: 8, end: 19},
+       schemeStrikeThrough: false,
+       schemeDangerous: false,
+     },
+     selection: {start: text.length, end: text.length},
+     userInputInProgress: true,
+     isFocused: true,
+   }));
+   await microtasksFinished();
+
+   const input = searchbox.$.input.inputElement;
+   const mirror = $$<HTMLElement>(searchbox.$.input, '#mirror');
+   assertTrue(!!mirror);
+   assertTrue(isVisible(mirror));
+   assertTrue(input.scrollWidth > input.clientWidth, 'text should overflow');
+
+   // While focused, the text scrolls with the caret, so it must not be elided.
+   assertTrue(mirror.parentElement!.matches(':focus-within'));
+   assertTrue(input.scrollLeft > 0, 'focused input should be scrolled');
+   assertEquals('clip', getComputedStyle(mirror).textOverflow);
+
+   callbackRouter.setFocus(
+       false, /*queryZps=*/ false, /*selectAll=*/ false,
+       /*showFullUrl=*/ false);
+   await microtasksFinished();
+   // Blink scrolls the input back to its start on blur, and the #mirror
+   // follows on the input's (asynchronous) scroll event.
+   await new Promise(resolve => requestAnimationFrame(resolve));
+   assertFalse(mirror.parentElement!.matches(':focus-within'));
+   assertFalse(isVisible(searchbox.$.composeButton));
+   assertEquals(text, input.value);
+   assertEquals(0, input.scrollLeft);
+   assertEquals(0, mirror.scrollLeft);
+   assertEquals('ellipsis', getComputedStyle(mirror).textOverflow);
+   // The ellipsis is styled like the trailing (de-emphasized) path.
+   const lastSpan = mirror.lastElementChild!;
+   assertTrue(lastSpan.classList.contains('dimmed'));
+   assertEquals(
+       getComputedStyle(lastSpan).color, getComputedStyle(mirror).color);
+   const inputRect = input.getBoundingClientRect();
+   const mirrorRect = mirror.getBoundingClientRect();
+   assertEquals(inputRect.left, mirrorRect.left);
+   assertEquals(inputRect.right, mirrorRect.right);
+
+   // Refocusing stops eliding the text again.
+   callbackRouter.setFocus(
+       true, /*queryZps=*/ false, /*selectAll=*/ false, /*showFullUrl=*/ false);
+   await microtasksFinished();
+   assertTrue(mirror.parentElement!.matches(':focus-within'));
+   assertEquals('clip', getComputedStyle(mirror).textOverflow);
+ });
+
+ // Switching to a tab whose omnibox has an unfocused draft restores it with
+ // the caret at its end. The input isn't focused, so it must show the start of
+ // the text, with the #mirror eliding the end (rather than scrolling the
+ // ellipsis out of view).
+ test('MirrorElidesUnfocusedDraftAfterTabSwitch', async () => {
+   callbackRouter.setInputState(
+       createDefaultOmniboxInputState({text: 'https://example.org/'}));
+   await microtasksFinished();
+   const input = searchbox.$.input.inputElement;
+   const mirror = $$<HTMLElement>(searchbox.$.input, '#mirror');
+   assertTrue(!!mirror);
+   assertEquals(0, input.scrollLeft);
+
+   // `OnTabChanged()` restores an unfocused draft with the caret at its end.
+   const text = 'https://example.com/' +
+       'foo/bar/baz/eggs/spam/'.repeat(20);
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text,
+     selection: {start: text.length, end: text.length},
+     userInputInProgress: true,
+     isTabSwitch: true,
+   }));
+   await microtasksFinished();
+   // The #mirror follows on the input's (asynchronous) scroll event.
+   await new Promise(resolve => requestAnimationFrame(resolve));
+   assertTrue(input.scrollWidth > input.clientWidth, 'text should overflow');
+   assertEquals('ellipsis', getComputedStyle(mirror).textOverflow);
+   assertEquals(0, input.scrollLeft);
+   assertEquals(0, mirror.scrollLeft);
+ });
+
+ // While the AIM button is hidden, the gap it leaves at the end of the row is
+ // part of the input (with #mirror padded alike), so that a click in it places
+ // the caret, like in the Views omnibox. The gap must stay at the end of the
+ // field in RTL UIs, even though URLs are laid out LTR.
+ ['ltr', 'rtl'].forEach(uiDir => {
+   test(
+       `TrailingGapIsPartOfInputWhenAimButtonHidden_${uiDir.toUpperCase()}`,
+       async () => {
+         searchbox.dir = uiDir;
+         testProxy.page.setAimButtonVisible(false);
+         await microtasksFinished();
+         await setLongUrlWithCaretAtEnd();
+         assertFalse(isVisible(searchbox.$.composeButton));
+         assertMirrorAlignedWithInput(uiDir, 'caret at end');
+
+         const input = searchbox.$.input.inputElement;
+         for (const {x, y} of getTrailingGapPoints()) {
+           assertEquals(
+               input, searchbox.$.input.shadowRoot.elementFromPoint(x, y),
+               `hit-test at (${x}, ${y})`);
+         }
+
+         // The text still stops short of the gap.
+         const mirror = $$<HTMLElement>(searchbox.$.input, '#mirror');
+         assertTrue(!!mirror);
+         for (const element of [input, mirror]) {
+           const style = getComputedStyle(element);
+           assertEquals(
+               uiDir === 'ltr' ? '0px' : '18px', style.paddingLeft, element.id);
+           assertEquals(
+               uiDir === 'ltr' ? '18px' : '0px', style.paddingRight,
+               element.id);
+         }
        });
  });
 
@@ -6357,27 +6704,6 @@ suite('OmniboxPopupSearchboxTest', function() {
        testSearchbox.style.getPropertyValue('--alignment-inset-horizontal'));
    assertEquals(
        '8px', testSearchbox.style.getPropertyValue('--alignment-inset-bottom'));
-
-   // Shared layout constants come from `layout_constants_v0.css` and map to
-   // `--cr-searchbox-*` variables on the host.
-   testSearchbox.style.setProperty('--location-bar-height', '40px');
-   testSearchbox.style.setProperty('--omnibox-primary-font-size', '16px');
-   testSearchbox.style.setProperty('--location-bar-icon-size', '22px');
-   testSearchbox.style.setProperty(
-       '--location-bar-page-info-icon-vertical-padding', '6px');
-   const hostStyle = getComputedStyle(testSearchbox);
-   assertEquals(
-       '40px', hostStyle.getPropertyValue('--cr-searchbox-height').trim());
-   assertEquals(
-       '16px', hostStyle.getPropertyValue('--cr-searchbox-font-size').trim());
-   assertEquals(
-       '22px',
-       hostStyle.getPropertyValue('--cr-searchbox-icon-size-in-searchbox')
-           .trim());
-   assertEquals('40px', hostStyle.height);
-   assertEquals('16px', hostStyle.fontSize);
-   assertEquals(
-       '28px', getComputedStyle(testSearchbox.$.input.inputElement).height);
 
    testSearchbox.remove();
    // Restore original values so `loadTimeData` does not leak into other tests.

@@ -79,6 +79,7 @@
 #include "components/autofill/core/browser/payments/payments_service_url.h"
 #include "components/autofill/core/browser/payments/payments_util.h"
 #include "components/autofill/core/browser/permissions/autofill_ai/autofill_ai_permission_util.h"
+#include "components/autofill/core/browser/permissions/device_reauth_util.h"
 #include "components/autofill/core/browser/studies/autofill_experiments.h"
 #include "components/autofill/core/common/autofill_constants.h"
 #include "components/autofill/core/common/autofill_features.h"
@@ -86,17 +87,13 @@
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/commerce/core/commerce_constants.h"
 #include "components/content_settings/core/common/features.h"
-#include "components/device_reauth/device_auth_availability_checker.h"
-#include "components/device_reauth/device_authenticator.h"
 #include "components/dom_distiller/core/dom_distiller_features.h"
 #include "components/google/core/common/google_util.h"
 #include "components/history/core/common/pref_names.h"
 #include "components/lens/lens_features.h"
 #include "components/live_caption/caption_util.h"
-#include "components/password_manager/core/browser/features/password_features.h"
 #include "components/password_manager/core/browser/leak_detection_dialog_utils.h"
 #include "components/password_manager/core/browser/manage_passwords_referrer.h"
-#include "components/password_manager/core/common/password_manager_features.h"
 #include "components/performance_manager/public/features.h"
 #include "components/permissions/features.h"
 #include "components/personal_context/core/url_constants.h"
@@ -295,6 +292,20 @@ void AddA11yStrings(content::WebUIDataSource* html_source) {
        IDS_SETTINGS_ACCESSIBILITY_TOAST_FREQUENCY_TITLE},
       {"toastAlertLevelDescription",
        IDS_SETTINGS_ACCESSIBILITY_TOAST_FREQUENCY_DESCRIPTION},
+      {"pageColorsTitle", IDS_SETTINGS_PAGE_COLORS_TITLE},
+      {"pageColorsSubtitle", IDS_SETTINGS_PAGE_COLORS_SUBTITLE},
+      {"pageColorsOptionNoPreference",
+       IDS_SETTINGS_PAGE_COLORS_OPTION_NO_PREFERENCE},
+      {"pageColorsOptionOff", IDS_SETTINGS_PAGE_COLORS_OPTION_OFF},
+      {"pageColorsOptionDusk", IDS_SETTINGS_PAGE_COLORS_OPTION_DUSK},
+      {"pageColorsOptionDesert", IDS_SETTINGS_PAGE_COLORS_OPTION_DESERT},
+      {"pageColorsOptionNightSky", IDS_SETTINGS_PAGE_COLORS_OPTION_NIGHT_SKY},
+      {"pageColorsOptionAquatic", IDS_SETTINGS_PAGE_COLORS_OPTION_AQUATIC},
+      {"pageColorsOptionWhite", IDS_SETTINGS_PAGE_COLORS_OPTION_WHITE},
+      {"applyPageColorsOnlyOnIncreasedContrastTitle",
+       IDS_SETTINGS_APPLY_PAGE_COLORS_ONLY_ON_INCREASED_CONTRAST_TITLE},
+      {"applyPageColorsOnlyOnIncreasedContrastSubtitle",
+       IDS_SETTINGS_APPLY_PAGE_COLORS_ONLY_ON_INCREASED_CONTRAST_SUBTITLE},
 #endif
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC)
       {"overscrollHistoryNavigationTitle",
@@ -306,6 +317,11 @@ void AddA11yStrings(content::WebUIDataSource* html_source) {
       {"axTreeFixingSubtitle", IDS_SETTINGS_AX_TREE_FIXING_SUBTITLE},
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
+
+#if !BUILDFLAG(IS_CHROMEOS)
+  html_source->AddBoolean("pageColorsSettingsEnabled",
+                          features::IsPageColorsSettingsEnabled());
+#endif  // !BUILDFLAG(IS_CHROMEOS)
 
   AddAxAnnotationsSectionStrings(html_source);
   AddCaptionSubpageStrings(html_source);
@@ -1591,17 +1607,7 @@ bool CheckDeviceAuthAvailability(content::WebContents* web_contents) {
   // If `client` is not available, then don't show toggle switch.
   autofill::ContentAutofillClient* client =
       autofill::ContentAutofillClient::FromWebContents(web_contents);
-  if (!client) {
-    return false;
-  }
-
-  if (base::FeatureList::IsEnabled(
-          password_manager::features::kDeviceReauthRefactor)) {
-    return autofill::IsDeviceAuthAvailable(
-        client->GetDeviceAuthAvailabilityChecker().get());
-  }
-  return autofill::IsDeviceAuthAvailable(
-      client->GetDeviceAuthenticator().get());
+  return client && autofill::SupportsDeviceReauth(*client);
 }
 
 bool IsWalletServerStorageEnabled() {

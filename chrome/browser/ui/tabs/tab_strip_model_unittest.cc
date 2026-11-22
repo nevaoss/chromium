@@ -2775,6 +2775,7 @@ TEST_F(TabStripModelTest, ReorderingTabsInFocusedGroupPreservesFocus) {
 TEST_F(TabStripModelTest, SelectingTabOutsideFocusedGroupUnsetsFocus) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitAndEnableFeature(features::kTabGroupsFocusing);
+  base::HistogramTester histogram_tester;
 
   PrepareTabs(tabstrip(), 4);
   tab_groups::TabGroupId group_id = tabstrip()->AddToNewGroup({1, 2});
@@ -2788,6 +2789,9 @@ TEST_F(TabStripModelTest, SelectingTabOutsideFocusedGroupUnsetsFocus) {
 
   // Focus should be unset because selection is outside the focused group.
   EXPECT_EQ(std::nullopt, tabstrip()->GetFocusedGroup());
+  histogram_tester.ExpectUniqueSample(
+      "TabGroups.Focus.ExitReason",
+      TabGroupFocusExitReason::kTabOutsideGroupActivated, 1);
 }
 
 TEST_F(TabStripModelTest, ClosingOnlyTabInFocusedGroupUnsetsFocus) {
@@ -4208,9 +4212,10 @@ TEST_F(TabStripModelTest, TestContextMenuCloseCommands) {
   EXPECT_TRUE(tabstrip()->empty());
 }
 
-TEST_F(TabStripModelTest, HasIndicesClosedByCommand) {
+TEST_F(TabStripModelTest, HasTabsClosedByCommand) {
   const auto has = [this](int index, TabStripModel::ContextMenuCommand id) {
-    return tabstrip()->HasIndicesClosedByCommand(index, id);
+    return tabstrip()->HasTabsClosedByCommand(
+        tabstrip()->GetTabAtIndex(index)->GetHandle(), id);
   };
 
   // A single tab: neither command closes anything.
@@ -4249,6 +4254,11 @@ TEST_F(TabStripModelTest, HasIndicesClosedByCommand) {
 
   tabstrip()->CloseAllTabs();
   EXPECT_TRUE(tabstrip()->empty());
+
+  EXPECT_FALSE(tabstrip()->HasTabsClosedByCommand(
+      tabs::TabHandle::Null(), TabStripModel::CommandCloseTabsToRight));
+  EXPECT_FALSE(tabstrip()->HasTabsClosedByCommand(
+      tabs::TabHandle::Null(), TabStripModel::CommandCloseOtherTabs));
 }
 
 // Tests whether or not WebContentses are inserted in the correct position
