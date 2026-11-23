@@ -408,7 +408,7 @@ void AppRuntimeContentBrowserClient::AppendExtraCommandLineSwitches(
         static_cast<AppRuntimeBrowserContext*>(process->GetBrowserContext());
     if (browser_context->ExtensionsIsAllowed() &&
         extensions::ProcessMap::Get(browser_context)
-            ->Contains(process->GetDeprecatedID())) {
+            ->Contains(process->GetID())) {
       command_line->AppendSwitch(extensions::switches::kExtensionProcess);
     }
   }
