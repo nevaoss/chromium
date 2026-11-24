@@ -4480,7 +4480,6 @@ hooks = [
                 '-s', 'src/build/toolchain/win/rc/linux64/rc.sha1',
     ]
   },
-<<<<<<< HEAD
   #@name IS_NEVA_APPRUNTIME
   #@{
   # Apply more accurate trace of heap growing factor
@@ -4652,23 +4651,6 @@ hooks = [
               '../neva/patches/0001-build-webos-V8-Add-webOS-targets-to-v8_snapshot-vis-list.patch']
   },
   #@}
-  {
-    'name': 'apache_win32',
-    'pattern': '\\.sha1',
-    'condition': 'checkout_win',
-    'action': [ 'python3',
-                'src/third_party/depot_tools/download_from_google_storage.py',
-                '--no_resume',
-                '--directory',
-                '--recursive',
-                '--num_threads=16',
-                '--bucket', 'chromium-apache-win32',
-                'src/third_party/apache-win32',
-    ],
-  },
-
-=======
->>>>>>> 158.0.8127.0~1
   # Download Telemetry's binary dependencies via conditionals
   {
     'name': 'checkout_telemetry_binary_dependencies',
