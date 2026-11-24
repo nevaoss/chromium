@@ -94,7 +94,6 @@
 #include "third_party/blink/renderer/platform/graphics/bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/blend_mode.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_2d_resource_provider.h"
-#include "third_party/blink/renderer/platform/graphics/canvas_deferred_paint_record.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_image_provider.h"
 #include "third_party/blink/renderer/platform/graphics/flush_reason.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
@@ -129,6 +128,7 @@
 #include "third_party/skia/include/core/SkImageInfo.h"
 #include "third_party/skia/include/core/SkSurface.h"
 #include "ui/gfx/geometry/skia_conversions.h"
+#include "ui/gfx/geometry/transform.h"
 #include "ui/gfx/geometry/vector2d_f.h"
 
 // Including "base/time/time.h" triggers a bug in IWYU.
@@ -282,19 +282,28 @@ void BaseRenderingContext2D::CreateSharedImageProvider(
 
 void BaseRenderingContext2D::CreateSharedImageProviderForSoftwareCompositor() {
   CHECK(!HasBacking());
-  shared_image_provider_ =
-      Canvas2DResourceProvider::CreateWithClearForSoftwareCompositor(
-          Host()->Size(), color_params_.GetSharedImageFormat(),
-          color_params_.GetAlphaType(), color_params_.GetGfxColorSpace(),
-          color_params_.GetGfxHdrMetadata(),
-          SharedGpuContext::SharedImageInterfaceProvider(),
-          blink::BindOnce(&CanvasRenderingContextHost::NotifyGpuContextLost,
-                          WrapWeakPersistent(Host())));
-  if (shared_image_provider_) {
-    CreateSoftwareSurface();
-    if (!surface_) {
-      shared_image_provider_.reset();
-    }
+  CHECK(!SharedGpuContext::IsGpuCompositingEnabled());
+
+  auto* shared_image_interface_provider =
+      SharedGpuContext::SharedImageInterfaceProvider();
+  if (!shared_image_interface_provider ||
+      !shared_image_interface_provider->SharedImageInterface()) {
+    return;
+  }
+
+  const viz::SharedImageFormat format = color_params_.GetSharedImageFormat();
+  CHECK(format == viz::SharedImageFormat::N32Format() ||
+        format == viz::SinglePlaneFormat::kRGBA_F16);
+
+  shared_image_provider_ = std::make_unique<Canvas2DResourceProvider>(
+      Host()->Size(), format, color_params_.GetAlphaType(),
+      color_params_.GetGfxColorSpace(), color_params_.GetGfxHdrMetadata(),
+      shared_image_interface_provider,
+      blink::BindOnce(&CanvasRenderingContextHost::NotifyGpuContextLost,
+                      WrapWeakPersistent(Host())));
+  CreateSoftwareSurface();
+  if (!surface_) {
+    shared_image_provider_.reset();
   }
 }
 
@@ -515,7 +524,7 @@ BaseRenderingContext2D::PaintRenderingResultsToSnapshot(
   return Snapshot();
 }
 
-scoped_refptr<CanvasResource>
+scoped_refptr<ExportedCanvasResource>
 BaseRenderingContext2D::PaintRenderingResultsToResource(
     SourceDrawingBuffer source_buffer,
     FlushReason reason) {
@@ -523,7 +532,10 @@ BaseRenderingContext2D::PaintRenderingResultsToResource(
     return nullptr;
   }
   FlushCanvas(reason);
-  return shared_image_provider_->ProduceCanvasResource(surface_.get());
+  auto resource = shared_image_provider_->ProduceCanvasResource(surface_.get());
+  return resource
+             ? base::MakeRefCounted<ExportedCanvasResource>(std::move(resource))
+             : nullptr;
 }
 
 const MemoryManagedPaintCanvas* BaseRenderingContext2D::GetPaintCanvas() const {
@@ -1151,10 +1163,6 @@ void BaseRenderingContext2D::OnFlushForImage(
     }
     shared_image_provider_->OnFlushForImage(content_id);
   }
-}
-
-void BaseRenderingContext2D::Reset() {
-  ResetInternal();
 }
 
 std::optional<cc::PaintRecord> BaseRenderingContext2D::FlushCanvasInternal(

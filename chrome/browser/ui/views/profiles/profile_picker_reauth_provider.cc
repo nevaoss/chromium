@@ -35,8 +35,8 @@ void RecordReauthResult(ProfilePickerReauthResult result) {
 }
 
 GURL GetLoadingScreenURL() {
-  GURL url = GURL(chrome::kChromeUISyncConfirmationURL);
-  return url.Resolve(chrome::kChromeUISyncConfirmationLoadingPath);
+  return GURL(chrome::kChromeUIHistorySyncOptinURL)
+      .Resolve(chrome::kChromeUIHistorySyncOptinLoadingPath);
 }
 
 ForceSigninUIError ComputeReauthUIError(ProfilePickerReauthResult result,
@@ -182,7 +182,6 @@ void ProfilePickerReauthProvider::ShowReauth() {
       reauth_url, signin_metrics::AccessPoint::kForcedSignin,
       signin_metrics::Reason::kReauthentication,
       signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO, GURL(), false,
-      DiceTabHelper::EnableSyncCallback(),
       DiceTabHelper::EnableHistorySyncOptinCallback(),
       base::BindRepeating(
           &ProfilePickerReauthProvider::OnDiceSigninHeaderReceived,

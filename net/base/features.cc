@@ -337,7 +337,7 @@ BASE_FEATURE_PARAM(int,
                    "reuse_delay_sec",
                    120);
 BASE_FEATURE_PARAM(bool,
-                   kTcpPortRandomizationMacForLoopback,
+                   kTcpPortRandomizationMacForPrivateRoutes,
                    &kTcpPortRandomizationMac,
                    false);
 #endif
@@ -1123,6 +1123,8 @@ BASE_FEATURE_ENUM_PARAM(DiskCacheBackend,
                         &kShaderDiskCacheBackendTypeOptions);
 
 BASE_FEATURE(kCookieMonsterPerKeyDelete, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kHttpChunkedDecoderInRust, base::FEATURE_DISABLED_BY_DEFAULT);
 
 }  // namespace net::features
 

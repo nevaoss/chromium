@@ -1015,7 +1015,7 @@ void BrowserCommandController::HandleCommandWithDisposition(
       break;
 #endif  // !BUILDFLAG(IS_CHROMEOS)
     case IDC_TURN_ON_SYNC:
-      signin_ui_util::EnableSyncFromSingleAccountPromo(
+      signin_ui_util::EnableHistorySyncFromSingleAccountPromo(
           browser_->GetProfile(),
           GetAccountInfoFromProfile(browser_->GetProfile())
               .GetCoreAccountInfo(),
@@ -2902,8 +2902,7 @@ void BrowserCommandController::UpdateCommandsForEnableGlicChanged() {
   const bool show_skills_and_extensions =
       profile()->IsRegularProfile() &&
       skills::SkillsServiceFactory::IsSkillsEnabledForProfile(profile()) &&
-      base::FeatureList::IsEnabled(features::kSkillsAndExtensionsAppMenu) &&
-      glic::GlicEnabling::IsEnabledForProfile(profile());
+      base::FeatureList::IsEnabled(features::kSkillsAndExtensionsAppMenu);
   if (auto* const action =
           FindAction(kActionSkillsAndExtensionsSubmenu, browser_)) {
     action->SetVisible(show_skills_and_extensions);

@@ -1532,11 +1532,8 @@ class WebUIToolbarWebViewRaceTest : public InProcessBrowserTest {
 // Regression test for crbug.com/478033216. Tests that an attempt to bind to
 // `TrackedElementHandler` while the window is being closed does not cause a
 // crash.
-// TODO(crbug.com/567216381): Flaky. The test doesn't wait for the toolbar's
-// initial navigation, so WebUIToolbarUI::Init() (which registers the
-// TrackedElementHandler config) may not have run before GetOrCreate().
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewRaceTest,
-                       DISABLED_BindInterfaceAfterCloseRace) {
+                       BindInterfaceAfterCloseRace) {
   // 1. Setup: Create a new browser window.
   BrowserWindowInterface* new_browser = CreateBrowser(browser()->GetProfile());
   ui_test_utils::WaitForBrowserSetLastActive(new_browser);
@@ -1546,6 +1543,11 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewRaceTest,
   content::WebContents* webui_contents =
       toolbar_view->GetWebViewForTesting()->GetWebContents();
   ASSERT_TRUE(webui_contents);
+
+  // Wait for the initial toolbar navigation to finish committing so
+  // `WebUIToolbarUI::Init()` has registered `TrackedElementHandlerConfig` on
+  // `webui_contents`.
+  ASSERT_TRUE(content::WaitForLoadStop(webui_contents));
 
   GURL toolbar_url(chrome::kChromeUIWebUIToolbarURL);
 
@@ -2834,27 +2836,20 @@ IN_PROC_BROWSER_TEST_F(WebUIAvatarButtonBrowserTest, AvatarButtonIPHPromo) {
             toolbar_ui_api::mojom::AvatarToolbarButtonState::kNormal);
   EXPECT_TRUE(delegate->GetState().avatar_control_state->text.empty());
 
-  // Trigger IPH promo.
+  // Trigger IPH promo when in `kNormal` state; the greeting should not be
+  // shown.
   avatar_button->NotifyIPHPromoChanged(true);
-
-  // Wait until the state updates to kShowIdentityName and text is populated.
-  ASSERT_TRUE(base::test::RunUntil([&]() {
-    return delegate->GetState().avatar_control_state->state ==
-               toolbar_ui_api::mojom::AvatarToolbarButtonState::
-                   kShowIdentityName &&
-           !delegate->GetState().avatar_control_state->text.empty();
-  }));
+  EXPECT_TRUE(avatar_button->IsShowingIPHPromo());
+  EXPECT_EQ(delegate->GetState().avatar_control_state->state,
+            toolbar_ui_api::mojom::AvatarToolbarButtonState::kNormal);
+  EXPECT_TRUE(delegate->GetState().avatar_control_state->text.empty());
 
   // Trigger IPH promo hide.
   avatar_button->NotifyIPHPromoChanged(false);
-  avatar_button->ClearActiveStateForTesting();
-
-  // Wait until it goes back to kNormal and text is empty.
-  ASSERT_TRUE(base::test::RunUntil([&]() {
-    return delegate->GetState().avatar_control_state->state ==
-               toolbar_ui_api::mojom::AvatarToolbarButtonState::kNormal &&
-           delegate->GetState().avatar_control_state->text.empty();
-  }));
+  EXPECT_FALSE(avatar_button->IsShowingIPHPromo());
+  EXPECT_EQ(delegate->GetState().avatar_control_state->state,
+            toolbar_ui_api::mojom::AvatarToolbarButtonState::kNormal);
+  EXPECT_TRUE(delegate->GetState().avatar_control_state->text.empty());
 }
 
 struct ButtonVisibilityToggleTestParam {

@@ -30,7 +30,7 @@ import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.omnibox.R;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
+import org.chromium.chrome.browser.omnibox.fusebox.Fusebox.FuseboxState;
 import org.chromium.chrome.browser.omnibox.status.StatusMediator.StatusIconType;
 import org.chromium.chrome.browser.user_education.IphCommand;
 import org.chromium.chrome.browser.user_education.UserEducationHelper;
@@ -57,7 +57,7 @@ public class FuseboxPlusButtonIphControllerUnitTest {
 
     @Before
     public void setUp() {
-        Activity activity = Robolectric.setupActivity(TestActivity.class);
+        Activity activity = Robolectric.buildActivity(TestActivity.class).setup().get();
         mStatusView = new View(activity);
         activity.setContentView(mStatusView);
         mController =

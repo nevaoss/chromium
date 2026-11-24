@@ -190,6 +190,10 @@ class AccountSelectionModalView : public views::BoxLayoutView,
                                       const GURL& idp_login_url,
                                       const ui::Event& event);
 
+  // Notifies the observer that the user wants to pick an IDP to use a different
+  // account from. Only used when there are multiple IDPs.
+  void OnShowIdpPickerButtonClicked(const ui::Event& event);
+
   // Returns a scrollable View containing one clickable row per IDP.
   std::unique_ptr<views::View> CreateIdpRows(
       const std::vector<IdentityProviderDataPtr>& idp_list);
@@ -208,11 +212,9 @@ class AccountSelectionModalView : public views::BoxLayoutView,
   // the other sheets either hide `body_label_` or set their own text.
   std::u16string GetBodyText() const;
 
-  // Updates the button to have a spinner appear in the middle of it.
-  void ReplaceButtonWithSpinner(
-      views::MdTextButton* button,
-      ui::ColorId spinner_color = ui::kColorButtonForeground,
-      ui::ColorId button_color = ui::kColorButtonBackground);
+  // Updates the button to have a spinner appear in the middle of it. The
+  // spinner and background colors are based on the button's style.
+  void ReplaceButtonWithSpinner(views::MdTextButton* button);
 
   // Helper method to show the given accounts.
   void ShowAccounts(const std::vector<IdentityRequestAccountPtr>& accounts,

@@ -52,10 +52,12 @@ import java.util.UUID;
 // Session Manager: Each createSession() call creates a new session. All created sessions are
 // managed in mSessionManager except for mMediaCryptoSession.
 //
-// Error Handling: Whenever an unexpected error occurred, we'll call release() to release all
-// resources immediately, clear all states and fail all pending operations. After that all calls to
-// this object will fail (e.g. return null or reject the promise). All public APIs and callbacks
-// should check mMediaBridge to make sure release() hasn't been called.
+// Error Handling: If an error occurs during createMediaCrypto(), we'll call release() to release
+// all resources immediately, clear all states and fail all pending operations, after which all
+// calls to this object will fail (e.g. return null or reject the promise). Errors in individual
+// session operations only reject the promise for the affected session so that other active
+// sessions on this bridge remain intact. All public APIs and callbacks should check mMediaDrm to
+// make sure release() hasn't been called.
 
 /**
  * A wrapper of the android MediaDrm class. Each MediaDrmBridge manages multiple sessions for
@@ -347,8 +349,8 @@ public class MediaDrmBridge {
 
         if (mediaCryptoSessionDrmId == null) {
             Log.e(TAG, "Cannot create MediaCrypto Session.");
-            // No need to release() here since openSession() does so on failure.
             onCreateError(MediaDrmCreateError.FAILED_MEDIA_CRYPTO_SESSION);
+            release();
             return false;
         }
 
@@ -393,18 +395,17 @@ public class MediaDrmBridge {
                             : mMediaDrm.openSession(mSecurityLevel);
             // Make a clone here in case the underlying byte[] is modified.
             return sessionId.clone();
-        } catch (java.lang.RuntimeException e) { // TODO(xhwang): Drop this?
+        } catch (java.lang.RuntimeException e) {
             Log.e(TAG, "Cannot open a new session", e);
-            release();
             return null;
         } catch (android.media.NotProvisionedException e) {
             // Throw NotProvisionedException so that we can startProvisioning().
             throw e;
         } catch (android.media.MediaDrmException e) {
             // Other MediaDrmExceptions (e.g. ResourceBusyException) are not
-            // recoverable.
+            // recoverable for this single session attempt, but should not release
+            // the entire MediaDrm instance.
             Log.e(TAG, "Cannot open a new session", e);
-            release();
             return null;
         }
     }
@@ -684,12 +685,15 @@ public class MediaDrmBridge {
             // This will throw a NotProvisionedException if provisioning needed. If it succeeds,
             // assume this origin ID is already provisioned.
             byte[] drmId = openSession();
+            if (drmId == null) {
+                Log.e(TAG, "Cannot open session to check provisioning.");
+                onProvisioningComplete(false);
+                return;
+            }
 
             // Provisioning is not required. If a session was actually opened, close it.
-            if (drmId != null) {
-                SessionId sessionId = SessionId.createTemporarySessionId(drmId);
-                closeSessionNoException(sessionId);
-            }
+            SessionId sessionId = SessionId.createTemporarySessionId(drmId);
+            closeSessionNoException(sessionId);
 
             // Indicate that provisioning succeeded.
             onProvisioningComplete(true);
@@ -748,15 +752,14 @@ public class MediaDrmBridge {
 
         assert mMediaDrm != null;
 
-        if (mMediaCrypto != null) {
-            mMediaCrypto.release();
-            mMediaCrypto = null;
-        } else {
-            // MediaCrypto never notified. Notify a null one now.
-            onMediaCryptoReady(null);
-        }
+        // 1. Detach MediaDrm listeners before closing sessions/DRM (MediaDrm.close() does not clear
+        // mListenerMap).
+        mMediaDrm.clearOnEventListener();
+        mMediaDrm.clearOnExpirationUpdateListener();
+        mMediaDrm.clearOnKeyStatusChangeListener();
+        mMediaDrm.clearOnSessionLostStateListener();
 
-        // Close all open sessions.
+        // 2. Close open application sessions while native ICryptoPlugin is still valid.
         for (SessionId sessionId : mSessionManager.getAllSessionIds()) {
             Log.i(TAG, "Force closing session %s", sessionId);
 
@@ -765,12 +768,23 @@ public class MediaDrmBridge {
         }
         mSessionManager = new MediaDrmSessionManager(mStorage);
 
-        // Close mMediaCryptoSession if it's open.
+        // 3. Release MediaCrypto (calls JCrypto::mCrypto->destroyPlugin()) before closing its
+        // underlying session so the HAL session handle does not leak.
+        if (mMediaCrypto != null) {
+            mMediaCrypto.release();
+            mMediaCrypto = null;
+        } else {
+            // MediaCrypto never notified. Notify a null one now.
+            onMediaCryptoReady(null);
+        }
+
+        // 4. Close mMediaCryptoSession after MediaCrypto has dropped its reference to it.
         if (mMediaCryptoSession != null) {
             closeSessionNoException(mMediaCryptoSession);
             mMediaCryptoSession = null;
         }
 
+        // 5. Close MediaDrm last after all sessions and crypto plugins have been torn down.
         if (mMediaDrm != null) {
             try {
                 mMediaDrm.close();
@@ -1110,7 +1124,6 @@ public class MediaDrmBridge {
             systemCode = MediaDrmSystemCode.UPDATE_FAILED;
         }
         onPromiseRejected(promiseId, systemCode, "Update session failed.");
-        release();
     }
 
     /** Load persistent license from storage. */
@@ -1142,6 +1155,7 @@ public class MediaDrmBridge {
         try {
             drmId = openSession();
             if (drmId == null) {
+                mSessionManager.remove(sessionId);
                 onPromiseRejected(
                         promiseId,
                         MediaDrmSystemCode.OPEN_SESSION_FAILED,
@@ -1216,6 +1230,7 @@ public class MediaDrmBridge {
         Log.w(TAG, "Persistent license load failed for session %s", sessionId, e);
         mSessionEventDeferrer = null;
         closeSessionNoException(sessionId);
+        mSessionManager.remove(sessionId);
         mSessionManager.clearPersistentSessionInfo(
                 sessionId,
                 success -> {

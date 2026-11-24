@@ -96,18 +96,25 @@ source_set("setup_lib") {
   sources = [
     "file_util.cc",
     "file_util.h",
+    "file_work_items.cc",
+    "file_work_items.h",
     "installer_constants.cc",
     "installer_constants.h",
     "registry_util.cc",
     "registry_util.h",
+    "registry_work_items.cc",
+    "registry_work_items.h",
     "service_util.cc",
     "service_util.h",
+    "service_work_items.cc",
+    "service_work_items.h",
   ]
 
   public_deps = [
     ":payload_files_header",
     "//base",
     "//build:branding_buildflags",
+    "//chrome/installer/util:work_item",
     "//remoting/base",
     "//remoting/base:remoting_base_version",
   ]
@@ -124,9 +131,12 @@ source_set("unit_tests") {
 
   sources = [
     "file_util_unittest.cc",
+    "file_work_items_unittest.cc",
     "installer_constants_unittest.cc",
     "registry_util_unittest.cc",
+    "registry_work_items_unittest.cc",
     "service_util_unittest.cc",
+    "service_work_items_unittest.cc",
   ]
 
   deps = [

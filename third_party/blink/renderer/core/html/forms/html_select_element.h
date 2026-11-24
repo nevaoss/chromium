@@ -221,7 +221,6 @@ class CORE_EXPORT HTMLSelectElement final
 
   // For use in the implementation of HTMLOptionElement.
   void OptionSelectionStateChanged(HTMLOptionElement*, bool option_is_selected);
-  void ElementInserted(Node& node);
   void OptionInserted(HTMLOptionElement&,
                       Node* nearest_ancestor_select_child,
                       bool option_is_selected);
@@ -381,6 +380,8 @@ class CORE_EXPORT HTMLSelectElement final
   void setSelectedContentElement(HTMLSelectedContentElement*);
 
   void DefaultEventHandler(Event&) override;
+  bool HasActivationBehavior() const override;
+  void RunActivationBehavior(Event&, EventDispatchHandlingState*) override;
   void ChildrenChanged(const ChildrenChange&) override;
 
   // UpdateAllSelectedcontentsSingle and UpdateAllSelectedcontentsMultiple both
@@ -437,6 +438,7 @@ class CORE_EXPORT HTMLSelectElement final
     return children_descendant_counts_map_;
   }
   unsigned NumDescendantInputs() const;
+  HTMLElement* ListBoxForFilter() const;
 
  private:
   mojom::blink::FormControlType FormControlType() const override;

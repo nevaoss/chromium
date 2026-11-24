@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'chrome://webui-toolbar.top-chrome/app.js';
+import 'chrome://webui-toolbar.top-chrome/webui_toolbar.js';
 
 import {browserProxyFactory} from 'chrome://resources/cr_components/help_bubble/help_bubble.mojom-webui.js';
 import type {HelpBubbleHandlerInterface} from 'chrome://resources/cr_components/help_bubble/help_bubble.mojom-webui.js';
@@ -12,10 +12,10 @@ import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_as
 import {TestSearchboxBrowserProxy} from 'chrome://webui-test/cr_components/searchbox/test_searchbox_browser_proxy.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
-import {AppMenuIconType, AppMenuSeverity, AvatarToolbarButtonState, BrowserProxyImpl, ContentSettingImageType, createDefaultLocationBarState, INVALID_FOCUS_REQUEST_HANDLE, PageActionAnimationStyle, PageActionId, resetInitialStateForTesting, SearchboxBrowserProxy, TrackedElementManager} from 'chrome://webui-toolbar.top-chrome/app.js';
-import type {BrowserProxy, FocusRequestListener, LhsChipIdentifier, ToolbarAppElement, ToolbarStateListener} from 'chrome://webui-toolbar.top-chrome/app.js';
+import {AppMenuIconType, AppMenuSeverity, AvatarToolbarButtonState, BrowserProxyImpl, ContentSettingImageType, createDefaultLocationBarState, INVALID_FOCUS_REQUEST_HANDLE, PageActionAnimationStyle, PageActionId, SearchboxBrowserProxy, TrackedElementManager} from 'chrome://webui-toolbar.top-chrome/webui_toolbar.js';
+import type {FocusRequestListener, ToolbarAppElement, ToolbarStateListener} from 'chrome://webui-toolbar.top-chrome/webui_toolbar.js';
 
-import {TestToolbarUiHandler} from './test_toolbar_browser_proxy.js';
+import {TestToolbarBrowserProxy as BaseTestToolbarBrowserProxy} from './test_toolbar_browser_proxy.js';
 
 class TestBrowserControlsHandler extends TestBrowserProxy {
   constructor() {
@@ -27,63 +27,33 @@ class TestBrowserControlsHandler extends TestBrowserProxy {
   }
 }
 
-class TestToolbarBrowserProxy extends TestBrowserProxy implements BrowserProxy {
-  toolbarUIHandler: TestToolbarUiHandler;
-  browserControlsHandler: any;
+class TestToolbarBrowserProxy extends BaseTestToolbarBrowserProxy {
   private listener_: ToolbarStateListener|null = null;
 
   constructor() {
-    super([
-      'recordInHistogram',
-      'addToolbarStateListener',
-      'addFocusRequestListener',
-      'removeToolbarStateListener',
-      'removeFocusRequestListener',
-    ]);
-    this.toolbarUIHandler = new TestToolbarUiHandler();
+    super();
     this.browserControlsHandler = new TestBrowserControlsHandler();
   }
 
-  recordInHistogram() {}
-
-  addToolbarStateListener(listener: ToolbarStateListener) {
+  override addToolbarStateListener(listener: ToolbarStateListener) {
     this.methodCalled('addToolbarStateListener', listener);
     this.listener_ = listener;
     return 1;
   }
 
-  addFocusRequestListener(listener: FocusRequestListener) {
+  override addFocusRequestListener(listener: FocusRequestListener) {
     this.methodCalled('addFocusRequestListener', listener);
     return INVALID_FOCUS_REQUEST_HANDLE;
   }
 
-  addShowSplitTabsContextMenuListener() {
-    return 0;
-  }
-
-  removeToolbarStateListener(handle: number) {
+  override removeToolbarStateListener(handle: number) {
     this.methodCalled('removeToolbarStateListener', handle);
     this.listener_ = null;
   }
 
-  removeFocusRequestListener(handle: number) {
+  override removeFocusRequestListener(handle: number) {
     this.methodCalled('removeFocusRequestListener', handle);
   }
-
-  removeShowSplitTabsContextMenuListener() {}
-
-  flushToolbarUiHandlerForTesting() {
-    return Promise.resolve();
-  }
-
-  onChipClicked(
-      _chip: LhsChipIdentifier, _isPointerClick: boolean, _stateToken: number) {
-  }
-  onChipPointerEntered(_chip: LhsChipIdentifier) {}
-  onChipPointerExited(_chip: LhsChipIdentifier) {}
-  onChipMousePressed(_chip: LhsChipIdentifier) {}
-  onChipExpandAnimationEnded(_chip: LhsChipIdentifier) {}
-  onChipCollapseAnimationEnded(_chip: LhsChipIdentifier) {}
 
   fireToolbarStateListener(iconUpdates: any[], state: any) {
     if (this.listener_) {
@@ -166,6 +136,7 @@ function createMockToolbarState() {
       shouldShow: false,
       isContextMenuVisible: false,
       shouldMatchToolbarStyle: false,
+      useCustomThemeFallback: false,
       nudgeLabel: null as string | null,
     },
     overflowButtonControlState: {
@@ -180,7 +151,6 @@ function createMockToolbarState() {
 suite('ToolbarAppTest', () => {
   let app: ToolbarAppElement;
   let browserProxy: TestToolbarBrowserProxy;
-  let originalGetVariableValue: any;
 
   let startTrackingCalls: Array<[HTMLElement, string]> = [];
   let stopTrackingCalls: HTMLElement[] = [];
@@ -217,20 +187,6 @@ suite('ToolbarAppTest', () => {
     BrowserProxyImpl.setInstance(browserProxy);
     SearchboxBrowserProxy.setInstance(new TestSearchboxBrowserProxy());
 
-    // Reset C++ injected values to ensure tests start in a clean state.
-    const loadTimeDataData = (loadTimeData as any).data_;
-    if (loadTimeDataData) {
-      delete loadTimeDataData['isNavigationLoading'];
-      delete loadTimeDataData['reloadCanShowMenu'];
-      delete loadTimeDataData['backButtonEnabled'];
-      delete loadTimeDataData['forwardButtonEnabled'];
-      delete loadTimeDataData['homeButtonShouldBeShown'];
-      delete loadTimeDataData['batterySaverButtonVisible'];
-      delete loadTimeDataData['layoutConstantsVersion'];
-      delete loadTimeDataData['touchUi'];
-      delete loadTimeDataData['isFallbackPrewarming'];
-    }
-
     loadTimeData.overrideValues({
       enableReloadButton: true,
       enableSplitTabsButton: true,
@@ -245,43 +201,10 @@ suite('ToolbarAppTest', () => {
       splitTabsIndicatorHeight: 10,
       splitTabsIndicatorSpacing: 10,
     });
-
-    originalGetVariableValue = chrome.getVariableValue;
-    chrome.getVariableValue = (key: string) => {
-      if (key === 'initialState') {
-        const state: Record<string, any> = {};
-        const keys = [
-          'isNavigationLoading',
-          'backButtonEnabled',
-          'forwardButtonEnabled',
-          'initialWebUISurfaceSyncEnabled',
-          'isFallbackPrewarming',
-          'reloadCanShowMenu',
-          'homeButtonShouldBeShown',
-          'batterySaverButtonVisible',
-          'layoutConstantsVersion',
-          'touchUi',
-        ];
-        for (const k of keys) {
-          if (loadTimeData.valueExists(k)) {
-            state[k] = loadTimeData.getValue(k);
-          }
-        }
-        return JSON.stringify(state);
-      }
-      return originalGetVariableValue(key);
-    };
-
-    resetInitialStateForTesting();
-  });
-
-  teardown(() => {
-    chrome.getVariableValue = originalGetVariableValue;
-    resetInitialStateForTesting();
   });
 
   test('Sync Disabled (Initial Sync Feature is False)', async () => {
-    loadTimeData.overrideValues({
+    browserProxy.setInitialState({
       initialWebUISurfaceSyncEnabled: false,
     });
 
@@ -296,7 +219,7 @@ suite('ToolbarAppTest', () => {
   });
 
   test('Sync Enabled (Initial Sync Feature is True)', async () => {
-    loadTimeData.overrideValues({
+    browserProxy.setInitialState({
       initialWebUISurfaceSyncEnabled: true,
       isFallbackPrewarming: true,
     });
@@ -325,7 +248,7 @@ suite('ToolbarAppTest', () => {
   });
 
   test('Sync Enabled - Synchronous Boot (Initial State Present)', async () => {
-    loadTimeData.overrideValues({
+    browserProxy.setInitialState({
       initialWebUISurfaceSyncEnabled: true,
       isFallbackPrewarming: false,
       isNavigationLoading: false,
@@ -352,7 +275,7 @@ suite('ToolbarAppTest', () => {
   });
 
   test('Sync Enabled - Synchronous Mojo Update', async () => {
-    loadTimeData.overrideValues({
+    browserProxy.setInitialState({
       initialWebUISurfaceSyncEnabled: true,
       isFallbackPrewarming: true,
     });
@@ -371,7 +294,7 @@ suite('ToolbarAppTest', () => {
   });
 
   test('Sync Enabled - Multiple Rapid Mojo Updates', async () => {
-    loadTimeData.overrideValues({
+    browserProxy.setInitialState({
       initialWebUISurfaceSyncEnabled: true,
       isFallbackPrewarming: true,
     });
@@ -391,7 +314,7 @@ suite('ToolbarAppTest', () => {
   });
 
   test('Sync Enabled - Synchronous Detach Reattach', async () => {
-    loadTimeData.overrideValues({
+    browserProxy.setInitialState({
       initialWebUISurfaceSyncEnabled: true,
       isFallbackPrewarming: true,
     });
@@ -417,7 +340,7 @@ suite('ToolbarAppTest', () => {
   });
 
   test('Sync Enabled - Asynchronous Detach Reattach', async () => {
-    loadTimeData.overrideValues({
+    browserProxy.setInitialState({
       initialWebUISurfaceSyncEnabled: true,
       isFallbackPrewarming: true,
     });
@@ -459,7 +382,7 @@ suite('ToolbarAppTest', () => {
   test(
       'Sync Enabled - Detach Before Child Elements Update Complete',
       async () => {
-        loadTimeData.overrideValues({
+        browserProxy.setInitialState({
           initialWebUISurfaceSyncEnabled: true,
           isFallbackPrewarming: true,
         });
@@ -487,7 +410,7 @@ suite('ToolbarAppTest', () => {
       });
 
   test('Event Listener Clean Up on Detach', async () => {
-    loadTimeData.overrideValues({
+    browserProxy.setInitialState({
       initialWebUISurfaceSyncEnabled: true,
       isFallbackPrewarming: true,
     });
@@ -540,7 +463,7 @@ suite('ToolbarAppTest', () => {
   });
 
   test('Sync Enabled - Multiple Rapid Reconnects and Updates', async () => {
-    loadTimeData.overrideValues({
+    browserProxy.setInitialState({
       initialWebUISurfaceSyncEnabled: true,
       isFallbackPrewarming: true,
     });
@@ -572,7 +495,7 @@ suite('ToolbarAppTest', () => {
   });
 
   test('AvatarButtonHighlightClasses', async () => {
-    loadTimeData.overrideValues({
+    browserProxy.setInitialState({
       initialWebUISurfaceSyncEnabled: false,
     });
     const highlightClasses = [
@@ -679,7 +602,7 @@ suite('ToolbarAppTest', () => {
   });
 
   test('AvatarButtonLinearGradientRing', async () => {
-    loadTimeData.overrideValues({
+    browserProxy.setInitialState({
       initialWebUISurfaceSyncEnabled: false,
     });
 
@@ -838,7 +761,7 @@ suite('ToolbarAppTest', () => {
   });
 
   test('AvatarButtonDoesNotAnimateOnNewWindow', async () => {
-    loadTimeData.overrideValues({
+    browserProxy.setInitialState({
       initialWebUISurfaceSyncEnabled: false,
     });
 
@@ -888,7 +811,7 @@ suite('ToolbarAppTest', () => {
   });
 
   test('AvatarButtonAnimatesOnSubsequentTextChanges', async () => {
-    loadTimeData.overrideValues({
+    browserProxy.setInitialState({
       initialWebUISurfaceSyncEnabled: false,
     });
 

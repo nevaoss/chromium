@@ -16,7 +16,6 @@
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/app/vector_icons/vector_icons.h"
-#include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/glic/browser_ui/glic_vector_icon_manager.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
@@ -54,7 +53,6 @@
 #include "chrome/grit/generated_resources.h"
 #include "components/commerce/core/commerce_constants.h"
 #include "components/commerce/core/commerce_feature_list.h"
-#include "components/contextual_tasks/public/features.h"
 #include "components/feed/feed_feature_list.h"
 #include "components/split_tabs/split_tab_visual_data.h"
 #include "components/tabs/public/split_tab_data.h"
@@ -274,31 +272,34 @@ void TabMenuModel::AppendGlicItems(int index,
   }
 }
 
-void TabMenuModel::AppendAiModeItems(
-    int index,
-    int num_tabs,
-    base::span<tabs::TabInterface* const> tabs) {
-  const bool has_valid_url =
-      std::ranges::any_of(tabs, [](tabs::TabInterface* tab) {
-        content::WebContents* contents = tab ? tab->GetContents() : nullptr;
-        return contents && contextual_tasks::IsUrlValidForContextSharing(
-                               contents->GetLastCommittedURL());
-      });
-  if (!has_valid_url) {
+void TabMenuModel::AppendAiModeItems(int index,
+                                     int num_tabs,
+                                     bool show_share,
+                                     bool show_unshare) {
+  if (!show_share && !show_unshare) {
     return;
   }
 
-  contextual_tasks_tab_sub_menu_model_ =
-      std::make_unique<contextual_tasks::ContextualTasksTabSubMenuModel>(
-          tab_strip_, index);
   const ui::ImageModel ai_mode_icon = ui::ImageModel::FromVectorIcon(
       glic::GlicVectorIconManager::GetVectorIcon(IDR_GLIC_BUTTON_VECTOR_ICON),
       ui::kColorMenuIcon, kTabMenuIconSize);
 
-  AddSubMenuWithIcon(
-      TabStripModel::CommandAiModeShare,
-      l10n_util::GetPluralStringFUTF16(IDS_TAB_CXMENU_AI_MODE_SHARE, num_tabs),
-      contextual_tasks_tab_sub_menu_model_.get(), ai_mode_icon);
+  if (show_share) {
+    contextual_tasks_tab_sub_menu_model_ =
+        std::make_unique<contextual_tasks::ContextualTasksTabSubMenuModel>(
+            tab_strip_, index);
+    AddSubMenuWithIcon(TabStripModel::CommandAiModeShare,
+                       l10n_util::GetPluralStringFUTF16(
+                           IDS_TAB_CXMENU_AI_MODE_SHARE, num_tabs),
+                       contextual_tasks_tab_sub_menu_model_.get(),
+                       ai_mode_icon);
+  }
+
+  if (show_unshare) {
+    AddItemWithIcon(TabStripModel::CommandAiModeUnshare,
+                    l10n_util::GetStringUTF16(IDS_TAB_CXMENU_AI_MODE_UNSHARE),
+                    ai_mode_icon);
+  }
 }
 
 // Capitalization Policy (go/chrome-capitalization):
@@ -318,6 +319,13 @@ void TabMenuModel::Build(int index) {
   }
 
   int num_tabs = indices.size();
+  const std::vector<tabs::TabInterface*> tabs =
+      tab_strip_->GetTabsAtIndices(indices);
+  std::vector<tabs::TabHandle> tab_handles;
+  tab_handles.reserve(tabs.size());
+  for (tabs::TabInterface* tab : tabs) {
+    tab_handles.push_back(tab->GetHandle());
+  }
 
   auto* controller = tabs::VerticalTabStripStateController::From(
       tab_strip_->delegate()->GetBrowserWindowInterface());
@@ -407,7 +415,7 @@ void TabMenuModel::Build(int index) {
       std::ranges::none_of(
           indices, [&](int idx) { return tab_strip_->IsTabPinned(idx); })) {
     if (std::optional<tab_groups::TabGroupId> group =
-            tab_strip_->GetCommonGroupForIndices(indices)) {
+            tab_strip_->GetCommonGroupForTabs(tab_handles)) {
       const bool is_focused = tab_strip_->GetFocusedGroup() == group;
       if (tab_strip_->IsEphemeralTabGroup(*group)) {
         const size_t group_tab_count =
@@ -421,9 +429,15 @@ void TabMenuModel::Build(int index) {
         AddItemWithStringId(TabStripModel::CommandToggleFocusGroup,
                             is_focused ? IDS_TAB_CXMENU_UNFOCUS_TAB_GROUP
                                        : IDS_TAB_CXMENU_FOCUS_TAB_GROUP);
+        if (!is_focused) {
+          const user_education::DisplayNewBadge show_badge =
+              UserEducationService::MaybeShowNewBadge(
+                  tab_strip_->profile(), features::kTabGroupsFocusing);
+          SetIsNewFeatureAt(GetItemCount() - 1, show_badge);
+        }
       }
     } else if (base::FeatureList::IsEnabled(features::kNonGroupFocus) &&
-               tab_strip_->AreAllUngrouped(indices)) {
+               tab_strip_->AreAllUngrouped(tab_handles)) {
       AddItem(TabStripModel::CommandToggleFocusGroup,
               l10n_util::GetPluralStringFUTF16(IDS_TAB_CXMENU_FOCUS_TABS,
                                                num_tabs));
@@ -580,18 +594,11 @@ void TabMenuModel::Build(int index) {
 
   const bool show_glic_items =
       glic::GlicEnabling::IsReadyForProfile(tab_strip_->profile());
-  const std::vector<tabs::TabInterface*> tabs =
-      tab_strip_->GetTabsAtIndices(indices);
-  const bool has_valid_ai_mode_url =
-      std::ranges::any_of(tabs, [](tabs::TabInterface* tab) {
-        content::WebContents* contents = tab ? tab->GetContents() : nullptr;
-        return contents && contextual_tasks::IsUrlValidForContextSharing(
-                               contents->GetLastCommittedURL());
-      });
-  const bool show_ai_mode_items =
-      contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled() &&
-      contextual_tasks::CanShareTabContext(tab_strip_->profile()) &&
-      has_valid_ai_mode_url;
+  const bool show_ai_mode_share = tab_strip_->IsContextMenuCommandEnabled(
+      index, TabStripModel::CommandAiModeShare);
+  const bool show_ai_mode_unshare = tab_strip_->IsContextMenuCommandEnabled(
+      index, TabStripModel::CommandAiModeUnshare);
+  const bool show_ai_mode_items = show_ai_mode_share || show_ai_mode_unshare;
   bool glic_displayed = false;
   if (features::IsMenuSimplificationEnabled() &&
       (show_glic_items || show_ai_mode_items)) {
@@ -600,7 +607,8 @@ void TabMenuModel::Build(int index) {
       AppendGlicItems(index, num_tabs, indices);
     }
     if (show_ai_mode_items) {
-      AppendAiModeItems(index, num_tabs, tabs);
+      AppendAiModeItems(index, num_tabs, show_ai_mode_share,
+                        show_ai_mode_unshare);
     }
     AddSeparator(ui::NORMAL_SEPARATOR);
     glic_displayed = true;
@@ -631,7 +639,8 @@ void TabMenuModel::Build(int index) {
     AppendGlicItems(index, num_tabs, indices);
   }
   if (show_ai_mode_items && !glic_displayed) {
-    AppendAiModeItems(index, num_tabs, tabs);
+    AppendAiModeItems(index, num_tabs, show_ai_mode_share,
+                      show_ai_mode_unshare);
   }
 
   if (display_send_to_self) {

@@ -33,6 +33,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.LayerDrawable;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnTouchListener;
@@ -56,7 +57,6 @@ import org.mockito.junit.MockitoRule;
 import org.robolectric.Robolectric;
 import org.robolectric.annotation.Config;
 
-import org.chromium.base.Callback;
 import org.chromium.base.ResettersForTesting;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneshotSupplierImpl;
@@ -112,6 +112,7 @@ import org.chromium.url.JUnitTestGURLs;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
@@ -148,7 +149,7 @@ public class ToolbarControlContainerTest {
     @Mock private WindowAndroid mWindowAndroid;
     @Mock private DesktopWindowStateManager mDesktopWindowStateManager;
     @Mock private TopControlsStacker mTopControlsStacker;
-    @Mock private Callback<Integer> mRightMarginCallback;
+    @Mock private BiConsumer<Integer, Integer> mHorizontalMarginCallback;
 
     private final Supplier<Tab> mTabSupplier = () -> mTab;
     private final SettableNonNullObservableSupplier<Boolean> mCompositorInMotionSupplier =
@@ -711,17 +712,17 @@ public class ToolbarControlContainerTest {
     @EnableFeatures(ChromeFeatureList.ANDROID_VERTICAL_TABS)
     public void testToolbarRightOffsetInDesktopWindow() {
         initControlContainer(R.layout.toolbar_tablet);
-        mControlContainer.setToolbarRightMarginCallback(mRightMarginCallback);
+        mControlContainer.setToolbarHorizontalMarginCallback(mHorizontalMarginCallback);
 
         VerticalTabUtils.setVerticalTabsEnabled(true);
         SettableNonNullObservableSupplier<Boolean> isVerticalTabsActiveSupplier =
                 ObservableSuppliers.createNonNull(true);
         mControlContainer.setIsVerticalTabsActiveSupplier(isVerticalTabsActiveSupplier);
 
-        // Initially, tab strip is visible (height 80). Callback should be called with 0
-        // but is skipped since the initial margin is already 0.
+        // Initially, tab strip is visible (height 80). Callback should be called with (0, 0)
+        // but is skipped since the initial margins are already 0.
         mControlContainer.onHeightChanged(80, 20, false);
-        verify(mRightMarginCallback, never()).onResult(0);
+        verify(mHorizontalMarginCallback, never()).accept(0, 0);
         assertFalse(mControlContainer.isToolbarInAppHeader());
 
         // Set app header with 10px padding on left, 20px on right, and 100px height.
@@ -730,19 +731,19 @@ public class ToolbarControlContainerTest {
         when(mDesktopWindowStateManager.getAppHeaderState()).thenReturn(appHeaderState);
 
         // Vertical tabs active and tab strip hidden (height 0). Callback should be called with
-        // right padding 20).
+        // (0, 20).
         mControlContainer.onHeightChanged(0, 20, false);
-        verify(mRightMarginCallback).onResult(20);
+        verify(mHorizontalMarginCallback).accept(0, 20);
         assertTrue(mControlContainer.isToolbarInAppHeader());
 
         // Disable vertical tabs while tab strip height is 0. Shifting is retained.
         VerticalTabUtils.setVerticalTabsEnabled(false);
         isVerticalTabsActiveSupplier.set(false);
-        verify(mRightMarginCallback, never()).onResult(0);
+        verify(mHorizontalMarginCallback, never()).accept(0, 0);
 
         // Tab strip expands. Shifting is undone.
         mControlContainer.onHeightChanged(80, 20, false);
-        verify(mRightMarginCallback).onResult(0);
+        verify(mHorizontalMarginCallback).accept(0, 0);
         assertFalse(mControlContainer.isToolbarInAppHeader());
 
         // Exit desktop window. Margin is still 0, so callback should not be called again.
@@ -750,14 +751,14 @@ public class ToolbarControlContainerTest {
                 new AppHeaderState(new Rect(0, 0, 100, 100), new Rect(10, 0, 80, 100), false);
         when(mDesktopWindowStateManager.getAppHeaderState()).thenReturn(appHeaderState2);
         mControlContainer.onAppHeaderStateChanged(appHeaderState2);
-        verify(mRightMarginCallback).onResult(0);
+        verify(mHorizontalMarginCallback).accept(0, 0);
         assertFalse(mControlContainer.isToolbarInAppHeader());
     }
 
     @Test
     public void testToolbarRightOffset_StartupWithVerticalTabsOff() {
         initControlContainer(R.layout.toolbar_tablet);
-        mControlContainer.setToolbarRightMarginCallback(mRightMarginCallback);
+        mControlContainer.setToolbarHorizontalMarginCallback(mHorizontalMarginCallback);
 
         SettableNonNullObservableSupplier<Boolean> isVerticalTabsActiveSupplier =
                 ObservableSuppliers.createNonNull(false);
@@ -770,7 +771,7 @@ public class ToolbarControlContainerTest {
         mControlContainer.onAppHeaderStateChanged(appHeaderState);
 
         assertEquals(0, mControlContainer.getRightMarginForTesting());
-        verify(mRightMarginCallback, never()).onResult(0);
+        verify(mHorizontalMarginCallback, never()).accept(anyInt(), anyInt());
     }
 
     @Test
@@ -778,7 +779,7 @@ public class ToolbarControlContainerTest {
     @EnableFeatures(ChromeFeatureList.ANDROID_VERTICAL_TABS)
     public void testToolbarRightOffset_ActiveWhileTabStripVisible() {
         initControlContainer(R.layout.toolbar_tablet);
-        mControlContainer.setToolbarRightMarginCallback(mRightMarginCallback);
+        mControlContainer.setToolbarHorizontalMarginCallback(mHorizontalMarginCallback);
 
         var appHeaderState =
                 new AppHeaderState(new Rect(0, 0, 100, 100), new Rect(10, 0, 80, 100), true);
@@ -791,14 +792,14 @@ public class ToolbarControlContainerTest {
         // Tab strip is visible (height 80). Margin is 0.
         mControlContainer.onHeightChanged(80, 20, false);
         assertEquals(0, mControlContainer.getRightMarginForTesting());
-        verify(mRightMarginCallback, never()).onResult(anyInt());
+        verify(mHorizontalMarginCallback, never()).accept(anyInt(), anyInt());
 
         // Vertical tabs becomes active. Right margin is updated immediately even while
         // tab strip is still visible.
         VerticalTabUtils.setVerticalTabsEnabled(true);
-        mControlContainer.updateToolbarRightOffset();
+        mControlContainer.updateToolbarHorizontalMargins();
         assertEquals(20, mControlContainer.getRightMarginForTesting());
-        verify(mRightMarginCallback).onResult(20);
+        verify(mHorizontalMarginCallback).accept(0, 20);
 
         // Intermediate animation height update preserves the right margin.
         mControlContainer.onHeightChanged(40, 20, false);
@@ -807,7 +808,7 @@ public class ToolbarControlContainerTest {
         // Tab strip finishes collapse to height 0.
         mControlContainer.onHeightChanged(0, 20, false);
         assertEquals(20, mControlContainer.getRightMarginForTesting());
-        verify(mRightMarginCallback, times(1)).onResult(20);
+        verify(mHorizontalMarginCallback, times(1)).accept(0, 20);
     }
 
     @Test
@@ -824,10 +825,10 @@ public class ToolbarControlContainerTest {
         SettableNonNullObservableSupplier<Boolean> isVerticalTabsActiveSupplier =
                 ObservableSuppliers.createNonNull(true);
         mControlContainer.setIsVerticalTabsActiveSupplier(isVerticalTabsActiveSupplier);
-        mControlContainer.setToolbarRightMarginCallback(mRightMarginCallback);
+        mControlContainer.setToolbarHorizontalMarginCallback(mHorizontalMarginCallback);
 
         assertEquals(20, mControlContainer.getRightMarginForTesting());
-        verify(mRightMarginCallback).onResult(20);
+        verify(mHorizontalMarginCallback).accept(0, 20);
     }
 
     @Test
@@ -835,7 +836,7 @@ public class ToolbarControlContainerTest {
     @EnableFeatures(ChromeFeatureList.ANDROID_VERTICAL_TABS)
     public void testToolbarRightOffset_VerticalTabsEnabledViaPref() {
         initControlContainer(R.layout.toolbar_tablet);
-        mControlContainer.setToolbarRightMarginCallback(mRightMarginCallback);
+        mControlContainer.setToolbarHorizontalMarginCallback(mHorizontalMarginCallback);
 
         var appHeaderState =
                 new AppHeaderState(new Rect(0, 0, 100, 100), new Rect(10, 0, 80, 100), true);
@@ -849,12 +850,65 @@ public class ToolbarControlContainerTest {
 
         // Enable vertical tabs via preference.
         VerticalTabUtils.setVerticalTabsEnabled(true);
-        mControlContainer.updateToolbarRightOffset();
+        mControlContainer.updateToolbarHorizontalMargins();
 
         // Right offset is applied immediately because VerticalTabUtils.isVerticalTabsEnabled is
         // true.
         assertEquals(20, mControlContainer.getRightMarginForTesting());
-        verify(mRightMarginCallback).onResult(20);
+        verify(mHorizontalMarginCallback).accept(0, 20);
+    }
+
+    @Test
+    @Config(qualifiers = "sw600dp")
+    @EnableFeatures(ChromeFeatureList.ANDROID_VERTICAL_TABS)
+    public void testToolbarLeftOffsetInDesktopWindow() {
+        initControlContainer(R.layout.toolbar_tablet);
+        mControlContainer.setToolbarHorizontalMarginCallback(mHorizontalMarginCallback);
+
+        VerticalTabUtils.setVerticalTabsEnabled(true);
+        SettableNonNullObservableSupplier<Boolean> isVerticalTabsActiveSupplier =
+                ObservableSuppliers.createNonNull(true);
+        mControlContainer.setIsVerticalTabsActiveSupplier(isVerticalTabsActiveSupplier);
+
+        // Set app header with 180px padding on left (e.g. app icon + app title + dropdown in
+        // fullscreen/split-screen), 20px on right, and 100px height.
+        var appHeaderState =
+                new AppHeaderState(new Rect(0, 0, 500, 100), new Rect(180, 0, 480, 100), true);
+        when(mDesktopWindowStateManager.getAppHeaderState()).thenReturn(appHeaderState);
+
+        // When Vertical Tabs is expanded (240px >= 180px leftPadding), leftMargin is 0 and
+        // rightMargin is 20.
+        SettableNonNullObservableSupplier<Integer> vtWidthSupplier =
+                ObservableSuppliers.createNonNull(240);
+        mControlContainer.setVerticalTabsContainerWidthSupplier(vtWidthSupplier);
+        assertEquals(0, mControlContainer.getLeftMarginForTesting());
+        assertEquals(20, mControlContainer.getRightMarginForTesting());
+        verify(mHorizontalMarginCallback).accept(0, 20);
+
+        // When Vertical Tabs collapses (52px < 180px leftPadding), leftMargin is 180 - 52 = 128px.
+        vtWidthSupplier.set(52);
+        assertEquals(128, mControlContainer.getLeftMarginForTesting());
+        verify(mHorizontalMarginCallback).accept(128, 20);
+
+        // When Vertical Tabs expands again (240px >= 180px), leftMargin returns to 0.
+        vtWidthSupplier.set(240);
+        assertEquals(0, mControlContainer.getLeftMarginForTesting());
+        verify(mHorizontalMarginCallback, times(2)).accept(0, 20);
+
+        // Collapse again (leftMargin = 128), then disable Vertical Tabs while tabStripHeight is 0.
+        // Shifting is retained until tab strip expands.
+        vtWidthSupplier.set(52);
+        VerticalTabUtils.setVerticalTabsEnabled(false);
+        isVerticalTabsActiveSupplier.set(false);
+        assertEquals(128, mControlContainer.getLeftMarginForTesting());
+        assertEquals(20, mControlContainer.getRightMarginForTesting());
+        verify(mHorizontalMarginCallback, never()).accept(0, 0);
+
+        // Tab strip expands (height 80). Shifting is undone.
+        mControlContainer.onHeightChanged(80, 20, false);
+        assertEquals(0, mControlContainer.getLeftMarginForTesting());
+        assertEquals(0, mControlContainer.getRightMarginForTesting());
+        verify(mHorizontalMarginCallback).accept(0, 0);
     }
 
     @Test
@@ -1869,6 +1923,29 @@ public class ToolbarControlContainerTest {
 
     @Test
     @EnableFeatures(ChromeFeatureList.TOOLBAR_SNAPSHOT_REFACTOR)
+    public void testOnMeasure_BottomAnchoredToolbarHairlineTopMarginZero() {
+        initControlContainer(R.layout.toolbar_phone);
+
+        Resources res = mActivity.getResources();
+        int toolbarLayoutHeight = res.getDimensionPixelSize(R.dimen.toolbar_height_no_shadow);
+
+        CoordinatorLayout.LayoutParams hairlineParams =
+                mControlContainer.mutateHairlineLayoutParams();
+        hairlineParams.anchorGravity = Gravity.TOP;
+        hairlineParams.topMargin = toolbarLayoutHeight;
+
+        int widthSpec = View.MeasureSpec.makeMeasureSpec(1024, View.MeasureSpec.EXACTLY);
+        int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        mControlContainer.measure(widthSpec, heightSpec);
+
+        assertEquals(
+                "Bottom-anchored toolbar hairline top margin should be 0.",
+                0,
+                hairlineParams.topMargin);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.TOOLBAR_SNAPSHOT_REFACTOR)
     public void
             testOnHeightChanged_WithToolbarSnapshotRefactorEnabled_SetsToolbarViewTopMarginToZero() {
         initControlContainer(R.layout.toolbar_tablet);
@@ -1904,35 +1981,19 @@ public class ToolbarControlContainerTest {
     @DisableFeatures(ChromeFeatureList.TOOLBAR_SNAPSHOT_REFACTOR)
     public void
             testOnHeightChanged_VerticalTabsWithCaptionControlsTopOffset_ExcludesTopOffsetFromHairlineTopMargin() {
-        initControlContainer(R.layout.toolbar_tablet);
-        Resources res = mActivity.getResources();
-        int toolbarLayoutHeight = res.getDimensionPixelSize(R.dimen.toolbar_height_no_shadow);
-        int hairlineHeight = res.getDimensionPixelSize(R.dimen.toolbar_hairline_height);
-        mToolbarHairline.layout(0, 0, 1, hairlineHeight);
+        checkOnHeightChangedWithVerticalTabsCaptionControlsTopOffset(
+                /* expectTopOffsetExcluded= */ true);
+    }
 
-        SettableNonNullObservableSupplier<Boolean> isVerticalTabsActiveSupplier =
-                ObservableSuppliers.createNonNull(true);
-        mControlContainer.setIsVerticalTabsActiveSupplier(isVerticalTabsActiveSupplier);
-
-        int topOffset = 24;
-        var appHeaderState =
-                new AppHeaderState(
-                        /* appWindowRect= */ new Rect(0, 0, 100, 100),
-                        /* widestUnoccludedRect= */ new Rect(10, topOffset, 80, 64),
-                        /* isInDesktopWindow= */ true);
-        when(mDesktopWindowStateManager.getAppHeaderState()).thenReturn(appHeaderState);
-        mControlContainer.onAppHeaderStateChanged(appHeaderState);
-
-        mControlContainer.onHeightChanged(
-                /* tabStripHeight= */ 0, /* topPadding= */ 0, /* applyScrimOverlay= */ false);
-
-        assertEquals(0, ((MarginLayoutParams) mToolbarView.getLayoutParams()).topMargin);
-        assertEquals(
-                toolbarLayoutHeight,
-                ((MarginLayoutParams) mToolbarHairline.getLayoutParams()).topMargin);
-        assertEquals(
-                toolbarLayoutHeight + topOffset + hairlineHeight,
-                mControlContainer.getMinimumHeight());
+    @Test
+    @DisableFeatures({
+        ChromeFeatureList.TOOLBAR_SNAPSHOT_REFACTOR,
+        ChromeFeatureList.FIX_TOOLBAR_HAIRLINE_REGRESSION
+    })
+    public void
+            testOnHeightChanged_VerticalTabsWithCaptionControlsTopOffset_WithFixDisabled_IncludesTopOffsetInHairlineTopMargin() {
+        checkOnHeightChangedWithVerticalTabsCaptionControlsTopOffset(
+                /* expectTopOffsetExcluded= */ false);
     }
 
     private void checkSetToolbarContainerTopMarginForAutoHiddenVerticalTab() {
@@ -2004,6 +2065,39 @@ public class ToolbarControlContainerTest {
                 "Hairline top margin is incorrect.",
                 expectedHairlineTopMargin,
                 newHairlineParams.topMargin);
+    }
+
+    private void checkOnHeightChangedWithVerticalTabsCaptionControlsTopOffset(
+            boolean expectTopOffsetExcluded) {
+        initControlContainer(R.layout.toolbar_tablet);
+        Resources res = mActivity.getResources();
+        int toolbarLayoutHeight = res.getDimensionPixelSize(R.dimen.toolbar_height_no_shadow);
+        int hairlineHeight = res.getDimensionPixelSize(R.dimen.toolbar_hairline_height);
+        mToolbarHairline.layout(0, 0, 1, hairlineHeight);
+
+        SettableNonNullObservableSupplier<Boolean> isVerticalTabsActiveSupplier =
+                ObservableSuppliers.createNonNull(true);
+        mControlContainer.setIsVerticalTabsActiveSupplier(isVerticalTabsActiveSupplier);
+
+        int topOffset = 24;
+        var appHeaderState =
+                new AppHeaderState(
+                        /* appWindowRect= */ new Rect(0, 0, 100, 100),
+                        /* widestUnoccludedRect= */ new Rect(10, topOffset, 80, 64),
+                        /* isInDesktopWindow= */ true);
+        when(mDesktopWindowStateManager.getAppHeaderState()).thenReturn(appHeaderState);
+        mControlContainer.onAppHeaderStateChanged(appHeaderState);
+
+        mControlContainer.onHeightChanged(
+                /* tabStripHeight= */ 0, /* topPadding= */ 0, /* applyScrimOverlay= */ false);
+
+        assertEquals(0, ((MarginLayoutParams) mToolbarView.getLayoutParams()).topMargin);
+        assertEquals(
+                expectTopOffsetExcluded ? toolbarLayoutHeight : toolbarLayoutHeight + topOffset,
+                ((MarginLayoutParams) mToolbarHairline.getLayoutParams()).topMargin);
+        assertEquals(
+                toolbarLayoutHeight + topOffset + hairlineHeight,
+                mControlContainer.getMinimumHeight());
     }
 
     /** Stubs the toolbar's reported position within its container. */

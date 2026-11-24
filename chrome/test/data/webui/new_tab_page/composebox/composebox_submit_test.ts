@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {SubmitButtonIconType} from 'chrome://new-tab-page/lazy_load.js';
+import {AimButtonMode, SubmitButtonIconType} from 'chrome://new-tab-page/lazy_load.js';
 import {SingleTabMenuItemAction, SingleTabType} from 'chrome://resources/cr_components/composebox/common.js';
+import type {ComposeboxAimButtonElement} from 'chrome://resources/cr_components/composebox/composebox_aim_button.js';
 import {ContextUploadStatus} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import type {ComposeboxSubmitElement} from 'chrome://resources/cr_components/composebox/composebox_submit.js';
 import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
@@ -68,10 +69,15 @@ suite('ComposeboxSubmitTest', () => {
   test('dims energy layer when disabled and energy effect is on', async () => {
     // The energy layer holds the background color only when the energy
     // effect is enabled, so the dimming rule is gated on the same attribute.
-    document.body.toggleAttribute('energy-effect-animation-enabled_', true);
     const energy =
         submitButton.shadowRoot.querySelector<HTMLElement>('#submitEnergy');
     assertTrue(!!energy);
+    assertEquals('none', window.getComputedStyle(energy, '::after').content);
+
+    document.body.toggleAttribute('energy-effect-animation-enabled_', true);
+    assertEquals('""', window.getComputedStyle(energy, '::after').content);
+    assertEquals(
+        'blur(7px)', window.getComputedStyle(energy, '::after').filter);
     assertEquals('1', window.getComputedStyle(energy).opacity);
 
     submitButton.disabled = true;
@@ -370,6 +376,22 @@ suite('ComposeboxDelayedTabSubmitTest', () => {
     await markSnapshotReady(FAKE_TOKEN_STRING);
     testProxy.element.submitQuery();
     assertEquals(1, testProxy.searchboxHandler.getCallCount('submitQuery'));
+  });
+
+  test('AIM button is held until the snapshot is ready', async () => {
+    // Read when attachPendingDelayedTab() constructs the element.
+    loadTimeData.overrideValues({'composeboxPersistentAimButton': true});
+    const token = await attachPendingDelayedTab();
+    const aimButton =
+        testProxy.element.shadowRoot.querySelector<ComposeboxAimButtonElement>(
+            'cr-composebox-aim-button');
+    assertTrue(!!aimButton);
+    assertEquals(AimButtonMode.SEND, aimButton.mode);
+    assertTrue(aimButton.disabled);
+
+    await markSnapshotReady(token);
+    assertEquals(AimButtonMode.SEND, aimButton.mode);
+    assertFalse(aimButton.disabled);
   });
 });
 

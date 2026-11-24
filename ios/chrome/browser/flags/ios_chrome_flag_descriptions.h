@@ -764,6 +764,11 @@ inline constexpr char kEnableAutofillAddressSavePromptName[] =
 inline constexpr char kEnableAutofillAddressSavePromptDescription[] =
     "Enable the Autofill address save prompts.";
 
+inline constexpr char kEnableBackgroundContinuedProcessingName[] =
+    "Background Continued Processing";
+inline constexpr char kEnableBackgroundContinuedProcessingDescription[] =
+    "Enables background continued processing task support on iOS 26+.";
+
 inline constexpr char kEnableBulkDataEntryConnectorIOSName[] =
     "Enable bulk data entry connectors on iOS";
 inline constexpr char kEnableBulkDataEntryConnectorIOSDescription[] =
@@ -1645,6 +1650,12 @@ inline constexpr char kOmniboxPrerenderOnTouchDownDescription[] =
     "Prerenders compatible omnibox suggestions when touching down on the "
     "suggestion row.";
 
+inline constexpr char kOmniboxTruncateSearchUrlName[] =
+    "Omnibox Truncate Search URL";
+inline constexpr char kOmniboxTruncateSearchUrlDescription[] =
+    "Truncates search URLs for the original query ('oq') and query ('q') "
+    "parameters across various length limits.";
+
 inline constexpr char kOmniboxUIMaxAutocompleteMatchesName[] =
     "Omnibox UI Max Autocomplete Matches";
 inline constexpr char kOmniboxUIMaxAutocompleteMatchesDescription[] =
@@ -1942,12 +1953,6 @@ inline constexpr char kSyncSandboxDescription[] =
 inline constexpr char kSyncThemesIosName[] = "Enable Sync Themes on iOS";
 inline constexpr char kSyncThemesIosDescription[] =
     "Enables syncing of themes across iOS devices.";
-
-inline constexpr char kSyncTrustedVaultInfobarMessageImprovementsName[] =
-    "Trusted vault infobar message improvements";
-inline constexpr char kSyncTrustedVaultInfobarMessageImprovementsDescription[] =
-    "Enables massage improvements for the UI of the trusted vault error "
-    "infobar.";
 
 inline constexpr char kSyncWalletFlightReservationsName[] =
     "Sync wallet flight reservations";

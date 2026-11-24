@@ -59,6 +59,9 @@ BASE_FEATURE(kIPHComposeNewBadgeFeature,
 BASE_FEATURE(kIPHContextualTasksEphemeralToolbarButtonFeature,
              "IPH_ContextualTasksEphemeralToolbarButton",
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHContextualTasksPinnedIconChangedFeature,
+             "IPH_ContextualTasksPinnedIconChanged",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHCriticalActionAppMenuFeature,
              "IPH_CriticalActionAppMenu",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -77,6 +80,9 @@ BASE_FEATURE(kIPHDesktopCustomizeChromeAutoOpenFeature,
 BASE_FEATURE(kIPHDesktopRealboxContextualSearchFeature,
              "IPH_DesktopRealboxContextualSearchFeature",
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHDictationFeature,
+             "IPH_Dictation",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHDiscardRingFeature,
              "IPH_DiscardRing",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -284,6 +290,12 @@ BASE_FEATURE(kIPHVerticalTabsExpandOnHoverFeature,
 BASE_FEATURE(kIPHVerticalTabstripTutorialFeature,
              "IPH_VerticalTabstripTutorialFeature",
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHTabGroupsFocusingFeature,
+             "IPH_TabGroupsFocusingFeature",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHTabGroupsUnfocusingFeature,
+             "IPH_TabGroupsUnfocusingFeature",
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHSidePanelGenericPinnableFeature,
              "IPH_SidePanelGenericPinnableFeature",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -355,8 +367,14 @@ BASE_FEATURE(kIPHExtensionsPinnedByDefaultFeature,
 BASE_FEATURE(kIPHAccountSettingsHistorySync,
              "IPH_AccountSettingsHistorySync",
              base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHAndroidBottomBarAddressBar,
+             "IPH_AndroidBottomBarAddressBar",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHAndroidBottomBarEducation,
              "IPH_AndroidBottomBarEducation",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHAndroidBottomBarEducationTooltips,
+             "IPH_AndroidBottomBarEducationTooltips",
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHAndroidBottomBarGlic,
              "IPH_AndroidBottomBarGlic",
@@ -412,8 +430,6 @@ BASE_FEATURE(kIPHAimActivationHint,
 BASE_FEATURE(kIPH_AndroidTipsOptInPromo, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPH_AppLanguagePromo, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPH_ArchivedTabsAutoDeletePromo,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPH_AutofillAmbientAutofillSpiiDisclaimer,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPH_BlueBubbleCooldownGroup, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPH_FullscreenSigninPromo, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -856,6 +872,10 @@ BASE_FEATURE(kIPHiOSPromoStaySafeFeature,
 BASE_FEATURE(kIPHiOSSwipeBackForwardFeature,
              "IPH_iOSSwipeBackForward",
              base::FEATURE_ENABLED_BY_DEFAULT);
+constexpr base::FeatureParam<bool> kIPHiOSSwipeBackForwardForAllUsers{
+    &kIPHiOSSwipeBackForwardFeature,
+    /*name=*/"x_ios_swipe_back_iph_for_all_users",
+    /*default_value=*/false};
 BASE_FEATURE(kIPHiOSSwipeToolbarToChangeTabFeature,
              "IPH_iOSSwipeToolbarToChangeTab",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1003,6 +1023,10 @@ BASE_FEATURE(kIPHiOSNewIAPromoFeature,
              "IPH_iOSNewIAPromoFeature",
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kIPHiOSBottomOmniboxFeature,
+             "IPH_iOSBottomOmniboxFeature",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kIPHiOSGeminiExternalAppStoreEvent,
              "IPH_iOSGeminiExternalAppStoreEvent",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1051,6 +1075,8 @@ BASE_FEATURE(kIPHAutofillAccountNameEmailSuggestionFeature,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHAutofillAiValuablesFeature,
              "IPH_AutofillAiValuables",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPH_AutofillAmbientAutofillSpiiDisclaimer,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHAutofillVirtualCardCVCSuggestionFeature,
              "IPH_AutofillVirtualCardCVCSuggestion",

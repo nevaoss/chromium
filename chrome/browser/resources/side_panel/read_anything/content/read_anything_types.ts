@@ -85,8 +85,6 @@ export class LineFocusStyle {
   private constructor(
       public readonly type: LineFocusType, public readonly lines: number) {}
 
-  // TODO(crbug.com/447427066): Finalize the default mode. This is a
-  // placeholder.
   static defaultValue(): LineFocusStyle {
     return this.MEDIUM_WINDOW;
   }
@@ -182,6 +180,7 @@ export enum ToolbarEvent {
   SETTINGS_OPENED = 'settings-opened',
   SETTINGS_CLOSED = 'settings-closed',
   TRANSLATION_REQUESTED = 'translation-requested',
+  SEND_FEEDBACK = 'send-feedback',
 }
 
 // The available menu items in Reading mode
@@ -201,6 +200,7 @@ export enum SettingsOption {
   PINNED_TO_TOOLBAR = 'pinned-to-toolbar',
   PRESENTATION = 'presentation',
   TRANSLATION_REQUESTED = 'translation-requested',
+  SEND_FEEDBACK = 'send-feedback',
   VOICE_HIGHLIGHT = 'voice-highlight',
   VOICE_SELECTION = 'voice-selection',
 }

@@ -72,6 +72,7 @@ BASE_DECLARE_FEATURE(kAndroidSetGoogleAccountInHelp);
 BASE_DECLARE_FEATURE(kAndroidSettingsUrl);
 BASE_DECLARE_FEATURE(kAndroidSetupList);
 BASE_DECLARE_FEATURE(kAndroidStartupImprovements);
+BASE_DECLARE_FEATURE(kAndroidSwapPressureTabDiscard);
 BASE_DECLARE_FEATURE(kAndroidTabDeclutterArchiveOnDesktop);
 BASE_DECLARE_FEATURE(kAndroidTabDeclutterDedupeTabIdsKillSwitch);
 BASE_DECLARE_FEATURE(kAndroidTabSkipSaveTabsKillswitch);
@@ -108,6 +109,7 @@ BASE_DECLARE_FEATURE(kBackGestureReflectsDesktopBehavior);
 BASE_DECLARE_FEATURE(kBlockIntentsWhileLocked);
 BASE_DECLARE_FEATURE(kBlueBubbleIphCooldownGroup);
 BASE_DECLARE_FEATURE(kBookmarkPaneAndroid);
+BASE_DECLARE_FEATURE(kBookmarkWidgetV2);
 BASE_DECLARE_FEATURE(kBookmarksBarContextMenu);
 BASE_DECLARE_FEATURE(kBookmarksBarNTP);
 BASE_DECLARE_FEATURE(kBottomControlsJankImprovement);
@@ -148,7 +150,6 @@ BASE_DECLARE_FEATURE(kCCTRetainingStateInMemory);
 BASE_DECLARE_FEATURE(kCCTTabModalDialog);
 BASE_DECLARE_FEATURE(kCCTTabSwitcherEnabledForChromeExperiment);
 BASE_DECLARE_FEATURE(kCCTTabSwitcherEnabledForEmbedderExperiment);
-BASE_DECLARE_FEATURE(kCacheDeprecatedSystemLocationSetting);
 BASE_DECLARE_FEATURE(kCacheIsGoogleSigned);
 BASE_DECLARE_FEATURE(kCacheIsMultiInstanceApi31Enabled);
 BASE_DECLARE_FEATURE(kCctTabResumption);
@@ -195,7 +196,6 @@ BASE_DECLARE_FEATURE(kDisableGridTabSwitcher);
 BASE_DECLARE_FEATURE(kDisablePartnerHomepageAndroid);
 BASE_DECLARE_FEATURE(kDisableScrollbarOfFadingEdgeScrollView);
 BASE_DECLARE_FEATURE(kDiscardPageWithCrashedSubframePolicy);
-BASE_DECLARE_FEATURE(kDontAutoHideBrowserControls);
 BASE_DECLARE_FEATURE(kDontPrefetchLibraries);
 BASE_DECLARE_FEATURE(kDownloadToolbarButtonForDesktop);
 BASE_DECLARE_FEATURE(kEdgeToEdgeAutomotive);
@@ -216,6 +216,7 @@ BASE_DECLARE_FEATURE(kEnableToolbarPositioningInResizeMode);
 BASE_DECLARE_FEATURE(kEnableXAxisActivityTransition);
 BASE_DECLARE_FEATURE(kEnforceIncognitoIsolation);
 BASE_DECLARE_FEATURE(kExcludeChromeInIncognitoShareSheet);
+BASE_DECLARE_FEATURE(kFixToolbarHairlineRegression);
 BASE_DECLARE_FEATURE(kFlyoutInBookmarksBar);
 BASE_DECLARE_FEATURE(kForceTranslucentNotificationTrampoline);
 BASE_DECLARE_FEATURE(kFullscreenInsetsApiMigration);
@@ -385,6 +386,21 @@ inline constexpr base::FeatureParam<std::string>
     kAndroidSidePanelDevFeatureScopeParam(&kEnableAndroidSidePanelDevFeature,
                                           "scope",
                                           "window");
+
+inline constexpr base::FeatureParam<int>
+    kAndroidSwapPressureSwapFreeThresholdPct(&kAndroidSwapPressureTabDiscard,
+                                             "swap_free_threshold_pct",
+                                             0);
+
+inline constexpr base::FeatureParam<int>
+    kAndroidSwapPressureFileCacheThresholdMb(&kAndroidSwapPressureTabDiscard,
+                                             "file_cache_threshold_mb",
+                                             0);
+
+inline constexpr base::FeatureParam<int> kAndroidSwapPressureMinTabsToKeep(
+    &kAndroidSwapPressureTabDiscard,
+    "min_tabs_to_keep",
+    0);
 
 inline constexpr base::FeatureParam<int>
     kAppIntegrationCCTVisitDurationLimitSecParam(

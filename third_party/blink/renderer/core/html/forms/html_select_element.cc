@@ -48,6 +48,7 @@
 #include "third_party/blink/renderer/core/dom/node_lists_node_data.h"
 #include "third_party/blink/renderer/core/dom/node_traversal.h"
 #include "third_party/blink/renderer/core/events/keyboard_event.h"
+#include "third_party/blink/renderer/core/events/mouse_event.h"
 #include "third_party/blink/renderer/core/execution_context/agent.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/html/forms/form_controller.h"
@@ -965,17 +966,6 @@ bool HTMLSelectElement::ChildrenChangedAllChildrenRemovedNeedsList() const {
   return true;
 }
 
-void HTMLSelectElement::ElementInserted(Node& node) {
-  if (auto* option = DynamicTo<HTMLOptionElement>(&node)) {
-    OptionInserted(*option, option, option->Selected());
-  } else if (auto* optgroup = DynamicTo<HTMLOptGroupElement>(&node)) {
-    for (auto& child_option :
-         Traversal<HTMLOptionElement>::ChildrenOf(*optgroup)) {
-      OptionInserted(child_option, optgroup, child_option.Selected());
-    }
-  }
-}
-
 void HTMLSelectElement::OptionInserted(HTMLOptionElement& option,
                                        Node* nearest_ancestor_select_child,
                                        bool option_is_selected) {
@@ -1468,6 +1458,39 @@ void HTMLSelectElement::DefaultEventHandler(Event& event) {
     }
   }
   HTMLFormControlElementWithState::DefaultEventHandler(event);
+}
+
+bool HTMLSelectElement::HasActivationBehavior() const {
+  if (RuntimeEnabledFeatures::SelectLabelClickOpensPickerEnabled()) {
+    return true;
+  }
+  return HTMLFormControlElementWithState::HasActivationBehavior();
+}
+
+void HTMLSelectElement::RunActivationBehavior(
+    Event& event,
+    EventDispatchHandlingState* handling_state) {
+  // Open the picker when clicking a <label> element associated with this
+  // <select>. HTMLLabelElement::DefaultEventHandlerInternal forwards clicks to
+  // its control via DispatchSimulatedClick(&evt), which dispatches a click
+  // event whose UnderlyingEvent() is set to the <label>'s click event (whereas
+  // direct mouse clicks on the <select> are already handled on mousedown and
+  // have a null UnderlyingEvent() on their click event).
+  const auto* mouse_event = DynamicTo<MouseEvent>(event);
+  if (RuntimeEnabledFeatures::SelectLabelClickOpensPickerEnabled() &&
+      !event.defaultPrevented() && !event.DefaultHandled() &&
+      event.type() == event_type_names::kClick && mouse_event &&
+      mouse_event->button() ==
+          static_cast<int16_t>(WebPointerProperties::Button::kLeft) &&
+      event.isTrusted() && event.UnderlyingEvent()) {
+    GetDocument().UpdateStyleAndLayoutTree();
+    if (UsesMenuList() && GetLayoutObject() && !IsDisabledFormControl()) {
+      select_type_->ShowPicker();
+      event.SetDefaultHandled();
+      return;
+    }
+  }
+  HTMLFormControlElementWithState::RunActivationBehavior(event, handling_state);
 }
 
 void HTMLSelectElement::ChildrenChanged(const ChildrenChange& change) {
@@ -2321,6 +2344,16 @@ unsigned HTMLSelectElement::NumDescendantInputs() const {
   // num_descendant_inputs_, but unfortunately it runs so slowly that it causes
   // some tests to time out on DCHECK builds.
   return num_descendant_inputs_;
+}
+
+HTMLElement* HTMLSelectElement::ListBoxForFilter() const {
+  if (HTMLDivElement* listbox = select_type_->ShadowListBox()) {
+    return listbox;
+  }
+  if (!UsesMenuList()) {
+    return const_cast<HTMLSelectElement*>(this);
+  }
+  return nullptr;
 }
 
 FocusableState HTMLSelectElement::SupportsFocus(

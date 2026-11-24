@@ -20,8 +20,6 @@ import '../settings_vars.css.js';
 import './internet_shared.css.js';
 import '../controls/settings_toggle_button.js';
 
-import type {PrefsMixinInterface} from '/shared/settings/prefs/prefs_mixin.js';
-import {PrefsMixin} from '/shared/settings/prefs/prefs_mixin.js';
 import type {CrDialogElement} from 'chrome://resources/ash/common/cr_elements/cr_dialog/cr_dialog.js';
 import type {CrToggleElement} from 'chrome://resources/ash/common/cr_elements/cr_toggle/cr_toggle.js';
 import type {I18nMixinInterface} from 'chrome://resources/ash/common/cr_elements/i18n_mixin.js';
@@ -39,7 +37,9 @@ import type {RouteObserverMixinInterface} from '../common/route_observer_mixin.j
 import {RouteObserverMixin} from '../common/route_observer_mixin.js';
 import type {Constructor} from '../common/types.js';
 import type {SettingsToggleButtonElement} from '../controls/settings_toggle_button.js';
-import type {Route} from '../router.js';
+import type {Route} from '../os_settings_routes.js';
+import type {PrefsMixinInterface} from '../prefs/prefs_mixin.js';
+import {PrefsMixin} from '../prefs/prefs_mixin.js';
 import {routes} from '../router.js';
 
 import {getTemplate} from './network_proxy_section.html.js';

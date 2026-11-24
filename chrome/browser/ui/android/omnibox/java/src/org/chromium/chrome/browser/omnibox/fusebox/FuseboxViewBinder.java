@@ -33,7 +33,7 @@ import androidx.recyclerview.widget.RecyclerView.LayoutManager;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.omnibox.R;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.PopupState;
+import org.chromium.chrome.browser.omnibox.fusebox.Fusebox.PopupState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.AnchoringMode;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.BackgroundStyle;
 import org.chromium.chrome.browser.omnibox.fusebox.PopupButtonData.PopupButtonType;
@@ -473,7 +473,7 @@ class FuseboxViewBinder {
             setCustomButtonDrawables(buttonView, drawable, data.selected);
         } else {
             int iconId = data.iconId == 0 ? IconResourceIds.GLOBE_VALUE : data.iconId;
-            @DrawableRes int iconRes = getResIdForIconId(iconId);
+            @DrawableRes int iconRes = FuseboxIconUtils.getResIdForIconId(iconId);
             setButtonDrawables(buttonView, iconRes, data.selected);
         }
 
@@ -525,34 +525,6 @@ class FuseboxViewBinder {
         imageView.setVisibility(startDrawable != null ? View.VISIBLE : View.GONE);
 
         setButtonSelected(holder, selected);
-    }
-
-    /** Maps ids found in generated protos to local resources backed drawable ids. */
-    private static @DrawableRes int getResIdForIconId(int iconId) {
-        if (iconId == IconResourceIds.GLOBE_VALUE) {
-            return R.drawable.ic_globe_24dp;
-        } else if (iconId == IconResourceIds.SEARCH_LOUPE_WITH_SPARKLE_VALUE) {
-            return R.drawable.search_spark_black_24dp;
-        } else if (iconId == IconResourceIds.IMAGE_CREATE_VALUE) {
-            return R.drawable.image_create_24dp;
-        } else if (iconId == IconResourceIds.BANANA_VALUE) {
-            return R.drawable.create_image_24dp;
-        } else if (iconId == IconResourceIds.TRAVEL_EXPLORE_VALUE) {
-            return R.drawable.travel_explore_24dp;
-        } else if (iconId == IconResourceIds.DRAFT_SPARK_VALUE) {
-            return R.drawable.draft_spark_24dp;
-        } else if (iconId == IconResourceIds.AUTORENEW_VALUE) {
-            return R.drawable.autorenew_24dp;
-        } else if (iconId == IconResourceIds.TIMER_VALUE) {
-            return R.drawable.ic_timer;
-        } else if (iconId == IconResourceIds.BOLT_VALUE) {
-            return R.drawable.bolt_24dp;
-        } else if (iconId == IconResourceIds.TASK_SPARK_VALUE) {
-            return R.drawable.task_spark_24dp;
-        } else if (iconId == IconResourceIds.ACUTE_VALUE) {
-            return R.drawable.acute_24dp;
-        }
-        return Resources.ID_NULL;
     }
 
     private static void themeButton(
@@ -742,7 +714,7 @@ class FuseboxViewBinder {
 
         @IconResourceIdsProtoIntDef.IconResourceIds
         int iconId = model.get(FuseboxProperties.REQUEST_TYPE_BUTTON_ICON_ID);
-        @DrawableRes int startIconRes = getResIdForIconId(iconId);
+        @DrawableRes int startIconRes = FuseboxIconUtils.getResIdForIconId(iconId);
         Drawable startDrawable =
                 startIconRes != Resources.ID_NULL ? context.getDrawable(startIconRes) : null;
         Drawable endDrawable = assumeNonNull(context.getDrawable(R.drawable.btn_close)).mutate();

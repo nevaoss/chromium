@@ -374,7 +374,7 @@ BrowserViewTabbedLayoutImpl::CalculateSidePanelContentAnimation() const {
 // and not a tab.
 int BrowserViewTabbedLayoutImpl::GetHorizontalTabStripLeadingMargin(
     const BrowserLayoutParams& params) const {
-  int leading_margin = TabStyle::Get()->GetBottomCornerRadius();
+  int leading_margin = TabStyle::Get()->GetBottomExtensionWidth();
   if (const gfx::Insets* internal_padding =
           views().horizontal_tab_strip_region_view->GetProperty(
               views::kInternalPaddingKey)) {
@@ -1769,7 +1769,7 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
       }
     }
 
-    views().vertical_tab_strip_region_view->UpdatePanelClips();
+    views().vertical_tab_strip_region_view->UpdatePanelClipAndOpacity();
 
   } else if (layout_data_->tab_strip_type == TabStripType::kHorizontal &&
              !is_fullscreen(layout_data_->window_state) && in_glass_mode()) {

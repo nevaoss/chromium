@@ -789,13 +789,6 @@ gn_args.config(
 )
 
 gn_args.config(
-    name = "reclient",
-    args = {
-        "use_reclient": True,
-    },
-)
-
-gn_args.config(
     name = "include_unwind_tables",
     args = {
         "exclude_unwind_tables": False,
@@ -1218,6 +1211,15 @@ gn_args.config(
     configs = [
         "release",
         "static",
+    ],
+)
+
+gn_args.config(
+    name = "release_builder_with_dchecks",
+    configs = [
+        "release_builder",
+        # Must come after "release_builder", which turns DCHECKs off.
+        "dcheck_always_on",
     ],
 )
 

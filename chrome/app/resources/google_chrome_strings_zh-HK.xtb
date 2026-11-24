@@ -118,6 +118,7 @@
 <translation id="2039417478970545937">「設定」。</translation>
 <translation id="2040220733769034247">使用手機掃瞄二維碼，以下載 Chrome 並登入 Google 帳戶。</translation>
 <translation id="2044908892530830113">在 Mac 選單列顯示 Chrome 的搜尋功能，並啟用鍵盤快速鍵</translation>
+<translation id="2050189601866423230">你可固定「Google 搜尋 AI 模式」以在瀏覽時提問</translation>
 <translation id="2091012649849228750">如要取得日後的 Google Chrome 更新，您需要使用 Windows 10 或以上版本。此電腦目前版本為 Windows 8。</translation>
 <translation id="2094648590148273905">ChromeOS Flex 條款</translation>
 <translation id="2094919256425865063">仍要退出 Chrome 嗎？</translation>
@@ -143,7 +144,6 @@
 <translation id="2216543877350048334">如要從 Chrome 中移除 Google 帳戶，請登出 Chrome</translation>
 <translation id="2236949375853147973">我的活動</translation>
 <translation id="22791603784558743">關閉 Chrome 開發人員版 Gemini</translation>
-<translation id="2284380654876659752">瀏覽網站時，Chrome 會透過私隱伺服器隱藏你的 IP 位址，再將經編碼隱匿的部分網址傳送給「<ph name="BEGIN_LINK" />Google 安全瀏覽<ph name="END_LINK" />」。如果網站有可疑行為，系統亦會傳送整個網址和部分網頁內容。</translation>
 <translation id="2290014774651636340">缺少 Google API 金鑰，系統將停用 Google Chrome 的部分功能。</translation>
 <translation id="2290095356545025170">確定要解除安裝 Google Chrome 嗎？</translation>
 <translation id="2295218613066132598">顯示 Chrome 網站捷徑</translation>
@@ -383,7 +383,6 @@
 <translation id="459622048091363950">Chrome 獲得存取權後，網站便可向您要求存取權。</translation>
 <translation id="4598116752460667024">搵清單入面嘅任何程序。</translation>
 <translation id="4600710005438004015">由於 Chrome 無法更新至最新版本，因此您無法使用最新功能和安全性修正。</translation>
-<translation id="4606805686144157064">如果 Chrome 發現你的密碼在公開資料外洩事件中外洩，就會向你發出警告</translation>
 <translation id="4608435347866444037">使用「Google 智能鏡頭」搜尋此圖片</translation>
 <translation id="4624065194742029982">Chrome 無痕模式</translation>
 <translation id="4627412468266359539">選用：將診斷和使用情況資料自動傳送給 Google，協助改善 ChromeOS Flex 的功能和效能。</translation>
@@ -400,9 +399,9 @@
 <translation id="4768676935374695498">使用「Google 智能鏡頭」搜尋此影片</translation>
 <translation id="479167709087336770">這會使用與「Google 搜尋」相同的的拼字檢查工具。您在瀏覽器輸入的文字將會傳送給 Google。您可以在設定中變更此行為。</translation>
 <translation id="4793679854893018356">瞭解 Chrome 如何保護使用者的網上安全</translation>
-<translation id="4799870290441980300">開啟額外功能，讓 Chrome 提供最強大的防護</translation>
 <translation id="4828579605166583682">Google Chrome 正嘗試更換現有密碼。如果允許，請輸入 Windows 密碼。</translation>
 <translation id="4836321460899997044">Chrome 設定檔</translation>
+<translation id="4839733921943823254">固定捷徑</translation>
 <translation id="4842397268809523050">您的網域無法使用同步功能，因此 ChromeOS Flex 無法同步處理您的資料。</translation>
 <translation id="4851866215237571846"><ph name="EXISTING_USER" />已登入。如要分開保存你的瀏覽資料，請在 Chrome 中登入你的個人檔案 (<ph name="USER_EMAIL_ADDRESS" />)。</translation>
 <translation id="4855026984605187434">如要分享螢幕內容，請前往「系統設定」允許 Chrome 螢幕錄影</translation>
@@ -559,7 +558,6 @@ Google Chrome 無法復原您的設定。</translation>
 <translation id="6251759518630934363">此防護機制分析的網站資料比標準保護多，因此即使是 Google 不知道的網站，此防護機制亦能提供危險網站警告。你可選擇略過 Chrome 警告。</translation>
 <translation id="6277547788421725101">你的家長已停用 Chrome 的「網站、應用程式和擴充程式權限」設定</translation>
 <translation id="627882678981830918">自訂並控制 Chrome。將 Chrome 設定為預設瀏覽器。</translation>
-<translation id="6280042952415350607">「強化保護」會為 Chrome 無法識別的網站關閉 JavaScript 優化功能</translation>
 <translation id="6288580400488258237">將 Google Chrome 設定為預設瀏覽器，並釘選到工作列</translation>
 <translation id="6291089322031436445">Chrome 開發人員應用程式</translation>
 <translation id="6291549208091401781">電腦上的所有使用者均安裝了 Google Chrome。</translation>
@@ -773,6 +771,7 @@ Google Chrome 無法復原您的設定。</translation>
 <translation id="8074398340364918139">如要搜尋特定 Chrome 功能或擴充程式，請在網址列中輸入捷徑，然後按下你選取的鍵盤按鍵</translation>
 <translation id="8077579734294125741">其他 Chrome 設定檔</translation>
 <translation id="8086881907087796310">由於你的電腦不符合最低硬件要求，因此安裝失敗。</translation>
+<translation id="8110438089258398864">你可重新開啟「Google 搜尋 AI 模式」以在瀏覽時提問</translation>
 <translation id="8113883687556086139">請驗證你的身分，以在帳戶 <ph name="ACCOUNT_EMAIL" /> 中使用及儲存 Chrome 資料</translation>
 <translation id="8115695070094288807">自訂 Chrome…</translation>
 <translation id="8118331347066725040">提供你對「智能鏡頭」搜尋功能的意見</translation>
@@ -829,6 +828,8 @@ Google Chrome 無法復原您的設定。</translation>
 <translation id="8555465886620020932">服務錯誤：<ph name="SERVICE_ERROR" />。</translation>
 <translation id="856656450041460113">搜尋語言清單</translation>
 <translation id="8575047640889685742">使用<ph name="BEGIN_LINK" />密碼短語<ph name="END_LINK" />加密 Google 帳戶中的所有 Chrome 資料。系統將不會加密你在 Google Pay 中的付款方法和地址，Chrome 上的瀏覽記錄將不會同步。</translation>
+<translation id="8590782867495422699">重新開啟「Google 搜尋」AI 模式</translation>
+<translation id="8598779894319572882">你可透過工具列上的「Google 搜尋 AI 模式」按鈕，重新開啟「Google 搜尋 AI 模式」以在瀏覽時提問</translation>
 <translation id="8614913330719544658">Google Chrome 沒有回應，要立即重新啟動嗎？</translation>
 <translation id="8623450603356630491">在手機上登入 Chrome</translation>
 <translation id="8624541899164515475">設定，喺新分頁打開。</translation>
@@ -883,6 +884,7 @@ Google Chrome 無法復原您的設定。</translation>
 <translation id="9014771989710951291">Chrome 由多個機構管理</translation>
 <translation id="9018218886431812662">安裝完成</translation>
 <translation id="9066987883552592250">關閉 Chrome Canary 版 Gemini</translation>
+<translation id="9074041031320636790">大功告成！你現可透過「Google 搜尋 AI 模式」在瀏覽時輕鬆提問</translation>
 <translation id="9090566250983691233">瞭解 Chrome 封鎖部分檔案的原因</translation>
 <translation id="9106236359747881194">選取文字即可搜尋</translation>
 <translation id="911206726377975832">您要一併刪除瀏覽數據嗎？</translation>

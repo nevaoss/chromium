@@ -1357,6 +1357,7 @@ source_set("extensions") {
       "//chrome/browser/ash/child_accounts",
       "//chrome/browser/ash/child_accounts/parent_access_code",
       "//chrome/browser/ash/child_accounts/time_limits",
+      "//chrome/browser/ash/cloud_upload",
       "//chrome/browser/ash/crostini",
       "//chrome/browser/ash/crostini:crostini_installer_types_mojom",
       "//chrome/browser/ash/crostini/throttle",
@@ -1388,8 +1389,6 @@ source_set("extensions") {
       "//chrome/browser/ash/settings",
       "//chrome/browser/ash/system_logs",
       "//chrome/browser/ash/system_web_apps/apps",
-      "//chrome/browser/chromeos/drivefs",
-      "//chrome/browser/chromeos/drivefs:native_message_host_origins",
       "//chrome/browser/chromeos/extensions/desk_api",
       "//chrome/browser/chromeos/extensions/external_loader",
       "//chrome/browser/chromeos/extensions/file_system_provider",
@@ -1403,7 +1402,6 @@ source_set("extensions") {
       "//chrome/browser/chromeos/extensions/wm",
       "//chrome/browser/chromeos/platform_keys",
       "//chrome/browser/chromeos/policy/dlp",
-      "//chrome/browser/chromeos/upload_office_to_cloud",
       "//chrome/browser/devtools",
       "//chrome/browser/nearby_sharing/common",
       "//chrome/browser/policy:system_features_disable_list",
@@ -1543,6 +1541,7 @@ source_set("extensions") {
       "//chrome/browser/ash/policy/handlers",
       "//chrome/browser/ash/system_web_apps/apps",
       "//chrome/browser/ui/ash/shelf/app_service",
+      "//chrome/browser/ui/ash/thumbnail_loader",
       "//chrome/browser/ui/webui/ash/settings/pages/a11y",
       "//chrome/browser/chromeos/extensions/component_extension_content_settings",
       "//chrome/browser/chromeos/extensions/desk_api",
@@ -2284,6 +2283,7 @@ source_set("unit_tests") {
       "api/enterprise_device_attributes/enterprise_device_attributes_api_ash_unittest.cc",
       "api/enterprise_kiosk_input/enterprise_kiosk_input_unittest.cc",
       "api/enterprise_login/enterprise_login_api_unittest.cc",
+      "api/enterprise_networking_attributes/enterprise_networking_attributes_api_ash_unittest.cc",
       "api/file_system/consent_provider_unittest.cc",
       "api/image_writer_private/image_writer_private_api_chromeos_unittest.cc",
       "api/image_writer_private/removable_storage_provider_chromeos_unittest.cc",
@@ -2314,6 +2314,8 @@ source_set("unit_tests") {
       "//chrome/test:test_support_unit",
       "//chromeos/ash/components/dbus/image_burner",
       "//chromeos/ash/components/disks:test_support",
+      "//chromeos/ash/components/file_manager:constants",
+      "//chromeos/ash/components/network:test_support",
       "//chromeos/ash/components/policy/external_storage",
       "//chromeos/ash/components/policy/external_storage:test_support",
       "//chromeos/ash/components/system",
@@ -2635,7 +2637,10 @@ source_set("browser_tests") {
     "//chrome/test/base:web_ui_test_support",
   ]
   if (is_android) {
-    deps += [ "//chrome/test/base:android_ui_test_utils" ]
+    deps += [
+      "//chrome/test:test_support_jni_headers",
+      "//chrome/test/base:android_ui_test_utils",
+    ]
   }
   deps += [
     "//components/autofill/content/browser",

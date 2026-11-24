@@ -47,9 +47,13 @@ class CdmWrapper;
 class MEDIA_EXPORT CdmAdapter final : public ContentDecryptionModule,
                                       public CdmContext,
                                       public Decryptor,
+<<<<<<< HEAD
 #if defined(USE_NEVA_CDM)
                                       public cdm::Host_8,
 #endif
+=======
+                                      public cdm::Host_10,
+>>>>>>> 158.0.8127.0~1
                                       public cdm::Host_11,
                                       public cdm::Host_12 {
  public:
@@ -165,7 +169,7 @@ class MEDIA_EXPORT CdmAdapter final : public ContentDecryptionModule,
                            const cdm::KeyInformation_2* keys_info,
                            uint32_t keys_info_count) override;
 
-  // cdm::Host_11 implementation.
+  // cdm::Host_10 and cdm::Host_11 implementation.
   void OnResolveKeyStatusPromise(uint32_t promise_id,
                                  cdm::KeyStatus key_status) override;
   void OnSessionKeysChange(const char* session_id,
@@ -174,7 +178,7 @@ class MEDIA_EXPORT CdmAdapter final : public ContentDecryptionModule,
                            const cdm::KeyInformation* keys_info,
                            uint32_t keys_info_count) override;
 
-  // Common cdm::Host_11, cdm::Host_12 implementation.
+  // Common cdm::Host_10, cdm::Host_11, cdm::Host_12 implementation.
   cdm::Buffer* Allocate(uint32_t capacity) override;
   void SetTimer(int64_t delay_ms, void* context) override;
   cdm::Time GetCurrentWallTime() override;

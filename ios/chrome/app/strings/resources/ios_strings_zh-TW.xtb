@@ -325,6 +325,7 @@
 <translation id="1925706052394657380">開啟 iOS 的「預設 App」<ph name="BEGIN_BOLD" /><ph name="END_BOLD" />設定</translation>
 <translation id="1938871630297275912">{count,plural, =1{收到 1 個連結}other{收到 {count} 個連結}}</translation>
 <translation id="1941314575388338491">輕觸兩下即可複製。</translation>
+<translation id="1942483019269000450">Gemini 可以要求 Google 錢包填寫信用卡資訊，幫你繼續處理任務</translation>
 <translation id="1943478190258551035">「選單」→「設定」</translation>
 <translation id="1944477975050820119">取得 AI 即時建議，體驗全新瀏覽方式。<ph name="BEGIN_LINK" />瞭解詳情<ph name="END_LINK" /></translation>
 <translation id="1952728750904661634">使用代管帳戶登入</translation>
@@ -365,6 +366,7 @@
 <translation id="20485545164632846">新項目</translation>
 <translation id="2049727122989709386">有 <ph name="COUNT" /> 個帳戶使用相同的密碼</translation>
 <translation id="205013082884273671">搜尋畫面上的任何內容</translation>
+<translation id="2053311407685904414">選取地址</translation>
 <translation id="2054044186557130763">登入 <ph name="NAME" /> (<ph name="EMAIL" />，由貴機構管理)。</translation>
 <translation id="2059166748188874810">縣/市</translation>
 <translation id="2060638295449304809">這個地址只會儲存到這部裝置。如要在其他裝置上使用，請儲存到 Google 帳戶 (<ph name="USER_EMAIL" />)。</translation>
@@ -465,6 +467,7 @@
 <translation id="2359043044084662842">翻譯</translation>
 <translation id="2359808026110333948">繼續</translation>
 <translation id="2360196772093551345">切換為行動版網站</translation>
+<translation id="2360272811987888433">手動登入</translation>
 <translation id="2362083820973145409">目前登入的帳戶是<ph name="USER_NAME" />。<ph name="USER_EMAIL" />。開啟設定。</translation>
 <translation id="2367025302166767427">無法填入資訊</translation>
 <translation id="2371084566192454134">分頁和分頁群組</translation>
@@ -773,11 +776,13 @@
 <translation id="3404232721752787413">儲存到 Google 相簿</translation>
 <translation id="3406506285180498376">分享網頁…</translation>
 <translation id="340669334496430859">上次修改時間</translation>
+<translation id="3407832712016477396">Gemini 可以用 Google 密碼管理工具代你登入帳戶</translation>
 <translation id="3409785640040772790">地圖</translation>
 <translation id="3416023309465857378">2023 年 10 月 25 日</translation>
 <translation id="3419787211763835342">協助改善強化版自動填入功能</translation>
 <translation id="3422958112451181446">按住即可將常用工具固定在這裡</translation>
 <translation id="3430407169377889553">請謹慎使用 Gemini，並視情況接手操作。你必須為 Gemini 執行工作時採取的行動負責。</translation>
+<translation id="3432601291244612633">關閉頁面</translation>
 <translation id="3435738964857648380">安全性</translation>
 <translation id="3441673211568148613">保護瀏覽隱私</translation>
 <translation id="3445288400492335833"><ph name="MINUTES" /> 分鐘</translation>
@@ -1049,6 +1054,8 @@
 <translation id="4290920330097335010">一律不允許</translation>
 <translation id="4293154608148215505">手機</translation>
 <translation id="4294506173142861371">要以「<ph name="FIRST_NAME" />」身分登入嗎？</translation>
+<translation id="4297031046690565608">手動輸入</translation>
+<translation id="4297418774230471285">選取個人資訊</translation>
 <translation id="4302061870579014542">設定位置</translation>
 <translation id="4304713468139749426">密碼管理工具</translation>
 <translation id="4309403553630140242">輕觸兩下即可查看更多資訊</translation>
@@ -1373,7 +1380,7 @@
 <translation id="5250371859659394278">來源不明</translation>
 <translation id="525510229763628836">已縮到最小</translation>
 <translation id="5260842098960755113">已關閉討論串</translation>
-<translation id="5271265092610673171">{count,plural, =1{必填欄位沒有內容，請先填寫再儲存。}other{部分必填欄位沒有內容，請先填寫再儲存。}}</translation>
+<translation id="5271265092610673171">{count,plural, =1{一個必填欄位沒有內容，請先填寫再儲存。}other{部分必填欄位沒有內容，請先填寫再儲存。}}</translation>
 <translation id="5271549068863921519">儲存密碼</translation>
 <translation id="5275912569557792098"><ph name="USER_NAME" /> (<ph name="USER_EMAIL" />) 邀請你加入分頁群組。知道連結的使用者都可以編輯所有分頁，請謹慎考慮是否加入。連結將在 48 小時後失效。</translation>
 <translation id="5275953427913009986">附加分頁「{title}」</translation>
@@ -1387,6 +1394,7 @@
 <translation id="5315029634103634221">Gemini 是 AI，可能會出錯。<ph name="BEGIN_LINK" />進一步瞭解傳送給 Google 的相關資料<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">沒有任何可匯入的資料</translation>
 <translation id="5316356981864168850"><ph name="INDEX" />/<ph name="NUM_SUGGESTIONS" /></translation>
+<translation id="5316823130598991834">登入 <ph name="SITE_DOMAIN" /></translation>
 <translation id="5317780077021120954">儲存</translation>
 <translation id="5318298563956633672">你已在追蹤這項產品。</translation>
 <translation id="5327248766486351172">姓名</translation>
@@ -1934,6 +1942,7 @@
 <translation id="6946722113367118030">思考</translation>
 <translation id="6947751977892029882">這項設定發生錯誤，請更新並重新啟動 Chrome 和 iOS，然後再試一次。如果這個錯誤持續發生，表示你的 iPhone 可能不支援這項設定。</translation>
 <translation id="6950522403736391608">隱藏</translation>
+<translation id="6957084631403333422">試用專注模式新分頁</translation>
 <translation id="695965663642079255">儲存及管理付款資訊，結帳更快速</translation>
 <translation id="6962809930976936328">使用 Gemini 取得洞察資訊</translation>
 <translation id="6964300328304469089">目前已選取<ph name="NAME" />，<ph name="EMAIL" />。請選擇帳戶。</translation>
@@ -2171,6 +2180,7 @@
 <translation id="7724085059277147439">{count,plural, =1{這個項目已儲存到 Google 帳戶 ({email})}other{這些項目已儲存到 Google 帳戶 ({email})}}</translation>
 <translation id="7729458878441927652">如要查看其他裝置上的分頁，請同步處理分頁和歷史記錄。</translation>
 <translation id="7730020510075123961">否，合併資料</translation>
+<translation id="7730937523779541003">已套用專注模式新分頁</translation>
 <translation id="7733646263819020771"><ph name="BOOKMRK_NAME" />。僅在這部裝置上。</translation>
 <translation id="7737550920399185748">相片庫中的首頁相片不會在裝置間同步。</translation>
 <translation id="7738120385185846461">回報問題…</translation>
@@ -2206,6 +2216,7 @@
 <translation id="7839994177130598711">現在起，當家庭成員透過 Google 密碼管理工具登入 <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> 時，可以直接使用你的使用者名稱和密碼。</translation>
 <translation id="7841180087127694526">搜尋複製的文字</translation>
 <translation id="7841418003178675048">選擇新分頁要顯示的資訊卡。</translation>
+<translation id="7842369010458597654">填寫付款資訊</translation>
 <translation id="7845466610722898">顯示閱讀清單</translation>
 <translation id="7846161022626028328">發生錯誤，請再試一次。</translation>
 <translation id="784623644169604270">最近沒有活動</translation>
@@ -2613,6 +2624,7 @@
 <translation id="9032405509996909363">確認刪除瀏覽資料</translation>
 <translation id="9038526468059454274">想摘要內容，就用</translation>
 <translation id="9039373489628511875">頻寬</translation>
+<translation id="9042363670218758847">切換至專為快速搜尋打造的版面配置</translation>
 <translation id="9042893549633094279">隱私權和安全性</translation>
 <translation id="9044703854323320868">Gmail 郵件 <ph name="INDEX" /></translation>
 <translation id="9055291197094969722">建立分頁群組來整理開啟的分頁，維持工作效率</translation>

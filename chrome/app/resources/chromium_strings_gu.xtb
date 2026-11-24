@@ -258,7 +258,6 @@
 <translation id="3531741627422851418">મોબાઇલ ડિવાઇસ પર Chromium બ્રાઉઝર ડાઉનલોડ કરવા માટેનો QR કોડ</translation>
 <translation id="354621070532799440">રિમાઇન્ડર: Googleની શ્રેષ્ઠ સલામતી સુવિધાઓ તમારા ખિસ્સામાં</translation>
 <translation id="3561853857681580870">તમારી સ્ક્રીન શેર કરવા માટે, સિસ્ટમના સેટિંગમાં Chromium માટે સ્ક્રીન રેકોર્ડિંગની મંજૂરી આપો.</translation>
-<translation id="3588112919289558122">Chromium દ્વારા ઓળખી ન શકાતી સાઇટ માટે વધારેલું સંરક્ષણ JavaScript ઑપ્ટિમાઇઝેશન બંધ કરે છે</translation>
 <translation id="3597003331831379823">વધારેલા વિશેષાધિકારો સાથે સેટઅપ ચલાવવામાં નિષ્ફળ રહ્યાં. <ph name="METAINSTALLER_ERROR" /></translation>
 <translation id="3600428265489994557">Chromiumમાં સાઇન ઇન કરો</translation>
 <translation id="3639635944603682591">આ વ્યક્તિનો બ્રાઉઝિંગ ડેટા આ ડિવાઇસમાંથી ડિલીટ કરવામાં આવશે. આ ડેટા પાછો મેળવવા માટે, Chromiumમાં <ph name="USER_EMAIL" /> તરીકે સાઇન ઇન કરો.</translation>
@@ -297,7 +296,6 @@
 <translation id="3971865010372729242">તમે જ્યારે ઍડ્રેસ બાર અથવા શોધ બૉક્સમાં ટાઇપ કરો છો, ત્યારે સૂચનો મેળવવા માટે Chromium તમે જે ટાઇપ કરો છો તેને તમારી સંસ્થાના શોધ, AI અને એજન્ટ ટૂલ પર મોકલે છે.</translation>
 <translation id="3975724895399328945">Google Chrome for Testing વિશે</translation>
 <translation id="3997429360543082038">ChromiumOS વિશે</translation>
-<translation id="4010059961270896984">જ્યારે તમે કોઈ સાઇટની મુલાકાત લો, ત્યારે પ્રાઇવસી સર્વર મારફતે Chromium <ph name="BEGIN_LINK" />Google Safe Browsing<ph name="END_LINK" />ને તે સાઇટના URLનો વાંચવામાં મુશ્કેલ બનાવેલો ભાગ મોકલે છે, જે તમારા IP ઍડ્રેસને છુપાવે છે. જો સાઇટ પર કોઈ શંકાસ્પદ ઍક્ટિવિટી દેખાય, તો સંપૂર્ણ URLs અને પેજ કન્ટેન્ટના બિટ પણ મોકલવામાં આવે છે.</translation>
 <translation id="4016217212818346953">Password Manager સાથે સુરક્ષિત રહો</translation>
 <translation id="4019629340646866719"><ph name="BEGIN_LINK_LINUX_OSS" />Linux ડેવલપમેન્ટ એન્વાયરમેન્ટ<ph name="END_LINK_LINUX_OSS" />ની જેમ, ChromiumOSને વધારાના <ph name="BEGIN_LINK_CROS_OSS" />ઓપન સૉર્સ સૉફ્ટવેર<ph name="END_LINK_CROS_OSS" /> દ્વારા શક્ય બનાવવામાં આવ્યું છે.</translation>
 <translation id="4022972681110646219">સ્ક્રીનનો અનુવાદ કરો</translation>
@@ -375,6 +373,7 @@
 <translation id="4786083865378785874">જો Chromiumમાં Gemini ખુલ્લું હોય, તો નવા ટૅબ બનાવતી વખતે બાજુની પૅનલ ખુલ્લી રહે છે</translation>
 <translation id="479167709087336770">આ પણ Google Searchમાં જે જોડણી તપાસનારનો ઉપયોગ થાય છે તેનો જ ઉપયોગ કરે છે. તમે બ્રાઉઝરમાં ટાઇપ કરો છો તે ટેક્સ્ટ Googleને મોકલવામાં આવે છે. તમે સેટિંગમાં આ વર્તણૂકને હંમેશાં બદલી શકો છો.</translation>
 <translation id="4814736265800133385">એકાઉન્ટ વગર Chromiumનો ઉપયોગ કરો</translation>
+<translation id="4839733921943823254">શૉર્ટકટ પિન કરો</translation>
 <translation id="4888717733111232871">mDNS ટ્રાફિકને મંજૂરી આપવા Chromium માટે ઇનબાઉન્ડ નિયમ.</translation>
 <translation id="4893347770495441059">&amp;Chromium અપડેટ કરવા માટે, ફરીથી લૉન્ચ કરો</translation>
 <translation id="4918086044614829423">સ્વીકારો</translation>
@@ -458,7 +457,6 @@
 <translation id="5821520528363214608">તમારા Google એકાઉન્ટમાં Chromiumના ડેટાનો ઉપયોગ કરવા અને તેને સાચવવા માટે, Chromium અપડેટ કરો</translation>
 <translation id="5824893331272123205">આ પૅનલ લોડ કરી શકાઇ નથી, ફરી પ્રયાસ કરો</translation>
 <translation id="5862307444128926510">Chromium માં સ્વાગત છે</translation>
-<translation id="5867606647614813312">Chromiumની સૌથી સશક્ત સુરક્ષા પ્રદાન કરવા માટે વધારાની સુવિધાઓ ચાલુ કરે છે</translation>
 <translation id="5871205389137001634">'છબી વડે શોધ' સુવિધામાંથી બહાર નીકળવા માટે ક્લિક કરો</translation>
 <translation id="5883558403894052917">Chromiumને આ આઇટમમાં માલવેર હોવાનું જાણવા મળ્યું છે:</translation>
 <translation id="5889361821821684993">Chromium નિયમિત રીતે ચેક કરીને એ વાતની ખાતરી કરતું રહે છે કે તમારા બ્રાઉઝરના સેટિંગ સૌથી સલામત છે. જો કોઈ બાબતનો રિવ્યૂ કરવો જરૂરી હશે તો અમે તમને તેની જાણ કરીશું.</translation>
@@ -760,13 +758,13 @@ Chromium તમારા સેટિંગને રિકવર શકતુ�
 <translation id="8522801943730206384">જ્યારે તમે તમારા પાસવર્ડ સાચવો ત્યારે Chromium તેને ચેક કરી શકે છે</translation>
 <translation id="8525579356836940628">ઇન્સ્ટૉલેશનની પ્રક્રિયા રોકી</translation>
 <translation id="8545729292258443488">તમારા <ph name="DEVICE_TYPE" /> પર Chromium ઍપ વડે તમારા પાસવર્ડ, ટૅબ અને બીજું ઘણું મુસાફરીમાં સાથે રાખો</translation>
-<translation id="8548787790260785208">જો Chromiumને સાર્વજનિક ડેટા ઉલ્લંઘનમાં તમારો કોઈ પાસવર્ડ મળે, તો ચેતવણી મેળવો</translation>
 <translation id="8555465886620020932">સેવામાં ભૂલ: <ph name="SERVICE_ERROR" />.</translation>
 <translation id="8556055872671007529">Chromiumની કેટલીક સુવિધાઓ અને એક્સ્ટેન્શન શૉર્ટકટ સાથે આવે છે. તમે તેને ફરીથી ચાલુ કરવાનું પસંદ કરી શકો છો.</translation>
 <translation id="8556420416730706394">તમે સરળ ઍક્સેસ માટે 'છબી વડે શોધ' સુવિધાને પિન કરી શકો છો; બાજુની પૅનલમાં સૌથી ઉપર પિન કરો બટન પર ક્લિક કરો</translation>
 <translation id="856656450041460113">ભાષાની સૂચિ શોધો</translation>
 <translation id="8576826849825683917">એકથી વધુ સંસ્થાઓ Chromiumને મેનેજ કરે છે</translation>
 <translation id="8586442755830160949">કોપિરાઇટ <ph name="YEAR" /> The Chromium Authors. સર્વાધિકાર સુરક્ષિત.</translation>
+<translation id="8590782867495422699">Google Searchનો AI મોડ ફરીથી ખોલો</translation>
 <translation id="8619360774459241877">Chromium લૉન્ચ કરી રહ્યાં છીએ…</translation>
 <translation id="8624541899164515475">સેટિંગ, નવા ટૅબમાં ખૂલે છે.</translation>
 <translation id="8648201657708811153">Chrome for Testingને તમારું ડિફૉલ્ટ બ્રાઉઝર બનાવી શકાતું નથી.</translation>
@@ -817,6 +815,7 @@ Chromium તમારા સેટિંગને રિકવર શકતુ�
 <translation id="9056398481763999048">તમારા ફોન પર Chromium ઍપ વડે Googleના શ્રેષ્ઠ AI ટૂલનો ઉપયોગ કરો</translation>
 <translation id="9057625473949801035"><ph name="DEVICE" />માંથી તમારા પાસવર્ડ અને બીજું ઘણું મેળવવા માટે, Chromiumમાં સાઇન ઇન કરો</translation>
 <translation id="9062666675513499497">જ્યારે તમે Googleની અન્ય સેવાઓમાં સાઇન ઇન કરશો, ત્યારે Chromiumમાં સાઇન ઇન કરો</translation>
+<translation id="9074041031320636790">સફળતા! હવે તમે Google Search AI મોડ વડે બ્રાઉઝ કરો ત્યારે સરળતાથી પ્રશ્નો પૂછી શકો છો</translation>
 <translation id="9078733879136747090">Chromium ઑટોમૅટિક રીતે બંધ થઈ ગયું હતું</translation>
 <translation id="9089354809943900324">Chromium જૂનું થઈ ગયું છે</translation>
 <translation id="9093206154853821181">{0,plural, =1{Chromium એક કલાકમાં ફરીથી લૉન્ચ થશે}one{Chromium # કલાકમાં ફરીથી લૉન્ચ થશે}other{Chromium # કલાકમાં ફરીથી લૉન્ચ થશે}}</translation>

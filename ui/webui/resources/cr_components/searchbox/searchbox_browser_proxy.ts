@@ -26,8 +26,8 @@ export function createAutocompleteMatch(
     allowedToBeDefaultMatch: false,
     isSearchType: false,
     isEnterpriseSearchAggregatorPeopleType: false,
-    showContextualDescription: false,
     descriptionIconPath: '',
+    showSecondaryTextOnlyOnSelection: false,
     supportsDeletion: false,
     suggestionGroupId: -1,
     destinationUrl: '',
@@ -35,7 +35,6 @@ export function createAutocompleteMatch(
     fillIntoEdit: '',
     iconPath: '',
     iconUrl: '',
-    isContextualSuggestion: false,
     removeButtonA11yLabel: '',
     type: '',
     tailSuggestCommonPrefix: null,
@@ -85,9 +84,9 @@ export function createAutocompleteResultForTesting(
 
 export function createSearchMatchForTesting(
     modifiers: Partial<AutocompleteMatch> = {}): AutocompleteMatch {
-  const dimFragment: FormattedStringFragment = {
+  const hintTextFragment: FormattedStringFragment = {
     startIndex: 0,
-    color: ColorType.kOnSurfaceDeemphasis,
+    color: ColorType.kSuggestHintText,
     isBolded: false,
   };
   const base = createAutocompleteMatch({
@@ -97,7 +96,7 @@ export function createSearchMatchForTesting(
     type: 'search-what-you-typed',
     suggestTemplate: createSuggestTemplateInfo({
       primaryText: createFormattedString('hello world'),
-      secondaryText: createFormattedString('Google search', [dimFragment]),
+      secondaryText: createFormattedString('Google search', [hintTextFragment]),
     }),
   });
 

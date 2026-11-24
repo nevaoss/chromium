@@ -4,6 +4,7 @@
 
 #include "chrome/browser/contextual_tasks/contextual_tasks_extension_handler.h"
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <variant>
@@ -14,6 +15,7 @@
 #include "base/test/bind.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/metrics/user_action_tester.h"
+#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "base/values.h"
@@ -27,7 +29,9 @@
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_page.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
+#include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
+#include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/lens/lens_overlay_controller.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "chrome/browser/ui/lens/test_lens_overlay_query_controller.h"
@@ -60,6 +64,7 @@
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_navigation_observer.h"
+#include "content/public/test/test_utils.h"
 #include "extensions/browser/extension_api_frame_id_map.h"
 #include "mojo/public/cpp/base/proto_wrapper.h"
 #include "mojo/public/cpp/bindings/remote.h"
@@ -72,8 +77,11 @@
 #include "third_party/lens_server_proto/lens_overlay_visual_search_interaction_data.pb.h"
 #include "third_party/lens_server_proto/search_communication.pb.h"
 #include "third_party/omnibox_proto/chrome_aim_entry_point.pb.h"
+#include "ui/base/interaction/element_tracker.h"
 #include "ui/base/unowned_user_data/user_data_factory.h"
 #include "ui/events/base_event_utils.h"
+#include "ui/gfx/geometry/rect_f.h"
+#include "ui/webui/resources/js/tracked_element/tracked_element.mojom.h"
 
 namespace contextual_tasks {
 
@@ -264,12 +272,13 @@ class ContextualTasksExtensionHandlerBrowserTestBase
     }
     composebox_handler_remote_.reset();
     handler_ = nullptr;
+    panel_web_contents_ = nullptr;
+    mock_session_handle_ = nullptr;
     if (side_panel_task_id_.has_value()) {
       ContextualTasksPanelController::From(browser())->DetachWebContentsForTask(
           *side_panel_task_id_);
       side_panel_task_id_.reset();
     }
-    mock_session_handle_ = nullptr;
     // Don't reset `mock_controller_` here. The mock session handle stays on
     // the tab until browser shutdown, which runs after this method returns,
     // and keeps returning `mock_controller_` from `GetController()`.
@@ -294,13 +303,16 @@ class ContextualTasksExtensionHandlerBrowserTestBase
     auto panel_contents = content::WebContents::Create(
         content::WebContents::CreateParams(web_contents_->GetBrowserContext()));
     content::WebContents* raw_panel_contents = panel_contents.get();
+    panel_web_contents_ = raw_panel_contents;
+    auto panel_session = std::make_unique<
+        NiceMock<contextual_search::MockContextualSearchSessionHandle>>();
+    mock_session_handle_ = panel_session.get();
+    ON_CALL(*mock_session_handle_, GetController())
+        .WillByDefault(Return(mock_controller_.get()));
     ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
         raw_panel_contents)
-        ->SetTaskSession(
-            *side_panel_task_id_,
-            std::make_unique<NiceMock<
-                contextual_search::MockContextualSearchSessionHandle>>(),
-            /*input_state_model=*/nullptr);
+        ->SetTaskSession(*side_panel_task_id_, std::move(panel_session),
+                         /*input_state_model=*/nullptr);
     ContextualTasksPanelController::From(browser())->TransferWebContentsFromTab(
         *side_panel_task_id_, std::move(panel_contents));
 
@@ -323,6 +335,54 @@ class ContextualTasksExtensionHandlerBrowserTestBase
             std::move(searchbox_receiver));
   }
 
+  void ShowSidePanel() {
+    ContextualTasksPanelController::From(browser())->Show(
+        /*transition_from_tab=*/false,
+        omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT,
+        /*use_no_animation=*/true);
+  }
+
+  void SendSearchMessage(const lens::SearchToClientMessage& msg) {
+    std::vector<uint8_t> bytes(msg.ByteSizeLong());
+    msg.SerializeToArray(bytes.data(), bytes.size());
+    handler_->OnWebviewMessage(bytes, std::nullopt);
+  }
+
+  void SendOnPageChanged(bool is_zero_state) {
+    lens::SearchToClientMessage msg;
+    msg.mutable_on_page_changed()->set_is_zero_state(is_zero_state);
+    SendSearchMessage(msg);
+  }
+
+  ContextualTasksWebContentsUserData* StartTestServerAndOpenSidePanel(
+      GURL* url1_out = nullptr,
+      GURL* url2_out = nullptr) {
+    EXPECT_TRUE(embedded_test_server()->Start());
+    const GURL url1 = embedded_test_server()->GetURL("/title1.html");
+    if (url1_out) {
+      *url1_out = url1;
+    }
+    if (url2_out) {
+      *url2_out = embedded_test_server()->GetURL("/title2.html");
+    }
+    handler_ = nullptr;
+    EXPECT_TRUE(ui_test_utils::NavigateToURL(browser(), url1));
+    EmbedHandlerInSidePanel();
+    ShowSidePanel();
+    return ContextualTasksWebContentsUserData::FromWebContents(
+        panel_web_contents_);
+  }
+
+  void AllowSessionTokenCreation() {
+    auto* session = mock_session_handle_.get();
+    ON_CALL(*mock_session_handle_, CreateContextToken())
+        .WillByDefault([session]() {
+          auto token = base::UnguessableToken::Create();
+          session->GetUploadedContextTokensForTesting().push_back(token);
+          return token;
+        });
+  }
+
   void AttachActiveTab(const base::UnguessableToken& token) {
     SessionID active_tab_id =
         sessions::SessionTabHelper::IdForTab(web_contents_);
@@ -339,6 +399,7 @@ class ContextualTasksExtensionHandlerBrowserTestBase
       mock_lens_overlay_controller_;
   base::test::ScopedFeatureList feature_list_;
   raw_ptr<content::WebContents> web_contents_ = nullptr;
+  raw_ptr<content::WebContents> panel_web_contents_ = nullptr;
   raw_ptr<ContextualTasksExtensionHandler> handler_ = nullptr;
   std::optional<base::Uuid> side_panel_task_id_;
   NiceMock<MockContextualTasksExtensionPage> mock_page_;
@@ -357,6 +418,7 @@ class ContextualTasksExtensionHandlerBrowserTest
   ContextualTasksExtensionHandlerBrowserTest()
       : ContextualTasksExtensionHandlerBrowserTestBase(
             {kContextualTasks, kContextualTasksRearchitecture,
+             kContextualTasksSidePanelRearchitecture,
              kContextualTasksForceEntryPointEligibility},
             {}) {}
 };
@@ -2565,6 +2627,17 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerBrowserTest,
         EXPECT_EQ(response.added_contexts(0).contextual_input_upload_type(),
                   lens::LensOverlayContextualInputUploadType::
                       CONTEXTUAL_INPUT_UPLOAD_TYPE_EXPLICIT);
+      })
+      .WillOnce([&](mojo_base::ProtoWrapper wrapper) {
+        // The submitted tab is still shown by the context library. It was
+        // attached directly to the session above, so the library mounts now.
+        auto client_message = wrapper.As<lens::ClientToSearchMessage>();
+        ASSERT_TRUE(client_message.has_value());
+        ASSERT_TRUE(client_message->has_inject_chrome_input());
+        EXPECT_EQ(
+            client_message->inject_chrome_input().input_type(),
+            lens::ClientToSearchMessage::InjectChromeInput::CONTEXT_LIBRARY);
+        EXPECT_TRUE(client_message->inject_chrome_input().is_active());
         run_loop.Quit();
       });
 
@@ -2677,6 +2750,16 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerBrowserTest,
         EXPECT_EQ(
             client_message->on_submit_query_response().added_contexts_size(),
             0);
+      })
+      .WillOnce([&](mojo_base::ProtoWrapper wrapper) {
+        // The previous turn's tab is still shown by the context library.
+        auto client_message = wrapper.As<lens::ClientToSearchMessage>();
+        ASSERT_TRUE(client_message.has_value());
+        ASSERT_TRUE(client_message->has_inject_chrome_input());
+        EXPECT_EQ(
+            client_message->inject_chrome_input().input_type(),
+            lens::ClientToSearchMessage::InjectChromeInput::CONTEXT_LIBRARY);
+        EXPECT_TRUE(client_message->inject_chrome_input().is_active());
         run_loop.Quit();
       });
 
@@ -3195,17 +3278,55 @@ class ContextualTasksExtensionHandlerContextLibraryBrowserTest
     message.SerializeToArray(serialized_message.data(), size);
     handler_->OnWebviewMessage(serialized_message, std::nullopt);
   }
+
+  // Opens `url` in a background tab, so `web_contents_` stays active, and
+  // returns the new tab's session ID. Restored tabs are only kept while their
+  // tab is open.
+  SessionID OpenBackgroundTab(const GURL& url) {
+    EXPECT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+        browser(), url, WindowOpenDisposition::kNewBackgroundTab,
+        ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+    for (tabs::TabInterface* tab :
+         TabListInterface::From(browser())->GetAllTabs()) {
+      if (tab->GetContents()->GetLastCommittedURL() == url) {
+        return sessions::SessionTabHelper::IdForTab(tab->GetContents());
+      }
+    }
+    ADD_FAILURE() << "No open tab for " << url;
+    return SessionID::InvalidValue();
+  }
+
+  // Closes the tab with `session_id` and waits for it to be destroyed.
+  void CloseTab(SessionID session_id) {
+    for (tabs::TabInterface* tab :
+         TabListInterface::From(browser())->GetAllTabs()) {
+      if (sessions::SessionTabHelper::IdForTab(tab->GetContents()) ==
+          session_id) {
+        content::WebContentsDestroyedWatcher destroyed_watcher(
+            tab->GetContents());
+        TabListInterface::From(browser())->CloseTab(tab->GetHandle());
+        destroyed_watcher.Wait();
+        return;
+      }
+    }
+    ADD_FAILURE() << "No open tab for session ID " << session_id.id();
+  }
 };
 
 IN_PROC_BROWSER_TEST_F(
     ContextualTasksExtensionHandlerContextLibraryBrowserTest,
     OnWebviewMessage_UpdateThreadContextLibrary_SetsRestoredTabsWhenEmpty) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  const GURL url_a = embedded_test_server()->GetURL("/title1.html");
+  const GURL url_b = embedded_test_server()->GetURL("/title2.html");
+  const SessionID tab_a = OpenBackgroundTab(url_a);
+  const SessionID tab_b = OpenBackgroundTab(url_b);
   handler_->SetTaskId(base::Uuid::GenerateRandomV4());
   ASSERT_TRUE(mock_session_handle_->GetTabContextState().restored.empty());
 
   lens::SearchToClientMessage::UpdateThreadContextLibrary library;
-  AddWebpageContext(library, 1, "https://example.com/a", "Tab A");
-  AddWebpageContext(library, 2, "https://example.com/b", "Tab B");
+  AddWebpageContext(library, 1, url_a.spec(), "Tab A");
+  AddWebpageContext(library, 2, url_b.spec(), "Tab B");
   // Non-tab contexts should not be added as restored tabs.
   auto* pdf_context = library.add_contexts();
   pdf_context->set_context_id(3);
@@ -3214,13 +3335,16 @@ IN_PROC_BROWSER_TEST_F(
 
   SendUpdateThreadContextLibrary(library);
 
+  // Restored tabs are resolved to the open tabs showing their URLs.
   const auto& restored = mock_session_handle_->GetTabContextState().restored;
   ASSERT_EQ(restored.size(), 2u);
-  EXPECT_EQ(restored[0].url, GURL("https://example.com/a"));
+  EXPECT_EQ(restored[0].tab_id, tab_a.id());
+  EXPECT_EQ(restored[0].url, url_a);
   EXPECT_EQ(restored[0].title, "Tab A");
   EXPECT_TRUE(restored[0].restored_from_aim);
   EXPECT_TRUE(restored[0].submitted);
-  EXPECT_EQ(restored[1].url, GURL("https://example.com/b"));
+  EXPECT_EQ(restored[1].tab_id, tab_b.id());
+  EXPECT_EQ(restored[1].url, url_b);
   EXPECT_EQ(restored[1].title, "Tab B");
   EXPECT_TRUE(restored[1].restored_from_aim);
   EXPECT_TRUE(restored[1].submitted);
@@ -3229,27 +3353,92 @@ IN_PROC_BROWSER_TEST_F(
 IN_PROC_BROWSER_TEST_F(
     ContextualTasksExtensionHandlerContextLibraryBrowserTest,
     OnWebviewMessage_UpdateThreadContextLibrary_ReplacesOldRestoredTabs) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  const GURL url_a = embedded_test_server()->GetURL("/title1.html");
+  const GURL url_b = embedded_test_server()->GetURL("/title2.html");
+  const GURL url_c = embedded_test_server()->GetURL("/title3.html");
+  const SessionID tab_a = OpenBackgroundTab(url_a);
+  OpenBackgroundTab(url_b);
+  const SessionID tab_c = OpenBackgroundTab(url_c);
   handler_->SetTaskId(base::Uuid::GenerateRandomV4());
 
   lens::SearchToClientMessage::UpdateThreadContextLibrary first_library;
-  AddWebpageContext(first_library, 1, "https://example.com/a", "Tab A");
-  AddWebpageContext(first_library, 2, "https://example.com/b", "Tab B");
+  AddWebpageContext(first_library, 1, url_a.spec(), "Tab A");
+  AddWebpageContext(first_library, 2, url_b.spec(), "Tab B");
   SendUpdateThreadContextLibrary(first_library);
   ASSERT_EQ(mock_session_handle_->GetTabContextState().restored.size(), 2u);
 
   // A later restored tabs update replaces the restored tabs with the server's
   // latest list, in server order.
   lens::SearchToClientMessage::UpdateThreadContextLibrary second_library;
-  AddWebpageContext(second_library, 3, "https://example.com/c", "Tab C");
-  AddWebpageContext(second_library, 1, "https://example.com/a", "Tab A");
+  AddWebpageContext(second_library, 3, url_c.spec(), "Tab C");
+  AddWebpageContext(second_library, 1, url_a.spec(), "Tab A");
   SendUpdateThreadContextLibrary(second_library);
 
   const auto& restored = mock_session_handle_->GetTabContextState().restored;
   ASSERT_EQ(restored.size(), 2u);
-  EXPECT_EQ(restored[0].url, GURL("https://example.com/c"));
+  EXPECT_EQ(restored[0].tab_id, tab_c.id());
+  EXPECT_EQ(restored[0].url, url_c);
   EXPECT_EQ(restored[0].title, "Tab C");
-  EXPECT_EQ(restored[1].url, GURL("https://example.com/a"));
+  EXPECT_EQ(restored[1].tab_id, tab_a.id());
+  EXPECT_EQ(restored[1].url, url_a);
   EXPECT_EQ(restored[1].title, "Tab A");
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksExtensionHandlerContextLibraryBrowserTest,
+    OnWebviewMessage_UpdateThreadContextLibrary_KeepsOpenTabsAndDropsClosedTabs) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  const GURL open_url = embedded_test_server()->GetURL("/title1.html");
+  const GURL submitted_url = embedded_test_server()->GetURL("/title2.html");
+  const SessionID open_tab = OpenBackgroundTab(open_url);
+  const SessionID submitted_tab = OpenBackgroundTab(submitted_url);
+  handler_->SetTaskId(base::Uuid::GenerateRandomV4());
+
+  // The first update matches context 2 to the tab submitted in this session,
+  // even though that tab no longer shows the server's URL. Later updates find
+  // no submitted context, since its tokens get cleared.
+  base::UnguessableToken submitted_token = base::UnguessableToken::Create();
+  mock_session_handle_->SetSubmittedContextTokens({submitted_token});
+  contextual_search::FileInfo submitted_file;
+  submitted_file.file_token = submitted_token;
+  submitted_file.tab_session_id = submitted_tab;
+  lens::LensOverlayRequestId req_id;
+  req_id.set_context_id(2);
+  submitted_file.request_id = req_id;
+  EXPECT_CALL(*mock_session_handle_, GetSubmittedContextFileInfos())
+      .WillOnce(
+          Return(std::vector<contextual_search::FileInfo>{submitted_file}))
+      .WillRepeatedly(Return(std::vector<contextual_search::FileInfo>()));
+
+  lens::SearchToClientMessage::UpdateThreadContextLibrary library;
+  // Matched to an open tab by URL.
+  AddWebpageContext(library, 1, open_url.spec(), "Open Tab");
+  // Matched to the submitted tab, whose URL no longer matches the server's.
+  AddWebpageContext(library, 2, "https://example.com/navigated", "Submitted");
+  // Not open in any tab.
+  AddWebpageContext(library, 3, "https://example.com/closed", "Closed Tab");
+  SendUpdateThreadContextLibrary(library);
+  {
+    const auto& restored = mock_session_handle_->GetTabContextState().restored;
+    ASSERT_EQ(restored.size(), 2u);
+    EXPECT_EQ(restored[0].tab_id, open_tab.id());
+    EXPECT_EQ(restored[1].tab_id, submitted_tab.id());
+  }
+
+  // Later updates only match tabs that still show the page, so the submitted
+  // tab, which no longer does, is dropped.
+  SendUpdateThreadContextLibrary(library);
+  {
+    const auto& restored = mock_session_handle_->GetTabContextState().restored;
+    ASSERT_EQ(restored.size(), 1u);
+    EXPECT_EQ(restored[0].tab_id, open_tab.id());
+  }
+
+  // Once its tab is closed, the next update drops the restored tab.
+  CloseTab(open_tab);
+  SendUpdateThreadContextLibrary(library);
+  EXPECT_TRUE(mock_session_handle_->GetTabContextState().restored.empty());
 }
 
 IN_PROC_BROWSER_TEST_F(
@@ -3268,12 +3457,12 @@ IN_PROC_BROWSER_TEST_F(
 
   contextual_search::FileInfo submitted_file;
   submitted_file.file_token = submitted_token;
-  submitted_file.tab_session_id = SessionID::FromSerializedValue(42);
+  submitted_file.tab_session_id = active_tab_id;
   lens::LensOverlayRequestId req_id;
   req_id.set_context_id(101);
   submitted_file.request_id = req_id;
   EXPECT_CALL(*mock_session_handle_, GetSubmittedContextFileInfos())
-      .WillOnce(
+      .WillRepeatedly(
           Return(std::vector<contextual_search::FileInfo>{submitted_file}));
 
   lens::SearchToClientMessage::UpdateThreadContextLibrary library;
@@ -3291,7 +3480,7 @@ IN_PROC_BROWSER_TEST_F(
   // The matching submitted FileInfo populates `tab_id` on the restored tab.
   const auto& restored = mock_session_handle_->GetTabContextState().restored;
   ASSERT_EQ(restored.size(), 1u);
-  EXPECT_EQ(restored[0].tab_id, 42);
+  EXPECT_EQ(restored[0].tab_id, active_tab_id.id());
   EXPECT_EQ(restored[0].url, GURL("https://example.com/a"));
   EXPECT_EQ(restored[0].title, "Tab A");
 
@@ -3304,7 +3493,7 @@ IN_PROC_BROWSER_TEST_F(
   ASSERT_EQ(resources.size(), 2u);
   EXPECT_EQ(resources[0].url, GURL("https://example.com/a"));
   EXPECT_EQ(resources[0].title, "Tab A");
-  EXPECT_EQ(resources[0].tab_id, SessionID::FromSerializedValue(42));
+  EXPECT_EQ(resources[0].tab_id, active_tab_id);
   EXPECT_TRUE(resources[0].has_chrome_tab_data);
   EXPECT_EQ(resources[1].url, GURL("https://example.com/doc.pdf"));
   EXPECT_EQ(resources[1].title, "Doc");
@@ -3321,10 +3510,13 @@ IN_PROC_BROWSER_TEST_F(
   SessionID active_tab_id = sessions::SessionTabHelper::IdForTab(web_contents_);
   tasks_service->AssociateTabWithTask(task.GetTaskId(), active_tab_id);
   handler_->SetTaskId(task.GetTaskId());
+  ASSERT_TRUE(embedded_test_server()->Start());
+  const GURL url_a = embedded_test_server()->GetURL("/title1.html");
+  OpenBackgroundTab(url_a);
 
   // Seed existing restored tabs and submitted tokens.
   lens::SearchToClientMessage::UpdateThreadContextLibrary initial_library;
-  AddWebpageContext(initial_library, 1, "https://example.com/a", "Tab A");
+  AddWebpageContext(initial_library, 1, url_a.spec(), "Tab A");
   SendUpdateThreadContextLibrary(initial_library);
   ASSERT_EQ(mock_session_handle_->GetTabContextState().restored.size(), 1u);
 
@@ -3357,9 +3549,13 @@ IN_PROC_BROWSER_TEST_F(
   // Like the side panel: only the helper has the task id.
   ASSERT_TRUE(ContextualSearchWebContentsHelper::FromWebContents(web_contents_)
                   ->GetSessionForTask(task.GetTaskId()));
+  // Restored tabs are only kept while their tab is open.
+  ASSERT_TRUE(embedded_test_server()->Start());
+  const GURL url_a = embedded_test_server()->GetURL("/title1.html");
+  OpenBackgroundTab(url_a);
 
   lens::SearchToClientMessage::UpdateThreadContextLibrary library;
-  AddWebpageContext(library, 1, "https://example.com/a", "Tab A");
+  AddWebpageContext(library, 1, url_a.spec(), "Tab A");
   SendUpdateThreadContextLibrary(library);
 
   ASSERT_EQ(mock_session_handle_->GetTabContextState().restored.size(), 1u);
@@ -3367,33 +3563,56 @@ IN_PROC_BROWSER_TEST_F(
       tasks_service->GetContextualTaskForTab(active_tab_id);
   ASSERT_TRUE(updated_task.has_value());
   ASSERT_EQ(updated_task->GetUrlResources().size(), 1u);
-  EXPECT_EQ(updated_task->GetUrlResources()[0].url,
-            GURL("https://example.com/a"));
+  EXPECT_EQ(updated_task->GetUrlResources()[0].url, url_a);
 }
 
 IN_PROC_BROWSER_TEST_F(
     ContextualTasksExtensionHandlerContextLibraryBrowserTest,
-    OnWebviewMessage_UpdateThreadContextLibrary_NoTaskIdOrNoSessionHandleReturnsEarly) {
+    OnWebviewMessage_UpdateThreadContextLibrary_WithoutTaskIdStillRestoresTabs) {
   auto* tasks_service =
       ContextualTasksServiceFactory::GetForProfile(browser()->GetProfile());
   ASSERT_NE(tasks_service, nullptr);
   ContextualTask task = tasks_service->CreateTask();
   SessionID active_tab_id = sessions::SessionTabHelper::IdForTab(web_contents_);
   tasks_service->AssociateTabWithTask(task.GetTaskId(), active_tab_id);
+  ASSERT_TRUE(embedded_test_server()->Start());
+  const GURL url_a = embedded_test_server()->GetURL("/title1.html");
+  const SessionID tab_a = OpenBackgroundTab(url_a);
 
   base::UnguessableToken submitted_token = base::UnguessableToken::Create();
   mock_session_handle_->SetSubmittedContextTokens({submitted_token});
 
   lens::SearchToClientMessage::UpdateThreadContextLibrary library;
-  AddWebpageContext(library, 1, "https://example.com/a", "Tab A");
+  AddWebpageContext(library, 1, url_a.spec(), "Tab A");
 
-  // 1. Before SetTaskId() is called, the update is ignored.
+  // Before a task ID is set (e.g. full-tab AI Mode before `mtid` is in the
+  // URL), the session handle's restored tabs are still updated and the context
+  // library mounts, while `ContextualTasksService` is untouched.
+  base::RunLoop mount_run_loop;
+  EXPECT_CALL(mock_page_, PostSearchMessage(_))
+      .WillOnce([&](mojo_base::ProtoWrapper wrapper) {
+        auto message = wrapper.As<lens::ClientToSearchMessage>();
+        ASSERT_TRUE(message.has_value());
+        ASSERT_TRUE(message->has_inject_chrome_input());
+        EXPECT_EQ(
+            message->inject_chrome_input().input_type(),
+            lens::ClientToSearchMessage::InjectChromeInput::CONTEXT_LIBRARY);
+        EXPECT_TRUE(message->inject_chrome_input().is_active());
+        mount_run_loop.Quit();
+      });
   SendUpdateThreadContextLibrary(library);
-  EXPECT_TRUE(mock_session_handle_->GetTabContextState().restored.empty());
-  EXPECT_THAT(mock_session_handle_->GetSubmittedContextTokens(),
-              testing::ElementsAre(submitted_token));
+  mount_run_loop.Run();
 
-  // 2. With task_id set but no session handle in the helper, the update returns
+  const auto& restored = mock_session_handle_->GetTabContextState().restored;
+  ASSERT_EQ(restored.size(), 1u);
+  EXPECT_EQ(restored[0].tab_id, tab_a.id());
+  EXPECT_TRUE(mock_session_handle_->GetSubmittedContextTokens().empty());
+  std::optional<ContextualTask> updated_task =
+      tasks_service->GetContextualTaskForTab(active_tab_id);
+  ASSERT_TRUE(updated_task.has_value());
+  EXPECT_TRUE(updated_task->GetUrlResources().empty());
+
+  // With task_id set but no session handle in the helper, the update returns
   // early without updating ContextualTasksService.
   handler_->SetTaskId(task.GetTaskId());
   mock_session_handle_ = nullptr;
@@ -3402,10 +3621,61 @@ IN_PROC_BROWSER_TEST_F(
                        /*input_state_model=*/nullptr);
 
   SendUpdateThreadContextLibrary(library);
-  std::optional<ContextualTask> updated_task =
-      tasks_service->GetContextualTaskForTab(active_tab_id);
+  updated_task = tasks_service->GetContextualTaskForTab(active_tab_id);
   ASSERT_TRUE(updated_task.has_value());
   EXPECT_TRUE(updated_task->GetUrlResources().empty());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksExtensionHandlerContextLibraryBrowserTest,
+    OnWebviewMessage_UpdateThreadContextLibrary_UsesHelperTaskIdAndMountsLibrary) {
+  auto* tasks_service =
+      ContextualTasksServiceFactory::GetForProfile(browser()->GetProfile());
+  ASSERT_NE(tasks_service, nullptr);
+  ContextualTask task = tasks_service->CreateTask();
+  // Extension frames never call `SetTaskId()`, so the task is only tracked by
+  // the WebContents helper, which adopts the untasked session here.
+  ASSERT_EQ(ContextualSearchWebContentsHelper::FromWebContents(web_contents_)
+                ->GetSessionForTask(task.GetTaskId()),
+            mock_session_handle_);
+
+  base::UnguessableToken submitted_token = base::UnguessableToken::Create();
+  mock_session_handle_->SetSubmittedContextTokens({submitted_token});
+  const SessionID active_tab_id =
+      sessions::SessionTabHelper::IdForTab(web_contents_);
+  contextual_search::FileInfo submitted_file;
+  submitted_file.file_token = submitted_token;
+  submitted_file.tab_session_id = active_tab_id;
+  lens::LensOverlayRequestId req_id;
+  req_id.set_context_id(101);
+  submitted_file.request_id = req_id;
+  EXPECT_CALL(*mock_session_handle_, GetSubmittedContextFileInfos())
+      .WillOnce(
+          Return(std::vector<contextual_search::FileInfo>{submitted_file}));
+
+  // Restoring a thread whose only tabs come from AIM mounts the library.
+  base::RunLoop mount_run_loop;
+  EXPECT_CALL(mock_page_, PostSearchMessage(_))
+      .WillOnce([&](mojo_base::ProtoWrapper wrapper) {
+        auto message = wrapper.As<lens::ClientToSearchMessage>();
+        ASSERT_TRUE(message.has_value());
+        ASSERT_TRUE(message->has_inject_chrome_input());
+        EXPECT_EQ(
+            message->inject_chrome_input().input_type(),
+            lens::ClientToSearchMessage::InjectChromeInput::CONTEXT_LIBRARY);
+        EXPECT_TRUE(message->inject_chrome_input().is_active());
+        mount_run_loop.Quit();
+      });
+
+  lens::SearchToClientMessage::UpdateThreadContextLibrary library;
+  AddWebpageContext(library, 101, "https://example.com/a", "Tab A");
+  SendUpdateThreadContextLibrary(library);
+  mount_run_loop.Run();
+
+  const auto& restored = mock_session_handle_->GetTabContextState().restored;
+  ASSERT_EQ(restored.size(), 1u);
+  EXPECT_EQ(restored[0].tab_id, active_tab_id.id());
+  EXPECT_EQ(restored[0].url, GURL("https://example.com/a"));
 }
 
 IN_PROC_BROWSER_TEST_F(
@@ -3581,12 +3851,18 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerBrowserTest,
   SimulateUserInteraction();
   EXPECT_TRUE(user_data->OnSearchMessageReceived(
       std::vector<uint8_t>(submit_str.begin(), submit_str.end())));
-  ASSERT_EQ(dispatched_messages.size(), 1u);
-  ASSERT_TRUE(dispatched_messages.back().has_on_submit_query_response());
-  const auto& resp = dispatched_messages.back().on_submit_query_response();
+  ASSERT_EQ(dispatched_messages.size(), 2u);
+  ASSERT_TRUE(dispatched_messages[0].has_on_submit_query_response());
+  const auto& resp = dispatched_messages[0].on_submit_query_response();
   ASSERT_EQ(resp.added_contexts_size(), 1);
   EXPECT_EQ(resp.added_contexts(0).search_session_id(), "zero_iframe_session");
   EXPECT_EQ(resp.added_contexts(0).request_id().context_id(), 777);
+  // The submitted tab is still shown by the context library. It was attached
+  // directly to the session above, so the library mounts now.
+  ASSERT_TRUE(dispatched_messages[1].has_inject_chrome_input());
+  EXPECT_EQ(dispatched_messages[1].inject_chrome_input().input_type(),
+            lens::ClientToSearchMessage::InjectChromeInput::CONTEXT_LIBRARY);
+  EXPECT_TRUE(dispatched_messages[1].inject_chrome_input().is_active());
 }
 
 IN_PROC_BROWSER_TEST_F(
@@ -3657,7 +3933,8 @@ IN_PROC_BROWSER_TEST_F(
   ready_run_loop.Run();
 
   // 3. Submitting the query moves the tab into persisted/submitted context and
-  // emits CONTEXT_STATE_NONE (previous-turn context is excluded).
+  // emits CONTEXT_STATE_NONE (previous-turn context is excluded). The submitted
+  // tab is still shown by the context library, so it stays mounted.
   contextual_search::FileInfo file_info;
   file_info.file_token = token;
   lens::LensOverlayRequestId req_id;
@@ -3673,15 +3950,6 @@ IN_PROC_BROWSER_TEST_F(
         auto message = wrapper.As<lens::ClientToSearchMessage>();
         ASSERT_TRUE(message.has_value());
         EXPECT_TRUE(message->has_on_submit_query_response());
-      })
-      .WillOnce([&](mojo_base::ProtoWrapper wrapper) {
-        auto message = wrapper.As<lens::ClientToSearchMessage>();
-        ASSERT_TRUE(message.has_value());
-        ASSERT_TRUE(message->has_inject_chrome_input());
-        EXPECT_EQ(
-            message->inject_chrome_input().input_type(),
-            lens::ClientToSearchMessage::InjectChromeInput::CONTEXT_LIBRARY);
-        EXPECT_FALSE(message->inject_chrome_input().is_active());
       })
       .WillOnce([&](mojo_base::ProtoWrapper wrapper) {
         auto message = wrapper.As<lens::ClientToSearchMessage>();
@@ -4637,6 +4905,8 @@ IN_PROC_BROWSER_TEST_F(
       contextual_search::ContextUploadStatus::kUploadSuccessful, std::nullopt);
   ready2_run_loop.Run();
 
+  // The submitted tab is still shown by the context library, so it stays
+  // mounted.
   base::RunLoop submit_run_loop;
   EXPECT_CALL(mock_page_, PostSearchMessage(_))
       .WillOnce([&](mojo_base::ProtoWrapper wrapper) {
@@ -4649,12 +4919,6 @@ IN_PROC_BROWSER_TEST_F(
                       .request_id()
                       .context_id(),
                   1000);
-      })
-      .WillOnce([&](mojo_base::ProtoWrapper wrapper) {
-        auto message = wrapper.As<lens::ClientToSearchMessage>();
-        ASSERT_TRUE(message.has_value());
-        ASSERT_TRUE(message->has_inject_chrome_input());
-        EXPECT_FALSE(message->inject_chrome_input().is_active());
       })
       .WillOnce([&](mojo_base::ProtoWrapper wrapper) {
         auto message = wrapper.As<lens::ClientToSearchMessage>();
@@ -4701,7 +4965,7 @@ IN_PROC_BROWSER_TEST_F(
 
   std::vector<lens::ClientToSearchMessage> dispatched_messages;
   user_data->SetSearchMessageDispatcherForTesting(base::BindLambdaForTesting(
-      [&](const lens::ClientToSearchMessage& message) {
+      [&dispatched_messages](const lens::ClientToSearchMessage& message) {
         dispatched_messages.push_back(message);
       }));
 
@@ -4753,6 +5017,740 @@ IN_PROC_BROWSER_TEST_F(
   EXPECT_EQ(suggest_inputs.added_contexts(0).search_session_id(),
             "zero_iframe_suggest_session");
   EXPECT_EQ(suggest_inputs.added_contexts(0).request_id().context_id(), 888);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksExtensionHandlerBrowserTest,
+    GetRecentTabs_IncludesAttachedInternalTabAndAllowsDeselection) {
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL(chrome::kChromeUINewTabURL),
+      WindowOpenDisposition::kNewForegroundTab,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+  tabs::TabInterface* ntp_tab =
+      TabListInterface::From(browser())->GetActiveTab();
+  ASSERT_NE(ntp_tab, nullptr);
+  const int32_t ntp_tab_handle_id = ntp_tab->GetHandle().raw_value();
+  const SessionID ntp_session_id =
+      sessions::SessionTabHelper::IdForTab(ntp_tab->GetContents());
+  ASSERT_TRUE(ntp_session_id.is_valid());
+
+  // 1. Before the internal tab is attached to the session, `GetRecentTabs()`
+  // excludes it.
+  {
+    base::RunLoop run_loop;
+    static_cast<searchbox::mojom::PageHandler*>(handler_)->GetRecentTabs(
+        base::BindLambdaForTesting(
+            [&run_loop, ntp_tab_handle_id](
+                std::vector<searchbox::mojom::TabInfoPtr> tabs) {
+              EXPECT_TRUE(std::ranges::none_of(
+                  tabs,
+                  [ntp_tab_handle_id](const searchbox::mojom::TabInfoPtr& t) {
+                    return t->tab_id == ntp_tab_handle_id;
+                  }));
+              run_loop.Quit();
+            }));
+    run_loop.Run();
+  }
+
+  // 2. Simulate Chromnient (Lens Overlay) attaching and submitting the NTP tab
+  // directly on the session handle (without going through `AddTabContext()`),
+  // followed by AIM echoing the tab back via `UpdateThreadContextLibrary`
+  // (`SetRestoredTabs()`). The tab now exists in both `state.attached` and
+  // `state.restored`.
+  const base::UnguessableToken ntp_token = base::UnguessableToken::Create();
+  lens::LensOverlayRequestId ntp_req_id;
+  ntp_req_id.set_uuid(8888);
+  mock_session_handle_->SetSubmittedContextTokens({ntp_token});
+  {
+    base::RunLoop notify_loop;
+    EXPECT_CALL(mock_page_, OnTabContextUpdated(_, _))
+        .WillOnce([&notify_loop, ntp_tab_handle_id](
+                      std::vector<searchbox::mojom::TabInfoPtr> tabs,
+                      const std::vector<int32_t>& submitted_tab_ids) {
+          ASSERT_EQ(tabs.size(), 1u);
+          EXPECT_EQ(tabs[0]->tab_id, ntp_tab_handle_id);
+          EXPECT_THAT(submitted_tab_ids,
+                      testing::ElementsAre(ntp_tab_handle_id));
+          notify_loop.Quit();
+        });
+    mock_session_handle_->SetPersistedTabs(
+        {{ntp_session_id, {ntp_token, ntp_req_id}}});
+    notify_loop.Run();
+    testing::Mock::VerifyAndClearExpectations(&mock_page_);
+  }
+
+  contextual_search::TabInfo restored_ntp;
+  restored_ntp.tab_id = ntp_session_id.id();
+  restored_ntp.url = GURL(chrome::kChromeUINewTabURL);
+  restored_ntp.title = "New Tab";
+  {
+    base::RunLoop restore_notify_loop;
+    EXPECT_CALL(mock_page_, OnTabContextUpdated(_, _))
+        .WillOnce([&restore_notify_loop, ntp_tab_handle_id](
+                      std::vector<searchbox::mojom::TabInfoPtr> tabs,
+                      const std::vector<int32_t>& submitted_tab_ids) {
+          ASSERT_EQ(tabs.size(), 1u);
+          EXPECT_EQ(tabs[0]->tab_id, ntp_tab_handle_id);
+          EXPECT_THAT(submitted_tab_ids,
+                      testing::ElementsAre(ntp_tab_handle_id));
+          restore_notify_loop.Quit();
+        });
+    mock_session_handle_->SetRestoredTabs({restored_ntp});
+    restore_notify_loop.Run();
+    testing::Mock::VerifyAndClearExpectations(&mock_page_);
+  }
+  ASSERT_EQ(mock_session_handle_->GetTabContextState().attached.size(), 1u);
+  ASSERT_EQ(mock_session_handle_->GetTabContextState().restored.size(), 1u);
+
+  // 3. `GetRecentTabs()` now includes the attached NTP tab so the user can see
+  // and unselect it in the tab picker.
+  {
+    base::RunLoop run_loop;
+    static_cast<searchbox::mojom::PageHandler*>(handler_)->GetRecentTabs(
+        base::BindLambdaForTesting(
+            [&run_loop, ntp_tab_handle_id](
+                std::vector<searchbox::mojom::TabInfoPtr> tabs) {
+              EXPECT_TRUE(std::ranges::any_of(
+                  tabs,
+                  [ntp_tab_handle_id](const searchbox::mojom::TabInfoPtr& t) {
+                    return t->tab_id == ntp_tab_handle_id;
+                  }));
+              run_loop.Quit();
+            }));
+    run_loop.Run();
+  }
+
+  // 4. Unselecting the submitted NTP tab once via `DeleteTabContext()` removes
+  // it from both `attached` and `restored` immediately on the first click and
+  // notifies `OnTabContextUpdated()` with an empty tab list (instead of
+  // re-adding the tab from `state.restored`).
+  {
+    base::RunLoop deselect_notify_loop;
+    EXPECT_CALL(mock_page_, OnTabContextUpdated(_, _))
+        .WillOnce([&deselect_notify_loop](
+                      std::vector<searchbox::mojom::TabInfoPtr> tabs,
+                      const std::vector<int32_t>& submitted_tab_ids) {
+          EXPECT_TRUE(tabs.empty());
+          EXPECT_TRUE(submitted_tab_ids.empty());
+          deselect_notify_loop.Quit();
+        });
+    static_cast<searchbox::mojom::PageHandler*>(handler_)->DeleteTabContext(
+        ntp_tab_handle_id);
+    deselect_notify_loop.Run();
+    testing::Mock::VerifyAndClearExpectations(&mock_page_);
+  }
+  EXPECT_TRUE(mock_session_handle_->GetTabContextState().attached.empty());
+  EXPECT_TRUE(mock_session_handle_->GetTabContextState().restored.empty());
+  EXPECT_TRUE(mock_session_handle_->GetSubmittedContextTokens().empty());
+
+  // 5. Once unselected, `GetRecentTabs()` excludes the internal NTP tab again.
+  {
+    base::RunLoop run_loop;
+    static_cast<searchbox::mojom::PageHandler*>(handler_)->GetRecentTabs(
+        base::BindLambdaForTesting(
+            [&run_loop, ntp_tab_handle_id](
+                std::vector<searchbox::mojom::TabInfoPtr> tabs) {
+              EXPECT_TRUE(std::ranges::none_of(
+                  tabs,
+                  [ntp_tab_handle_id](const searchbox::mojom::TabInfoPtr& t) {
+                    return t->tab_id == ntp_tab_handle_id;
+                  }));
+              run_loop.Quit();
+            }));
+    run_loop.Run();
+  }
+
+  // 6. Submitting a follow-up query reports the unselected tab's request ID in
+  // `removed_contexts` to AIM even without `kContextManagementInComposebox`.
+  {
+    base::RunLoop submit_loop;
+    EXPECT_CALL(mock_page_, PostSearchMessage(_))
+        .WillRepeatedly([&submit_loop](mojo_base::ProtoWrapper wrapper) {
+          auto message = wrapper.As<lens::ClientToSearchMessage>();
+          if (!message.has_value() ||
+              !message->has_on_submit_query_response()) {
+            return;
+          }
+          const auto& response = message->on_submit_query_response();
+          ASSERT_EQ(response.removed_contexts_size(), 1);
+          EXPECT_EQ(response.removed_contexts(0).request_id().uuid(), 8888u);
+          submit_loop.Quit();
+        });
+    lens::SearchToClientMessage request;
+    request.mutable_on_submit_query_request();
+    const size_t size = request.ByteSizeLong();
+    std::vector<uint8_t> serialized_message(size);
+    request.SerializeToArray(serialized_message.data(), size);
+    SimulateUserInteraction();
+    handler_->OnWebviewMessage(serialized_message, std::nullopt);
+    submit_loop.Run();
+    testing::Mock::VerifyAndClearExpectations(&mock_page_);
+  }
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksExtensionHandlerBrowserTest,
+    DeleteTabContext_RemovesRestoredTabAndAllowsReselection) {
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.google.com/restored_page"),
+      static_cast<WindowOpenDisposition>(3),
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+  tabs::TabInterface* tab = TabListInterface::From(browser())->GetActiveTab();
+  ASSERT_NE(tab, nullptr);
+  const int32_t tab_handle_id = tab->GetHandle().raw_value();
+  const SessionID session_id =
+      sessions::SessionTabHelper::IdForTab(tab->GetContents());
+  ASSERT_TRUE(session_id.is_valid());
+
+  // 1. Seed a restored tab backed by a submitted `FileInfo` (e.g. from initial
+  // CSB query or thread history where `attached` is empty).
+  const base::UnguessableToken submitted_token =
+      base::UnguessableToken::Create();
+  lens::LensOverlayRequestId req_id;
+  req_id.set_uuid(7777);
+  contextual_search::FileInfo submitted_file_info;
+  submitted_file_info.file_token = submitted_token;
+  submitted_file_info.tab_session_id = session_id;
+  submitted_file_info.tab_url = GURL("https://www.google.com/restored_page");
+  submitted_file_info.tab_title = "Restored Page";
+  submitted_file_info.request_id = req_id;
+  ON_CALL(*mock_session_handle_, GetSubmittedContextFileInfos())
+      .WillByDefault(Return(
+          std::vector<contextual_search::FileInfo>{submitted_file_info}));
+  mock_session_handle_->SetSubmittedContextTokens({submitted_token});
+
+  contextual_search::TabInfo restored_tab;
+  restored_tab.tab_id = session_id.id();
+  restored_tab.url = GURL("https://www.google.com/restored_page");
+  restored_tab.title = "Restored Page";
+  {
+    base::RunLoop restore_loop;
+    EXPECT_CALL(mock_page_, OnTabContextUpdated(_, _))
+        .WillOnce([&restore_loop, tab_handle_id](
+                      std::vector<searchbox::mojom::TabInfoPtr> tabs,
+                      const std::vector<int32_t>& submitted_tab_ids) {
+          ASSERT_EQ(tabs.size(), 1u);
+          EXPECT_EQ(tabs[0]->tab_id, tab_handle_id);
+          restore_loop.Quit();
+        });
+    mock_session_handle_->SetRestoredTabs({restored_tab});
+    restore_loop.Run();
+    testing::Mock::VerifyAndClearExpectations(&mock_page_);
+  }
+
+  // 2. Unselecting the restored tab removes it immediately on first click.
+  {
+    base::RunLoop deselect_loop;
+    EXPECT_CALL(mock_page_, OnTabContextUpdated(_, _))
+        .WillOnce(
+            [&deselect_loop](std::vector<searchbox::mojom::TabInfoPtr> tabs,
+                             const std::vector<int32_t>& submitted_tab_ids) {
+              EXPECT_TRUE(tabs.empty());
+              EXPECT_TRUE(submitted_tab_ids.empty());
+              deselect_loop.Quit();
+            });
+    static_cast<searchbox::mojom::PageHandler*>(handler_)->DeleteTabContext(
+        tab_handle_id);
+    deselect_loop.Run();
+    testing::Mock::VerifyAndClearExpectations(&mock_page_);
+  }
+
+  // 3. Re-selecting the same tab via `AddTabContext()` clears its deselection
+  // and re-attaches it on the first click, and `TakeRemovedContexts()` does not
+  // report the re-selected tab as removed.
+  {
+    base::RunLoop reselect_notify_loop;
+    EXPECT_CALL(mock_page_, OnTabContextUpdated(_, _))
+        .WillOnce([&reselect_notify_loop, tab_handle_id](
+                      std::vector<searchbox::mojom::TabInfoPtr> tabs,
+                      const std::vector<int32_t>& submitted_tab_ids) {
+          ASSERT_EQ(tabs.size(), 1u);
+          EXPECT_EQ(tabs[0]->tab_id, tab_handle_id);
+          reselect_notify_loop.Quit();
+        });
+    base::RunLoop add_loop;
+    static_cast<searchbox::mojom::PageHandler*>(handler_)->AddTabContext(
+        tab_handle_id, /*delay_upload=*/false,
+        searchbox::mojom::TabAttachmentSource::kContextMenu,
+        base::BindLambdaForTesting(
+            [&add_loop](
+                base::expected<base::UnguessableToken,
+                               contextual_search::ContextUploadErrorType>
+                    result) {
+              EXPECT_TRUE(result.has_value());
+              add_loop.Quit();
+            }));
+    add_loop.Run();
+    reselect_notify_loop.Run();
+    testing::Mock::VerifyAndClearExpectations(&mock_page_);
+  }
+  EXPECT_TRUE(mock_session_handle_->TakeRemovedContexts().empty());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksExtensionHandlerBrowserTest,
+    OnPageChanged_ZeroStateInSidePanel_AddsImplicitTabAndUpdatesOnNavigation) {
+  GURL url1;
+  GURL url2;
+  auto* user_data = StartTestServerAndOpenSidePanel(&url1, &url2);
+  ASSERT_NE(user_data, nullptr);
+  EXPECT_TRUE(user_data->GetSelectedTabs().empty());
+  EXPECT_FALSE(user_data->GetAutoSuggestedTabHandle().has_value());
+
+  // 1. `OnPageChanged(false)` does not add implicit context.
+  EXPECT_CALL(mock_panel_page_, PostSearchMessage(_)).Times(0);
+  SendOnPageChanged(false);
+  mock_panel_page_.FlushForTesting();
+  testing::Mock::VerifyAndClearExpectations(&mock_panel_page_);
+  EXPECT_TRUE(user_data->GetSelectedTabs().empty());
+  EXPECT_FALSE(user_data->GetAutoSuggestedTabHandle().has_value());
+
+  auto expect_context_library = [this](bool active, base::RunLoop& loop) {
+    EXPECT_CALL(mock_panel_page_, PostSearchMessage(_))
+        .WillOnce([active](mojo_base::ProtoWrapper wrapper) {
+          auto message = wrapper.As<lens::ClientToSearchMessage>();
+          ASSERT_TRUE(message.has_value());
+          EXPECT_EQ(
+              message->inject_chrome_input().input_type(),
+              lens::ClientToSearchMessage::InjectChromeInput::CONTEXT_LIBRARY);
+          EXPECT_EQ(message->inject_chrome_input().is_active(), active);
+        })
+        .WillOnce([active, &loop](mojo_base::ProtoWrapper wrapper) {
+          auto message = wrapper.As<lens::ClientToSearchMessage>();
+          ASSERT_TRUE(message.has_value());
+          EXPECT_EQ(message->on_context_state_changed().context_state(),
+                    active ? lens::ClientToSearchMessage::
+                                 OnContextStateChanged::CONTEXT_STATE_READY
+                           : lens::ClientToSearchMessage::
+                                 OnContextStateChanged::CONTEXT_STATE_NONE);
+          loop.Quit();
+        });
+  };
+
+  // 2. `OnPageChanged(true)` attaches the active tab as pending delayed.
+  base::RunLoop zero_state_loop;
+  EXPECT_CALL(mock_panel_page_, OnTabContextUpdated(_, _))
+      .WillOnce([&url1](std::vector<searchbox::mojom::TabInfoPtr> tabs,
+                        const std::vector<int32_t>& submitted_tab_ids) {
+        ASSERT_EQ(tabs.size(), 1u);
+        EXPECT_EQ(tabs[0]->url, url1);
+        EXPECT_TRUE(submitted_tab_ids.empty());
+      });
+  expect_context_library(true, zero_state_loop);
+  SendOnPageChanged(true);
+  zero_state_loop.Run();
+  testing::Mock::VerifyAndClearExpectations(&mock_panel_page_);
+
+  ASSERT_EQ(user_data->GetSelectedTabs().size(), 1u);
+  EXPECT_TRUE(user_data->GetSelectedTabs()[0].pending_delayed_upload);
+  EXPECT_EQ(user_data->GetSelectedTabs()[0].url, url1);
+  EXPECT_EQ(user_data->GetAutoSuggestedTabHandle(),
+            TabListInterface::From(browser())->GetActiveTab()->GetHandle());
+
+  // 3. Navigating the active tab while in zero state updates the implicit tab.
+  base::RunLoop nav_loop;
+  EXPECT_CALL(mock_panel_page_, OnTabContextUpdated(_, _))
+      .WillRepeatedly(
+          [&url2, &nav_loop](std::vector<searchbox::mojom::TabInfoPtr> tabs,
+                             const std::vector<int32_t>& submitted_tab_ids) {
+            if (tabs.size() == 1u && tabs[0]->url == url2 &&
+                tabs[0]->title == "Title Of Awesomeness") {
+              EXPECT_TRUE(submitted_tab_ids.empty());
+              nav_loop.Quit();
+            }
+          });
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url2));
+  nav_loop.Run();
+  testing::Mock::VerifyAndClearExpectations(&mock_panel_page_);
+
+  ASSERT_EQ(user_data->GetSelectedTabs().size(), 1u);
+  EXPECT_TRUE(user_data->GetSelectedTabs()[0].pending_delayed_upload);
+  EXPECT_EQ(user_data->GetSelectedTabs()[0].url, url2);
+  EXPECT_EQ(user_data->GetSelectedTabs()[0].title, "Title Of Awesomeness");
+
+  // 4. Navigating to `about:blank` removes the implicit tab and unmounts UI.
+  base::RunLoop unmount_loop;
+  expect_context_library(false, unmount_loop);
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+  unmount_loop.Run();
+  EXPECT_TRUE(user_data->GetSelectedTabs().empty());
+  EXPECT_FALSE(user_data->GetAutoSuggestedTabHandle().has_value());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksExtensionHandlerBrowserTest,
+    OnPageChanged_ZeroStateNotInSidePanel_DoesNotAddImplicitTab) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  handler_ = nullptr;
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), embedded_test_server()->GetURL("/title1.html")));
+
+  content::RenderFrameHost* rfh = web_contents_->GetPrimaryMainFrame();
+  ContextualTasksExtensionHandler::CreateForCurrentDocument(rfh);
+  handler_ = ContextualTasksExtensionHandler::GetForCurrentDocument(rfh);
+  ASSERT_NE(handler_, nullptr);
+  testing::NiceMock<MockContextualTasksExtensionPage> page;
+  mojo::PendingReceiver<mojom::ExtensionPageHandler> page_handler_receiver;
+  handler_->CreateExtensionPageHandler(page.BindAndGetRemote(),
+                                       std::move(page_handler_receiver));
+
+  EXPECT_CALL(page, PostSearchMessage(_)).Times(0);
+  SendOnPageChanged(true);
+  page.FlushForTesting();
+
+  auto* user_data =
+      ContextualTasksWebContentsUserData::FromWebContents(web_contents_);
+  ASSERT_NE(user_data, nullptr);
+  EXPECT_TRUE(user_data->GetSelectedTabs().empty());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksExtensionHandlerBrowserTest,
+    OnPageChanged_DismissedImplicitTabBlocklistedUntilNextOnPageChanged) {
+  GURL url1;
+  GURL url2;
+  auto* panel_controller = ContextualTasksPanelController::From(browser());
+  auto* user_data = StartTestServerAndOpenSidePanel(&url1, &url2);
+  ASSERT_NE(user_data, nullptr);
+
+  SendOnPageChanged(true);
+  ASSERT_EQ(user_data->GetSelectedTabs().size(), 1u);
+  // 1. Dismissing via `DeleteTabContext()` blocklists `url1` on this thread.
+  const tabs::TabHandle active_tab_handle =
+      TabListInterface::From(browser())->GetActiveTab()->GetHandle();
+  static_cast<searchbox::mojom::PageHandler*>(handler_)->DeleteTabContext(
+      active_tab_handle.raw_value());
+  EXPECT_TRUE(user_data->GetSelectedTabs().empty());
+  user_data->UpdateImplicitTabContext();
+  EXPECT_TRUE(user_data->GetSelectedTabs().empty());
+  // 2. Navigating to `url2` adds `url2`; dismissing via `DeleteContext()`
+  // blocklists `url2`, and manually sharing `url2` unblocks it.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url2));
+  ASSERT_EQ(user_data->GetSelectedTabs().size(), 1u);
+  static_cast<searchbox::mojom::PageHandler*>(handler_)->DeleteContext(
+      user_data->GetSelectedTabs()[0].context_token,
+      /*from_automatic_chip=*/true);
+  EXPECT_TRUE(user_data->GetSelectedTabs().empty());
+  user_data->UpdateImplicitTabContext();
+  EXPECT_TRUE(user_data->GetSelectedTabs().empty());
+  base::RunLoop share_tab_loop;
+  EXPECT_CALL(*mock_session_handle_, StartTabContextUploadFlow(_, _, _))
+      .WillOnce([&share_tab_loop](const base::UnguessableToken&,
+                                  std::unique_ptr<lens::ContextualInputData>,
+                                  std::optional<lens::ImageEncodingOptions>) {
+        share_tab_loop.Quit();
+      });
+  AllowSessionTokenCreation();
+  panel_controller->ShareTabsWithActiveOrNewThread({active_tab_handle});
+  share_tab_loop.Run();
+  ASSERT_EQ(user_data->GetSelectedTabs().size(), 1u);
+  EXPECT_EQ(user_data->GetSelectedTabs()[0].url, url2);
+  // 3. `ClearFiles(false)` keeps `url1` blocklisted, while manual
+  // `AddTabContext(..., delay_upload=false, ...)` unblocks and attaches `url1`.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url1));
+  static_cast<searchbox::mojom::PageHandler*>(handler_)->ClearFiles(
+      /*should_block_auto_suggested_tabs=*/false);
+  user_data->UpdateImplicitTabContext();
+  EXPECT_TRUE(user_data->GetSelectedTabs().empty());
+  base::test::TestFuture<base::expected<
+      base::UnguessableToken, contextual_search::ContextUploadErrorType>>
+      manual_add_future;
+  static_cast<searchbox::mojom::PageHandler*>(handler_)->AddTabContext(
+      active_tab_handle.raw_value(), /*delay_upload=*/false,
+      searchbox::mojom::TabAttachmentSource::kContextMenu,
+      manual_add_future.GetCallback());
+  ASSERT_TRUE(manual_add_future.Take().has_value());
+  ASSERT_EQ(user_data->GetSelectedTabs().size(), 1u);
+  EXPECT_FALSE(user_data->GetAutoSuggestedTabHandle().has_value());
+  // 4. `ClearFiles(true)` blocklists `url1` until next `OnPageChanged(true)`,
+  // and `SetTaskId()` cleans up when switching tasks.
+  SendOnPageChanged(true);
+  ASSERT_EQ(user_data->GetSelectedTabs().size(), 1u);
+  static_cast<searchbox::mojom::PageHandler*>(handler_)->ClearFiles(
+      /*should_block_auto_suggested_tabs=*/true);
+  user_data->UpdateImplicitTabContext();
+  EXPECT_TRUE(user_data->GetSelectedTabs().empty());
+  SendOnPageChanged(true);
+  ASSERT_EQ(user_data->GetSelectedTabs().size(), 1u);
+  user_data->SetTaskId(*side_panel_task_id_);
+  EXPECT_EQ(user_data->GetSelectedTabs().size(), 1u);
+  user_data->SetTaskId(base::Uuid::GenerateRandomV4());
+  EXPECT_TRUE(user_data->GetSelectedTabs().empty());
+  EXPECT_FALSE(user_data->GetAutoSuggestedTabHandle().has_value());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksExtensionHandlerBrowserTest,
+    OnPageChanged_PreservesPreStagedShareTabOnInitialZeroStateLoad) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  handler_ = nullptr;
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), embedded_test_server()->GetURL("/title1.html")));
+  auto* panel_controller = ContextualTasksPanelController::From(browser());
+  const tabs::TabHandle tab1_handle =
+      TabListInterface::From(browser())->GetActiveTab()->GetHandle();
+  panel_controller->ShareTabsWithActiveOrNewThread({tab1_handle});
+  content::WebContents* panel_contents =
+      panel_controller->GetActiveWebContents();
+  ASSERT_NE(panel_contents, nullptr);
+  auto* user_data =
+      ContextualTasksWebContentsUserData::FromWebContents(panel_contents);
+  ASSERT_NE(user_data, nullptr);
+  ASSERT_TRUE(base::test::RunUntil([&] {
+    return user_data->GetSelectedTabs().size() == 1u &&
+           browser()->tab_strip_model()->count() == 2;
+  }));
+  browser()->tab_strip_model()->ActivateTabAt(0);
+  ShowSidePanel();
+  EXPECT_FALSE(user_data->GetSelectedTabs()[0].pending_delayed_upload);
+
+  lens::SearchToClientMessage msg;
+  msg.mutable_on_page_changed()->set_is_zero_state(true);
+  std::vector<uint8_t> bytes(msg.ByteSizeLong());
+  msg.SerializeToArray(bytes.data(), bytes.size());
+  EXPECT_TRUE(user_data->OnSearchMessageReceived(bytes));
+  ASSERT_EQ(user_data->GetSelectedTabs().size(), 1u);
+  EXPECT_FALSE(user_data->GetSelectedTabs()[0].pending_delayed_upload);
+  EXPECT_TRUE(user_data->OnSearchMessageReceived(bytes));
+  ASSERT_EQ(user_data->GetSelectedTabs().size(), 1u);
+  EXPECT_TRUE(user_data->GetSelectedTabs()[0].pending_delayed_upload);
+  EXPECT_EQ(panel_controller->GetAutoSuggestedTabHandle(), tab1_handle);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksExtensionHandlerBrowserTest,
+    OnPageChanged_ZeroStateTabSwitchesManualTabsCloseAndDetach) {
+  GURL url1;
+  GURL url2;
+  auto* panel_controller = ContextualTasksPanelController::From(browser());
+  auto* user_data = StartTestServerAndOpenSidePanel(&url1, &url2);
+  ASSERT_NE(user_data, nullptr);
+
+  SendOnPageChanged(true);
+  const tabs::TabHandle tab1_handle =
+      TabListInterface::From(browser())->GetActiveTab()->GetHandle();
+  ASSERT_EQ(user_data->GetSelectedTabs().size(), 1u);
+  EXPECT_EQ(user_data->GetSelectedTabs()[0].url, url1);
+  EXPECT_EQ(panel_controller->GetAutoSuggestedTabHandle(), tab1_handle);
+
+  // Activate a second associated tab: implicit tab updates to `tab2` (`url2`).
+  ASSERT_TRUE(AddTabAtIndex(1, url2, ui::PAGE_TRANSITION_TYPED));
+  ContextualTasksServiceFactory::GetForProfile(browser()->GetProfile())
+      ->AssociateTabWithTask(
+          *side_panel_task_id_,
+          sessions::SessionTabHelper::IdForTab(
+              browser()->tab_strip_model()->GetActiveWebContents()));
+  ShowSidePanel();
+  const tabs::TabHandle tab2_handle =
+      TabListInterface::From(browser())->GetActiveTab()->GetHandle();
+  ASSERT_EQ(user_data->GetSelectedTabs().size(), 1u);
+  EXPECT_EQ(user_data->GetSelectedTabs()[0].url, url2);
+  EXPECT_EQ(panel_controller->GetAutoSuggestedTabHandle(), tab2_handle);
+
+  // Manually sharing `tab1` keeps `tab2` auto-suggested; activating `tab1`
+  // drops `tab2`'s auto-suggestion while preserving manual `tab1`.
+  base::RunLoop tab1_upload_loop;
+  EXPECT_CALL(*mock_session_handle_, StartTabContextUploadFlow(_, _, _))
+      .WillOnce([&tab1_upload_loop](const base::UnguessableToken&,
+                                    std::unique_ptr<lens::ContextualInputData>,
+                                    std::optional<lens::ImageEncodingOptions>) {
+        tab1_upload_loop.Quit();
+      });
+  AllowSessionTokenCreation();
+  panel_controller->ShareTabsWithActiveOrNewThread({tab1_handle});
+  tab1_upload_loop.Run();
+  EXPECT_EQ(user_data->GetSelectedTabs().size(), 2u);
+
+  browser()->tab_strip_model()->ActivateTabAt(0);
+  ASSERT_EQ(user_data->GetSelectedTabs().size(), 1u);
+  EXPECT_EQ(user_data->GetSelectedTabs()[0].url, url1);
+  EXPECT_FALSE(user_data->GetSelectedTabs()[0].pending_delayed_upload);
+  EXPECT_FALSE(panel_controller->GetAutoSuggestedTabHandle().has_value());
+
+  browser()->tab_strip_model()->ActivateTabAt(1);
+  EXPECT_EQ(user_data->GetSelectedTabs().size(), 2u);
+  EXPECT_EQ(panel_controller->GetAutoSuggestedTabHandle(), tab2_handle);
+
+  // Unassociated tab hides panel and removes implicit tab; returning restores.
+  ASSERT_TRUE(AddTabAtIndex(2, embedded_test_server()->GetURL("/empty.html"),
+                            ui::PAGE_TRANSITION_TYPED));
+  EXPECT_FALSE(panel_controller->IsPanelOpenForContextualTask());
+  ASSERT_EQ(user_data->GetSelectedTabs().size(), 1u);
+  EXPECT_EQ(user_data->GetSelectedTabs()[0].url, url1);
+  EXPECT_FALSE(panel_controller->GetAutoSuggestedTabHandle().has_value());
+
+  browser()->tab_strip_model()->ActivateTabAt(1);
+  EXPECT_TRUE(panel_controller->IsPanelOpenForContextualTask());
+  EXPECT_EQ(user_data->GetSelectedTabs().size(), 2u);
+  EXPECT_EQ(panel_controller->GetAutoSuggestedTabHandle(), tab2_handle);
+
+  // Detach and re-transfer remove and restore implicit context cleanly.
+  const base::Uuid task_id = *side_panel_task_id_;
+  side_panel_task_id_.reset();
+  std::unique_ptr<content::WebContents> detached_contents =
+      panel_controller->DetachWebContentsForTask(task_id);
+  ASSERT_NE(detached_contents, nullptr);
+  ASSERT_EQ(user_data->GetSelectedTabs().size(), 1u);
+  EXPECT_EQ(user_data->GetSelectedTabs()[0].url, url1);
+  EXPECT_FALSE(panel_controller->GetAutoSuggestedTabHandle().has_value());
+
+  panel_controller->TransferWebContentsFromTab(task_id,
+                                               std::move(detached_contents));
+  ASSERT_EQ(user_data->GetSelectedTabs().size(), 2u);
+  EXPECT_EQ(panel_controller->GetAutoSuggestedTabHandle(), tab2_handle);
+  base::UnguessableToken manual_tab1_token;
+  for (const contextual_search::TabInfo& tab : user_data->GetSelectedTabs()) {
+    if (tab.url == url1) {
+      manual_tab1_token = tab.context_token;
+    }
+  }
+  ASSERT_FALSE(manual_tab1_token.is_empty());
+  mock_panel_page_.FlushForTesting();
+  base::WeakPtr<contextual_search::InputStateModel> model =
+      handler_->GetOrCreateInputStateModelForTesting();
+  ASSERT_NE(model, nullptr);
+  int close_context_updates = 0;
+  base::CallbackListSubscription close_sub =
+      model->Subscribe(base::BindLambdaForTesting(
+          [&close_context_updates](const omnibox::InputState&) {
+            ++close_context_updates;
+          }));
+  std::optional<contextual_search::TabContextState> close_tab_state;
+  base::CallbackListSubscription tab_state_sub =
+      mock_session_handle_->SubscribeTabContext(base::BindLambdaForTesting(
+          [&close_tab_state](const contextual_search::TabContextState& state) {
+            close_tab_state = state;
+          }));
+  EXPECT_CALL(*mock_controller_, DeleteFile(manual_tab1_token)).Times(0);
+
+  handler_ = nullptr;
+  panel_web_contents_ = nullptr;
+  mock_session_handle_ = nullptr;
+  panel_controller->Close();
+  EXPECT_EQ(close_context_updates, 1);
+  ASSERT_TRUE(close_tab_state.has_value());
+  ASSERT_EQ(close_tab_state->attached.size(), 1u);
+  EXPECT_EQ(close_tab_state->attached[0].context_token, manual_tab1_token);
+  EXPECT_FALSE(panel_controller->GetAutoSuggestedTabHandle().has_value());
+  testing::Mock::VerifyAndClearExpectations(mock_controller_.get());
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerBrowserTest,
+                       BindTrackedElementHandler_TracksFaviconsElement) {
+  EmbedHandlerInSidePanel();
+  mojo::Remote<tracked_element::mojom::TrackedElementHandler> remote;
+  handler_->BindTrackedElementHandler(remote.BindNewPipeAndPassReceiver());
+
+  auto* const tracker = ui::ElementTracker::GetElementTracker();
+  const ui::ElementContext context =
+      BrowserElements::From(browser())->GetContext();
+
+  EXPECT_FALSE(tracker->GetFirstMatchingElement(
+      kContextualTasksFaviconsElementId, context));
+
+  remote->TrackedElementVisibilityChanged(
+      tracked_element::mojom::TrackedElementIdentifier::New(
+          kContextualTasksFaviconsElementId.GetName(), "0"),
+      true, gfx::RectF(10, 20, 100, 30));
+  remote.FlushForTesting();
+
+  auto* const element = tracker->GetFirstMatchingElement(
+      kContextualTasksFaviconsElementId, context);
+  ASSERT_NE(element, nullptr);
+  EXPECT_EQ(element->identifier(), kContextualTasksFaviconsElementId);
+
+  remote->TrackedElementVisibilityChanged(
+      tracked_element::mojom::TrackedElementIdentifier::New(
+          kContextualTasksFaviconsElementId.GetName(), "0"),
+      false, gfx::RectF());
+  remote.FlushForTesting();
+
+  EXPECT_FALSE(tracker->GetFirstMatchingElement(
+      kContextualTasksFaviconsElementId, context));
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerBrowserTest,
+                       BindTrackedElementHandler_NotInSidePanel_DoesNothing) {
+  mojo::Remote<tracked_element::mojom::TrackedElementHandler> remote;
+  handler_->BindTrackedElementHandler(remote.BindNewPipeAndPassReceiver());
+
+  auto* const tracker = ui::ElementTracker::GetElementTracker();
+  const ui::ElementContext context =
+      BrowserElements::From(browser())->GetContext();
+
+  remote->TrackedElementVisibilityChanged(
+      tracked_element::mojom::TrackedElementIdentifier::New(
+          kContextualTasksFaviconsElementId.GetName(), "0"),
+      true, gfx::RectF(10, 20, 100, 30));
+  remote.FlushForTesting();
+
+  EXPECT_EQ(tracker->GetFirstMatchingElement(kContextualTasksFaviconsElementId,
+                                             context),
+            nullptr);
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerBrowserTest,
+                       PersistedTabs_ShownInContextLibrary) {
+  const base::UnguessableToken token = base::UnguessableToken::Create();
+  SessionID active_tab_id = sessions::SessionTabHelper::IdForTab(web_contents_);
+  tabs::TabInterface* active_tab =
+      TabListInterface::From(browser())->GetActiveTab();
+  ASSERT_NE(active_tab, nullptr);
+  const int32_t active_tab_handle_id = active_tab->GetHandle().raw_value();
+
+  contextual_search::FileInfo persisted_file_info;
+  persisted_file_info.file_token = token;
+  persisted_file_info.tab_session_id = active_tab_id;
+  persisted_file_info.tab_url = GURL("https://example.com/persisted");
+  persisted_file_info.tab_title = "Persisted Tab";
+  lens::LensOverlayRequestId req_id;
+  req_id.set_context_id(555);
+  persisted_file_info.request_id = req_id;
+  ON_CALL(*mock_controller_, GetFileInfo(token))
+      .WillByDefault(Return(&persisted_file_info));
+
+  // Persisted tabs are keyed by session ID, but are sent to the frontend by
+  // tab handle ID, which it uses to identify tabs.
+  base::RunLoop tab_context_run_loop;
+  EXPECT_CALL(mock_page_, OnTabContextUpdated(_, _))
+      .WillOnce([&](std::vector<searchbox::mojom::TabInfoPtr> tabs,
+                    const std::vector<int32_t>& submitted_tab_ids) {
+        ASSERT_EQ(tabs.size(), 1u);
+        EXPECT_EQ(tabs[0]->tab_id, active_tab_handle_id);
+        // The URL and title come from the tab's FileInfo.
+        EXPECT_EQ(tabs[0]->url, GURL("https://example.com/persisted"));
+        EXPECT_EQ(tabs[0]->title, "Persisted Tab");
+        EXPECT_THAT(submitted_tab_ids,
+                    testing::ElementsAre(active_tab_handle_id));
+        tab_context_run_loop.Quit();
+      });
+
+  mock_session_handle_->SetPersistedTabs({{active_tab_id, {token, req_id}}});
+  tab_context_run_loop.Run();
+
+  // Completing handshake when `uploaded_context_tokens_` is empty (e.g. on SRP
+  // after CreateSearchUrl / SetPersistedTabs) still mounts CONTEXT_LIBRARY.
+  base::RunLoop handshake_run_loop;
+  EXPECT_CALL(mock_page_, OnHandshakeComplete());
+  EXPECT_CALL(mock_page_, PostSearchMessage(_))
+      .WillOnce([&](mojo_base::ProtoWrapper wrapper) {
+        auto message = wrapper.As<lens::ClientToSearchMessage>();
+        ASSERT_TRUE(message.has_value());
+        ASSERT_TRUE(message->has_inject_chrome_input());
+        EXPECT_EQ(
+            message->inject_chrome_input().input_type(),
+            lens::ClientToSearchMessage::InjectChromeInput::CONTEXT_LIBRARY);
+        EXPECT_TRUE(message->inject_chrome_input().is_active());
+        handshake_run_loop.Quit();
+      });
+
+  lens::SearchToClientMessage handshake_msg;
+  handshake_msg.mutable_handshake_response()->set_auth_user_index(0);
+  const size_t size = handshake_msg.ByteSizeLong();
+  std::vector<uint8_t> serialized_handshake(size);
+  handshake_msg.SerializeToArray(serialized_handshake.data(), size);
+  handler_->OnWebviewMessage(serialized_handshake, std::nullopt);
+  handshake_run_loop.Run();
 }
 
 }  // namespace contextual_tasks

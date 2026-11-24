@@ -35,8 +35,6 @@ import './network_proxy_section.js';
 import './passpoint_remove_dialog.js';
 import './tether_connection_dialog.js';
 
-import type {PrefsMixinInterface} from '/shared/settings/prefs/prefs_mixin.js';
-import {PrefsMixin} from '/shared/settings/prefs/prefs_mixin.js';
 import {MojoConnectivityProvider} from 'chrome://resources/ash/common/connectivity/mojo_connectivity_provider.js';
 import type {PasspointSubscription} from 'chrome://resources/ash/common/connectivity/passpoint.mojom-webui.js';
 import type {CrToggleElement} from 'chrome://resources/ash/common/cr_elements/cr_toggle/cr_toggle.js';
@@ -68,7 +66,9 @@ import {Setting} from '../mojom-webui/setting.mojom-webui.js';
 import type {OsSyncBrowserProxy, OsSyncPrefs} from '../os_people_page/os_sync_browser_proxy.js';
 import {OsSyncBrowserProxyImpl} from '../os_people_page/os_sync_browser_proxy.js';
 import type {OsSettingsSubpageElement} from '../os_settings_page/os_settings_subpage.js';
-import type {Route} from '../router.js';
+import type {Route} from '../os_settings_routes.js';
+import type {PrefsMixinInterface} from '../prefs/prefs_mixin.js';
+import {PrefsMixin} from '../prefs/prefs_mixin.js';
 import {Router, routes} from '../router.js';
 
 import {getTemplate} from './internet_detail_subpage.html.js';

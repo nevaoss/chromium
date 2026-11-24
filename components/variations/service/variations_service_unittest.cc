@@ -190,6 +190,15 @@ class TestVariationsServiceClient : public VariationsServiceClient {
     should_delay_runtime_mutability_ = should_delay_runtime_mutability;
   }
 
+  std::unique_ptr<SeedResponse> TakeSeedFromNativeVariationsSeedStore()
+      override {
+    take_seed_from_native_call_count_++;
+    return nullptr;
+  }
+
+  int take_seed_from_native_call_count() const {
+    return take_seed_from_native_call_count_;
+  }
  private:
   // VariationsServiceClient:
   version_info::Channel GetChannel() override { return channel_; }
@@ -199,6 +208,7 @@ class TestVariationsServiceClient : public VariationsServiceClient {
   network::TestURLLoaderFactory test_url_loader_factory_;
   scoped_refptr<network::SharedURLLoaderFactory> test_shared_loader_factory_;
   int rotate_uma_log_for_runtime_mutability_call_count_ = 0;
+  int take_seed_from_native_call_count_ = 0;
   metrics::MetricsService::RotateUmaLogResult rotate_uma_log_result_ =
       metrics::MetricsService::RotateUmaLogResult::kSuccess;
   bool should_delay_runtime_mutability_ = false;
@@ -1257,6 +1267,8 @@ TEST_F(VariationsServiceTest,
   head->headers = base::MakeRefCounted<net::HttpResponseHeaders>(
       net::HttpUtil::AssembleRawHeaders(headers));
   head->headers->SetHeader("Date", net::HttpUtil::TimeFormatHTTP(new_date));
+  head->headers->SetHeader("X-Country", "us");
+  head->headers->SetHeader("X-Geo-Level-1", "us-ca");
   network::URLLoaderCompletionStatus status;
   service.test_url_loader_factory()->AddResponse(service.interception_url(),
                                                  std::move(head), "", status);
@@ -1266,6 +1278,10 @@ TEST_F(VariationsServiceTest,
 
   EXPECT_EQ(new_date, prefs_.GetTime(prefs::kVariationsSeedDate));
   EXPECT_NE(initial_time, prefs_.GetTime(prefs::kVariationsLastFetchTime));
+  EXPECT_EQ("us", prefs_.GetString(prefs::kVariationsCountry));
+  EXPECT_EQ("us-ca", prefs_.GetString(prefs::kVariationsGeoLevel1));
+  EXPECT_EQ("us", service.GetLatestCountry());
+  EXPECT_EQ("us-ca", service.GetLatestGeoLevel1());
   histogram_tester.ExpectUniqueSample("Variations.SeedDateChange",
                                       UpdateSeedDateResult::kNewDay, 1);
 }
@@ -1279,6 +1295,8 @@ TEST_F(VariationsServiceTest, NotModifiedOverHttpRetryDoesNotUpdateState) {
   prefs_.SetInteger(prefs::kVariationsFailedToFetchSeedStreak, 1);
   prefs_.SetTime(prefs::kVariationsSeedDate, initial_time);
   prefs_.SetTime(prefs::kVariationsLastFetchTime, initial_time);
+  prefs_.SetString(prefs::kVariationsCountry, "us");
+  prefs_.SetString(prefs::kVariationsGeoLevel1, "us-ca");
   VariationsService::EnableFetchForTesting();
 
   TestVariationsService service(
@@ -1291,9 +1309,11 @@ TEST_F(VariationsServiceTest, NotModifiedOverHttpRetryDoesNotUpdateState) {
   auto head = network::mojom::URLResponseHead::New();
   head->headers = base::MakeRefCounted<net::HttpResponseHeaders>(
       net::HttpUtil::AssembleRawHeaders(headers));
-  // Set a spoofed Date header in the future relative to initial_time.
+  // Set a spoofed Date and geo headers on the insecure HTTP response.
   head->headers->SetHeader(
       "Date", net::HttpUtil::TimeFormatHTTP(initial_time + base::Days(30)));
+  head->headers->SetHeader("X-Country", "spoofed-country");
+  head->headers->SetHeader("X-Geo-Level-1", "spoofed-geo");
   network::URLLoaderCompletionStatus status;
   service.test_url_loader_factory()->AddResponse(service.interception_url(),
                                                  std::move(head), "", status);
@@ -1313,6 +1333,8 @@ TEST_F(VariationsServiceTest, NotModifiedOverHttpRetryDoesNotUpdateState) {
   EXPECT_EQ(0, prefs_.GetInteger(prefs::kVariationsFailedToFetchSeedStreak));
   EXPECT_EQ(initial_time, prefs_.GetTime(prefs::kVariationsSeedDate));
   EXPECT_NE(initial_time, prefs_.GetTime(prefs::kVariationsLastFetchTime));
+  EXPECT_EQ("us", prefs_.GetString(prefs::kVariationsCountry));
+  EXPECT_EQ("us-ca", prefs_.GetString(prefs::kVariationsGeoLevel1));
   // The untrusted Date header is ignored, so the fetch records "No new date".
   histogram_tester.ExpectUniqueSample("Variations.SeedDateChange",
                                       UpdateSeedDateResult::kNoNewDate, 1);
@@ -4679,6 +4701,30 @@ TEST_F(VariationsServiceTest, VariationsServiceSeedFetchingPauseResume) {
 
   // Verify that resume immediately triggered a fetch.
   EXPECT_TRUE(service.fetch_attempted());
+}
+
+TEST_F(VariationsServiceTest,
+       MaybeImportFirstRunSeedSkippedWhenSeedDatePresent) {
+  {
+    TestVariationsService service(
+        std::make_unique<web_resource::TestRequestAllowedNotifier>(
+            &prefs_, network_tracker_),
+        &prefs_, GetMetricsStateManager(), true);
+    EXPECT_EQ(service.client()->take_seed_from_native_call_count(), 1);
+  }
+
+  // Once `kVariationsSeedDate` is stored in Local State (which happens in both
+  // Local State and SeedFiles storage backends), first-run seed import is
+  // skipped on subsequent startups.
+  prefs_.SetTime(prefs::kVariationsSeedDate, base::Time::Now());
+
+  {
+    TestVariationsService service(
+        std::make_unique<web_resource::TestRequestAllowedNotifier>(
+            &prefs_, network_tracker_),
+        &prefs_, GetMetricsStateManager(), true);
+    EXPECT_EQ(service.client()->take_seed_from_native_call_count(), 0);
+  }
 }
 
 }  // namespace variations

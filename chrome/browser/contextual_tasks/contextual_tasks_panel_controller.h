@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_PANEL_CONTROLLER_H_
 #define CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_PANEL_CONTROLLER_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -91,6 +92,15 @@ class ContextualTasksPanelController {
   // Open the panel in zero state, or reset to zero state if already open.
   virtual void OpenInZeroState() = 0;
 
+  // Moves only the active tab to a new task with a zero-state panel if other
+  // tabs share its task. Returns whether the active tab was moved.
+  virtual bool MoveActiveTabToNewThreadIfShared() = 0;
+
+  // Returns the side panel state to save with `tab` when it's closed, so that
+  // reopening it from recently closed tabs restores its open panel.
+  virtual std::map<std::string, std::string> GetTabRestoreData(
+      tabs::TabInterface* tab) const = 0;
+
   // Shares `tab_handles` when starting a new thread from the tab context menu.
   // If the side panel is already open on the active tab, attaches `tab_handles`
   // to the current task; otherwise, opens a fresh zero-state thread and
@@ -112,10 +122,19 @@ class ContextualTasksPanelController {
   // recently active threads.
   virtual std::vector<RecentThreadInfo> GetRecentThreads() const = 0;
 
+  // Removes `tab_handles` from every contextual task thread in this browser
+  // window and clears their tab underlines.
+  virtual void UnshareTabs(const std::vector<tabs::TabHandle>& tab_handles) = 0;
+
   // State checks.
   // Check if the panel is currently opening for ContextualTask as another
   // feature might also show panel.
   virtual bool IsPanelOpenForContextualTask() const = 0;
+
+  // Returns true if the active tab's side panel task is showing results (i.e.
+  // an AIM thread that is not in zero state, a task waiting for its search URL,
+  // or a Search Results Page / Lens SRP loaded in the side panel).
+  virtual bool IsShowingResults() const = 0;
 
   // Returns the entry source of the currently active panel.
   virtual EntrySource GetActiveEntrySource() const = 0;

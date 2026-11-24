@@ -258,9 +258,14 @@ should be able to be added at any place in this file.
       summary="For AddToHomescreen IPH feature using text bubble (obsolete)."/>
   <variant name="_AimActivationHint"
       summary="A hint to activate AI Mode on Android Desktop via keystrokes."/>
+  <variant name="_AndroidBottomBarAddressBar"
+      summary="For nudging the user to move the top address bar to the bottom
+               in the Android bottom bar education flow."/>
   <variant name="_AndroidBottomBarEducation"
       summary="For the education onboarding flow and IPHs for the Android
                bottom bar."/>
+  <variant name="_AndroidBottomBarEducationTooltips"
+      summary="For the education tooltips for the Android bottom bar."/>
   <variant name="_AndroidBottomBarGlic"
       summary="Describes the GLIC button added in the bottom bar."/>
   <variant name="_AndroidBottomBarNewTab"
@@ -397,6 +402,8 @@ should be able to be added at any place in this file.
       summary="For ContextualSuggestions feature."/>
   <variant name="_ContextualTasksEphemeralToolbarButton"
       summary="For Contextual Tasks ephemeral toolbar button."/>
+  <variant name="_ContextualTasksPinnedIconChanged"
+      summary="For Contextual Tasks pinned toolbar button icon change toast."/>
   <variant name="_CookieControls"
       summary="For CookieControls feature. (obsolete)"/>
   <variant name="_CriticalActionAppMenu"
@@ -431,6 +438,8 @@ should be able to be added at any place in this file.
   <variant name="_DesktopSnoozeFeature"
       summary="For DesktopSnoozeFeature feature."/>
   <variant name="_DesktopTabGroupsNewGroup" summary="For desktop Tab Groups."/>
+  <variant name="_Dictation"
+      summary="For Dictation IPH shown next to a focused text field."/>
   <variant name="_DiscardRing" summary="For new tab discard ring."/>
   <variant name="_DiscoverFeedHeaderMenu"
       summary="For DiscoverFeedHeaderMenu feature."/>
@@ -564,6 +573,8 @@ should be able to be added at any place in this file.
   <variant name="_iOSAIHubNewBadge" summary="For AI Hub New Badge feature."/>
   <variant name="_iOSBackgroundNewBadge"
       summary="For iOSBackgroundNewBadge feature"/>
+  <variant name="_iOSBottomOmniboxFeature"
+      summary="For iOSBottomOmniboxFeature feature"/>
   <variant name="_IOSBWGPromoFeature" summary="For IOSBWGPromoFeature feature"/>
   <variant name="_iOSChoiceScreen"
       summary="(obsolete) For iOSChoiceScreen feature"/>
@@ -924,6 +935,8 @@ should be able to be added at any place in this file.
       summary="For tab group creation dialog sync text."/>
   <variant name="_TabGroupsDragAndDrop"
       summary="For drop-to-merge in tab group."/>
+  <variant name="_TabGroupsFocusingFeature"
+      summary="For the tab groups focusing IPH feature."/>
   <variant name="_TabGroupSharedNotificationBubbleOnStrip"
       summary="For tab group shared notification bubble on tablet tab strip."/>
   <variant name="_TabGroupShareNotice"
@@ -952,6 +965,8 @@ should be able to be added at any place in this file.
       summary="For tab group surface after hiding a tab group while on the
                GTS."/>
   <variant name="_TabGroupsTapToSeeAnotherTab" summary="For tab strip."/>
+  <variant name="_TabGroupsUnfocusingFeature"
+      summary="For the tab groups unfocusing IPH feature."/>
   <variant name="_TabGroupSyncOnStrip"
       summary="For tab group sync on tablet tab strip."/>
   <variant name="_TabGroupsYourTabsTogether"
@@ -10349,6 +10364,16 @@ should be able to be added at any place in this file.
   <description>
     Recorded when the ephemeral contextual tasks toolbar button becomes visible
     in the browser toolbar.
+  </description>
+</action>
+
+<action
+    name="ContextualTasks.EphemeralToolbarButton.UserAction.PinByContextMenu">
+  <owner>dianaou@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when the user pins the ephemeral contextual tasks toolbar button to
+    the toolbar via its context menu.
   </description>
 </action>
 

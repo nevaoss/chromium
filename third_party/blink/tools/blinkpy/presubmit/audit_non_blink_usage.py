@@ -2357,7 +2357,7 @@ _CONFIG = [
         ],
         # base::RefCounted and base::RefCountedThreadSafe are prohibited in
         # platform/ as defined above, but wtf/ needs them to define their WTF
-        # subclasses and CrossThreadCopier.
+        # subclasses.
         'allowed': ['base::RefCounted', 'base::RefCountedThreadSafe'],
     },
     {
@@ -2951,10 +2951,13 @@ _CONFIG = [
             'dawn::.+',
             'webnn::.+',
             'wgpu::.+',
+            'gpu::ClientSharedImage',
             'gpu::SharedImageInterface',
             'gpu::SHARED_IMAGE_USAGE_WEBGPU_READ',
             'gpu::SHARED_IMAGE_USAGE_WEBGPU_SHARED_BUFFER',
             'gpu::SHARED_IMAGE_USAGE_WEBGPU_WRITE',
+            'gpu::SyncToken',
+            'gpu::WebNNScopedAccess',
             'viz::SinglePlaneFormat',
         ],
     },

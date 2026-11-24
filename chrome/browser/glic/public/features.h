@@ -179,6 +179,9 @@ BASE_DECLARE_FEATURE(kGlicAnchorEntryPointForOnboardedUsers);
 BASE_DECLARE_FEATURE(kGlicProcessCounterAbuseVerdict);
 BASE_DECLARE_FEATURE(kGlicNoWebUiLoader);
 
+// TODO(b/576288240): Move the GEiC features below into a GEiC-specific
+// header and namespace under chrome/browser/glic/gemini_enterprise/.
+
 // Enables Gemini Enterprise in Chrome (GEiC), the standalone enterprise
 // surface.
 BASE_DECLARE_FEATURE(kGeic);
@@ -189,6 +192,15 @@ extern const base::FeatureParam<bool> kGeicEnabledParam;
 // GEiC mode without an explicit GEiC URL is a misconfiguration, so callers
 // error rather than fall back to the consumer Gemini URL.
 extern const base::FeatureParam<std::string> kGeicGuestURL;
+// Enables the Gemini Enterprise in Chrome (GEiC) first-run experience (FRE).
+// When enabled for a GEiC profile, Chrome stores FRE completion per GE instance
+// in `geic.completed_fre`, exposes it to the GE web app, and gates GEiC
+// features on its completion. Without it, GEiC profiles are always consented.
+BASE_DECLARE_FEATURE(kGeicFre);
+
+// Allows the Gemini Enterprise (GEiC) guest to use the Glic actor (web
+// actuation).
+BASE_DECLARE_FEATURE(kGeicActuation);
 
 BASE_DECLARE_FEATURE(kGlicMarketingAutoOpen);
 extern const base::FeatureParam<std::string> kGlicMarketingUrlAllowlist;
@@ -247,8 +259,7 @@ BASE_DECLARE_FEATURE(kGlicClientDataStorage);
 BASE_DECLARE_FEATURE(kGlicShowNotTellTutorials);
 extern const base::FeatureParam<int> kGlicShowNotTellTutorialsArm;
 
-// Enables the Send Tab to Self APIs in Glic.
-BASE_DECLARE_FEATURE(kGlicSendTabToSelf);
+BASE_DECLARE_FEATURE(kGlicActivityHub);
 }  // namespace features
 
 #endif  // CHROME_BROWSER_GLIC_PUBLIC_FEATURES_H_

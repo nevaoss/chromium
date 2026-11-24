@@ -532,7 +532,7 @@ enum WebFeature {
   kV8MouseEvent_LayerY_AttributeGetter = 859,
   kInnerTextWithShadowTree = 860,
   kSelectionToStringWithShadowTree = 861,
-  kWindowFindWithShadowTree = 862,
+  kOBSOLETE_WindowFindWithShadowTree = 862,
   kV8CompositionEvent_InitCompositionEvent_Method = 863,
   kV8CustomEvent_InitCustomEvent_Method = 864,
   kV8DeviceMotionEvent_InitDeviceMotionEvent_Method = 865,
@@ -3906,8 +3906,8 @@ enum WebFeature {
   kOBSOLETE_ORBBlockWithOnLoadAndOnErrorEventHandler = 4621,
   kOBSOLETE_ORBBlockWithAnyEventHandler = 4622,
   kV8RTCEncodedVideoFrame_SetMetadata_Method = 4623,
-  kV8RTCEncodedVideoFrame_SetTimestamp_Method = 4624,
-  kV8RTCEncodedAudioFrame_SetTimestamp_Method = 4625,
+  kOBSOLETE_V8RTCEncodedVideoFrame_SetTimestamp_Method = 4624,
+  kOBSOLETE_V8RTCEncodedAudioFrame_SetTimestamp_Method = 4625,
   kCSSAtRuleViewTransition = 4626,
   kSharedDictionaryUsedWithSharedBrotli = 4627,
   kSharedDictionaryUsedWithSharedZstd = 4628,
@@ -4461,7 +4461,8 @@ enum WebFeature {
   kSvgContextFillOrStroke = 5156,
   kARIAActionsAttribute = 5157,
   kOBSOLETE_ResolveToConfigValueCoercedToTrue = 5158,
-  kOBSOLETE_ServiceWorkerStaticRouter_RaceNetworkAndFetchHandlerImprovement = 5159,
+  kOBSOLETE_ServiceWorkerStaticRouter_RaceNetworkAndFetchHandlerImprovement =
+      5159,
   kHasCapUnits = 5160,
   kHasRcapUnits = 5161,
   kHasIcUnits = 5162,
@@ -5359,6 +5360,10 @@ enum WebFeature {
   kOfflineAudioContextClose = 6042,
   kViewTransitionPreventSvgFilterPaint = 6043,
   kMulticastControllerJoinGroupWithSourceAddress = 6044,
+  kCSSGridLanesLayout = 6045,
+  kSmartCardContextRelease = 6046,
+  kSameDocumentSameSiteCrossOriginInitiator = 6047,
+  kSameDocumentCrossSiteInitiator = 6048,
 
   // Add new features immediately above this line. Don't change the existing
   // numbers of any item, and don't reuse removed slots. Also don't add extra

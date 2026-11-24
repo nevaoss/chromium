@@ -4,12 +4,14 @@
 
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 
+#include <algorithm>
 #include <optional>
 
 #include "base/command_line.h"
 #include "base/containers/flat_set.h"
 #include "base/feature_list.h"
 #include "base/logging.h"
+#include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
@@ -1560,8 +1562,12 @@ bool ContextualTasksUiService::ShouldAddRequiredSidePanelUrlChanges(
   auto expected_params =
       GetCommonSearchParamsMapForContextualTasks(source_contents);
 
-  // Check if any expected parameter is missing, or if 'cs' (dark mode) or
-  // 'gsc' (side panel) is out of sync.
+  // TODO(crbug.com/536100150): Sync `cs` on Android once
+  // `GetCommonSearchParamsMapForContextualTasks()` supports dark mode there.
+  constexpr bool kSyncDarkModeParam = !BUILDFLAG(IS_ANDROID);
+
+  // Check if any expected parameter is missing, or if `cs` (dark mode) or
+  // `gsc` (side panel) is out of sync.
   for (const auto& [key, value] : expected_params) {
     std::string current_val;
     bool has_key = net::GetValueForKeyInQuery(url, key, &current_val);
@@ -1570,7 +1576,9 @@ bool ContextualTasksUiService::ShouldAddRequiredSidePanelUrlChanges(
           << "ShouldAddRequiredSidePanelUrlChanges: missing param " << key;
       return true;  // Missing parameter -> needs handling.
     }
-    if (key == lens::kChromeSidePanelParameterKey && current_val != value) {
+    if ((key == lens::kChromeSidePanelParameterKey ||
+         (kSyncDarkModeParam && key == "cs")) &&
+        current_val != value) {
       OMNIBOX_LOG("nav_trace")
           << "ShouldAddRequiredSidePanelUrlChanges: " << key
           << " value mismatch";
@@ -1619,18 +1627,26 @@ bool ContextualTasksUiService::AddRequiredSidePanelUrlChanges(
 GURL ContextualTasksUiService::AddRequiredSidePanelUrlChanges(
     const GURL& url,
     content::WebContents* source_contents) {
-  if (!source_contents || !url.SchemeIsHTTPOrHTTPS()) {
+  if (!source_contents || !url.SchemeIsHTTPOrHTTPS() || IsSignInDomain(url) ||
+      GaiaUrls::GetInstance()->gaia_origin().IsSameOriginWith(url) ||
+      net::IsSubdomainOf(url.host(), "accounts.google.com") ||
+      base::StartsWith(url.path(), "/sorry/")) {
     return url;
   }
 
   auto common_params =
       GetCommonSearchParamsMapForContextualTasks(source_contents);
 
+  // TODO(crbug.com/536100150): Sync `cs` on Android once
+  // `GetCommonSearchParamsMapForContextualTasks()` supports dark mode there.
+  constexpr bool kSyncDarkModeParam = !BUILDFLAG(IS_ANDROID);
+
   GURL new_url = url;
   for (const auto& [key, value] : common_params) {
     std::string current_val;
-    // Skip existing keys except 'gsc'.
+    // Skip existing keys except `gsc` and (on desktop) `cs`.
     if (key != lens::kChromeSidePanelParameterKey &&
+        (!kSyncDarkModeParam || key != "cs") &&
         net::GetValueForKeyInQuery(new_url, key, &current_val)) {
       continue;
     }
@@ -2914,8 +2930,16 @@ void ContextualTasksUiService::OnBackButtonExpandsSidePanel(
         "NavigatedFromSidePanelToFullTab",
         true);
 
-    content::WebContents* side_panel_contents =
-        controller->GetActiveWebContents();
+    // `MoveTaskUiToNewTab()` may synchronously destroy the side panel
+    // `WebContents` (e.g. when the panel is not showing an AI page, the page is
+    // opened in a new tab and the panel is closed, which frees the cached
+    // `WebContents`). Hold a `base::WeakPtr` so that it is not used after being
+    // freed.
+    base::WeakPtr<content::WebContents> side_panel_contents;
+    if (content::WebContents* active_contents =
+            controller->GetActiveWebContents()) {
+      side_panel_contents = active_contents->GetWeakPtr();
+    }
     controller->MoveTaskUiToNewTab();
     auto* tab_strip_model = browser->GetTabStripModel();
     if (tab_strip_model) {
@@ -3316,6 +3340,11 @@ std::optional<GURL> ContextualTasksUiService::GetCreationUrlForTask(
   return std::nullopt;
 }
 
+void ContextualTasksUiService::SetInitialUrlForTask(const base::Uuid& task_id,
+                                                    const GURL& url) {
+  task_states_[task_id].creation_url = url;
+}
+
 void ContextualTasksUiService::AddPendingUrlCallback(
     const base::Uuid& task_id,
     base::OnceCallback<void(const GURL&)> callback) {
@@ -3406,6 +3435,22 @@ void ContextualTasksUiService::OnTaskChanged(
     if (old_task_id.has_value() && old_task_id->is_valid()) {
       tab_ids =
           contextual_tasks_service_->GetTabsAssociatedWithTask(*old_task_id);
+    }
+
+    // When scoped to the tab, only the active tab, where the thread was
+    // changed, moves to the new task. Other affiliated tabs keep their thread.
+    if (contextual_tasks::ShouldScopeSidePanelStateToTab()) {
+      TabListInterface* tab_list =
+          TabListInterface::From(browser_window_interface);
+      tabs::TabInterface* active_tab =
+          tab_list ? tab_list->GetActiveTab() : nullptr;
+      if (active_tab && active_tab->GetContents()) {
+        SessionID active_id =
+            SessionTabHelper::IdForTab(active_tab->GetContents());
+        if (tab_ids.empty() || std::ranges::contains(tab_ids, active_id)) {
+          tab_ids = {active_id};
+        }
+      }
     }
 
     // If old_task_id was unset or had no associated tabs (e.g. when opening the
@@ -3863,6 +3908,10 @@ bool ContextualTasksUiService::IsValidSearchResultsPage(const GURL& url) {
           !value.empty()) ||
          (net::GetValueForKeyInQuery(url, kLensModeKey, &value) &&
           !value.empty());
+}
+
+bool ContextualTasksUiService::IsRestorableSidePanelUrl(const GURL& url) {
+  return IsAiUrl(url) || IsValidSearchResultsPage(url);
 }
 
 bool ContextualTasksUiService::IsGoogleCaptchaUrl(const GURL& url) {

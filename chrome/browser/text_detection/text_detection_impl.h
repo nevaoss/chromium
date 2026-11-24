@@ -5,11 +5,11 @@
 #ifndef CHROME_BROWSER_TEXT_DETECTION_TEXT_DETECTION_IMPL_H_
 #define CHROME_BROWSER_TEXT_DETECTION_TEXT_DETECTION_IMPL_H_
 
-#include <optional>
 #include <utility>
 #include <vector>
 
 #include "base/memory/scoped_refptr.h"
+#include "base/memory/self_deleting.h"
 #include "base/memory/weak_ptr.h"
 #include "content/public/browser/document_service.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
@@ -55,9 +55,22 @@ class TextDetectionImpl
       scoped_refptr<screen_ai::OpticalCharacterRecognizer> ocr,
       mojo::PendingReceiver<shape_detection::mojom::TextDetection> receiver);
 
+  TextDetectionImpl(
+      content::RenderFrameHost& render_frame_host,
+      Profile* profile,
+      mojo::PendingReceiver<shape_detection::mojom::TextDetection> receiver,
+      base::SelfDeletingPassKey key);
+
+  // Used only in tests via CreateForTesting() to inject a fake
+  // OpticalCharacterRecognizer.
+  TextDetectionImpl(
+      content::RenderFrameHost& render_frame_host,
+      scoped_refptr<screen_ai::OpticalCharacterRecognizer> ocr,
+      mojo::PendingReceiver<shape_detection::mojom::TextDetection> receiver,
+      base::SelfDeletingPassKey key);
+
   TextDetectionImpl(const TextDetectionImpl&) = delete;
   TextDetectionImpl& operator=(const TextDetectionImpl&) = delete;
-  ~TextDetectionImpl() override;
 
   // shape_detection::mojom::TextDetection:
   void Detect(const SkBitmap& bitmap, DetectCallback callback) override;
@@ -66,17 +79,13 @@ class TextDetectionImpl
   void SimulateOcrInitializationForTesting(bool successful);
 
  private:
-  TextDetectionImpl(
-      content::RenderFrameHost& render_frame_host,
-      Profile* profile,
-      mojo::PendingReceiver<shape_detection::mojom::TextDetection> receiver);
+  enum class OcrStatus {
+    kPending,
+    kReady,
+    kFailed,
+  };
 
-  // Used only in tests via CreateForTesting() to inject a fake
-  // OpticalCharacterRecognizer.
-  TextDetectionImpl(
-      content::RenderFrameHost& render_frame_host,
-      scoped_refptr<screen_ai::OpticalCharacterRecognizer> ocr,
-      mojo::PendingReceiver<shape_detection::mojom::TextDetection> receiver);
+  ~TextDetectionImpl() override;
 
   void DispatchOcrRequest(const SkBitmap& bitmap, DetectCallback callback);
   void OnOcrInitialized(bool successful);
@@ -84,7 +93,7 @@ class TextDetectionImpl
                     screen_ai::mojom::VisualAnnotationPtr visual_annotation);
 
   scoped_refptr<screen_ai::OpticalCharacterRecognizer> ocr_;
-  std::optional<bool> ocr_ready_;
+  OcrStatus ocr_status_ = OcrStatus::kPending;
 
   // Total number of unfinished Detect() requests (including both those queued
   // in `queued_requests_` waiting for OCR initialization and those actively in

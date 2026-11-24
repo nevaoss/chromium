@@ -1454,6 +1454,27 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
+    name="Media.Audio.Capture.VoiceIsolation.ModelInferenceExecutionTime.{Aggregation}"
+    units="microseconds" expires_after="2027-03-01">
+  <owner>barrerap@google.com</owner>
+  <owner>olka@chromium.org</owner>
+  <owner>webrtc-audio-uma@google.com</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    {Aggregation} execution time of TFLite model inference on the real-time
+    audio thread over a 10-second active processing window. Logged once every 10
+    seconds of actively processed audio. Not logged for windows with fewer than
+    10 seconds of processed audio.
+
+    This histogram only records metrics on machines with high-resolution clocks.
+  </summary>
+  <token key="Aggregation">
+    <variant name="Average" summary="Average"/>
+    <variant name="Max" summary="Maximum"/>
+  </token>
+</histogram>
+
+<histogram
     name="Media.Audio.Capture.VoiceIsolation.ProcessingAudioFifo.MaxUsage"
     units="buffers" expires_after="2027-01-17">
   <owner>olka@chromium.org</owner>
@@ -5721,13 +5742,17 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.MediaDevices.GetUserMedia.CameraCaptureCapability"
-    enum="CameraCaptureCapability" expires_after="2026-04-26">
+    enum="CameraCaptureCapability" expires_after="2027-10-19">
   <owner>hbos@chromium.org</owner>
+  <owner>handellm@chromium.org</owner>
   <owner>video-cmi-mpp@google.com</owner>
   <summary>
     When getUserMedia() is called for video, the capture resolution capabilities
     of the devices (webcams) are logged, including if HD/FullHD devices support
     360p, 480p, neither or both.
+
+    Warning: this histogram was expired from 2026-04-26 to M158; data may be
+    missing.
   </summary>
 </histogram>
 

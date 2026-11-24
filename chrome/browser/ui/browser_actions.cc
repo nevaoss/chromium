@@ -49,8 +49,10 @@
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/ui/accelerator_table.h"
 #include "chrome/browser/ui/autofill/payments/payments_churned_users_bubble_controller.h"
+#include "chrome/browser/ui/bookmarks/bookmark_stats.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/page_action/page_action_icon_type.h"
+#include "chrome/browser/ui/page_info/about_this_site_icon.h"
 #include "chrome/browser/ui/startup/default_browser_prompt/default_browser_prompt_manager.h"
 #include "chrome/browser/ui/startup/default_browser_prompt/default_browser_prompt_prefs.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/tab_group_menu_utils.h"
@@ -163,7 +165,6 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_action_item.h"
-#include "chrome/browser/ui/views/bookmarks/bookmark_page_action_controller.h"
 #include "chrome/browser/ui/views/commerce/discounts_page_action_view_controller.h"
 #include "chrome/browser/ui/views/file_system_access/file_system_access_bubble_controller.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -173,7 +174,6 @@
 #include "chrome/browser/ui/views/location_bar/lens_overlay_homework_page_action_controller.h"
 #include "chrome/browser/ui/views/location_bar/record_replay_page_action_controller.h"
 #include "chrome/browser/ui/views/media_router/cast_browser_controller.h"
-#include "chrome/browser/ui/views/page_info/page_info_view_factory.h"
 #include "chrome/browser/ui/views/tabs/groups/recent_activity_bubble_dialog_view.h"
 #include "chrome/browser/ui/views/toolbar/ai_overlay_toolbar_button.h"
 #include "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h"
@@ -383,8 +383,7 @@ const gfx::VectorIcon& GetLensOverlayHomeworkIcon(Profile* profile) {
 bool ShouldShowSkillsAndExtensions(Profile* profile) {
   return profile && profile->IsRegularProfile() &&
          skills::SkillsServiceFactory::IsSkillsEnabledForProfile(profile) &&
-         base::FeatureList::IsEnabled(features::kSkillsAndExtensionsAppMenu) &&
-         glic::GlicEnabling::IsEnabledForProfile(profile);
+         base::FeatureList::IsEnabled(features::kSkillsAndExtensionsAppMenu);
 }
 
 }  // namespace
@@ -482,7 +481,7 @@ void BrowserActions::InitializeSidePanelActions() {
       SidePanelAction(SidePanelEntryId::kAboutThisSite,
                       IDS_PAGE_INFO_ABOUT_THIS_PAGE_TITLE,
                       IDS_PAGE_INFO_ABOUT_THIS_PAGE_TITLE,
-                      PageInfoViewFactory::GetAboutThisSiteVectorIcon(),
+                      page_info::GetAboutThisSiteIcon(),
                       kActionSidePanelShowAboutThisSite, bwi, false)
           .Build());
   root_action_item_->AddChild(
@@ -700,6 +699,19 @@ void BrowserActions::InitializeSidePanelActions() {
                       contextual_tasks::ContextualTasksPanelController::From(
                           bwi);
                   if (controller) {
+                    // Only mark the "icon changed" promo as used when in the
+                    // Super G arm, so clicking the old pinned icon before the
+                    // flag is enabled does not suppress the promo later.
+                    if (contextual_tasks::ShouldUseSuperGIconForPinButtons()) {
+                      if (auto* const user_ed =
+                              BrowserUserEducationInterface::From(bwi)) {
+                        user_ed->NotifyFeaturePromoFeatureUsed(
+                            feature_engagement::
+                                kIPHContextualTasksPinnedIconChangedFeature,
+                            FeaturePromoFeatureUsedAction::
+                                kClosePromoIfPresent);
+                      }
+                    }
                     bool is_open = controller->IsPanelOpenForContextualTask();
                     const char* user_action =
                         is_open ? "ContextualTasks.PermanentToolbarButton."
@@ -757,15 +769,9 @@ void BrowserActions::InitializeSidePanelActions() {
                 bwi))
             .SetActionId(kActionSidePanelShowContextualTasks)
             .SetText(l10n_util::GetStringUTF16(
-                contextual_tasks::AreContextualTasksUpdatedEntryPointsEnabled(
-                    profile)
-                    ? IDS_ASK_GOOGLE_ABOUT_THIS_PAGE
-                    : IDS_CONTEXTUAL_TASKS_CUSTOMIZE_CHROME_LABEL))
+                IDS_CONTEXTUAL_TASKS_CUSTOMIZE_CHROME_LABEL))
             .SetTooltipText(l10n_util::GetStringUTF16(
-                contextual_tasks::AreContextualTasksUpdatedEntryPointsEnabled(
-                    profile)
-                    ? IDS_ASK_GOOGLE_ABOUT_THIS_PAGE
-                    : IDS_CONTEXTUAL_TASKS_CUSTOMIZE_CHROME_LABEL))
+                IDS_CONTEXTUAL_TASKS_CUSTOMIZE_CHROME_LABEL))
             .SetImage(contextual_tasks_image)
             .SetProperty(
                 actions::kActionItemPinnableKey,
@@ -1556,7 +1562,7 @@ void BrowserActions::InitializeChromeMenuActions() {
                         page_actions::kPageActionTriggerKey);
                 if (page_action_trigger !=
                     page_actions::kInvalidPageActionTrigger) {
-                  BookmarkPageActionController::RecordPageActionExecution(
+                  RecordBookmarkPageActionExecution(
                       static_cast<page_actions::PageActionTrigger>(
                           page_action_trigger));
                 }
@@ -4173,7 +4179,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                   account = identity_manager->GetPrimaryAccountInfo(
                       signin::ConsentLevel::kSignin);
                 }
-                signin_ui_util::EnableSyncFromSingleAccountPromo(
+                signin_ui_util::EnableHistorySyncFromSingleAccountPromo(
                     profile, account, signin_metrics::AccessPoint::kMenu);
               },
               bwi))

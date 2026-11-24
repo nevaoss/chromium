@@ -9,6 +9,8 @@ import android.text.TextUtils;
 
 import androidx.annotation.IntDef;
 
+import org.jni_zero.JniPtr;
+
 import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -16,6 +18,7 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileProvider;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTask.NativeBrowserWindowInterface;
 import org.chromium.content_public.browser.RenderFrameHost;
 import org.chromium.url.GURL;
 
@@ -69,13 +72,13 @@ public interface GlicKeyedService {
     /**
      * Toggles the Glic user interface.
      *
-     * @param browserWindowPtr The native pointer (long) to the BrowserWindowInterface.
+     * @param browserWindow The native {@code BrowserWindowInterface}.
      * @param preventClose Whether to prevent closing the UI if it's already open.
      * @param profile The {@link Profile} associated with this service instance.
      * @param invocationSource How the UI was triggered.
      */
     void toggleUI(
-            long browserWindowPtr,
+            JniPtr<NativeBrowserWindowInterface> browserWindow,
             boolean preventClose,
             Profile profile,
             @GlicInvocationSource int invocationSource);
@@ -240,10 +243,10 @@ public interface GlicKeyedService {
     /**
      * Checks if the panel is showing for a specific browser window.
      *
-     * @param browserWindowPtr The native pointer (long) to the BrowserWindowInterface.
+     * @param browserWindow The native {@code BrowserWindowInterface}.
      * @return true if the panel is showing for the specified browser window.
      */
-    boolean isPanelShowingForBrowser(long browserWindowPtr);
+    boolean isPanelShowingForBrowser(JniPtr<NativeBrowserWindowInterface> browserWindow);
 
     /**
      * Checks if the user has enabled actuation on web.

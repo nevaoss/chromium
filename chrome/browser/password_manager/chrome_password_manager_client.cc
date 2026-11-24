@@ -115,6 +115,7 @@
 #include "components/password_manager/core/browser/password_store/password_store_backend_error.h"
 #include "components/password_manager/core/browser/password_store/password_store_interface.h"
 #include "components/password_manager/core/browser/password_store/password_store_util.h"
+#include "components/password_manager/core/browser/password_string.h"
 #include "components/password_manager/core/browser/password_sync_util.h"
 #include "components/password_manager/core/common/password_manager_features.h"
 #include "components/password_manager/core/common/password_manager_pref_names.h"
@@ -1654,7 +1655,10 @@ void ChromePasswordManagerClient::PresaveGeneratedPassword(
 
 #if !BUILDFLAG(IS_ANDROID)
   if (popup_controller_ && popup_controller_->driver().get() == driver) {
-    popup_controller_->UpdateGeneratedPassword(password_value);
+    // Mojo boundary: `password_value` arrived as plaintext from the renderer.
+    // Protect the popup's copy before retaining it.
+    popup_controller_->UpdateGeneratedPassword(
+        password_manager::PasswordString(std::u16string(password_value)));
   }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -1737,7 +1741,10 @@ void ChromePasswordManagerClient::ShowPasswordEditingPopup(
       popup_controller_, element_bounds_in_screen_space, ui_data,
       driver->AsWeakPtr(), observer_, web_contents(), &rfh);
   CHECK(!password_value.empty());
-  popup_controller_->UpdateGeneratedPassword(password_value);
+  // Mojo boundary: `password_value` arrived as plaintext from the renderer.
+  // Protect the popup's copy before retaining it.
+  popup_controller_->UpdateGeneratedPassword(
+      password_manager::PasswordString(std::u16string(password_value)));
   popup_controller_->Show(
       PasswordGenerationPopupController::kEditGeneratedPassword);
 }
@@ -1872,9 +1879,8 @@ bool ChromePasswordManagerClient::IsActorTaskActive() {
     return false;
   }
 
-  const tabs::TabInterface* tab_interface =
-      tabs::TabInterface::MaybeGetFromContents(web_contents());
-  return tab_interface && actor_service->IsActiveOnTab(*tab_interface);
+  return actor_service->GetActingActorTaskForWebContents(web_contents()) !=
+         nullptr;
 }
 
 ChromePasswordManagerClient::ChromePasswordManagerClient(

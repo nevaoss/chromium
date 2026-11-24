@@ -384,10 +384,9 @@ export class SearchboxIconElement extends CrLitElement {
     }
 
     if (THEMED_ICONS.has(this.defaultIcon) ||
-        (this.inSearchbox && this.isTopChromeSearchbox_ &&
-         isFaviconUrl(this.defaultIcon))) {
-      // These colored icons need to be displayed as a favicon image as mask
-      // images will mask the colors.
+        (this.inSearchbox && isFaviconUrl(this.defaultIcon))) {
+      // Colored icons (Google G, DSE favicons) must render as an <img>; a CSS
+      // mask would strip their colors.
       return this.defaultIcon;
     }
 
@@ -418,26 +417,25 @@ export class SearchboxIconElement extends CrLitElement {
     if (this.isLensSearchbox_ && this.inSearchbox) {
       return `url(${this.defaultIcon})`;
     }
-    // Enterprise search aggregator people, starter pack/featured enterprise
-    // search suggestions, top-chrome searchbox (WebUI Omnibox), and suggestions
-    // whose secondary text isn't placed below the primary text should show icon
-    // even in searchbox.
+    // Enterprise search aggregator people, top-chrome searchbox (WebUI
+    // Omnibox), and suggestions whose secondary text isn't placed below the
+    // primary text should show icon even in searchbox.
     if (this.match &&
         (this.match.suggestTemplate.secondaryTextPlacement !==
              SecondaryTextPlacement.kBelowPrimaryText ||
-         this.match.type === STARTER_PACK ||
-         this.match.type === FEATURED_ENTERPRISE_SEARCH ||
          this.match.isEnterpriseSearchAggregatorPeopleType ||
          this.isTopChromeSearchbox_ || !this.inSearchbox)) {
       return `url(${this.match.iconPath})`;
     }
 
-    if (this.inSearchbox && this.isTopChromeSearchbox_) {
+    if (this.inSearchbox) {
       // When focused on an unedited webpage URL without an active match,
       // fall back to the generic globe icon (page_cr23.svg).
-      if (this.pageUrl && !this.match) {
+      if (this.isTopChromeSearchbox_ && this.pageUrl && !this.match) {
         return 'url(//resources/cr_components/searchbox/icons/page_cr23.svg)';
       }
+      // A non-Google DSE favicon can't be drawn as a mask, so fall back to the
+      // search loupe while it loads or if it fails to load.
       if (isFaviconUrl(this.defaultIcon)) {
         return 'url(//resources/cr_components/searchbox/icons/search_cr23.svg)';
       }

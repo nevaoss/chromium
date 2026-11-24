@@ -264,6 +264,16 @@ class MockAutofillClient : public TestAutofillClient {
           .WillByDefault(Return(true));
       return checker;
     });
+    // Like the real client, provide an authenticator whenever the checker says
+    // that the device can authenticate. Authentication succeeds by default.
+    ON_CALL(*this, GetDeviceAuthenticator).WillByDefault([](std::string) {
+      auto authenticator =
+          std::make_unique<NiceMock<device_reauth::MockDeviceAuthenticator>>();
+      ON_CALL(*authenticator, AuthenticateWithMessage)
+          .WillByDefault(
+              base::test::RunOnceCallback<1>(/*auth_succeeded=*/true));
+      return authenticator;
+    });
   }
   MockAutofillClient(const MockAutofillClient&) = delete;
   MockAutofillClient& operator=(const MockAutofillClient&) = delete;
@@ -4297,6 +4307,60 @@ TEST_P(AutofillExternalDelegateWithAmbientAutofillTest,
   histogram_tester.ExpectUniqueSample(
       "Autofill.Ai.Suppression.ConfirmationDialogResult",
       EntitySuppressionConfirmationDialogResult::kAccepted, 1);
+}
+
+// Tests that manually suppressing a Personal Context entity records whether a
+// saved entity of the same type exists in `EntityDataManager`.
+TEST_P(AutofillExternalDelegateWithAmbientAutofillTest,
+       DidAcceptSuggestion_RemoveAutofillAi_LogsSavedEntityPresentMetric) {
+  {
+    base::HistogramTester histogram_tester;
+    EntityInstance pcontext_passport = AddPersonalContextPassport();
+    Suggestion remove_suggestion(SuggestionType::kRemoveAutofillAi);
+    remove_suggestion.payload =
+        Suggestion::AutofillAiPayload(pcontext_passport.guid());
+    EXPECT_CALL(autofill_client(), ShowAutofillAiSuppressionConfirmationDialog)
+        .WillOnce(RunOnceCallback<1>(/*confirmed=*/true));
+    EXPECT_CALL(autofill_client(), ShowAutofillAiSuggestionRemovedNotification);
+
+    external_delegate().DidAcceptSuggestion(remove_suggestion,
+                                            {.multi_index = {0}});
+    histogram_tester.ExpectUniqueSample(
+        "Autofill.Ai.Suppression.SavedEntityOfSameTypePresent", false, 1);
+    histogram_tester.ExpectUniqueSample(
+        "Autofill.Ai.Suppression.SavedEntityOfSameTypePresent.Passport", false,
+        1);
+  }
+
+  {
+    base::HistogramTester histogram_tester;
+    AddOrUpdateEntityInstance(GetPassportEntityInstanceWithRandomGuid(
+        {.number = u"9999888877",
+         .record_type = EntityInstance::RecordType::kLocal}));
+
+    EntityInstance pcontext_passport2 = GetPassportEntityInstanceWithRandomGuid(
+        {.number = u"1111222233",
+         .record_type = EntityInstance::RecordType::kPersonalContext});
+    autofill_client().GetEntityDataManager()->OnPrefetchContextComplete(
+        personal_context_manager(),
+        std::vector<EntityInstance>{pcontext_passport2});
+    IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
+
+    Suggestion remove_suggestion(SuggestionType::kRemoveAutofillAi);
+    remove_suggestion.payload =
+        Suggestion::AutofillAiPayload(pcontext_passport2.guid());
+    EXPECT_CALL(autofill_client(), ShowAutofillAiSuppressionConfirmationDialog)
+        .WillOnce(RunOnceCallback<1>(/*confirmed=*/true));
+    EXPECT_CALL(autofill_client(), ShowAutofillAiSuggestionRemovedNotification);
+
+    external_delegate().DidAcceptSuggestion(remove_suggestion,
+                                            {.multi_index = {0}});
+    histogram_tester.ExpectUniqueSample(
+        "Autofill.Ai.Suppression.SavedEntityOfSameTypePresent", true, 1);
+    histogram_tester.ExpectUniqueSample(
+        "Autofill.Ai.Suppression.SavedEntityOfSameTypePresent.Passport", true,
+        1);
+  }
 }
 
 // Tests that cancelling the dialog does not suppress the entity.

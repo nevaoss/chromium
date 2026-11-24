@@ -22,7 +22,6 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_auto_suggestion_manager.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_composebox_handler_interface.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
-#include "chrome/browser/contextual_tasks/contextual_tasks_internals.mojom.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_page_handler.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_toolbar.mojom.h"
@@ -82,8 +81,6 @@ namespace tabs {
 class TabInterface;
 }  // namespace tabs
 
-class ContextualTasksInternalsPageHandler;
-
 class ContextualTasksPageHandler;
 class Profile;
 
@@ -95,8 +92,6 @@ class ContextualTasksUI
 #endif
       public contextual_tasks::mojom::PageHandlerFactory,
       public composebox::mojom::PageHandlerFactory,
-      public contextual_tasks_internals::mojom::
-          ContextualTasksInternalsPageHandlerFactory,
       public signin::IdentityManager::Observer,
       public contextual_tasks::ContextualTasksService::Observer {
  public:
@@ -131,6 +126,9 @@ class ContextualTasksUI
 
     // Last committed URL used to check if URL changes.
     GURL last_committed_url_;
+
+    // Last committed URL that showed the current thread.
+    GURL last_thread_url_;
   };
 
   explicit ContextualTasksUI(content::WebUI* web_ui);
@@ -236,7 +234,7 @@ class ContextualTasksUI
 
   std::unique_ptr<contextual_search::InputStateModel> TakeInputStateModel()
       override;
-  std::vector<int32_t> GetRestoredTabIds() override;
+  const std::vector<int32_t>& GetRestoredTabIds() override;
   void SetComposeboxHandler(
       contextual_tasks::ContextualTasksComposeboxHandlerInterface* handler)
       override;
@@ -280,23 +278,6 @@ class ContextualTasksUI
   void BindInterface(
       mojo::PendingReceiver<contextual_tasks::mojom::PageHandlerFactory>
           pending_receiver);
-
-
-  // Instantiates the implementor of the contextual_tasks::mojom::
-  // ContextualTasksInternalsPageHandlerFactory mojo interface passing the
-  // pending receiver that will be internally bound.
-  void BindInterface(
-      mojo::PendingReceiver<contextual_tasks_internals::mojom::
-                                ContextualTasksInternalsPageHandlerFactory>
-          pending_receiver);
-
-  // contextual_tasks::mojom::ContextualTasksInternalsPageHandlerFactory:
-  void CreatePageHandler(
-      mojo::PendingRemote<
-          contextual_tasks_internals::mojom::ContextualTasksInternalsPage> page,
-      mojo::PendingReceiver<contextual_tasks_internals::mojom::
-                                ContextualTasksInternalsPageHandler> receiver)
-      override;
 
   static constexpr std::string_view GetWebUIName() { return "ContextualTasks"; }
 
@@ -425,13 +406,6 @@ class ContextualTasksUI
 
   base::ObserverList<contextual_tasks::ContextualTasksUIInterface::Observer>
       observers_;
-
-  mojo::Receiver<contextual_tasks_internals::mojom::
-                     ContextualTasksInternalsPageHandlerFactory>
-      contextual_tasks_internals_page_handler_receiver_{this};
-
-  std::unique_ptr<ContextualTasksInternalsPageHandler>
-      contextual_tasks_internals_page_handler_;
 
   enum class WebUIState {
     kUnknown,

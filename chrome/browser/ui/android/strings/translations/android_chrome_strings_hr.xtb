@@ -768,6 +768,7 @@ Vaše šifrirane podatke može pročitati samo osoba koja ima vašu šifru. Šif
 <translation id="4098552968111329864">Da bi se zaštitio vaš rad u Chromeu, vaša će organizacija moći pregledavati određene podatke ili upravljati njima kad ste prijavljeni u Chrome</translation>
 <translation id="4105527135143631701">Otvoreno je ažuriranje Google upravitelja zaporki</translation>
 <translation id="4107207375883769436">Vaša organizacija možda treba vidjeti podatke o pregledavanju na vašem poslovnom profilu, kao što su povijest pregledavanja i zaporke, te upravljati njima</translation>
+<translation id="4112868928070921050">Pristanak na povezivanje Google Workspacea s uslugama Pretraživanja</translation>
 <translation id="4113030288477039509">Upravlja vaš administrator</translation>
 <translation id="4116038641877404294">Preuzmite stranice za izvanmrežnu upotrebu</translation>
 <translation id="4121654769234887259">Nećete morati pamtiti tu zaporku. Spremit će se u Google upravitelj zaporki za <ph name="USERNAME" />.</translation>
@@ -1788,6 +1789,7 @@ Kako biste promijenili tu postavku, <ph name="BEGIN_LINK" />izbrišite podatke C
 <translation id="799576009106109668">Pregledavat ćete brže jer se sadržaj učitava proaktivno na temelju vašeg posjeta trenutačnoj web-stranici</translation>
 <translation id="7997875520309653083">Prijeđite prstom od desnog ruba da biste se vratili</translation>
 <translation id="7998918019931843664">Ponovno otvaranje zatvorene kartice</translation>
+<translation id="8000020256436988724">Alatna traka</translation>
 <translation id="8001245658307297681">Pregledavate lokalnu datoteku</translation>
 <translation id="800155843932969169">Sigurno izrađujte i pohranjujte zaporke, brže se prijavljujte i identificirajte sigurnosne probleme sa zaporkama kako biste se zaštitili</translation>
 <translation id="8004582292198964060">Preglednik</translation>

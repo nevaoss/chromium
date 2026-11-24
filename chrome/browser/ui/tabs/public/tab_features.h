@@ -207,6 +207,10 @@ namespace customize_chrome {
 class SidePanelController;
 }  // namespace customize_chrome
 
+namespace dictation {
+class DictationIphController;
+}  // namespace dictation
+
 namespace download {
 class DownloadNavigationObserver;
 }  // namespace download
@@ -351,9 +355,6 @@ namespace ash {
 class BootTimesRecorderTabHelper;
 class CrosIsolatedWebAppEnabler;
 }  // namespace ash
-namespace ash::app_time {
-class WebTimeNavigationObserver;
-}  // namespace ash::app_time
 namespace mahi {
 class MahiTabHelper;
 }  // namespace mahi
@@ -833,6 +834,8 @@ class TabFeatures {
   std::unique_ptr<back_to_opener::BackToOpenerController>
       back_to_opener_controller_;
 
+  std::unique_ptr<dictation::DictationIphController> dictation_iph_controller_;
+
   std::unique_ptr<skills::SkillsUiTabControllerInterface>
       skills_ui_tab_controller_;
 
@@ -884,8 +887,6 @@ class TabFeatures {
       cros_isolated_web_app_enabler_;
   std::unique_ptr<GeminiAppTabHelper> gemini_app_tab_helper_;
   std::unique_ptr<mahi::MahiTabHelper> mahi_tab_helper_;
-  std::unique_ptr<ash::app_time::WebTimeNavigationObserver>
-      web_time_navigation_observer_;
   std::unique_ptr<ash::BootTimesRecorderTabHelper>
       boot_times_recorder_tab_helper_;
 #endif

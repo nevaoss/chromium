@@ -13,13 +13,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
-import android.content.pm.ResolveInfo;
-import android.net.Uri;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -47,6 +46,7 @@ import org.chromium.base.UserDataHost;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.compositor.layouts.LayoutManagerChrome;
@@ -163,6 +163,32 @@ public class SendTabToSelfAndroidBridgeTest {
     @After
     public void tearDown() {
         DeviceInfo.resetIsDesktopForTesting();
+    }
+
+    /**
+     * Installs com.example.app with an activity that handles https://www.example.com/app links.
+     * Install any custom PackageInfo for com.example.app before calling this, since installing a
+     * package replaces its activities.
+     */
+    private static void addSpecializedHandler(@Nullable String appLabel) {
+        ShadowPackageManager shadowPackageManager =
+                Shadows.shadowOf(RuntimeEnvironment.getApplication().getPackageManager());
+
+        ActivityInfo activityInfo = new ActivityInfo();
+        activityInfo.packageName = "com.example.app";
+        activityInfo.name = "com.example.app.MainActivity";
+        activityInfo.nonLocalizedLabel = appLabel;
+        shadowPackageManager.addOrUpdateActivity(activityInfo);
+
+        IntentFilter filter = new IntentFilter(Intent.ACTION_VIEW);
+        filter.addDataScheme("https");
+        filter.addDataAuthority("www.example.com", null);
+        filter.addDataPath("/app", android.os.PatternMatcher.PATTERN_PREFIX);
+        filter.addCategory(Intent.CATEGORY_BROWSABLE);
+        // NotificationManager resolves the activity with MATCH_DEFAULT_ONLY.
+        filter.addCategory(Intent.CATEGORY_DEFAULT);
+        shadowPackageManager.addIntentFilterForActivity(
+                new ComponentName(activityInfo.packageName, activityInfo.name), filter);
     }
 
     @Test
@@ -828,79 +854,6 @@ public class SendTabToSelfAndroidBridgeTest {
     }
 
     @Test
-    @DisableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_RECORD_SNACKBAR_ACTIVATION)
-    public void testShowMessageBanner_ClickAction_RecordSnackbarActivationDisabled() {
-        SendTabToSelfAndroidBridge.showMessageBanner(mWebContents, "Pixel 10", 2, GURL.emptyGURL());
-
-        ArgumentCaptor<PropertyModel> messageCaptor = ArgumentCaptor.forClass(PropertyModel.class);
-        verify(mMessageDispatcher).enqueueWindowScopedMessage(messageCaptor.capture(), eq(false));
-
-        Supplier<Integer> onPrimaryAction =
-                messageCaptor.getValue().get(MessageBannerProperties.ON_PRIMARY_ACTION);
-
-        // Mock Activity elements.
-        LayoutManagerChrome layoutManager = mock(LayoutManagerChrome.class);
-        TabModelSelector tabModelSelector = mock(TabModelSelector.class);
-        TabModel normalTabModel = mock(TabModel.class);
-
-        mTabbedActivity.mLayoutManager = layoutManager;
-        mTabbedActivity.mTabModelSelector = tabModelSelector;
-        when(tabModelSelector.getModel(false)).thenReturn(normalTabModel);
-        when(normalTabModel.getProfile()).thenReturn(mProfile);
-
-        // Create two tabs matching search criteria, with different timestamps.
-        // The second tab was added later (higher timestamp).
-        Tab tab1 = mock(Tab.class);
-        when(tab1.getUrl()).thenReturn(new GURL("https://www.example.com/1"));
-        UserDataHost userDataHost1 = new UserDataHost();
-        when(tab1.getUserDataHost()).thenReturn(userDataHost1);
-        SendTabToSelfAndroidBridge.attachTabLabel(tab1, "guid1", "Pixel 10");
-        // Manipulate timestamp to make it older (e.g. 10s ago).
-        SendTabToSelfTabCardLabelData data1 =
-                userDataHost1.getUserData(SendTabToSelfTabCardLabelData.class);
-        data1.setAdditionTimestampMsForTesting(System.currentTimeMillis() - 10000);
-
-        Tab tab2 = mock(Tab.class);
-        when(tab2.getUrl()).thenReturn(new GURL("https://www.example.com/2"));
-        UserDataHost userDataHost2 = new UserDataHost();
-        when(tab2.getUserDataHost()).thenReturn(userDataHost2);
-        SendTabToSelfAndroidBridge.attachTabLabel(tab2, "guid2", "Pixel 10");
-        // Maintain a newer timestamp on tab2 (e.g. 5s ago).
-        SendTabToSelfTabCardLabelData data2 =
-                userDataHost2.getUserData(SendTabToSelfTabCardLabelData.class);
-        data2.setAdditionTimestampMsForTesting(System.currentTimeMillis() - 5000);
-
-        when(normalTabModel.getCount()).thenReturn(2);
-        when(normalTabModel.getTabAt(0)).thenReturn(tab1);
-        when(normalTabModel.getTabAt(1)).thenReturn(tab2);
-
-        ApplicationStatus.onStateChangeForTesting(mTabbedActivity, ActivityState.CREATED);
-
-        // Execute primary action.
-        int result = onPrimaryAction.get();
-
-        // Verify result.
-        Assert.assertEquals(PrimaryActionClickBehavior.DISMISS_IMMEDIATELY, result);
-        // Verify newest tab is selected (index 1).
-        verify(normalTabModel).setIndex(eq(1), eq(TabSelectionType.FROM_USER));
-        // Verify older tab (index 0) is NEVER selected.
-        verify(normalTabModel, never()).setIndex(eq(0), any(Integer.class));
-        // When the feature is disabled, neither tab's label is removed by the snackbar action.
-        Assert.assertNotNull(SendTabToSelfTabCardLabelData.get(tab2));
-        Assert.assertNotNull(SendTabToSelfTabCardLabelData.get(tab1));
-        // Verify no entry was marked as activated via snackbar. (It'll eventually get marked as
-        // activated via SendTabToSelfTabCardLabelData's tab observer if/when the user switches to
-        // the tab.)
-        verify(mNativeMock, never()).markEntryActivated(any(), any(), any(Integer.class));
-        // Verify that the tab switcher is not opened.
-        verify(layoutManager, never()).showLayout(any(Integer.class), any(Boolean.class));
-
-        // Clean up.
-        ApplicationStatus.onStateChangeForTesting(mTabbedActivity, ActivityState.DESTROYED);
-        MessagesFactory.detachMessageDispatcher(mMessageDispatcher);
-    }
-
-    @Test
     public void testShowMessageBanner_ClickActionNoMatchingTabs_DoesNothing() {
         SendTabToSelfAndroidBridge.showMessageBanner(mWebContents, "Pixel 10", 1, new GURL(URL));
 
@@ -1059,25 +1012,7 @@ public class SendTabToSelfAndroidBridgeTest {
         String url = "https://www.example.com/app/path";
 
         // Register a specialized handler.
-        ShadowPackageManager shadowPackageManager =
-                Shadows.shadowOf(RuntimeEnvironment.getApplication().getPackageManager());
-
-        IntentFilter filter = new IntentFilter(Intent.ACTION_VIEW);
-        filter.addDataScheme("https");
-        filter.addDataAuthority("www.example.com", null);
-        filter.addDataPath("/app", android.os.PatternMatcher.PATTERN_PREFIX);
-        filter.addCategory(Intent.CATEGORY_BROWSABLE);
-
-        ResolveInfo resolveInfo = new ResolveInfo();
-        resolveInfo.activityInfo = new ActivityInfo();
-        resolveInfo.activityInfo.packageName = "com.example.app";
-        resolveInfo.activityInfo.name = "com.example.app.MainActivity";
-        resolveInfo.nonLocalizedLabel = "Example App";
-        resolveInfo.filter = filter;
-
-        Intent queryIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-        queryIntent.addCategory(Intent.CATEGORY_BROWSABLE);
-        shadowPackageManager.addResolveInfoForIntent(queryIntent, resolveInfo);
+        addSpecializedHandler("Example App");
 
         // Mock Activity elements.
         LayoutManagerChrome layoutManager = mock(LayoutManagerChrome.class);
@@ -1148,33 +1083,14 @@ public class SendTabToSelfAndroidBridgeTest {
         ShadowPackageManager shadowPackageManager =
                 Shadows.shadowOf(RuntimeEnvironment.getApplication().getPackageManager());
 
-        IntentFilter filter = new IntentFilter(Intent.ACTION_VIEW);
-        filter.addDataScheme("https");
-        filter.addDataAuthority("www.example.com", null);
-        filter.addDataPath("/app", android.os.PatternMatcher.PATTERN_PREFIX);
-        filter.addCategory(Intent.CATEGORY_BROWSABLE);
-
-        ResolveInfo resolveInfo = new ResolveInfo();
-        resolveInfo.activityInfo = new ActivityInfo();
-        resolveInfo.activityInfo.packageName = "com.example.app";
-        resolveInfo.activityInfo.name = "com.example.app.MainActivity";
-        resolveInfo.filter = filter;
-
-        Intent queryIntent1 = new Intent(Intent.ACTION_VIEW, Uri.parse(url1));
-        queryIntent1.addCategory(Intent.CATEGORY_BROWSABLE);
-        shadowPackageManager.addResolveInfoForIntent(queryIntent1, resolveInfo);
-
-        Intent queryIntent2 = new Intent(Intent.ACTION_VIEW, Uri.parse(url2));
-        queryIntent2.addCategory(Intent.CATEGORY_BROWSABLE);
-        shadowPackageManager.addResolveInfoForIntent(queryIntent2, resolveInfo);
-
         PackageInfo packageInfo = new PackageInfo();
         packageInfo.packageName = "com.example.app";
         packageInfo.applicationInfo = new ApplicationInfo();
         packageInfo.applicationInfo.packageName = "com.example.app";
         packageInfo.applicationInfo.nonLocalizedLabel = "Example App";
         packageInfo.applicationInfo.icon = android.R.drawable.sym_def_app_icon;
-        shadowPackageManager.addPackage(packageInfo);
+        shadowPackageManager.installPackage(packageInfo);
+        addSpecializedHandler(/* appLabel= */ null);
 
         // Mock Activity elements.
         LayoutManagerChrome layoutManager = mock(LayoutManagerChrome.class);
@@ -1334,29 +1250,14 @@ public class SendTabToSelfAndroidBridgeTest {
         ShadowPackageManager shadowPackageManager =
                 Shadows.shadowOf(RuntimeEnvironment.getApplication().getPackageManager());
 
-        IntentFilter filter = new IntentFilter(Intent.ACTION_VIEW);
-        filter.addDataScheme("https");
-        filter.addDataAuthority("www.example.com", null);
-        filter.addDataPath("/app", android.os.PatternMatcher.PATTERN_PREFIX);
-        filter.addCategory(Intent.CATEGORY_BROWSABLE);
-
-        ResolveInfo resolveInfo = new ResolveInfo();
-        resolveInfo.activityInfo = new ActivityInfo();
-        resolveInfo.activityInfo.packageName = "com.example.app";
-        resolveInfo.activityInfo.name = "com.example.app.MainActivity";
-        resolveInfo.filter = filter;
-
-        Intent queryIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-        queryIntent.addCategory(Intent.CATEGORY_BROWSABLE);
-        shadowPackageManager.addResolveInfoForIntent(queryIntent, resolveInfo);
-
         PackageInfo packageInfo = new PackageInfo();
         packageInfo.packageName = "com.example.app";
         packageInfo.applicationInfo = new ApplicationInfo();
         packageInfo.applicationInfo.packageName = "com.example.app";
         packageInfo.applicationInfo.nonLocalizedLabel = "Example App";
         packageInfo.applicationInfo.icon = android.R.drawable.sym_def_app_icon;
-        shadowPackageManager.addPackage(packageInfo);
+        shadowPackageManager.installPackage(packageInfo);
+        addSpecializedHandler(/* appLabel= */ null);
 
         Tab tab = mock(Tab.class);
         when(tab.getUrl()).thenReturn(new GURL(url));

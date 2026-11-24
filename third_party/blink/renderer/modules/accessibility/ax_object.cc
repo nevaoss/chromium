@@ -151,6 +151,7 @@
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
+#include "third_party/blink/renderer/platform/wtf/text/format.h"
 #include "third_party/blink/renderer/platform/wtf/text/strcat.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder_stream.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_to_number.h"
@@ -2566,14 +2567,19 @@ void AXObject::SerializeUnignoredAttributes(ui::AXNodeData* node_data,
   // Try to get an aria-controls listbox for an <input role="combobox">.
   if (!node_data->HasIntListAttribute(
           ax::mojom::blink::IntListAttribute::kControlsIds)) {
-    if (AXObject* listbox = GetControlsListboxForTextfieldCombobox()) {
+    if (AXObject* combobox_listbox = GetControlsListboxForTextfieldCombobox()) {
       node_data->AddIntListAttribute(
           ax::mojom::blink::IntListAttribute::kControlsIds,
-          {static_cast<int32_t>(listbox->AXObjectID())});
+          {static_cast<int32_t>(combobox_listbox->AXObjectID())});
     } else if (AXObject* scroller = GetControlsForOverflowNavigation()) {
       node_data->AddIntListAttribute(
           ax::mojom::blink::IntListAttribute::kControlsIds,
           {static_cast<int32_t>(scroller->AXObjectID())});
+    } else if (AXObject* filter_listbox =
+                   GetControlsListboxForFilterableSelect()) {
+      node_data->AddIntListAttribute(
+          ax::mojom::blink::IntListAttribute::kControlsIds,
+          {static_cast<int32_t>(filter_listbox->AXObjectID())});
     }
   }
 
@@ -2940,6 +2946,24 @@ AXObject* AXObject::GetControlsForOverflowNavigation() const {
   // (i.e. controlled) when you interact with these pseudo-element controls.
   // https://www.w3.org/TR/css-overflow-5/#scroll-navigation
   return AXObjectCache().Get(GetElement()->parentElement());
+}
+
+AXObject* AXObject::GetControlsListboxForFilterableSelect() const {
+  if (!RuntimeEnabledFeatures::FilterableSelectEnabled()) {
+    return nullptr;
+  }
+  if (const auto* input = DynamicTo<HTMLInputElement>(GetElement())) {
+    if (HTMLSelectElement* select = input->FilterTarget()) {
+      if (HTMLElement* listbox_element = select->ListBoxForFilter()) {
+        if (AXObject* listbox = AXObjectCache().Get(listbox_element)) {
+          if (!listbox->IsIgnored()) {
+            return listbox;
+          }
+        }
+      }
+    }
+  }
+  return nullptr;
 }
 
 const AtomicString& AXObject::GetRoleStringForSerialization(
@@ -9219,7 +9243,7 @@ String AXObject::ToString(bool verbose) const {
   bool cached_values_only = !AXObjectCache().IsFrozen();
 
   if (AXObjectCache().HasBeenDisposed() || AXObjectCache().IsDisposing()) {
-    return StrCat({role, " (doc shutdown) #", String::Number(AXObjectID())});
+    return Format("{} (doc shutdown) #{}", role, AXObjectID());
   }
 
   StringBuilder string_builder;

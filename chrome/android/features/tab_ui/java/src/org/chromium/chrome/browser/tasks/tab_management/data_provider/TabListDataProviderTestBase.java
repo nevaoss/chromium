@@ -30,6 +30,7 @@ import org.chromium.chrome.browser.tab.TabId;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tabmodel.TabGroupObserver;
+import org.chromium.chrome.browser.tabmodel.TabGroupObserver.DidRemoveTabGroupReason;
 import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelObserver;
@@ -109,6 +110,16 @@ abstract class TabListDataProviderTestBase {
                             Token tabGroupId = invocation.getArgument(0);
                             return mCollapsed.getOrDefault(tabGroupId, true);
                         });
+        when(model.containsTabGroup(any()))
+                .thenAnswer(
+                        invocation -> {
+                            Token tabGroupId = invocation.getArgument(0);
+                            if (tabGroupId == null) return false;
+                            for (Tab tab : tabs) {
+                                if (tabGroupId.equals(tab.getTabGroupId())) return true;
+                            }
+                            return false;
+                        });
     }
 
     void initProvider(TabListDataProvider provider) {
@@ -164,14 +175,48 @@ abstract class TabListDataProviderTestBase {
         mTabGroupObserver.didMoveWithinGroup(tab, curIndex, newIndex);
     }
 
+    void mergeTabToGroup(Tab tab, Token groupId, int newIndex, boolean isDestinationTab) {
+        int curIndex = mModelTabs.indexOf(tab);
+        tab.setTabGroupId(groupId);
+        if (curIndex != newIndex) {
+            mModelTabs.remove(curIndex);
+            mModelTabs.add(newIndex, tab);
+            mTabModelObserver.didMoveTab(tab, newIndex, curIndex);
+        }
+        mTabGroupObserver.didMergeTabToGroup(tab, isDestinationTab);
+    }
+
+    void ungroupTab(Tab tab, Token oldGroupId, int newIndex) {
+        int curIndex = mModelTabs.indexOf(tab);
+        tab.setTabGroupId(/* tabGroupId= */ null);
+        if (curIndex != newIndex) {
+            mModelTabs.remove(curIndex);
+            mModelTabs.add(newIndex, tab);
+            mTabModelObserver.didMoveTab(tab, newIndex, curIndex);
+        }
+        mTabGroupObserver.didMoveTabOutOfGroup(tab, oldGroupId);
+    }
+
     void closeTab(Tab tab) {
         mModelTabs.remove(tab);
         mTabModelObserver.didRemoveTabForClosure(tab);
     }
 
+    void removingTabGroup(Token tabGroupId) {
+        mTabGroupObserver.onTabGroupRemoving(tabGroupId);
+    }
+
+    void removeTabGroup(Token tabGroupId, @DidRemoveTabGroupReason int reason) {
+        mTabGroupObserver.didRemoveTabGroup(tabGroupId, reason);
+    }
+
     void undoCloseTab(Tab tab, int modelIndex) {
         mModelTabs.add(modelIndex, tab);
         mTabModelObserver.tabClosureUndone(tab);
+    }
+
+    void commitCloseTab(Tab tab) {
+        mTabModelObserver.tabClosureCommitted(tab);
     }
 
     void selectTab(Tab tab, @TabId int prevSelectedTabId) {

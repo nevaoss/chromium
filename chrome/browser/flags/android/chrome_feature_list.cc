@@ -83,6 +83,7 @@
 #include "components/tab_groups/features.h"
 #include "components/themes/cross_device/features.h"
 #include "components/touch_to_search/core/browser/contextual_search_field_trial.h"
+#include "components/ttc/features.h"
 #include "components/universal_optout/features.h"
 #include "components/visited_url_ranking/public/features.h"
 #include "components/viz/common/features.h"
@@ -215,6 +216,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &features::kGlicBackgroundActuation,
     &features::kGlicBackgroundTriggering,
     &features::kGlicExperimentalOptInDialogNonScrollable,
+    &features::kGlicNoWebview,
     &features::kGlicShareImage,
     &features::kGlicVoice,
     &features::kHttpsFirstBalancedMode,
@@ -329,6 +331,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kBlockIntentsWhileLocked,
     &kBlueBubbleIphCooldownGroup,
     &kBookmarkPaneAndroid,
+    &kBookmarkWidgetV2,
     &kBookmarksBarContextMenu,
     &kBookmarksBarNTP,
     &kBottomControlsJankImprovement,
@@ -368,7 +371,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kCCTTabModalDialog,
     &kCCTTabSwitcherEnabledForChromeExperiment,
     &kCCTTabSwitcherEnabledForEmbedderExperiment,
-    &kCacheDeprecatedSystemLocationSetting,
     &kCacheIsGoogleSigned,
     &kCacheIsMultiInstanceApi31Enabled,
     &kCctTabResumption,
@@ -410,7 +412,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kDisableGridTabSwitcher,
     &kDisablePartnerHomepageAndroid,
     &kDisableScrollbarOfFadingEdgeScrollView,
-    &kDontAutoHideBrowserControls,
     &kDownloadToolbarButtonForDesktop,
     &kEdgeToEdgeAutomotive,
     &kEdgeToEdgeBottomChin,
@@ -430,6 +431,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kEnableXAxisActivityTransition,
     &kEnforceIncognitoIsolation,
     &kExcludeChromeInIncognitoShareSheet,
+    &kFixToolbarHairlineRegression,
     &kFlyoutInBookmarksBar,
     &kForceTranslucentNotificationTrampoline,
     &kFullscreenInsetsApiMigration,
@@ -618,7 +620,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &send_tab_to_self::kSendTabToSelfGesture,
     &send_tab_to_self::kSendTabToSelfMultiTabShare,
     &send_tab_to_self::kSendTabToSelfOpenNativeApp,
-    &send_tab_to_self::kSendTabToSelfRecordSnackbarActivation,
     &send_tab_to_self::kSendTabToSelfSupportAutoOpenInTabGrid,
     &send_tab_to_self::kSendTabToSelfSwitchToParentOnBack,
     &sensitive_content::features::kSensitiveContent,
@@ -630,7 +631,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &sync_preferences::features::kCrossDevicePrefTrackerExtraLogs,
     &sync_sessions::kOptimizeAssociateWindowsAndroid,
     &syncer::kNewTabPageCustomizationThemeSync,
-    &syncer::kSyncEnableNewSyncDashboardUrl,
     &syncer::kSyncTrustedVaultErrorMessageDuration,
     &tab_groups::kUpdateTabGroupColors,
     &tab_groups::kUseAlternateHistorySyncIllustration,
@@ -718,6 +718,7 @@ BASE_FEATURE(kAndroidSetGoogleAccountInHelp, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidSettingsUrl, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidSetupList, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidStartupImprovements, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAndroidSwapPressureTabDiscard, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidTabDeclutterArchiveOnDesktop, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidTabDeclutterDedupeTabIdsKillSwitch, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidTabSkipSaveTabsKillswitch,"AndroidTabSkipSaveTabsTaskKillswitch", base::FEATURE_ENABLED_BY_DEFAULT);
@@ -754,6 +755,10 @@ BASE_FEATURE(kBackGestureReflectsDesktopBehavior, base::FEATURE_ENABLED_BY_DEFAU
 BASE_FEATURE(kBlockIntentsWhileLocked, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kBlueBubbleIphCooldownGroup, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kBookmarkPaneAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
+// Splits the bookmark widget into separate implementations: API 29/30 keep the
+// RemoteViewsService-backed collection, while API 31+ uses
+// RemoteViews.RemoteCollectionItems instead of RemoteViewsService.
+BASE_FEATURE(kBookmarkWidgetV2, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kBookmarksBarContextMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kBookmarksBarNTP, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kBottomControlsJankImprovement, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -793,7 +798,6 @@ BASE_FEATURE(kCCTResizableForThirdParties, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTTabModalDialog, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTTabSwitcherEnabledForChromeExperiment, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTTabSwitcherEnabledForEmbedderExperiment, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kCacheDeprecatedSystemLocationSetting, base::FEATURE_ENABLED_BY_DEFAULT);
 // Used in downstream code.
 BASE_FEATURE(kCacheIsGoogleSigned, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCacheIsMultiInstanceApi31Enabled, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -832,13 +836,12 @@ BASE_FEATURE(kDesktopAndroidLinkCapturing, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDesktopAndroidTWADeleteBrowserData, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDesktopAndroidTWADisclosures, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDesktopAndroidTWADisclosuresHelpLink, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kDesktopAndroidWebAppHeaderAppName, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kDesktopAndroidWebAppHeaderAppName, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDesktopUAOnConnectedDisplay, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDisableGridTabSwitcher, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDisablePartnerHomepageAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDisableScrollbarOfFadingEdgeScrollView, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDiscardPageWithCrashedSubframePolicy, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kDontAutoHideBrowserControls, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDownloadToolbarButtonForDesktop, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEdgeToEdgeAutomotive, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEdgeToEdgeBottomChin, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -858,6 +861,7 @@ BASE_FEATURE(kEnableToolbarPositioningInResizeMode, base::FEATURE_ENABLED_BY_DEF
 BASE_FEATURE(kEnableXAxisActivityTransition, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEnforceIncognitoIsolation, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kExcludeChromeInIncognitoShareSheet, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kFixToolbarHairlineRegression, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kFlyoutInBookmarksBar, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kForceTranslucentNotificationTrampoline, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kFullscreenInsetsApiMigration, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -916,7 +920,7 @@ BASE_FEATURE(kPdfLauncherActivity, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kPdfReuseFragment, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kPersistAcrossReboots, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kPersistAcrossRebootsDebugLogs, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kPictureInPictureMovesToolbarAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kPictureInPictureMovesToolbarAndroid, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kPreconnectOnTabCreation, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kPriceChangeModule, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kPrintFallbackToPrimaryMainFrame, base::FEATURE_ENABLED_BY_DEFAULT);

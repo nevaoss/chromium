@@ -768,6 +768,7 @@ Vaše šifrirane podatke lahko bere samo oseba, ki ima vaše geslo. Geslo ni pos
 <translation id="4098552968111329864">Zaradi zaščite vašega dela v Chromu si bo organizacija lahko ogledala nekatere podatke ali jih upravljala, ko boste prijavljeni v Chrome</translation>
 <translation id="4105527135143631701">Odprto okno za posodobitev Googlovega upravitelja gesel</translation>
 <translation id="4107207375883769436">Vaša organizacija si bo morda morala ogledati in upravljati podatke brskanja v vašem delovnem profilu, kot sta zgodovina brskanja in gesla</translation>
+<translation id="4112868928070921050">Privolitev v povezavo storitve Google Workspace s storitvami iskanja</translation>
 <translation id="4113030288477039509">Upravlja skrbnik</translation>
 <translation id="4116038641877404294">Prenesite strani, če jih želite uporabljati brez povezave</translation>
 <translation id="4121654769234887259">Tega gesla si vam ne bo treba zapomniti. Shranjeno bo v Google Upravitelju gesel za račun <ph name="USERNAME" />.</translation>
@@ -1601,6 +1602,7 @@ Nekatera spletna mesta se lahko na primer na zahtevo odzovejo tako, da prikažej
 <translation id="72415438529550637">Predlog gesla je zaprt.</translation>
 <translation id="724510009481365878">Te strani ni mogoče natisniti</translation>
 <translation id="7248671827512403053">Aplikacija</translation>
+<translation id="7253205084599155458">Prikažite krmarjenje in orodja v spodnji orodni vrstici za preprost dostop</translation>
 <translation id="7253951228444156601">Preverjanje gesel …</translation>
 <translation id="7265857422443387781">Išči po zavihku z Googlom Lens <ph name="BEGIN_NEW" />Novo<ph name="END_NEW" /></translation>
 <translation id="727288900855680735">Želite, da se <ph name="ONE_TIME_CODE" /> pošlje <ph name="ORIGIN" />?</translation>
@@ -1788,6 +1790,7 @@ Nekatera spletna mesta se lahko na primer na zahtevo odzovejo tako, da prikažej
 <translation id="799576009106109668">Brskali boste hitreje, ker se vsebina proaktivno naloži glede na trenutni obisk spletne strani.</translation>
 <translation id="7997875520309653083">Povlecite z desnega roba za vrnitev</translation>
 <translation id="7998918019931843664">Vnovično odpiranje zaprtega zavihka</translation>
+<translation id="8000020256436988724">Orodna vrstica</translation>
 <translation id="8001245658307297681">Ogledujete si lokalno datoteko</translation>
 <translation id="800155843932969169">Varno ustvarjajte in shranjujte gesla, hitreje se prijavite ter prepoznajte varnostne težave z gesli, da boste varni</translation>
 <translation id="8004582292198964060">Brskalnik</translation>

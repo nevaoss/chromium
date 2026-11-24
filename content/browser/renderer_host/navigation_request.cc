@@ -53,6 +53,7 @@
 #include "content/browser/back_forward_cache/back_forward_cache_impl.h"
 #include "content/browser/bad_message.h"
 #include "content/browser/blob_storage/chrome_blob_storage_context.h"
+#include "content/browser/browser_context_impl.h"
 #include "content/browser/client_hints/client_hints.h"
 #include "content/browser/connection_allowlist_utils.h"
 #include "content/browser/declarative_performance_observer/declarative_performance_observer.h"
@@ -165,6 +166,7 @@
 #include "net/base/load_flags.h"
 #include "net/base/net_errors.h"
 #include "net/base/registry_controlled_domains/registry_controlled_domain.h"
+#include "net/base/schemeful_site.h"
 #include "net/base/url_util.h"
 #include "net/cookies/cookie_access_result.h"
 #include "net/cookies/cookie_setting_override.h"
@@ -919,7 +921,8 @@ ukm::SourceId GetPageUkmSourceId(FrameTreeNode* frame_tree_node) {
 }
 
 bool IsMhtmlMimeType(const std::string& mime_type) {
-  return mime_type == "multipart/related" || mime_type == "message/rfc822";
+  return base::EqualsCaseInsensitiveASCII(mime_type, "multipart/related") ||
+         base::EqualsCaseInsensitiveASCII(mime_type, "message/rfc822");
 }
 
 std::optional<base::SafeRef<RenderFrameHostImpl>>
@@ -2276,21 +2279,37 @@ NavigationRequest::NavigationRequest(
     CHECK(commit_params_->not_restored_reasons.is_null());
   }
 
-  // Record `SameDocumentCrossOriginInitiator` metric. It happens in the
-  // NavigationRequest constructor, to catch every kind of same-document
-  // navigation: the one initiated from the navigating frame's process, and the
-  // others.
+  // Record `SameDocumentCrossOriginInitiator` metrics. It happens in the
+  // NavigationRequest constructor, to catch same-document navigations that go
+  // through the browser process before committing (same-process cross-origin
+  // fragment navigations that commit synchronously in the renderer are recorded
+  // in `blink::DocumentLoader::CommitSameDocumentNavigation`).
+  //
+  // Compare `GetInitiatorOrigin()` against `frame_tree_node_->current_origin()`
+  // rather than `GetTentativeOriginAtRequestTime()`, because a same-document
+  // navigation keeps the current document and its origin, whereas
+  // `GetTentativeOriginAtRequestTime()` computes a new origin (which derives a
+  // fresh opaque origin for sandboxed or `data:` frames, falsely appearing
+  // cross-origin to `last_committed_origin_` on self-initiated `history` API or
+  // fragment navigations).
+  const std::optional<url::Origin>& initiator_origin = GetInitiatorOrigin();
   if (common_params_->navigation_type ==
           blink::mojom::NavigationType::SAME_DOCUMENT &&
-      GetInitiatorOrigin() &&
-      !GetInitiatorOrigin()->IsSameOriginWith(
-          GetTentativeOriginAtRequestTime())) {
+      initiator_origin &&
+      !initiator_origin->IsSameOriginWith(frame_tree_node_->current_origin())) {
     // This is reported to navigating frame's current document, because this is
     // the document that behave differently if this navigation was turned into a
     // cross-document one.
     GetContentClient()->browser()->LogWebFeatureForCurrentPage(
         frame_tree_node_->current_frame_host(),
         blink::mojom::WebFeature::kSameDocumentCrossOriginInitiator);
+    GetContentClient()->browser()->LogWebFeatureForCurrentPage(
+        frame_tree_node_->current_frame_host(),
+        net::SchemefulSite::IsSameSite(*initiator_origin,
+                                       frame_tree_node_->current_origin())
+            ? blink::mojom::WebFeature::
+                  kSameDocumentSameSiteCrossOriginInitiator
+            : blink::mojom::WebFeature::kSameDocumentCrossSiteInitiator);
   }
 
   if (!GetContentClient()->browser()->IsBrowserStartupComplete()) {
@@ -6236,6 +6255,26 @@ ErrorPageProcess NavigationRequest::ComputeErrorPageProcess() {
   //   didn't request the navigation and may have a higher privilege level
   //   than the blocked destination.
   if (net::IsRequestBlockedError(net_error_) && !browser_initiated()) {
+    // With shards, commit blocked error pages in the destination's process, so
+    // that a frame's SiteInstance and process always match the shard of its
+    // URL. Otherwise, the error page could reuse a SiteInstance without a
+    // site, whose process is already used for a different shard, and set its
+    // site to the blocked URL in SelectFrameHostForOnRequestFailedInternal(),
+    // which would move it to the blocked URL's shard (or lock its used
+    // process, for destinations that require a dedicated process).
+    //
+    // For destinations that don't require a dedicated process, this doesn't
+    // weaken the privilege argument above, since shards are peers: no shard
+    // is more privileged than another. Destinations that do require a
+    // dedicated process also get their own locked process, as for other
+    // (non-blocked) errors. This is accepted because shards are only used by
+    // embedders without Site Isolation (i.e. Android WebView), where such
+    // destinations are currently very uncommon (e.g., just WebUI).
+    if (BrowserContextImpl::From(
+            frame_tree_node_->navigator().controller().GetBrowserContext())
+            ->HasShards()) {
+      return ErrorPageProcess::kDestinationProcess;
+    }
     return ErrorPageProcess::kCurrentProcess;
   }
   return ErrorPageProcess::kDestinationProcess;
@@ -6315,12 +6354,13 @@ void NavigationRequest::OnStartChecksComplete(
   // comment in the header for |loader_|.
   CHECK(!loader_);
 
-  // Only initialize the ServiceWorkerMainResourceHandle if it can be created
-  // for this frame.
+  // Only initialize the `ServiceWorkerMainResourceHandle` if it can be created
+  // for this frame. PDF content frames run in a restricted PDF renderer process
+  // that must not receive service worker capabilities for the hosting origin.
   bool can_create_service_worker =
-      (frame_tree_node_->pending_frame_policy().sandbox_flags &
-       network::mojom::WebSandboxFlags::kOrigin) !=
-      network::mojom::WebSandboxFlags::kOrigin;
+      !IsPdf() && (frame_tree_node_->pending_frame_policy().sandbox_flags &
+                   network::mojom::WebSandboxFlags::kOrigin) !=
+                      network::mojom::WebSandboxFlags::kOrigin;
   if (can_create_service_worker) {
     ServiceWorkerContextWrapper* service_worker_context =
         static_cast<ServiceWorkerContextWrapper*>(
@@ -7152,9 +7192,13 @@ void NavigationRequest::InheritServiceWorkerControllerFromParentIfNeeded() {
     return;
   }
 
-  if ((frame_tree_node_->pending_frame_policy().sandbox_flags &
-       network::mojom::WebSandboxFlags::kOrigin) ==
-      network::mojom::WebSandboxFlags::kOrigin) {
+  // Do not inherit the parent's service worker controller if this frame is a
+  // PDF content frame or has an opaque sandboxed origin. PDF content frames run
+  // in a restricted PDF renderer process that must not receive service worker
+  // capabilities for the hosting origin.
+  if (IsPdf() || (frame_tree_node_->pending_frame_policy().sandbox_flags &
+                  network::mojom::WebSandboxFlags::kOrigin) ==
+                     network::mojom::WebSandboxFlags::kOrigin) {
     return;
   }
   GetContentClient()->browser()->LogWebFeatureForCurrentPage(

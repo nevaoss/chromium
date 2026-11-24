@@ -386,6 +386,8 @@ network::mojom::NetworkServiceParamsPtr CreateNetworkServiceParams() {
           net::NetworkChangeNotifier::GetConnectionSubtype());
   network_service_params->default_observer =
       g_client->BindURLLoaderNetworkServiceObserver();
+  network_service_params->initial_insecure_dns_mode =
+      GetContentClient()->browser()->GetInitialInsecureDnsMode();
 #if BUILDFLAG(IS_LINUX)
   // TODO(neva): Workaround to fix webruntime crash caused by enabling
   // AddressTrackerLinuxIsProxied feature by default in the upstream CL

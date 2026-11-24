@@ -14,6 +14,8 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
+#include "base/run_loop.h"
+#include "base/strings/string_view_util.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/values.h"
 #include "base/version.h"
@@ -79,6 +81,43 @@ constexpr char kPopularSCT1[] = "EBESExQVFhcYGRobHB0eHwEjRWeJq83v";
 constexpr char kPopularSCT2[] = "oKGio6SlpqeoqaqrrK2urwEjRWeJq83v";
 
 constexpr uint64_t kMaxSupportedCTCompatibilityVersion = 4;
+
+class CTLogListWaiter : public PKIMetadataComponentInstallerService::Observer {
+ public:
+  CTLogListWaiter() {
+    PKIMetadataComponentInstallerService::GetInstance()->AddObserver(this);
+  }
+  ~CTLogListWaiter() override {
+    PKIMetadataComponentInstallerService::GetInstance()->RemoveObserver(this);
+  }
+
+  void Wait() { run_loop_.Run(); }
+
+  void OnCTLogListProcessed() override { run_loop_.Quit(); }
+
+ private:
+  base::RunLoop run_loop_;
+};
+
+#if BUILDFLAG(CHROME_KEY_PINNING_SUPPORTED)
+class KeyPinsListWaiter
+    : public PKIMetadataComponentInstallerService::Observer {
+ public:
+  KeyPinsListWaiter() {
+    PKIMetadataComponentInstallerService::GetInstance()->AddObserver(this);
+  }
+  ~KeyPinsListWaiter() override {
+    PKIMetadataComponentInstallerService::GetInstance()->RemoveObserver(this);
+  }
+
+  void Wait() { run_loop_.Run(); }
+
+  void OnKeyPinsListProcessed() override { run_loop_.Quit(); }
+
+ private:
+  base::RunLoop run_loop_;
+};
+#endif
 
 }  // namespace
 
@@ -209,11 +248,11 @@ class PKIMetadataComponentInstallerKeyPinningTest
   static constexpr uint64_t kMaxSupportedKPCompatibilityVersion = 1;
 
   // SHA256 SPKI hashes.
-  static constexpr uint8_t kSpkiHash1[] = {
+  static constexpr net::SHA256HashValue kSpkiHash1 = {
       0xec, 0x72, 0x29, 0x69, 0xcb, 0x64, 0x20, 0x0a, 0xb6, 0x63, 0x8f,
       0x68, 0xac, 0x53, 0x8e, 0x40, 0xab, 0xab, 0x5b, 0x19, 0xa6, 0x48,
       0x56, 0x61, 0x04, 0x2a, 0x10, 0x61, 0xc4, 0x61, 0x27, 0x76};
-  static constexpr uint8_t kSpkiHash2[] = {
+  static constexpr net::SHA256HashValue kSpkiHash2 = {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -232,12 +271,9 @@ class PKIMetadataComponentInstallerKeyPinningTest
       host_pin->set_include_subdomains(kPinsetIncludeSubdomains);
       auto* pinset = pinlist_.add_pinsets();
       pinset->set_name(kPinsetName);
-      std::string spki_bytes_as_string(std::begin(kSpkiHash1),
-                                       std::end(kSpkiHash1));
-      std::string bad_spki_bytes_as_string(std::begin(kSpkiHash2),
-                                           std::end(kSpkiHash2));
-      pinset->add_static_spki_hashes_sha256(spki_bytes_as_string);
-      pinset->add_bad_static_spki_hashes_sha256(bad_spki_bytes_as_string);
+      pinset->add_static_spki_hashes_sha256(base::as_string_view(kSpkiHash1));
+      pinset->add_bad_static_spki_hashes_sha256(
+          base::as_string_view(kSpkiHash2));
     }
   }
 
@@ -248,6 +284,16 @@ class PKIMetadataComponentInstallerKeyPinningTest
     std::string kp_data;
     ASSERT_TRUE(pinlist_.SerializeToString(&kp_data));
     ASSERT_TRUE(base::WriteFile(kp_file_path, kp_data));
+  }
+
+  void WriteKPConfigAndUpdate() {
+    WriteKPConfigToFile();
+
+    KeyPinsListWaiter waiter;
+    policy_->ComponentReady(base::Version("1.2.3.4"),
+                            component_install_dir_.GetPath(),
+                            base::DictValue());
+    waiter.Wait();
   }
 
  protected:
@@ -263,8 +309,7 @@ TEST_F(PKIMetadataComponentInstallerTest, TestProtoBytesConversion) {
   std::vector<std::vector<uint8_t>> test_bytes = {
       base::ToVector(test_hashes[0])};
 
-  std::string bytes_as_string(std::begin(test_bytes[0]),
-                              std::end(test_bytes[0]));
+  std::string bytes_as_string(base::as_string_view(test_bytes[0]));
   std::vector<std::string> repeated_bytes = {bytes_as_string};
 
   EXPECT_EQ(
@@ -308,9 +353,10 @@ TEST_F(PKIMetadataComponentInstallerTest, CTEnforcementKillSwitch) {
 
   ct_config_.set_disable_ct_enforcement(true);
   WriteCTConfigToFile();
+  CTLogListWaiter waiter;
   policy_->ComponentReady(base::Version("1.2.3.4"),
                           component_install_dir_.GetPath(), base::DictValue());
-  task_environment_.RunUntilIdle();
+  waiter.Wait();
 
   network::NetworkService* network_service =
       network::NetworkService::GetNetworkServiceForTesting();
@@ -339,10 +385,8 @@ TEST_F(PKIMetadataComponentInstallerKeyPinningTest,
   // Initialize the network service.
   content::GetNetworkService();
   task_environment_.RunUntilIdle();
-  WriteKPConfigToFile();
-  policy_->ComponentReady(base::Version("1.2.3.4"),
-                          component_install_dir_.GetPath(), base::DictValue());
-  task_environment_.RunUntilIdle();
+
+  WriteKPConfigAndUpdate();
 
   network::NetworkService* network_service =
       network::NetworkService::GetNetworkServiceForTesting();
@@ -356,10 +400,10 @@ TEST_F(PKIMetadataComponentInstallerKeyPinningTest,
   EXPECT_EQ(host_pins.size(), 1u);
 
   EXPECT_EQ(pinsets.at(0).name(), kPinsetName);
-  EXPECT_THAT(pinsets.at(0).static_spki_hashes().at(0),
-              ::testing::ElementsAreArray(kSpkiHash1));
-  EXPECT_THAT(pinsets.at(0).bad_static_spki_hashes().at(0),
-              ::testing::ElementsAreArray(kSpkiHash2));
+  EXPECT_THAT(pinsets.at(0).static_spki_hashes(),
+              ::testing::ElementsAre(kSpkiHash1));
+  EXPECT_THAT(pinsets.at(0).bad_static_spki_hashes(),
+              ::testing::ElementsAre(kSpkiHash2));
 
   EXPECT_EQ(host_pins.at(0).hostname_, kPinsetHostName);
   EXPECT_EQ(host_pins.at(0).pinset_name_, kPinsetName);
@@ -380,9 +424,10 @@ TEST_F(PKIMetadataComponentInstallerKeyPinningTest,
       FILE_PATH_LITERAL("kp_pinslist.pb"));
   ASSERT_TRUE(base::WriteFile(file_path, "mismatch"));
 
+  KeyPinsListWaiter waiter;
   policy_->ComponentReady(base::Version("1.2.3.4"),
                           component_install_dir_.GetPath(), base::DictValue());
-  task_environment_.RunUntilIdle();
+  waiter.Wait();
 
   network::NetworkService* network_service =
       network::NetworkService::GetNetworkServiceForTesting();
@@ -408,11 +453,8 @@ TEST_F(PKIMetadataComponentInstallerKeyPinningTest,
 
   // Change the version to an unsupported value.
   pinlist_.set_compatibility_version(kMaxSupportedKPCompatibilityVersion + 1);
-  WriteKPConfigToFile();
 
-  policy_->ComponentReady(base::Version("1.2.3.4"),
-                          component_install_dir_.GetPath(), base::DictValue());
-  task_environment_.RunUntilIdle();
+  WriteKPConfigAndUpdate();
 
   network::NetworkService* network_service =
       network::NetworkService::GetNetworkServiceForTesting();
@@ -442,11 +484,8 @@ TEST_F(PKIMetadataComponentInstallerKeyPinningTest,
            .InMillisecondsSinceUnixEpoch() /
        1000) -
       1);
-  WriteKPConfigToFile();
 
-  policy_->ComponentReady(base::Version("1.2.3.4"),
-                          component_install_dir_.GetPath(), base::DictValue());
-  task_environment_.RunUntilIdle();
+  WriteKPConfigAndUpdate();
 
   network::NetworkService* network_service =
       network::NetworkService::GetNetworkServiceForTesting();
@@ -468,9 +507,10 @@ TEST_F(PKIMetadataComponentInstallerTest, InstallComponentUpdatesCTConfig) {
   task_environment_.RunUntilIdle();
 
   WriteCTConfigToFile();
+  CTLogListWaiter waiter;
   policy_->ComponentReady(base::Version("1.2.3.4"),
                           component_install_dir_.GetPath(), base::DictValue());
-  task_environment_.RunUntilIdle();
+  waiter.Wait();
 
   network::NetworkService* network_service =
       network::NetworkService::GetNetworkServiceForTesting();
@@ -540,9 +580,10 @@ TEST_F(PKIMetadataComponentInstallerTest, InstallComponentInvalidCTProto) {
       FILE_PATH_LITERAL("ct_config.pb"));
   ASSERT_TRUE(base::WriteFile(file_path, "mismatch"));
 
+  CTLogListWaiter waiter;
   policy_->ComponentReady(base::Version("1.2.3.4"),
                           component_install_dir_.GetPath(), base::DictValue());
-  task_environment_.RunUntilIdle();
+  waiter.Wait();
 
   network::NetworkService* network_service =
       network::NetworkService::GetNetworkServiceForTesting();
@@ -576,9 +617,10 @@ TEST_F(PKIMetadataComponentInstallerTest,
       kMaxSupportedCTCompatibilityVersion + 1);
   WriteCTConfigToFile();
 
+  CTLogListWaiter waiter;
   policy_->ComponentReady(base::Version("1.2.3.4"),
                           component_install_dir_.GetPath(), base::DictValue());
-  task_environment_.RunUntilIdle();
+  waiter.Wait();
 
   network::NetworkService* network_service =
       network::NetworkService::GetNetworkServiceForTesting();
@@ -615,9 +657,10 @@ TEST_F(PKIMetadataComponentInstallerTest,
       1);
   WriteCTConfigToFile();
 
+  CTLogListWaiter waiter;
   policy_->ComponentReady(base::Version("1.2.3.4"),
                           component_install_dir_.GetPath(), base::DictValue());
-  task_environment_.RunUntilIdle();
+  waiter.Wait();
 
   network::NetworkService* network_service =
       network::NetworkService::GetNetworkServiceForTesting();

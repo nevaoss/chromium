@@ -159,6 +159,7 @@
 #include "content/browser/renderer_host/render_widget_host_view_base.h"
 #include "content/browser/renderer_host/render_widget_host_view_child_frame.h"
 #include "content/browser/renderer_host/text_input_manager.h"
+#include "content/browser/renderer_host/unbounded_surface_host_impl.h"
 #include "content/browser/renderer_host/unbounded_surface_window.h"
 #include "content/browser/renderer_host/view_transition_opt_in_state.h"
 #include "content/browser/sandboxed_opaque_origin_creator.h"
@@ -1448,10 +1449,12 @@ class DiscardedRFHProcessHelper : public base::SupportsUserData::Data,
         retries_ * kProcessShutdownRetryDelay >=
             RenderProcessHostImpl::kKeepAliveHandleFactoryTimeout) {
       host_->FastShutdownIfPossible(
-          /*page_count=*/discarded_widgets.size(),
+          /*page_count=*/0u,
           /*skip_unload_handlers=*/true,
           /*ignore_workers=*/true,
-          /*ignore_keep_alive=*/true);
+          /*ignore_keep_alive=*/true,
+          /*ignore_pending_reuse=*/false,
+          /*use_outermost_main_frame_check=*/true);
       return;
     }
 
@@ -1459,10 +1462,12 @@ class DiscardedRFHProcessHelper : public base::SupportsUserData::Data,
     // attempt a shutdown honoring any existing keep-alive refs. Schedule a
     // retry if fast shutdown is blocked.
     if (!host_->FastShutdownIfPossible(
-            /*page_count=*/discarded_widgets.size(),
+            /*page_count=*/0u,
             /*skip_unload_handlers=*/true,
             /*ignore_workers=*/true,
-            /*ignore_keep_alive=*/false)) {
+            /*ignore_keep_alive=*/false,
+            /*ignore_pending_reuse=*/false,
+            /*use_outermost_main_frame_check=*/true)) {
       retries_++;
       shutdown_attempt_timer_.Start(
           FROM_HERE, kProcessShutdownRetryDelay,
@@ -3536,16 +3541,17 @@ EditableLevel RenderFrameHostImpl::GetFocusedEditableLevel() const {
   return focused_editable_level_;
 }
 
-bool RenderFrameHostImpl::IsFocusedElementPasswordLike() {
+const ui::mojom::TextInputState*
+RenderFrameHostImpl::GetFocusedElementTextInputState() {
   if (focused_editable_dom_node_id_.is_null()) {
-    return false;
+    return nullptr;
   }
   RenderWidgetHostViewBase* view = GetView();
   TextInputManager* text_input_manager =
       view ? view->GetTextInputManager() : nullptr;
   if (!text_input_manager ||
       text_input_manager->GetActiveWidget() != GetRenderWidgetHost()) {
-    return false;
+    return nullptr;
   }
   const ui::mojom::TextInputState* state =
       text_input_manager->GetTextInputState();
@@ -3554,9 +3560,23 @@ bool RenderFrameHostImpl::IsFocusedElementPasswordLike() {
   // element. Only trust it if it refers to the currently focused element.
   if (!state ||
       state->node_id != focused_editable_dom_node_id_.GetUnsafeValue()) {
-    return false;
+    return nullptr;
   }
-  return TextInputManager::IsPasswordLike(*state);
+  return state;
+}
+
+bool RenderFrameHostImpl::IsFocusedElementPasswordLike() {
+  const ui::mojom::TextInputState* state = GetFocusedElementTextInputState();
+  return state && TextInputManager::IsPasswordLike(*state);
+}
+
+std::optional<ui::TextInputType>
+RenderFrameHostImpl::GetFocusedElementTextInputType() {
+  const ui::mojom::TextInputState* state = GetFocusedElementTextInputState();
+  if (!state) {
+    return std::nullopt;
+  }
+  return state->type;
 }
 
 const base::UnguessableToken& RenderFrameHostImpl::GetDevToolsFrameToken() {
@@ -4128,14 +4148,37 @@ PageVisibilityState RenderFrameHostImpl::GetVisibilityState() {
     return PageVisibilityState::kHidden;
   }
 
-  if (base::FeatureList::IsEnabled(features::kRFHHiddenWhenHiddenButPainting)) {
-    RenderWidgetHostView* view = render_view_host_->GetWidget()->GetView();
-    return view && view->IsShowing() ? PageVisibilityState::kVisible
-                                     : PageVisibilityState::kHidden;
-  } else {
+  if (!base::FeatureList::IsEnabled(
+          features::kRFHHiddenWhenHiddenButPainting)) {
     return GetRenderWidgetHost()->IsHidden() ? PageVisibilityState::kHidden
                                              : PageVisibilityState::kVisible;
   }
+
+  // Use the view of the nearest local root's own RenderWidgetHost. For main
+  // frames this is the platform RenderWidgetHostView; for cross-process
+  // subframes it is a RenderWidgetHostViewChildFrame. Note that the widget of
+  // `render_view_host_` must not be used here: a RenderViewHost whose main
+  // frame is a RenderFrameProxyHost in its SiteInstanceGroup never gets a
+  // RenderWidgetHostView, so its view is null for every out-of-process iframe.
+  RenderWidgetHostViewBase* view = GetRenderWidgetHost()->GetView();
+  if (!view || !view->IsShowing()) {
+    return PageVisibilityState::kHidden;
+  }
+
+  // RenderWidgetHostViewChildFrame::IsShowing() only reflects whether the child
+  // widget is painting, which is also the case when the page is
+  // kHiddenButPainting (e.g. a background tab that is being captured). Only the
+  // root platform view distinguishes kHiddenButPainting from kVisible, so defer
+  // to it. For platform views GetRootView() returns the view itself, which is
+  // already known to be showing. A child frame view is only ever on screen
+  // through the root view it is embedded in, so if it has none (e.g. it is
+  // speculative and not yet attached, or it was swapped out and is running
+  // unload handlers) it cannot be visible regardless of its widget state.
+  RenderWidgetHostViewBase* root_view = view->GetRootView();
+  if (!root_view || !root_view->IsShowing()) {
+    return PageVisibilityState::kHidden;
+  }
+  return PageVisibilityState::kVisible;
 }
 
 void RenderFrameHostImpl::OnAssociatedInterfaceRequest(
@@ -4657,6 +4700,17 @@ void RenderFrameHostImpl::RenderProcessGone(
           ? PrerenderFinalStatus::kRendererProcessCrashed
           : PrerenderFinalStatus::kRendererProcessKilled));
 
+  // Generate crash reports for this frame and any descendant frames hosted in
+  // the crashed process before `owned_render_widget_host_->RendererExited()`
+  // resets the widget's visibility state, and before `ResetChildren()` and
+  // `RenderFrameDeleted()` destroy descendant frames (and expire their
+  // reporting sources in `~RenderFrameHostImpl()`).
+  ForEachRenderFrameHostImpl([&](RenderFrameHostImpl* rfh) {
+    if (rfh->site_instance_->group() == site_instance_group) {
+      rfh->MaybeGenerateCrashReport(info);
+    }
+  });
+
   if (owned_render_widget_host_) {
     owned_render_widget_host_->RendererExited();
   }
@@ -4683,16 +4737,6 @@ void RenderFrameHostImpl::RenderProcessGone(
   }
 
   ++renderer_exit_count_;
-
-  // Generate crash reports for this frame and any descendant frames hosted in
-  // the crashed process before `ResetChildren()` and `RenderFrameDeleted()`
-  // destroy them (and expire their reporting sources in
-  // `~RenderFrameHostImpl()`).
-  ForEachRenderFrameHostImpl([&](RenderFrameHostImpl* rfh) {
-    if (rfh->site_instance_->group() == site_instance_group) {
-      rfh->MaybeGenerateCrashReport(info);
-    }
-  });
 
   // When a frame's process dies, its RenderFrame no longer exists, which means
   // that its child frames must be cleaned up as well.
@@ -4982,11 +5026,15 @@ void RenderFrameHostImpl::DeleteRenderFrame(
     // TODO(crbug.com/40860307): consider delaying process shutdown for fenced
     // frames.
     if (!is_main_frame() && IsActive()) {
-      base::TimeDelta subframe_shutdown_timeout =
-          frame_tree_->IsBeingDestroyed()
+      const bool is_discarded =
+          GetOutermostMainFrame()->document_associated_data().is_discarded();
+
+      const base::TimeDelta subframe_shutdown_timeout =
+          (frame_tree_->IsBeingDestroyed() || is_discarded)
               ? base::TimeDelta()
               : GetSubframeProcessShutdownDelay(
                     GetSiteInstance()->GetBrowserContext(), memory_limit());
+
       // If this document has unload handlers (and is active), ensure that they
       // have a chance to execute by delaying process cleanup. This will prevent
       // the process from shutting down immediately in the case where this is
@@ -4995,8 +5043,11 @@ void RenderFrameHostImpl::DeleteRenderFrame(
       // keep track of pending delete RenderFrameHost
       // (https://crbug.com/609963), but there are still a few exceptions where
       // this is needed (https://crbug.com/1014550).
+      // When discarding, we want immediate memory reclamation rather than
+      // keeping the OOPIF process alive for unload handlers.
       const base::TimeDelta unload_handler_timeout =
-          has_unload_handlers() ? subframe_unload_timeout_ : base::TimeDelta();
+          (!is_discarded && has_unload_handlers()) ? subframe_unload_timeout_
+                                                   : base::TimeDelta();
 
       if (!subframe_shutdown_timeout.is_zero() ||
           !unload_handler_timeout.is_zero()) {
@@ -5010,8 +5061,10 @@ void RenderFrameHostImpl::DeleteRenderFrame(
       }
       // If the subframe takes too long to unload, force its removal from the
       // tree. See https://crbug.com/950625.
+      const base::TimeDelta actual_unload_timeout =
+          is_discarded ? base::TimeDelta() : subframe_unload_timeout_;
       subframe_unload_timer_.Start(
-          FROM_HERE, subframe_unload_timeout_, this,
+          FROM_HERE, actual_unload_timeout, this,
           &RenderFrameHostImpl::OnSubframeDeletionUnloadTimeout);
     }
   }
@@ -5101,6 +5154,11 @@ void RenderFrameHostImpl::RenderFrameDeleted() {
   bool was_created = is_render_frame_created();
   render_frame_state_ = RenderFrameState::kDeleting;
   render_frame_scoped_weak_ptr_factory_.InvalidateWeakPtrs();
+  // Document-associated data outlives a crashed RenderFrame (see
+  // https://crbug.com/1099237), but its unbounded surface must not.
+  if (UnboundedSurfaceHostImpl::GetForCurrentDocument(this)) {
+    UnboundedSurfaceHostImpl::DeleteForCurrentDocument(this);
+  }
 
   // If the current status is different than the new status, the delegate
   // needs to be notified.
@@ -9411,8 +9469,14 @@ void RenderFrameHostImpl::SendAccessibilityEventsToManager(
   }
 
   CHECK(delegate_->GetAccessibilityMode().has_mode(ui::AXMode::kNativeAPIs));
+  // `OnAccessibilityEvents()` can synchronously dispatch platform notifications
+  // that may re-enter and destroy `this` or `browser_accessibility_manager_`.
+  base::WeakPtr<RenderFrameHostImpl> weak_this = GetWeakPtr();
   bool accessibility_error =
       !browser_accessibility_manager_->OnAccessibilityEvents(details);
+  if (!weak_this || !browser_accessibility_manager_) {
+    return;
+  }
   if (accessibility_error) {
     // OnAccessibilityEvents returns false in IPC error conditions.
     UnrecoverableAccessibilityError();
@@ -11433,20 +11497,12 @@ void RenderFrameHostImpl::RequestUnboundedSurface(
   }
   RenderWidgetHostViewBase* parent_view = nullptr;
   if (auto* root_view = GetUnboundedSurfaceRootView(&parent_view)) {
-    // If an unbounded surface is already active, synchronously destroy it
-    // first to enforce that only one is active per window.
-    // TODO(crbug.com/567605448): The renderer may have canceled closing the
-    // previous element, but its window is destroyed here anyway, so the
-    // renderer and browser disagree about which element owns the surface.
-    if (root_view->HasActiveUnboundedSurface()) {
-      root_view->DestroyUnboundedSurface(
-          root_view->GetUnboundedSurfaceWindow()->GetWeakPtr());
+    if (UnboundedSurfaceHostImpl::GetForCurrentDocument(this)) {
+      UnboundedSurfaceHostImpl::DeleteForCurrentDocument(this);
     }
-    CHECK(!root_view->HasActiveUnboundedSurface());
-    root_view->SetUnboundedSurfaceFrame(GetWeakPtr());
-    root_view->CreateUnboundedSurface(
-        std::move(host), std::move(client), bounds,
-        parent_view ? parent_view->GetWeakPtr() : nullptr);
+    UnboundedSurfaceHostImpl::CreateForCurrentDocument(
+        this, *root_view, parent_view, std::move(host), std::move(client),
+        bounds);
   }
 }
 
@@ -12010,7 +12066,11 @@ void RenderFrameHostImpl::HandleAXEvents(
   delegate_->ProcessAccessibilityUpdatesAndEvents(updates_and_events);
 
   // This call steals the contents of the data to avoid copying.
+  base::WeakPtr<RenderFrameHostImpl> weak_this = GetWeakPtr();
   SendAccessibilityEventsToManager(updates_and_events);
+  if (!weak_this) {
+    return;
+  }
 
   // For testing only.
   if (!accessibility_testing_callback_.is_null()) {
@@ -13691,7 +13751,6 @@ void RenderFrameHostImpl::DiscardFrame(base::OnceClosure on_discarded_cb) {
           if (!self) {
             return;
           }
-          self->MaybeNotifyDiscardedFrame();
           self->GetRenderWidgetHost()->SetIsDiscarding(false);
           // Now that the renderer has committed the empty document and finished
           // running any unload handlers, attempt fast shutdown (skipping unload
@@ -13700,11 +13759,14 @@ void RenderFrameHostImpl::DiscardFrame(base::OnceClosure on_discarded_cb) {
           // terminated dedicated renderer processes after running unload
           // handlers.
           self->GetProcess()->FastShutdownIfPossible(
-              1u, /*skip_unload_handlers=*/true,
-              /*ignore_workers=*/false,
+              /*page_count=*/0u, /*skip_unload_handlers=*/true,
+              /*ignore_workers=*/true,
               /*ignore_keep_alive=*/false,
               /*ignore_pending_reuse=*/false,
               /*use_outermost_main_frame_check=*/true);
+          if (self) {
+            self->MaybeNotifyDiscardedFrame();
+          }
         },
         weak_ptr_factory_.GetWeakPtr()));
   }
@@ -14107,7 +14169,11 @@ void RenderFrameHostImpl::UpdateAXTreeData() {
   detail.updates[0].has_tree_data = true;
   detail.updates[0].tree_data = GetAXTreeData();
 
+  base::WeakPtr<RenderFrameHostImpl> weak_this = GetWeakPtr();
   SendAccessibilityEventsToManager(detail);
+  if (!weak_this) {
+    return;
+  }
   delegate_->ProcessAccessibilityUpdatesAndEvents(detail);
 }
 
@@ -19917,6 +19983,11 @@ void RenderFrameHostImpl::SetLifecycleState(LifecycleStateImpl new_state) {
         last_committed_url_derived_site_info_);
     GetStoragePartition()->DecrementActiveDocumentCount(
         GetNetworkIsolationKey());
+    // The document is kept alive (e.g. BackForwardCache, unload), but it must
+    // not keep an unbounded surface on screen.
+    if (UnboundedSurfaceHostImpl::GetForCurrentDocument(this)) {
+      UnboundedSurfaceHostImpl::DeleteForCurrentDocument(this);
+    }
   } else if (old_state != LifecycleStateImpl::kActive &&
              new_state == LifecycleStateImpl::kActive) {
     GetSiteInstance()->IncrementActiveDocumentCount(

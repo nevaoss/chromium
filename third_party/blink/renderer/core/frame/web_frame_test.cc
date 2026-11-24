@@ -173,6 +173,7 @@
 #include "third_party/blink/renderer/core/frame/web_remote_frame_impl.h"
 #include "third_party/blink/renderer/core/fullscreen/fullscreen.h"
 #include "third_party/blink/renderer/core/geometry/dom_rect.h"
+#include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_form_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
 #include "third_party/blink/renderer/core/html/html_body_element.h"
@@ -9693,6 +9694,11 @@ class WebFrameSwapTestClient : public frame_test_helpers::TestWebFrameClient {
     return did_propagate_display_none_;
   }
 
+  void ResetDidPropagateDisplayNoneProperty() {
+    Frame()->GetFrame()->FlushLocalFrameHostForTesting();
+    did_propagate_display_none_ = false;
+  }
+
  private:
   class TestLocalFrameHostForFrameOwnerPropertiesChanges
       : public FakeLocalFrameHost {
@@ -9994,7 +10000,8 @@ TEST_F(WebFrameTest, SwapChildAddFrameInUnload) {
 
   // This triggers the unload handler in the child frame's Document, mutating
   // the frame tree during the `Frame::Swap()` call.
-  web_view_helper.LocalMainFrame()->FirstChild()->Swap(new_frame);
+  frame_test_helpers::SwapLocalFrame(
+      web_view_helper.LocalMainFrame()->FirstChild(), new_frame);
 
   // TODO(dcheng): This is currently required to trigger a crash when the bug is
   // not fixed. Removing a frame from the frame tree will fail one of the
@@ -10011,7 +10018,8 @@ void WebFrameTest::SwapAndVerifyFirstChildConsistency(const char* const message,
                                                       WebFrame* new_child) {
   SCOPED_TRACE(message);
   if (new_child->IsWebLocalFrame()) {
-    parent->FirstChild()->Swap(new_child->ToWebLocalFrame());
+    frame_test_helpers::SwapLocalFrame(parent->FirstChild(),
+                                       new_child->ToWebLocalFrame());
   } else {
     frame_test_helpers::SwapRemoteFrame(parent->FirstChild(),
                                         new_child->ToWebRemoteFrame());
@@ -10059,7 +10067,38 @@ TEST_F(WebFrameSwapTest, DISABLED_DoNotPropagateDisplayNonePropertyOnSwap) {
 
   WebLocalFrame* local_frame =
       web_view_helper_.CreateProvisional(*remote_frame);
-  remote_frame->Swap(local_frame);
+  frame_test_helpers::SwapLocalFrame(remote_frame, local_frame);
+  EXPECT_FALSE(main_frame_client->DidPropagateDisplayNoneProperty());
+  Reset();
+}
+
+// FrameLoader::CommitNavigation() (1) detaches a provisional LocalFrame's
+// initial empty document, (2) swaps the new frame in, and (3) creates the new
+// LocalFrameView and attaches it to the owner. The frame owner element has no
+// embedded_content_view_ until step 3, so we rely on the FrameSwapScope in
+// CommitNavigation() to defer FrameOwnerPropertiesChanged() until the view
+// is attached. Otherwise the browser would be incorrectly told that the frame
+// is display:none.
+TEST_F(WebFrameSwapTest, DoNotPropagateDisplayNoneOnProvisionalFrameCommit) {
+  WebFrameSwapTestClient* main_frame_client =
+      static_cast<WebFrameSwapTestClient*>(MainFrame()->Client());
+
+  UpdateAllLifecyclePhases(WebView());
+  RunPendingTasks();
+  main_frame_client->ResetDidPropagateDisplayNoneProperty();
+
+  WebLocalFrame* child_frame = MainFrame()->FirstChild()->ToWebLocalFrame();
+  WebRemoteFrame* remote_frame = frame_test_helpers::CreateRemote();
+  frame_test_helpers::SwapRemoteFrame(child_frame, remote_frame);
+  EXPECT_FALSE(main_frame_client->DidPropagateDisplayNoneProperty());
+
+  WebLocalFrame* local_frame =
+      web_view_helper_.CreateProvisional(*remote_frame);
+  EXPECT_FALSE(main_frame_client->DidPropagateDisplayNoneProperty());
+
+  // Committing a navigation in the provisional frame swaps it in.
+  frame_test_helpers::LoadFrame(local_frame, base_url_ + "subframe-hello.html");
+  EXPECT_EQ(local_frame, MainFrame()->FirstChild());
   EXPECT_FALSE(main_frame_client->DidPropagateDisplayNoneProperty());
   Reset();
 }
@@ -10071,7 +10110,8 @@ void WebFrameTest::SwapAndVerifyMiddleChildConsistency(
   SCOPED_TRACE(message);
 
   if (new_child->IsWebLocalFrame()) {
-    parent->FirstChild()->NextSibling()->Swap(new_child->ToWebLocalFrame());
+    frame_test_helpers::SwapLocalFrame(parent->FirstChild()->NextSibling(),
+                                       new_child->ToWebLocalFrame());
   } else {
     frame_test_helpers::SwapRemoteFrame(parent->FirstChild()->NextSibling(),
                                         new_child->ToWebRemoteFrame());
@@ -10114,7 +10154,8 @@ void WebFrameTest::SwapAndVerifyLastChildConsistency(const char* const message,
                                                      WebFrame* new_child) {
   SCOPED_TRACE(message);
   if (new_child->IsWebLocalFrame()) {
-    parent->LastChild()->Swap(new_child->ToWebLocalFrame());
+    frame_test_helpers::SwapLocalFrame(parent->LastChild(),
+                                       new_child->ToWebLocalFrame());
   } else {
     frame_test_helpers::SwapRemoteFrame(parent->LastChild(),
                                         new_child->ToWebRemoteFrame());
@@ -10178,7 +10219,7 @@ void WebFrameTest::SwapAndVerifySubframeConsistency(const char* const message,
   EXPECT_TRUE(old_frame->FirstChild());
 
   if (new_frame->IsWebLocalFrame()) {
-    old_frame->Swap(new_frame->ToWebLocalFrame());
+    frame_test_helpers::SwapLocalFrame(old_frame, new_frame->ToWebLocalFrame());
   } else {
     frame_test_helpers::SwapRemoteFrame(old_frame,
                                         new_frame->ToWebRemoteFrame());
@@ -10293,7 +10334,7 @@ TEST_F(WebFrameSwapTest, SwapPreservesGlobalContext) {
   // code path.
   WebLocalFrame* local_frame =
       web_view_helper_.CreateProvisional(*remote_frame);
-  remote_frame->Swap(local_frame);
+  frame_test_helpers::SwapLocalFrame(remote_frame, local_frame);
   v8::Local<v8::Value> local_window = MainFrame()->ExecuteScriptAndReturnValue(
       WebScriptSource("document.querySelector('#frame2').contentWindow;"));
   EXPECT_TRUE(original_window->StrictEquals(local_window));
@@ -12622,6 +12663,79 @@ TEST_F(WebFrameTest, CopyImageWithImageMap) {
   helper.Reset();
 }
 
+TEST_F(WebFrameTest, CopyAndSaveImageCanvas) {
+  TestLocalFrameHostForSaveImageFromDataURL frame_host;
+  frame_test_helpers::WebViewHelper helper;
+  frame_test_helpers::TestWebFrameClient client;
+  frame_host.Init(client.GetRemoteNavigationAssociatedInterfaces());
+  WebViewImpl* web_view = helper.Initialize(&client);
+  web_view->MainFrameViewWidget()->Resize(gfx::Size(400, 400));
+
+  WebLocalFrameImpl* web_frame = web_view->MainFrameImpl();
+  LocalFrame* local_frame = web_frame->GetFrame();
+  Document* document = local_frame->GetDocument();
+  ASSERT_TRUE(document);
+
+  document->body()->SetInnerHTMLWithoutTrustedTypes(
+      "<canvas id='canvas' width='50' height='50' "
+      "style='position:absolute; left:0; top:0; width:50px; height:50px'>"
+      "</canvas>");
+  UpdateAllLifecyclePhases(web_view);
+
+  auto* canvas =
+      To<HTMLCanvasElement>(document->getElementById(AtomicString("canvas")));
+  ASSERT_TRUE(canvas);
+  EXPECT_TRUE(canvas->OriginClean());
+
+  PageTestBase::MockClipboardHostProvider mock_clipboard_host_provider(
+      local_frame->GetBrowserInterfaceBroker());
+  SystemClipboard* system_clipboard = local_frame->GetSystemClipboard();
+  ASSERT_TRUE(system_clipboard);
+  EXPECT_TRUE(system_clipboard->ReadAvailableTypes().empty());
+
+  // Origin-clean canvas can be copied and saved.
+  web_frame->CopyImageAtForTesting(gfx::Point(25, 25));
+  RunPendingTasks();
+
+  Vector<String> types = system_clipboard->ReadAvailableTypes();
+  EXPECT_EQ(2u, types.size());
+  EXPECT_EQ("text/html", types[0]);
+  EXPECT_EQ("image/png", types[1]);
+  EXPECT_GT(system_clipboard->ReadPng(mojom::blink::ClipboardBuffer::kStandard)
+                .size(),
+            0u);
+
+  frame_host.Reset();
+  local_frame->SaveImageAt(gfx::Point(25, 25));
+  frame_host.FlushForTesting();
+  EXPECT_TRUE(frame_host.Result().starts_with("data:image/png;base64,"));
+
+  // Clear the clipboard and mark the canvas as not origin-clean.
+  system_clipboard->WritePlainText("");
+  system_clipboard->CommitWrite();
+  RunPendingTasks();
+  EXPECT_TRUE(system_clipboard->ReadAvailableTypes().empty());
+
+  canvas->SetOriginTainted();
+  ASSERT_FALSE(canvas->OriginClean());
+  EXPECT_TRUE(canvas->ImageSourceURL().IsNull());
+
+  // Non-origin-clean canvas must not be copied to the clipboard or saved.
+  web_frame->CopyImageAtForTesting(gfx::Point(25, 25));
+  RunPendingTasks();
+  EXPECT_TRUE(system_clipboard->ReadAvailableTypes().empty());
+  EXPECT_EQ(0u,
+            system_clipboard->ReadPng(mojom::blink::ClipboardBuffer::kStandard)
+                .size());
+
+  frame_host.Reset();
+  local_frame->SaveImageAt(gfx::Point(25, 25));
+  frame_host.FlushForTesting();
+  EXPECT_EQ(String(), frame_host.Result());
+
+  helper.Reset();
+}
+
 TEST_F(WebFrameTest, LoadJavascriptURLInNewFrame) {
   frame_test_helpers::WebViewHelper helper;
   helper.Initialize();
@@ -14017,13 +14131,27 @@ TEST_F(WebFrameSimTest, DisplayNoneIFrameHasNoLayoutObjects) {
   element->SetInlineStyleProperty(CSSPropertyID::kDisplay, CSSValueID::kBlock);
   Compositor().BeginFrame();
   EXPECT_TRUE(iframe_doc->documentElement()->GetLayoutObject());
+  LocalFrameView* iframe_view = iframe_doc->View();
+  LayoutView* iframe_layout_view = iframe_doc->GetLayoutView();
+  EXPECT_TRUE(iframe_view->IsAttached());
 
   // Changing the display from 'block' -> 'none' should cause layout objects to
-  // disappear.
+  // disappear, except for the LayoutView itself.
   element->SetInlineStyleProperty(CSSPropertyID::kDisplay, CSSValueID::kNone);
 
   Compositor().BeginFrame();
   EXPECT_FALSE(iframe_doc->documentElement()->GetLayoutObject());
+  EXPECT_EQ(iframe_view, iframe_doc->View());
+  EXPECT_EQ(iframe_layout_view, iframe_doc->GetLayoutView());
+  EXPECT_FALSE(iframe_view->IsAttached());
+
+  // Redisplaying the iframe will reattach the existing LocalFrameView.
+  element->SetInlineStyleProperty(CSSPropertyID::kDisplay, CSSValueID::kBlock);
+  Compositor().BeginFrame();
+  EXPECT_TRUE(iframe_doc->documentElement()->GetLayoutObject());
+  EXPECT_EQ(iframe_view, iframe_doc->View());
+  EXPECT_EQ(iframe_layout_view, iframe_doc->GetLayoutView());
+  EXPECT_TRUE(iframe_view->IsAttached());
 }
 
 // Although it is not spec compliant, many websites intentionally call

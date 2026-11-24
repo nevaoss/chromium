@@ -56,11 +56,6 @@ BASE_DECLARE_FEATURE(kSendTabToSelfGesture);
 // the appropriate native app if it is available.
 BASE_DECLARE_FEATURE(kSendTabToSelfOpenNativeApp);
 
-// If this feature is enabled, activating a received tab via the mobile snackbar
-// will be recorded as ShareActivatedEntryPoint::kMobileMessageBanner (instead
-// of ShareActivatedEntryPoint::kTabStrip) and drop the tab label immediately.
-BASE_DECLARE_FEATURE(kSendTabToSelfRecordSnackbarActivation);
-
 // If this feature is enabled, pressing back on an incoming tab opened via the
 // message banner switches back to the parent tab instead of minimizing Chrome.
 BASE_DECLARE_FEATURE(kSendTabToSelfSwitchToParentOnBack);
@@ -71,11 +66,6 @@ BASE_DECLARE_FEATURE(kSendTabToSelfSwitchToParentOnBack);
 // If this feature is enabled, target devices are displayed as individual
 // actions in the native iOS Share Sheet.
 BASE_DECLARE_FEATURE(kSendTabToSelfIOSShareSheetDeviceList);
-
-// If this feature is enabled, prevents duplicate SendTabToSelfBrowserAgent
-// instances from logging outcomes for the same entry (e.g. regular vs inactive
-// browser).
-BASE_DECLARE_FEATURE(kSendTabToSelfIOSLimitToRegularBrowsers);
 
 // If this feature is enabled, users can schedule tab reminder iOS push
 // notifications.

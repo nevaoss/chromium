@@ -325,6 +325,7 @@
 <translation id="1925706052394657380">‏تنظیمات <ph name="BEGIN_BOLD" />Default Apps (برنامه‌های پیش‌فرض)<ph name="END_BOLD" /> را در iOS باز کنید</translation>
 <translation id="1938871630297275912">{count,plural, =1{پیوند دریافت شد}one{‫{count} پیوند دریافت شد}other{‫{count} پیوند دریافت شد}}</translation>
 <translation id="1941314575388338491">برای کپی کردن دو ضربه سریع بزنید.</translation>
+<translation id="1942483019269000450">‏برای ادامه دادن تکلیف، Gemini می‌تواند از «کیف پول Google» بخواهد اطلاعات کارت اعتباری شما را پر کند</translation>
 <translation id="1943478190258551035">تنظیمات ← منو</translation>
 <translation id="1944477975050820119">دریافت پیشنهادهای لحظه‌ای که می‌توانند در پیدا کردن روش‌های جدیدی برای مرور کردن با هوشواره به شما کمک کنند. <ph name="BEGIN_LINK" />بیشتر بدانید<ph name="END_LINK" /></translation>
 <translation id="1952728750904661634">ورود به سیستم با حساب مدیریت‌شده</translation>
@@ -365,6 +366,7 @@
 <translation id="20485545164632846">مورد جدید</translation>
 <translation id="2049727122989709386"><ph name="COUNT" /> حساب از گذرواژه یکسانی استفاده می‌کنند</translation>
 <translation id="205013082884273671">هر چیزی در صفحه را جستجو کنید</translation>
+<translation id="2053311407685904414">انتخاب کردن نشانی</translation>
 <translation id="2054044186557130763">ورود به سیستم با <ph name="NAME" />،‏ <ph name="EMAIL" />، توسط سازمانتان مدیریت می‌شود.</translation>
 <translation id="2059166748188874810">شهرداری</translation>
 <translation id="2060638295449304809">‏این نشانی فقط در این دستگاه ذخیره می‌شود. برای استفاده از آن در دیگر دستگاه‌هایتان، آن را در «حساب Google» خود (<ph name="USER_EMAIL" />) ذخیره کنید</translation>
@@ -465,6 +467,7 @@
 <translation id="2359043044084662842">مترجم</translation>
 <translation id="2359808026110333948">ادامه</translation>
 <translation id="2360196772093551345">درخواست سایت ویژه دستگاه همراه</translation>
+<translation id="2360272811987888433">ورود دستی به سیستم</translation>
 <translation id="2362083820973145409">با <ph name="USER_NAME" /> به سیستم وارد شده‌اید. <ph name="USER_EMAIL" />. تنظیمات را باز می‌کند.</translation>
 <translation id="2367025302166767427">مشکلی در تکمیل اطلاعات پیش آمد</translation>
 <translation id="2371084566192454134">زبانه‌ها و گروه زبانه‌ها</translation>
@@ -773,11 +776,13 @@
 <translation id="3404232721752787413">‏ذخیره در Google Photos</translation>
 <translation id="3406506285180498376">هم‌رسانی کردن صفحه…</translation>
 <translation id="340669334496430859">تاریخ آخرین تغییر</translation>
+<translation id="3407832712016477396">‏‫Gemini می‌تواند از «مدیر گذرواژه Google» برای ورود به سیستم ازطرف شما استفاده کند</translation>
 <translation id="3409785640040772790">Maps</translation>
 <translation id="3416023309465857378">۲۵ اکتبر ۲۰۲۳</translation>
 <translation id="3419787211763835342">کمک به بهبود تکمیل خودکار بهبودیافته</translation>
 <translation id="3422958112451181446">برای سنجاق کردن ابزار دلخواهتان در اینجا، فشار دهید و نگه دارید</translation>
 <translation id="3430407169377889553">‏از Gemini بااحتیاط استفاده کنید و درصورت نیاز کنترل را خودتان دردست بگیرید. شما مسئول کنش‌های Gemini درطول انجام تکالیف هستید.</translation>
+<translation id="3432601291244612633">بستن صفحه</translation>
 <translation id="3435738964857648380">امنیت</translation>
 <translation id="3441673211568148613">مرورتان را خصوصی نگه دارید</translation>
 <translation id="3445288400492335833"><ph name="MINUTES" /> دقیقه</translation>
@@ -1049,6 +1054,8 @@
 <translation id="4290920330097335010">هرگز اجازه ندادن</translation>
 <translation id="4293154608148215505">تلفنتان</translation>
 <translation id="4294506173142861371">به‌عنوان <ph name="FIRST_NAME" /> به سیستم وارد می‌شوید؟</translation>
+<translation id="4297031046690565608">وارد کردن دستی</translation>
+<translation id="4297418774230471285">انتخاب کردن اطلاعات شخصی</translation>
 <translation id="4302061870579014542">تنظیم کردن موقعیت</translation>
 <translation id="4304713468139749426">مدیر گذرواژه</translation>
 <translation id="4309403553630140242">برای اطلاعات بیشتر دو تک‌ضرب بزنید</translation>
@@ -1387,6 +1394,7 @@
 <translation id="5315029634103634221">‏‫Gemini هوشواره است و ممکن است اشتباه کند. <ph name="BEGIN_LINK" />اطلاعات بیشتر درباره داده‌های مربوط که به Google ارسال می‌شود<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">چیزی برای وارد کردن نیست</translation>
 <translation id="5316356981864168850">‫<ph name="INDEX" /> از <ph name="NUM_SUGGESTIONS" /></translation>
+<translation id="5316823130598991834">به سیستم <ph name="SITE_DOMAIN" /> وارد شوید</translation>
 <translation id="5317780077021120954">ذخیره</translation>
 <translation id="5318298563956633672">ازقبل این محصول را پیگیری می‌کنید.</translation>
 <translation id="5327248766486351172">نام</translation>
@@ -1934,6 +1942,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="6946722113367118030">درحال فکر کردن</translation>
 <translation id="6947751977892029882">‏مشکلی در این تنظیم پیش آمد. ‫Chrome و iOS را به‌روزرسانی و بازراه‌اندازی کنید و دوباره امتحان کنید. اگر این خطا همچنان رخ می‌دهد، ممکن است iPhone شما از این تنظیم پشتیبانی نکند.</translation>
 <translation id="6950522403736391608">پنهان</translation>
+<translation id="6957084631403333422">صفحه زبانه جدید متمرکز را امتحان کنید</translation>
 <translation id="695965663642079255">برای تسویه‌حساب سریع‌تر، اطلاعات پرداخت را ذخیره و مدیریت کنید</translation>
 <translation id="6962809930976936328">‏دریافت بینش با Gemini</translation>
 <translation id="6964300328304469089">درحال‌حاضر <ph name="EMAIL" />، <ph name="NAME" /> انتخاب شده است. حسابی انتخاب کنید.</translation>
@@ -2171,6 +2180,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="7724085059277147439">{count,plural, =1{‏مورد در «حساب Google» شما ({email}) ذخیره شد}one{‏موارد در «حساب Google» شما ({email}) ذخیره شد}other{‏موارد در «حساب Google» شما ({email}) ذخیره شد}}</translation>
 <translation id="7729458878441927652">برای دیدن زبانه‌های دستگاه‌های دیگرتان، زبانه‌ها و سابقه را همگام‌سازی کنید.</translation>
 <translation id="7730020510075123961">نه، داده‌ها ادغام شود</translation>
+<translation id="7730937523779541003">صفحه زبانه جدید متمرکز اعمال شد</translation>
 <translation id="7733646263819020771"><ph name="BOOKMRK_NAME" />. فقط در این دستگاه.</translation>
 <translation id="7737550920399185748">عکس‌های صفحه اصلی از کتابخانه عکس شما در دستگاه‌هایتان همگام‌سازی نخواهد شد.</translation>
 <translation id="7738120385185846461">گزارش مشکل…</translation>
@@ -2206,6 +2216,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="7839994177130598711">‏اعضای خانواده‌تان اکنون می‌توانند هنگام ورود به سیستم <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> بااستفاده از «مدیر گذرواژه Google»، نام کاربری و گذرواژه شما را به‌کار ببرند.</translation>
 <translation id="7841180087127694526">جستجوی نوشتار کپی‌شده</translation>
 <translation id="7841418003178675048">انتخاب کنید چه کارت‌هایی در صفحه زبانه جدید نشان داده شود.</translation>
+<translation id="7842369010458597654">درحال پر کردن اطلاعات پرداخت</translation>
 <translation id="7845466610722898">نمایش فهرست خواندن</translation>
 <translation id="7846161022626028328">خطایی وجود داشت. دوباره امتحان کنید.</translation>
 <translation id="784623644169604270">فعالیت اخیری وجود ندارد</translation>
@@ -2613,6 +2624,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="9032405509996909363">تأیید کردن حذف داده‌های مرور</translation>
 <translation id="9038526468059454274">خلاصه کردن با</translation>
 <translation id="9039373489628511875">پهنای باند</translation>
+<translation id="9042363670218758847">به چیدمانی بروید که برای جستجوهای سریع ساخته شده است</translation>
 <translation id="9042893549633094279">حریم خصوصی و امنیت</translation>
 <translation id="9044703854323320868">‏پیام Gmail <ph name="INDEX" /></translation>
 <translation id="9055291197094969722">با ساختن گروه زبانه‌ها می‌توانید زبانه‌های باز را سازمان‌دهی کنید و بهره‌وری خود را حفظ کنید</translation>

@@ -84,7 +84,7 @@ public class AccountPickerBottomSheetRenderTest {
     @Rule
     public final RenderTestRule mRenderTestRule =
             RenderTestRule.Builder.withPublicCorpus()
-                    .setRevision(10)
+                    .setRevision(11)
                     .setBugComponent(RenderTestRule.Component.SERVICES_SIGN_IN)
                     .build();
 
@@ -217,6 +217,7 @@ public class AccountPickerBottomSheetRenderTest {
     @Feature("RenderTest")
     @Features.EnableFeatures(SigninFeatures.SMART_EMAIL_LINE_BREAKING)
     @UseMethodParameter(NightModeTestUtils.NightModeParams.class)
+    @DisabledTest(message = "https://crbug.com/562983248")
     public void testCollapsedSheetWithAccountViewForSendTabToSelfEntryPoint(
             boolean nightModeEnabled) throws IOException {
         mSigninAccessPoint = SigninAccessPoint.SEND_TAB_TO_SELF_PROMO;
@@ -263,6 +264,7 @@ public class AccountPickerBottomSheetRenderTest {
         SigninFeatures.ENABLE_ACCOUNT_PREVIEW_PREFERRED_ACCOUNT
     })
     @UseMethodParameter(NightModeTestUtils.NightModeParams.class)
+    @DisabledTest(message = "https://crbug.com/562983248")
     public void testCollapsedSheetWithPreferredAccountForWebSigninEntryPoint(
             boolean nightModeEnabled) throws IOException {
         mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT1);
@@ -306,6 +308,7 @@ public class AccountPickerBottomSheetRenderTest {
         SigninFeatures.ENABLE_ACCOUNT_PREVIEW_PREFERRED_ACCOUNT
     })
     @UseMethodParameter(NightModeTestUtils.NightModeParams.class)
+    @DisabledTest(message = "https://crbug.com/562983248")
     public void testCollapsedSheetWithPreferredAccountForNtpSignedOutIconEntryPoint(
             boolean nightModeEnabled) throws IOException {
         mSigninAccessPoint = SigninAccessPoint.NTP_SIGNED_OUT_ICON;

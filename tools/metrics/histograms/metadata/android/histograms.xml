@@ -875,36 +875,6 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//components/browser_ui/device_lock/android/java/src/org/chromium/components/browser_ui/device_lock/DeviceLockActivityLauncher.java:DeviceLockSource) -->
 
-<histogram name="Android.Automotive.DeviceLockOutcome" enum="Boolean"
-    expires_after="2026-07-01">
-  <owner>twellington@chromium.org</owner>
-  <owner>clhager@google.com</owner>
-  <summary>
-    Records whether the user successfully passed the device lock challenge after
-    having seen the automotive device lock explainer dialog.
-  </summary>
-</histogram>
-
-<histogram name="Android.Automotive.DeviceLockRemovalDialogEvent"
-    enum="MissingDeviceLockDialogEvent" expires_after="2026-07-01">
-  <owner>twellington@chromium.org</owner>
-  <owner>clhager@google.com</owner>
-  <summary>
-    Records an event whenever the missing device lock dialog is shown to the
-    user or the user takes an action on the dialog.
-  </summary>
-</histogram>
-
-<histogram name="Android.Automotive.DeviceLockSet" enum="Boolean"
-    expires_after="2026-07-01">
-  <owner>twellington@chromium.org</owner>
-  <owner>clhager@google.com</owner>
-  <summary>
-    Records whether the automotive device has a device lock set when Chrome is
-    resumed.
-  </summary>
-</histogram>
-
 <histogram name="Android.Automotive.UiScalingFactor" units="%"
     expires_after="2025-11-23">
   <owner>twellington@chromium.org</owner>
@@ -1133,7 +1103,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BackPress.MinimizeAppAndCloseTab.CustomTab.{Task}"
-    enum="MinimizeAppAndCloseTabType" expires_after="2026-12-06">
+    enum="MinimizeAppAndCloseTabType" expires_after="2027-12-06">
   <owner>mschillaci@google.com</owner>
   <owner>adelm@google.com</owner>
   <owner>src/chrome/browser/back_press/android/OWNERS</owner>
@@ -1207,6 +1177,44 @@ chromium-metrics-reviews@google.com.
     strip context menu or keyboard shortcut. Recorded when the user activates
     the action. We track this to monitor the failure rate of this action and the
     reason of failure (null tab model, empty tab list).
+  </summary>
+</histogram>
+
+<histogram name="Android.BottomBar.Education.Onboarding.{OnboardingType}.Event"
+    enum="AndroidBottomBarEducationOnboardingEvent" expires_after="2027-05-26">
+  <owner>madhavpruthi@google.com</owner>
+  <owner>ckitagawa@chromium.org</owner>
+  <owner>polardz@google.com</owner>
+  <summary>
+    Recorded when an education UI element ({OnboardingType}) is shown, accepted,
+    declined, or dismissed in the Android Bottom Bar flow. DismissedOther means
+    the UI was closed by teardown, such as the activity being destroyed or the
+    bottom bar being hidden. For a bubble, BackPressed means back closed only
+    the bubble; when back leaves Chrome instead, the bubble closes as
+    DismissedOther.
+  </summary>
+<!-- LINT.IfChange(AndroidBottomBarEducationOnboardingType) -->
+
+  <token key="OnboardingType">
+    <variant name="DefaultBubble" summary="Default education bubble"/>
+    <variant name="GeminiBubble" summary="Gemini education bubble"/>
+    <variant name="OptInDialog" summary="Opt-in dialog"/>
+  </token>
+<!-- LINT.ThenChange(//chrome/browser/ui/android/bottombar/java/src/org/chromium/chrome/browser/ui/bottombar/BottomBarMetrics.java:AndroidBottomBarEducationOnboardingType) -->
+
+</histogram>
+
+<histogram name="Android.BottomBar.EnabledState" enum="BooleanEnabled"
+    expires_after="2027-05-26">
+  <owner>madhavpruthi@google.com</owner>
+  <owner>ckitagawa@chromium.org</owner>
+  <owner>polardz@google.com</owner>
+  <summary>
+    Records whether the bottom bar is enabled for an eligible device (see
+    BottomBarConfigUtils#isBottomBarEligible). Recorded when a tabbed activity's
+    bottom controls are initialized. Note: this currently also includes activity
+    recreation (e.g. config changes), so per-user analysis is more reliable than
+    raw sample ratios.
   </summary>
 </histogram>
 
@@ -1289,13 +1297,19 @@ chromium-metrics-reviews@google.com.
   <owner>polardz@google.com</owner>
   <summary>
     Recorded when the {IPHType} In-Product Help (IPH) in the Android Bottom Bar
-    triggers (is shown or dismissed).
+    triggers. The education tour tooltips (Glic, NewTab, TabSwitcher) record
+    only Shown and Dismissed. MovedToBottom applies to the AddressBar IPH only.
+    A user sees either the standalone IPHs or the tour, never both (standalone
+    IPHs are skipped while education is enabled), so the sources can be
+    separated by the education experiment arm.
   </summary>
 <!-- LINT.IfChange(AndroidBottomBarIphFeature) -->
 
   <token key="IPHType">
+    <variant name="AddressBar" summary="Address bar move-to-bottom"/>
     <variant name="Glic" summary="Gemini button"/>
     <variant name="NewTab" summary="New Tab button"/>
+    <variant name="TabSwitcher" summary="Tab Switcher button"/>
   </token>
 <!-- LINT.ThenChange(//chrome/browser/ui/android/bottombar/java/src/org/chromium/chrome/browser/ui/bottombar/BottomBarMetrics.java:AndroidBottomBarIphFeature) -->
 
@@ -1755,7 +1769,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.ComposeboxQueryController.AddTabContextCachedDuration"
-    units="ms" expires_after="2026-12-06">
+    units="ms" expires_after="2027-04-11">
   <owner>ckitagawa@chromium.org</owner>
   <owner>clank-tab-dev@google.com</owner>
   <summary>
@@ -4037,6 +4051,26 @@ chromium-metrics-reviews@google.com.
   <token key="CrossDisplay">
     <variant name="CrossDisplay" summary="a different display than"/>
     <variant name="InDisplay" summary="the same display as"/>
+  </token>
+</histogram>
+
+<histogram
+    name="Android.MultiWindowMode.PopupLaunch.Outcome.{PopupLaunchSource}"
+    enum="PopupLaunchOutcome" expires_after="2026-12-31">
+  <owner>jthiesen@chromium.org</owner>
+  <owner>chominskib@google.com</owner>
+  <owner>lt-web-apps-team@google.com</owner>
+  <summary>
+    Records the outcome of attempting to launch a popup window created
+    {PopupLaunchSource}.
+  </summary>
+  <token key="PopupLaunchSource">
+    <variant name="FromTab"
+        summary="from an existing tab (window.open() Web API)"/>
+    <variant name="FromWebContents"
+        summary="from an existing WebContents by a native browser window API"/>
+    <variant name="NewPopup"
+        summary="from scratch by a native browser window API"/>
   </token>
 </histogram>
 
@@ -6444,6 +6478,27 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.TabStrip.NewTabButton.ActivityCreationToFirstPaint"
+    units="ms" expires_after="2027-04-05">
+  <owner>acondor@chromium.org</owner>
+  <owner>clank-performance-team@google.com</owner>
+  <summary>
+    Duration from ChromeActivity creation to the first presentation timestamp of
+    the tab strip New Tab Button. Recorded at most once per activity.
+  </summary>
+</histogram>
+
+<histogram name="Android.TabStrip.NewTabButton.InteractionToNewTab" units="ms"
+    expires_after="2027-04-05">
+  <owner>acondor@chromium.org</owner>
+  <owner>clank-performance-team@google.com</owner>
+  <summary>
+    Duration from an activating user interaction on the tab strip New Tab Button
+    to when the new tab is added to the TabModel. Recorded each time a tab is
+    opened via the button.
+  </summary>
+</histogram>
+
 <histogram name="Android.TabStrip.NullTabHoverCardView.ShowDelayed"
     enum="Boolean" expires_after="2026-06-01">
   <owner>renkens@google.com</owner>
@@ -8079,7 +8134,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.HttpCacheQuotaApi.AbsoluteValue.{ProfileType}"
-    units="KiB" expires_after="2026-12-01">
+    units="KiB" expires_after="2027-06-01">
   <owner>ashleynewson@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -8096,7 +8151,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.HttpCacheQuotaApi.ChangeHistory.{ProfileType}"
-    enum="HttpCacheQuotaChangeHistory" expires_after="2026-12-01">
+    enum="HttpCacheQuotaChangeHistory" expires_after="2027-06-01">
   <owner>ashleynewson@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -8113,7 +8168,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.HttpCacheQuotaApi.RelativeValue.{ProfileType}"
-    units="%" expires_after="2026-12-01">
+    units="%" expires_after="2027-06-01">
   <owner>ashleynewson@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -8133,7 +8188,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.WebView.HttpCacheQuotaApi.RestoredFromPrefs.{ProfileType}"
-    enum="Boolean" expires_after="2026-12-01">
+    enum="Boolean" expires_after="2027-06-01">
   <owner>ashleynewson@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -8150,7 +8205,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.WebView.HttpCacheQuotaApi.UseDefaultQuota.{ProfileType}"
-    enum="Boolean" expires_after="2026-12-01">
+    enum="Boolean" expires_after="2027-06-01">
   <owner>ashleynewson@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -9339,7 +9394,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.Startup.CachedFlagInitTime" units="ms"
-    expires_after="2026-10-29">
+    expires_after="2027-04-29">
   <owner>abhijithnair@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <improvement direction="LOWER_IS_BETTER"/>

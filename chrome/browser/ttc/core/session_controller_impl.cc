@@ -109,6 +109,11 @@ SessionJournalImpl& SessionControllerImpl::GetJournal() {
   return journal_;
 }
 
+DebugSink* SessionControllerImpl::GetDebugSink() {
+  // Nothing records sessions yet.
+  return nullptr;
+}
+
 void SessionControllerImpl::AddObserver(SessionController::Observer* observer) {
   observers_.AddObserver(observer);
   observer->OnSessionLifecycleChanged(session_lifecycle_);
@@ -202,13 +207,13 @@ void SessionControllerImpl::OnError(ErrorCode error) {
     return;
   }
 
-  if (is_fatal) {
-    EndSessionAsync();
-  }
-
   session_view_->OnError(error);
   for (SessionController::Observer& observer : observers_) {
     observer.OnError(error);
+  }
+
+  if (is_fatal) {
+    EndSessionAsync();
   }
 }
 
@@ -242,6 +247,12 @@ void SessionControllerImpl::OnOutputTranscription(const std::string& text) {
   }
 }
 
+void SessionControllerImpl::OnModelAudioEnvelopeReady(
+    const AudioEnvelope& envelope) {
+  for (SessionController::Observer& observer : observers_) {
+    observer.OnModelAudioEnvelopeReady(envelope);
+  }
+}
 void SessionControllerImpl::EndSessionAsync() {
   SetSessionLifecycle(SessionLifecycle::kFinished);
 

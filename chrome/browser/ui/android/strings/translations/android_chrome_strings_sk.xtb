@@ -768,6 +768,7 @@
 <translation id="4098552968111329864">Keď budete Chrome používať s prihláseným účtom, vaša organizácia bude môcť vidieť alebo spravovať určité informácie, aby zabezpečila vašu prácu v tomto prehliadači</translation>
 <translation id="4105527135143631701">Bolo otvorené oznámenie o aktualizácii Správcu hesiel Google</translation>
 <translation id="4107207375883769436">Vaša organizácia môže potrebovať zobraziť a spravovať dáta prehliadania vo vašom pracovnom profile, napríklad históriu prehliadania a heslá</translation>
+<translation id="4112868928070921050">Súhlas s pripojením Google Workspace k vyhľadávacím službám</translation>
 <translation id="4113030288477039509">Spravované vaším správcom</translation>
 <translation id="4116038641877404294">Stiahnite si stránky na použitie offline</translation>
 <translation id="4121654769234887259">Toto heslo si nebudete musieť pamätať. Uloží sa do Správcu hesiel Google v účte <ph name="USERNAME" />.</translation>
@@ -1722,7 +1723,7 @@ Ak chcete toto nastavenie zmeniť, <ph name="BEGIN_LINK" />odstráňte údaje Ch
 <translation id="7714077993070342304">Otvorenie Ponuky Chrome</translation>
 <translation id="7733878270780732638">V zariadení nie je dostatok priestoru.</translation>
 <translation id="7740287852186792672">Výsledky vyhľadávania</translation>
-<translation id="7740996059027112821">Štandardne</translation>
+<translation id="7740996059027112821">Bežné</translation>
 <translation id="774403695779169686"><ph name="TAB_TITLE" />, vybraná karta inkognito na zdieľanie</translation>
 <translation id="774876555279732384">Služby automatického dopĺňania sa dajú spravovať aj v <ph name="BEGIN_LINK" />Nastaveniach Androidu<ph name="END_LINK" />.</translation>
 <translation id="7758884017823246335">Pridanie vyhľadávania na webe</translation>
@@ -1788,6 +1789,7 @@ Ak chcete toto nastavenie zmeniť, <ph name="BEGIN_LINK" />odstráňte údaje Ch
 <translation id="799576009106109668">Prehliadanie sa zrýchli, pretože obsah bude proaktívne načítaný na základe vašej návštevy aktuálnej webovej stránky</translation>
 <translation id="7997875520309653083">Vrátite sa potiahnutím z pravého okraja</translation>
 <translation id="7998918019931843664">Znova otvoriť zavretú kartu</translation>
+<translation id="8000020256436988724">Panel s nástrojmi</translation>
 <translation id="8001245658307297681">Prezeráte si miestny súbor</translation>
 <translation id="800155843932969169">Bezpečne vytvárajte a ukladajte svoje heslá, prihlasujte sa rýchlejšie a identifikujte problémy so zabezpečením hesiel, aby ste zostali v bezpečí</translation>
 <translation id="8004582292198964060">Prehliadač</translation>

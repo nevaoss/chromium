@@ -1240,6 +1240,10 @@ void BrowserMainLoop::ShutdownThreadsAndCleanUp() {
   if (RenderProcessHost::run_renderer_in_process())
     RenderProcessHostImpl::ShutDownInProcessRenderer();
 
+  if (audio_manager_) {
+    audio_manager_->CloseIdleStreams();
+  }
+
   if (parts_) {
     TRACE_EVENT0("shutdown",
                  "BrowserMainLoop::Subsystem:PostMainMessageLoopRun");

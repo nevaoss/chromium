@@ -127,9 +127,6 @@ constexpr APIPermissionInfo::InitInfo permissions_to_register[] = {
     {APIPermissionID::kTts, "tts", APIPermissionInfo::kFlagCannotBeOptional},
     {APIPermissionID::kTtsEngine, "ttsEngine",
      APIPermissionInfo::kFlagCannotBeOptional},
-    {APIPermissionID::kWallpaper, "wallpaper",
-     APIPermissionInfo::kFlagCannotBeOptional |
-         APIPermissionInfo::kFlagDoesNotRequireManagedSessionFullLoginWarning},
     {APIPermissionID::kWebAuthenticationProxy, "webAuthenticationProxy",
      APIPermissionInfo::kFlagCannotBeOptional},
     {APIPermissionID::kWebNavigation, "webNavigation",
@@ -174,7 +171,6 @@ constexpr APIPermissionInfo::InitInfo permissions_to_register[] = {
     {APIPermissionID::kSafeBrowsingPrivate, "safeBrowsingPrivate"},
     {APIPermissionID::kSettingsPrivate, "settingsPrivate",
      APIPermissionInfo::kFlagCannotBeOptional},
-    {APIPermissionID::kSmartCardProviderPrivate, "smartCardProviderPrivate"},
     {APIPermissionID::kSystemPrivate, "systemPrivate",
      APIPermissionInfo::kFlagCannotBeOptional},
     {APIPermissionID::kTerminalPrivate, "terminalPrivate",

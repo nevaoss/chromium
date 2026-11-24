@@ -66,9 +66,6 @@ BASE_FEATURE(kArcAdbSideloadingFeature,
 BASE_FEATURE(kAshSessionRestoreDeferOccludedActiveTabLoad,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Controls whether to enable assistive multi word suggestions.
-BASE_FEATURE(kAssistMultiWord, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Controls whether to enable the audio focus enforcement toggle in settings.
 BASE_FEATURE(kAudioFocusSetting, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -401,8 +398,9 @@ BASE_FEATURE(kCrosPrivacyHub, base::FEATURE_ENABLED_BY_DEFAULT);
 // output of on-device gen ai models.
 BASE_FEATURE(kCrosSafetyService, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Uses cross-fade animation instead of bounds animation when animating a
-// window to a different size via `WindowState::SetBoundsDirectAnimated()`.
+// Uses cross-fade animation (for size changes) and transform animation (for
+// position-only changes) instead of bounds animation when animating window
+// bounds via `WindowState::SetBoundsDirectAnimated()`.
 BASE_FEATURE(kCrossFadeBoundsChangeAnimation, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables syncing attestation certificates to cryptauth for use by Cross Device
@@ -474,9 +472,6 @@ BASE_FEATURE(kDemoModeWallpaperUpdate, base::FEATURE_ENABLED_BY_DEFAULT);
 // Controls whether clean up local files between shopper session when demo mode
 // sign in is enable. No-op if demo mode sign in is disabled.
 BASE_FEATURE(kDemoModeSignInFileCleanup, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Toggle different display features based on user setting and power state
-BASE_FEATURE(kDisplayPerformanceMode, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enable the do not disturb shortcut.
 BASE_FEATURE(kDoNotDisturbShortcut, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -714,10 +709,6 @@ BASE_FEATURE(kForceOnDeviceAppControlsForAllRegions,
 // For more info, see go/crosforest.
 BASE_FEATURE(kForestFeature, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables low priority hint instead of overlay candidate override in
-// `FastInkHost`.
-BASE_FEATURE(kFastInkHostLowPriorityHint, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // When enabled, there will be an alert bubble showing up when the device
 // returns from low brightness (e.g., sleep, closed cover) without a lock screen
 // and the active window is in fullscreen.
@@ -745,9 +736,6 @@ BASE_FEATURE(kGlanceablesTimeManagementTasksViewAssignedTasks,
 
 // Enables logging new Gaia account creation event.
 BASE_FEATURE(kGaiaRecordAccountCreation, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables the Game Dashboard Main Menu utility views.
-BASE_FEATURE(kGameDashboardUtilities, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the Game Dashboard's Record Game feature. This flag is to be enabled
 // by the feature management module.
@@ -1177,10 +1165,6 @@ BASE_FEATURE(kOneDriveUploadImmediateReauth, base::FEATURE_ENABLED_BY_DEFAULT);
 // TODO(crbug.com/563193206): Remove once c/b/device_notifications is cleaned
 // up.
 BASE_FEATURE(kOngoingProcesses, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// If enabled, enrollment screen will allow for automatically adding the
-// authenticated user to the device.
-BASE_FEATURE(kOobeAddUserDuringEnrollment, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, CHOOBE Screen will be shown during the new user onboarding flow.
 BASE_FEATURE(kOobeChoobe, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1635,10 +1619,6 @@ BASE_FEATURE(kAuthPanelUsingAuthHub, base::FEATURE_DISABLED_BY_DEFAULT);
 // that lives in ash/auth/view/active_session_auth_view
 BASE_FEATURE(kWebAuthNAuthDialogMerge, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Use the staging URL as part of the "Messages" feature under "Connected
-// Devices" settings.
-BASE_FEATURE(kUseMessagesStagingUrl, base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kLiveCaptionUserMicrophone, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Use the Stork production SM-DS server when fetching pending eSIM profiles.
@@ -1881,10 +1861,6 @@ BASE_FEATURE(kSmartDim, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables or disables TPM firmware update capability on Chrome OS.
 BASE_FEATURE(kTPMFirmwareUpdate, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables reporting Chrome app activity for supervised users.
-BASE_FEATURE(kUnicornChromeActivityReporting,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2132,10 +2108,6 @@ bool IsDeviceMoveConfigSaveEnabled() {
   return base::FeatureList::IsEnabled(kDeviceMoveConfigSave);
 }
 
-bool IsDisplayPerformanceModeEnabled() {
-  return base::FeatureList::IsEnabled(kDisplayPerformanceMode);
-}
-
 bool IsDoNotDisturbShortcutEnabled() {
   return base::FeatureList::IsEnabled(kDoNotDisturbShortcut);
 }
@@ -2257,10 +2229,6 @@ bool ShouldForceEnableServerSideSpeechRecognition() {
 
 bool IsFullscreenAlertBubbleEnabled() {
   return base::FeatureList::IsEnabled(kFullscreenAlertBubble);
-}
-
-bool IsFastInkHostLowPriorityHintEnabled() {
-  return base::FeatureList::IsEnabled(kFastInkHostLowPriorityHint);
 }
 
 bool IsBlockFwupdClientEnabled() {
@@ -2437,10 +2405,6 @@ bool IsLobsterEnabledForManagedUsers() {
   return base::FeatureList::IsEnabled(kLobsterForManagedUsers);
 }
 
-bool AreGameDashboardUtilitiesEnabled() {
-  return base::FeatureList::IsEnabled(kGameDashboardUtilities);
-}
-
 bool IsProductivityLauncherImageSearchEnabled() {
   return base::FeatureList::IsEnabled(kFeatureManagementLocalImageSearch);
 }
@@ -2448,7 +2412,6 @@ bool IsProductivityLauncherImageSearchEnabled() {
 bool IsMacAddressRandomizationEnabled() {
   return base::FeatureList::IsEnabled(kMacAddressRandomization);
 }
-
 
 bool IsEcheShorterScanningDutyCycleEnabled() {
   return base::FeatureList::IsEnabled(kEcheShorterScanningDutyCycle);
@@ -2515,10 +2478,6 @@ bool IsOobeAiIntroEnabled() {
 
 bool IsBootAnimationEnabled() {
   return base::FeatureList::IsEnabled(kFeatureManagementOobeSimon);
-}
-
-bool IsOobeAddUserDuringEnrollmentEnabled() {
-  return base::FeatureList::IsEnabled(kOobeAddUserDuringEnrollment);
 }
 
 bool IsOobeChoobeEnabled() {

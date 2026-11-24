@@ -63,9 +63,7 @@ TestTabModel::~TestTabModel() {
   if (std::ranges::contains(TabModelList::models(), self)) {
     TabModelList::RemoveTabModel(self);
   }
-  if (TabModelList::GetArchivedTabModel() == self) {
-    TabModelList::SetArchivedTabModel(nullptr);
-  }
+  TabModelList::RemoveArchivedTabModel(self);
 }
 
 void TestTabModel::AddTabListInterfaceObserver(
@@ -201,6 +199,13 @@ void TestTabModel::ActivateTab(tabs::TabHandle tab) {
 tabs::TabInterface* TestTabModel::OpenTab(const GURL& url,
                                           int index,
                                           bool foreground) {
+  NOTIMPLEMENTED();
+  return nullptr;
+}
+
+tabs::TabInterface* TestTabModel::OpenTab(const GURL& url,
+                                          int index,
+                                          TabLaunchType launch_type) {
   NOTIMPLEMENTED();
   return nullptr;
 }
@@ -633,6 +638,13 @@ void OwningTestTabModel::ActivateTab(tabs::TabHandle tab) {
 tabs::TabInterface* OwningTestTabModel::OpenTab(const GURL& url,
                                                 int index,
                                                 bool foreground) {
+  NOTIMPLEMENTED();
+  return nullptr;
+}
+
+tabs::TabInterface* OwningTestTabModel::OpenTab(const GURL& url,
+                                                int index,
+                                                TabLaunchType launch_type) {
   NOTIMPLEMENTED();
   return nullptr;
 }

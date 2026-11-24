@@ -91,9 +91,9 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.IntentHandler.ExternalAppId;
 import org.chromium.chrome.browser.IntentHandler.TabOpenType;
 import org.chromium.chrome.browser.accessibility.settings.CaretBrowsingDialog;
-import org.chromium.chrome.browser.actor.ActorForegroundServiceController;
-import org.chromium.chrome.browser.actor.ActorNotificationService;
-import org.chromium.chrome.browser.actor.ActorTabStateHelper;
+import org.chromium.chrome.browser.actor.background_tabs.ActorTabStateHelper;
+import org.chromium.chrome.browser.actor.foreground_service.ActorForegroundServiceController;
+import org.chromium.chrome.browser.actor.notifications.ActorNotificationService;
 import org.chromium.chrome.browser.app.ChromeActivity;
 import org.chromium.chrome.browser.app.appmenu.AppMenuPropertiesDelegateImpl;
 import org.chromium.chrome.browser.app.metrics.LaunchCauseMetrics;
@@ -211,12 +211,8 @@ import org.chromium.chrome.browser.native_page.NativePageAssassin;
 import org.chromium.chrome.browser.navigation_predictor.NavigationPredictorBridge;
 import org.chromium.chrome.browser.new_tab_url.DseNewTabUrlManager;
 import org.chromium.chrome.browser.night_mode.NightModeStateProvider;
-import org.chromium.chrome.browser.notifications.scheduler.TipsAgent;
 import org.chromium.chrome.browser.ntp.NewTabPage;
 import org.chromium.chrome.browser.ntp.NewTabPageUma;
-import org.chromium.chrome.browser.ntp.RecentlyClosedGroup;
-import org.chromium.chrome.browser.ntp.RecentlyClosedTab;
-import org.chromium.chrome.browser.ntp.RecentlyClosedWindow;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinator;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinatorFactory;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationMetricsUtils;
@@ -249,6 +245,11 @@ import org.chromium.chrome.browser.quick_delete.QuickDeleteMetricsDelegate;
 import org.chromium.chrome.browser.read_later.ReadingListBackPressHandler;
 import org.chromium.chrome.browser.recent_tabs.CrossDevicePaneFactory;
 import org.chromium.chrome.browser.recent_tabs.ForeignSessionHelper;
+import org.chromium.chrome.browser.recent_tabs.RecentlyClosedEntriesManager;
+import org.chromium.chrome.browser.recent_tabs.RecentlyClosedEntriesManagerTrackerFactory;
+import org.chromium.chrome.browser.recent_tabs.RecentlyClosedGroup;
+import org.chromium.chrome.browser.recent_tabs.RecentlyClosedTab;
+import org.chromium.chrome.browser.recent_tabs.RecentlyClosedWindow;
 import org.chromium.chrome.browser.reengagement.ReengagementNotificationController;
 import org.chromium.chrome.browser.safety_hub.SafetyHubMagicStackBuilder;
 import org.chromium.chrome.browser.search_engines.SearchEngineChoiceNotification;
@@ -1214,6 +1215,11 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                     assertNonNull(mRootUiCoordinator.getDataSharingTabManager());
             var bottomSheetController =
                     assertNonNull(mRootUiCoordinator.getBottomSheetController());
+            var startupMetricsTracker = getStartupMetricsTracker();
+            long activityCreationUptimeMs =
+                    startupMetricsTracker != null
+                            ? startupMetricsTracker.getActivityStartTimeMs()
+                            : 0;
             return new LayoutManagerChromeTablet(
                     compositorViewHolder,
                     mContentContainer,
@@ -1247,7 +1253,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                     tabbedRootUiCoordinator.getSideUiStateProviderSupplier(),
                     mRootUiCoordinator.getTabObscuringHandler(),
                     tabbedRootUiCoordinator.canActivateTabLayoutToggleMenu(),
-                    getMenuOrKeyboardActionController());
+                    getMenuOrKeyboardActionController(),
+                    activityCreationUptimeMs);
         }
     }
 
@@ -4246,7 +4253,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                                     ::onDailyRefreshThemeCollectionApplied);
         }
 
-        TipsAgent.performNotificationSchedulerSteps(getProfileProviderSupplier(), windowAndroid);
+        TipsUtils.scheduleOrCancelTipsNotification(getProfileProviderSupplier(), windowAndroid);
 
         if (ChromeFeatureList.sAndroidStartupImprovements.isEnabled()) {
             if (FindsFeatures.sChromeFinds.isEnabled()) {

@@ -1260,6 +1260,17 @@ std::unique_ptr<ContentSettingBubbleModel>
 ContentSettingMediaImageModel::CreateBubbleModelImpl(
     ContentSettingBubbleModel::Delegate* delegate,
     content::Page& page) {
+  // The mic/camera state may have been cleared after the indicator was shown
+  // (e.g. Safety Hub auto-revoked permission and stopped capture while the
+  // indicator was dismissing). The bubble requires non-empty state (see
+  // ContentSettingMediaStreamBubbleModel's constructor), so return nullptr and
+  // let the caller dismiss the stale indicator.
+  PageSpecificContentSettings* content_settings =
+      PageSpecificContentSettings::GetForPage(page);
+  if (!content_settings ||
+      content_settings->GetMicrophoneCameraState().empty()) {
+    return nullptr;
+  }
   return std::make_unique<ContentSettingMediaStreamBubbleModel>(delegate, page);
 }
 
@@ -1449,8 +1460,9 @@ bool ContentSettingNotificationsImageModel::UpdateAndGetVisibility(
 
     // If the system level permission for this app is currently "denied", and
     // either the chrome level permission was granted (and notifications have
-    // been attempted to be used in this page) or the chrome level permission
-    // just switched from "ask" to "blocked", show the indicator icon.
+    // been attempted to be used in this page) or the page was explicitly
+    // marked as having notifications blocked by the system level permission,
+    // show the indicator icon.
     if ((was_denied_because_of_system_permission || is_allowed) &&
         (system_permission_status ==
              AppShimRegistry::NotificationPermissionStatus::kImplicitlyDenied ||
@@ -1484,8 +1496,8 @@ bool ContentSettingNotificationsImageModel::UpdateAndGetVisibility(
       // indicator afterwards.
       set_explanatory_string_id(IDS_NOTIFICATIONS_OFF_EXPLANATORY_TEXT);
       set_should_keep_label_expanded(true);
-      // If the chrome level permission was just auto-denied, also popup the
-      // bubble.
+      // If the page was explicitly marked as having notifications blocked by
+      // the system level permission, also popup the bubble.
       set_should_auto_open_bubble(was_denied_because_of_system_permission);
       return true;
     }

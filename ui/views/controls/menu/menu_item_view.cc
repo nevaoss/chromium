@@ -66,6 +66,7 @@
 #include "ui/views/style/typography_provider.h"
 #include "ui/views/vector_icons.h"
 #include "ui/views/view_class_properties.h"
+#include "ui/views/view_guard.h"
 #include "ui/views/view_tracker.h"
 #include "ui/views/view_utils.h"
 #include "ui/views/widget/widget.h"
@@ -476,6 +477,12 @@ MenuItemView* MenuItemView::AddMenuItemViewImpl(
     item->SetVisible(false);
   }
 
+  // There are cases where menu insertions can lead to synchronous accessibility
+  // events, which can in turn lead to a miscalibrated or malicious
+  // accessibility tool attempting to close the menu mid-insertion. Guard
+  // against the item being destroyed while it is being added.
+  ViewGuard item_guard(*item);
+
   auto* added_item = submenu_->AddChildViewAt(std::move(item), insert_index);
 
   added_item->UpdateTooltipText();
@@ -491,16 +498,51 @@ MenuItemView* MenuItemView::AddMenuItemViewImpl(
   return added_item;
 }
 
+void MenuItemView::SetIsPinned(bool is_pinned) {
+  if (is_pinned_ == is_pinned) {
+    return;
+  }
+  is_pinned_ = is_pinned;
+  if (is_pinned_ && parent_menu_item_ && parent_menu_item_->HasSubmenu()) {
+    if (MenuScrollViewContainer* container =
+            parent_menu_item_->GetSubmenu()->scroll_view_container()) {
+      container->UpdatePinnedItems();
+    }
+  }
+}
+
 void MenuItemView::RemoveMenuItem(View* item) {
   DCHECK(item);
   DCHECK(submenu_);
-  DCHECK_EQ(submenu_.get(), item->parent());
+  View* const parent = item->parent();
+  // Pinned items live in the scroll view container's header/footer containers
+  // rather than directly in the SubmenuView.
+  const MenuScrollViewContainer* const container =
+      submenu_->scroll_view_container();
+  DCHECK(parent == submenu_.get() ||
+         (container && (parent == container->header_container() ||
+                        parent == container->footer_container())));
   removed_items_.push_back(item);
-  submenu_->RemoveChildView(item);
+  parent->RemoveChildView(item);
 }
 
 void MenuItemView::RemoveAllMenuItems() {
   DCHECK(submenu_);
+
+  // Pinned items live in the scroll view container's header/footer containers
+  // rather than directly in the SubmenuView.
+  if (const MenuScrollViewContainer* const container =
+          submenu_->scroll_view_container()) {
+    for (const View* pinned_container :
+         {container->header_container(), container->footer_container()}) {
+      if (!pinned_container) {
+        continue;
+      }
+      while (!pinned_container->children().empty()) {
+        RemoveMenuItem(pinned_container->children().front());
+      }
+    }
+  }
 
   removed_items_.insert(removed_items_.end(), submenu_->children().begin(),
                         submenu_->children().end());
@@ -911,10 +953,16 @@ void MenuItemView::ChildrenChanged() {
       // as UpdateSubmenuSelection() looks at bounds. This handles the case of
       // the top level window's size remaining the same, resulting in no change
       // to the submenu's size and no layout.
-      submenu_->DeprecatedLayoutImmediately(
-          DeprecatedLayoutImmediatelyPassKey());
-      submenu_->SchedulePaint();
-      // Update the menu selection after layout.
+      if (MenuScrollViewContainer* const container =
+              submenu_->scroll_view_container()) {
+        container->DeprecatedLayoutImmediately(
+            DeprecatedLayoutImmediatelyPassKey());
+        container->SchedulePaint();
+      } else {
+        submenu_->DeprecatedLayoutImmediately(
+            DeprecatedLayoutImmediatelyPassKey());
+        submenu_->SchedulePaint();
+      }
       controller->UpdateSubmenuSelection(submenu_.get());
     }
   }
@@ -1218,6 +1266,11 @@ void MenuItemView::UpdateEmptyMenusAndMetrics() {
     } else {
       has_visible_menu_items |= child->GetVisible();
     }
+  }
+
+  if (!has_visible_menu_items && submenu_->scroll_view_container()) {
+    has_visible_menu_items =
+        std::ranges::any_of(submenu_->GetMenuItems(), &View::GetVisible);
   }
 
   // Now add back an empty menu item if need be.

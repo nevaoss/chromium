@@ -102,6 +102,7 @@
 #include "components/autofill/core/browser/integrators/password_manager/mock_password_manager_delegate.h"
 #include "components/autofill/core/browser/integrators/password_manager/password_manager_delegate.h"
 #include "components/autofill/core/browser/integrators/touch_to_fill/touch_to_fill_autofill_delegate.h"
+#include "components/autofill/core/browser/metrics/autofill_metrics_util.h"
 #include "components/autofill/core/browser/metrics/form_events/form_events.h"
 #include "components/autofill/core/browser/metrics/form_interactions_ukm_logger.h"
 #include "components/autofill/core/browser/metrics/log_event.h"
@@ -154,8 +155,8 @@
 #include "components/autofill/core/common/mojom/autofill_types.mojom-shared.h"
 #include "components/autofill/core/common/signatures.h"
 #include "components/feature_engagement/public/feature_constants.h"
+#include "components/optimization_guide/core/feature_registry/enterprise_policy_registry.h"
 #include "components/optimization_guide/core/feature_registry/feature_registration.h"
-#include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
 #include "components/optimization_guide/proto/features/common_quality_data.pb.h"
 #include "components/personal_context/core/mock_personal_context_eligibility_service.h"
 #include "components/personal_context/core/personal_context_prefs.h"
@@ -1406,8 +1407,7 @@ class BrowserAutofillManagerAtMemoryTest : public BrowserAutofillManagerTest {
 
     autofill_client().GetPrefs()->registry()->RegisterIntegerPref(
         optimization_guide::prefs::kFindAndFillWithGeminiSettings,
-        std::to_underlying(optimization_guide::model_execution::prefs::
-                               ModelExecutionEnterprisePolicyValue::kAllow));
+        std::to_underlying(optimization_guide::EnterprisePolicyValue::kAllow));
     autofill_client().GetPrefs()->SetBoolean(
         personal_context::prefs::kPersonalContextInAutofillSettingsToggleStatus,
         true);
@@ -5558,10 +5558,12 @@ TEST_F(BrowserAutofillManagerTest, AutocompleteKeyMetrics) {
       features::kAutofillLabelSensitiveAutocomplete};
 
   FormData form = test::GetFormData({
-      .fields = {{.role = NAME_FIRST}, {.role = NAME_LAST}},
+      .fields = {{.role = NAME_FIRST},
+                 {.role = NAME_LAST},
+                 {.role = EMAIL_ADDRESS}},
   });
   FormsSeen({form});
-  ASSERT_GE(form.fields().size(), 2u);
+  ASSERT_GE(form.fields().size(), 3u);
 
   auto create_suggestion = [](const std::u16string& value,
                               MatchingType matching_type) {
@@ -5603,6 +5605,18 @@ TEST_F(BrowserAutofillManagerTest, AutocompleteKeyMetrics) {
   EXPECT_THAT(histogram_tester.GetAllSamples(
                   "Autocomplete.KeyMetrics.FillingAcceptance"),
               BucketsAre(Bucket(false, 1), Bucket(true, 1)));
+  EXPECT_THAT(
+      histogram_tester.GetAllSamples(
+          "Autocomplete.KeyMetrics.FillingAcceptance.ByFieldType"),
+      BucketsAre(
+          Bucket(
+              autofill_metrics::GetBucketForAcceptanceMetricsGroupedByFieldType(
+                  NAME_FIRST, /*suggestion_accepted=*/true),
+              1),
+          Bucket(
+              autofill_metrics::GetBucketForAcceptanceMetricsGroupedByFieldType(
+                  NAME_LAST, /*suggestion_accepted=*/false),
+              1)));
 
   // Name was shown on Field 0 and accepted -> 1 true.
   histogram_tester.ExpectUniqueSample(
@@ -5649,6 +5663,8 @@ TEST_F(BrowserAutofillManagerTest,
 
   histogram_tester.ExpectUniqueSample(
       "Autocomplete.KeyMetrics.FillingAcceptance", true, 1);
+  histogram_tester.ExpectTotalCount(
+      "Autocomplete.KeyMetrics.FillingAcceptance.ByFieldType", 0);
   histogram_tester.ExpectUniqueSample(
       "Autocomplete.KeyMetrics.FillingAcceptance.Name", true, 1);
   histogram_tester.ExpectUniqueSample(

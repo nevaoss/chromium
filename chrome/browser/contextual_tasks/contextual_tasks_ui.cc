@@ -25,9 +25,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_composebox_handler.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_composebox_handler_interface.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_service.h"
-#include "chrome/browser/contextual_tasks/contextual_tasks_context_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_eligibility_manager.h"
-#include "chrome/browser/contextual_tasks/contextual_tasks_internals_page_handler.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_page_handler.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
@@ -37,7 +35,6 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/entry_point_eligibility_manager.h"
 #include "chrome/browser/contextual_tasks/site_exclusion_detail.h"
-#include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/profiles/profile_manager.h"
@@ -176,7 +173,7 @@ void AddDefaultZeroStateStrings(base::DictValue& dict) {
 }
 
 void AddZeroStateStrings(base::DictValue& dict, Profile* profile) {
-  if (!profile) {
+  if (!profile || !g_browser_process || !g_browser_process->profile_manager()) {
     AddDefaultZeroStateStrings(dict);
     return;
   }
@@ -660,10 +657,10 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
            contextual_tasks::GetIsContextualTasksWindowTrackingEnabled());
   dict.Set("supportsLensButtonInComposebox", !BUILDFLAG(IS_ANDROID));
   // Android delegates voice search to the platform recognition activity.
-  // Large-screen Android can opt into the in-panel WebUI voice search UI
-  // instead; phone Clank always stays on the platform path.
+  // Desktop Android can opt into the in-panel WebUI voice search UI instead;
+  // phone and tablet Clank always stay on the platform path.
   const bool use_webui_voice_search =
-      contextual_tasks::IsAndroidLargeFormFactor() &&
+      contextual_tasks::IsAndroidDesktopFormFactor() &&
       contextual_tasks::
           GetIsContextualTasksWebUiVoiceSearchDesktopAndroidEnabled();
   dict.Set("isSystemVoiceSearchEnabled",
@@ -1167,7 +1164,7 @@ ContextualTasksUI::TakeInputStateModel() {
   return helper->TakeInputStateModel();
 }
 
-std::vector<int32_t> ContextualTasksUI::GetRestoredTabIds() {
+const std::vector<int32_t>& ContextualTasksUI::GetRestoredTabIds() {
   content::WebContents* web_contents = web_ui()->GetWebContents();
   auto* helper = ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
       web_contents);
@@ -1870,6 +1867,30 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
 
   // Capture the old task ID associated with this WebUI.
   std::optional<base::Uuid> old_task_id = task_info_delegate_->GetTaskId();
+  // When a thread change in the side panel is scoped to the tab, the other
+  // tabs of `old_task_id` keep its thread in a new panel. Save the old thread
+  // URL as the task's initial URL so that the new panel loads it.
+  const std::optional<std::string> old_thread_id =
+      task_info_delegate_->GetThreadId();
+  const GURL old_thread_url = last_thread_url_;
+  auto maybe_save_old_thread_url_for_other_tabs = [&]() {
+    if (!contextual_tasks::ShouldScopeSidePanelStateToTab() ||
+        task_info_delegate_->IsShownInTab() || !old_task_id ||
+        !old_task_id->is_valid() || !old_thread_id) {
+      return;
+    }
+    std::string old_url_thread_id;
+    if (!net::GetValueForKeyInQuery(old_thread_url, "mtid",
+                                    &old_url_thread_id) ||
+        old_url_thread_id != *old_thread_id) {
+      return;
+    }
+    // Don't reopen thread history in the new panel if it was open to pick the
+    // new thread.
+    ui_service_->SetInitialUrlForTask(
+        *old_task_id, net::AppendOrReplaceQueryParameter(old_thread_url, "atvm",
+                                                         std::nullopt));
+  };
   if (is_zero_state &&
       (!base::FeatureList::IsEnabled(
            contextual_tasks::kEnableNotifyZeroStateRenderedCapability) ||
@@ -1893,6 +1914,7 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
     }
     task_info_delegate_->SetTaskId(new_task_id);
     task_info_delegate_->SetThreadId(std::nullopt);
+    last_thread_url_ = GURL();
     // Replace state if last committed URL was empty (i.e. the page is
     // reloaded) or if zero state has not changed, otherwise push new state.
     task_info_delegate_->PushTaskDetailsToPage(
@@ -1905,6 +1927,7 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
     // update.
     if (old_task_id != new_task_id) {
       task_info_delegate_->PrepareForTaskChange();
+      maybe_save_old_thread_url_for_other_tabs();
       ui_service_->OnTaskChanged(task_info_delegate_->GetBrowser(),
                                  task_info_delegate_->GetWebUIWebContents(),
                                  old_task_id, new_task_id,
@@ -2011,6 +2034,7 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
   }
 
   task_info_delegate_->SetThreadId(url_thread_id);
+  last_thread_url_ = url;
   auto new_task_id = task_info_delegate_->GetTaskId();
   // Replace state if old task id and new task id is the same, otherwise push
   // new state. This is to make sure navigation stack works when switching
@@ -2042,6 +2066,7 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
         << "Task changed: "
         << task_info_delegate_->GetTaskId().value().AsLowercaseString();
     task_info_delegate_->PrepareForTaskChange();
+    maybe_save_old_thread_url_for_other_tabs();
     ui_service_->OnTaskChanged(task_info_delegate_->GetBrowser(),
                                task_info_delegate_->GetWebUIWebContents(),
                                old_task_id, task_info_delegate_->GetTaskId(),
@@ -2109,32 +2134,6 @@ void ContextualTasksUI::InnerFrameCreationObvserver::DidFinishNavigation(
 void ContextualTasksUI::ResetEmbeddedPage() {
   embedded_web_contents_ = nullptr;
   nav_observer_.reset();
-}
-
-void ContextualTasksUI::BindInterface(
-    mojo::PendingReceiver<contextual_tasks_internals::mojom::
-                              ContextualTasksInternalsPageHandlerFactory>
-        receiver) {
-  contextual_tasks_internals_page_handler_receiver_.reset();
-  contextual_tasks_internals_page_handler_receiver_.Bind(std::move(receiver));
-}
-
-void ContextualTasksUI::CreatePageHandler(
-    mojo::PendingRemote<
-        contextual_tasks_internals::mojom::ContextualTasksInternalsPage> page,
-    mojo::PendingReceiver<
-        contextual_tasks_internals::mojom::ContextualTasksInternalsPageHandler>
-        receiver) {
-  Profile* profile = Profile::FromWebUI(web_ui());
-  auto* contextual_tasks_service =
-      contextual_tasks::ContextualTasksContextServiceFactory::GetForProfile(
-          profile);
-  auto* optimization_guide_keyed_service =
-      OptimizationGuideKeyedServiceFactory::GetForProfile(profile);
-  contextual_tasks_internals_page_handler_ =
-      std::make_unique<ContextualTasksInternalsPageHandler>(
-          profile, contextual_tasks_service, optimization_guide_keyed_service,
-          std::move(receiver), std::move(page));
 }
 
 void ContextualTasksUI::PrepareForTaskChange() {

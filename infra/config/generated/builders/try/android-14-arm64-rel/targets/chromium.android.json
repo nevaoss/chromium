@@ -3,6 +3,7 @@
     "gtest_tests": [
       {
         "args": [
+          "--test-launcher-filter-file=../../testing/buildbot/filters/android.phone.android_browsertests.filter",
           "--gs-results-bucket=chromium-result-details",
           "--recover-devices"
         ],
@@ -242,8 +243,7 @@
         "precommit_args": [
           "--gerrit-issue=${patch_issue}",
           "--gerrit-patchset=${patch_set}",
-          "--buildbucket-id=${buildbucket_build_id}",
-          "--bypass-skia-gold-functionality"
+          "--buildbucket-id=${buildbucket_build_id}"
         ],
         "resultdb": {
           "enable": true,
@@ -285,8 +285,7 @@
         "precommit_args": [
           "--gerrit-issue=${patch_issue}",
           "--gerrit-patchset=${patch_set}",
-          "--buildbucket-id=${buildbucket_build_id}",
-          "--bypass-skia-gold-functionality"
+          "--buildbucket-id=${buildbucket_build_id}"
         ],
         "resultdb": {
           "enable": true,

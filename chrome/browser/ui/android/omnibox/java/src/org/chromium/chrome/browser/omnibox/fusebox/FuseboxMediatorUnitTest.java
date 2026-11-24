@@ -76,10 +76,10 @@ import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.omnibox.FuseboxSessionState;
 import org.chromium.chrome.browser.omnibox.R;
+import org.chromium.chrome.browser.omnibox.fusebox.Fusebox.FuseboxLayoutMode;
+import org.chromium.chrome.browser.omnibox.fusebox.Fusebox.FuseboxState;
+import org.chromium.chrome.browser.omnibox.fusebox.Fusebox.PopupState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentRecyclerViewAdapter.FuseboxAttachmentType;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.PopupState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.FuseboxAttachmentButtonType;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.SetActiveModelSource;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.AnchoringMode;
@@ -137,6 +137,7 @@ import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyObservable.PropertyObserver;
+import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
 import org.chromium.url.GURL;
 import org.chromium.url.JUnitTestGURLs;
 
@@ -287,6 +288,7 @@ public class FuseboxMediatorUnitTest {
     @Mock private DriveFilePickerClient mDriveFilePickerClient;
     @Mock private DriveDisclaimerBridge.Natives mDriveDisclaimerBridgeNatives;
     @Mock private TabLoadingService mTabLoadingService;
+    @Mock private SimpleRecyclerViewAdapter mMockAdapter;
 
     @Captor private ArgumentCaptor<Intent> mIntentCaptor;
     @Captor private ArgumentCaptor<WindowAndroid.IntentCallback> mIntentCallbackCaptor;
@@ -487,59 +489,72 @@ public class FuseboxMediatorUnitTest {
     private FuseboxAttachment addAttachment(
             String title, String token, @FuseboxAttachmentType int attachmentType) {
         FuseboxAttachment attachment;
-        if (attachmentType == FuseboxAttachmentType.ATTACHMENT_TAB) {
-            Tab mockTab = mock(Tab.class);
-            when(mockTab.getTitle()).thenReturn(title);
-            when(mockTab.getId()).thenReturn(0);
-            when(mComposeboxQueryControllerBridge.addTabContextFromCache(0, false))
-                    .thenReturn(token);
-            attachment =
-                    FuseboxAttachment.forTab(
-                            mockTab,
-                            /* bypassTabCache= */ false,
-                            FuseboxAttachmentButtonType.TAB_PICKER,
-                            /* isSuggestedTab= */ false);
-        } else if (attachmentType == FuseboxAttachmentType.ATTACHMENT_FILE) {
-            doReturn(token).when(mComposeboxQueryControllerBridge).addFile(eq(title), any(), any());
-            attachment =
-                    FuseboxAttachment.forFile(
-                            null,
-                            title,
-                            "image/",
-                            new byte[0],
-                            SystemClock.elapsedRealtime(),
-                            FuseboxAttachmentButtonType.FILES);
-        } else if (attachmentType == FuseboxAttachmentType.ATTACHMENT_IMAGE) {
-            doReturn(token).when(mComposeboxQueryControllerBridge).addFile(eq(title), any(), any());
-            attachment =
-                    FuseboxAttachment.forImage(
-                            /* thumbnail= */ null,
-                            title,
-                            "image/",
-                            new byte[0],
-                            SystemClock.elapsedRealtime(),
-                            FuseboxAttachmentButtonType.CAMERA);
-        } else if (attachmentType == FuseboxAttachmentType.ATTACHMENT_IMAGE_NO_THUMBNAIL) {
-            doReturn(token).when(mComposeboxQueryControllerBridge).addFile(eq(title), any(), any());
-            attachment =
-                    FuseboxAttachment.forImageNoThumbnail(
-                            title,
-                            "image/",
-                            new byte[0],
-                            SystemClock.elapsedRealtime(),
-                            FuseboxAttachmentButtonType.CAMERA);
-        } else if (attachmentType == FuseboxAttachmentType.ATTACHMENT_PDF) {
-            doReturn(token).when(mComposeboxQueryControllerBridge).addFile(eq(title), any(), any());
-            attachment =
-                    FuseboxAttachment.forPdf(
-                            /* thumbnail= */ null,
-                            title,
-                            "application/pdf",
-                            new byte[0],
-                            SystemClock.elapsedRealtime(),
-                            FuseboxAttachmentButtonType.FILES);
-        } else {
-            throw new UnsupportedOperationException();
+        switch (attachmentType) {
+            case FuseboxAttachmentType.ATTACHMENT_TAB -> {
+                Tab mockTab = mock(Tab.class);
+                when(mockTab.getTitle()).thenReturn(title);
+                when(mockTab.getId()).thenReturn(0);
+                when(mComposeboxQueryControllerBridge.addTabContextFromCache(0, false))
+                        .thenReturn(token);
+                attachment =
+                        FuseboxAttachment.forTab(
+                                mockTab,
+                                /* bypassTabCache= */ false,
+                                FuseboxAttachmentButtonType.TAB_PICKER,
+                                /* isSuggestedTab= */ false);
+            }
+            case FuseboxAttachmentType.ATTACHMENT_FILE -> {
+                doReturn(token)
+                        .when(mComposeboxQueryControllerBridge)
+                        .addFile(eq(title), any(), any());
+                attachment =
+                        FuseboxAttachment.forFile(
+                                null,
+                                title,
+                                "image/",
+                                new byte[0],
+                                SystemClock.elapsedRealtime(),
+                                FuseboxAttachmentButtonType.FILES);
+            }
+            case FuseboxAttachmentType.ATTACHMENT_IMAGE -> {
+                doReturn(token)
+                        .when(mComposeboxQueryControllerBridge)
+                        .addFile(eq(title), any(), any());
+                attachment =
+                        FuseboxAttachment.forImage(
+                                /* thumbnail= */ null,
+                                title,
+                                "image/",
+                                new byte[0],
+                                SystemClock.elapsedRealtime(),
+                                FuseboxAttachmentButtonType.CAMERA);
+            }
+            case FuseboxAttachmentType.ATTACHMENT_IMAGE_NO_THUMBNAIL -> {
+                doReturn(token)
+                        .when(mComposeboxQueryControllerBridge)
+                        .addFile(eq(title), any(), any());
+                attachment =
+                        FuseboxAttachment.forImageNoThumbnail(
+                                title,
+                                "image/",
+                                new byte[0],
+                                SystemClock.elapsedRealtime(),
+                                FuseboxAttachmentButtonType.CAMERA);
+            }
+            case FuseboxAttachmentType.ATTACHMENT_PDF -> {
+                doReturn(token)
+                        .when(mComposeboxQueryControllerBridge)
+                        .addFile(eq(title), any(), any());
+                attachment =
+                        FuseboxAttachment.forPdf(
+                                /* thumbnail= */ null,
+                                title,
+                                "application/pdf",
+                                new byte[0],
+                                SystemClock.elapsedRealtime(),
+                                FuseboxAttachmentButtonType.FILES);
+            }
+            default -> throw new UnsupportedOperationException();
         }
 
         mMediator.uploadAndAddAttachment(attachment);
@@ -601,6 +616,19 @@ public class FuseboxMediatorUnitTest {
 
         assertFalse(mInput.getRequestTypeSupplier().hasObservers());
         verify(mAttachments).removeObserver(any());
+    }
+
+    @Test
+    public void endInput_destroysPreviousAdapter() {
+        when(mFuseboxAttachmentModelList.createAdapter(any())).thenReturn(mMockAdapter);
+        mAttachments = mFuseboxAttachmentModelList;
+        recreateMediator();
+        assertEquals(mMockAdapter, mModel.get(FuseboxProperties.ADAPTER));
+
+        mMediator.endInput();
+
+        verify(mMockAdapter).destroy();
+        assertNull(mModel.get(FuseboxProperties.ADAPTER));
     }
 
     @Test

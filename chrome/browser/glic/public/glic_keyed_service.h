@@ -52,6 +52,7 @@ namespace glic {
 
 class AuthController;
 class ContextualCueingService;
+class GlicActivityManager;
 class LegacyGlicActivityManager;
 class GlicActorPolicyChecker;
 class GlicEnabling;
@@ -92,7 +93,7 @@ class GlicKeyedService : public KeyedService, public base::SupportsUserData {
 
   // Returns this profile's provider spec. Its values don't change for the
   // lifetime of the profile.
-  const GlicProviderSpec& provider_spec();
+  const GlicProviderSpec& provider_spec() const;
 
 #if BUILDFLAG(IS_ANDROID)
   // Returns a Java object of the type GlicKeyedService for the given
@@ -283,6 +284,7 @@ class GlicKeyedService : public KeyedService, public base::SupportsUserData {
 
   bool HasActorPolicyChecker() const { return !!actor_policy_checker_; }
 
+  GlicActivityManager& activity_manager();
   LegacyGlicActivityManager& legacy_activity_manager();
 
  private:
@@ -322,12 +324,12 @@ class GlicKeyedService : public KeyedService, public base::SupportsUserData {
   std::unique_ptr<GlicActorPolicyChecker> actor_policy_checker_;
 
   std::unique_ptr<GlicEnabling> enabling_;
-  std::unique_ptr<GlicProviderSpec> provider_spec_;
   std::unique_ptr<GlicMetrics> metrics_;
   std::unique_ptr<GlicExperimentalOptInController> opt_in_controller_;
   std::unique_ptr<GlicClientDataStorage> client_data_storage_;
   // Is a GlicInstanceCoordinatorImpl.
   std::unique_ptr<GlicInstanceCoordinator> instance_coordinator_;
+  std::unique_ptr<GlicActivityManager> activity_manager_;
   std::unique_ptr<LegacyGlicActivityManager> legacy_activity_manager_;
   std::unique_ptr<GlicShareImageHandler> share_image_handler_;
 

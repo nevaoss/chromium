@@ -439,8 +439,6 @@ void CdmWrapperImpl<8>::OnStorageId(uint32_t version,
 // Specialization for cdm::ContentDecryptionModule_10 methods and
 // cdm::ContentDecryptionModule_11 methods.
 
-// TODO(b/425796122): Remove CDM_10 once shipped CDM manifests also list 11 in
-// x-cdm-interface-versions.
 template <>
 cdm::Status CdmWrapperImpl<10>::InitializeVideoDecoder(
     const cdm::VideoDecoderConfig_3& video_decoder_config) {
@@ -494,12 +492,15 @@ CdmWrapper* CdmWrapper::Create(CreateCdmFunc create_cdm_func,
                                const CdmConfig& cdm_config,
                                GetCdmHostFunc get_cdm_host_func,
                                void* user_data) {
+<<<<<<< HEAD
 #if defined(USE_NEVA_CDM)
   // TODO(sync-to-77) needs to be fixed
   static_assert(CheckSupportedCdmInterfaceVersions(8, 8),
 #else
   // TODO(b/425796122): Update to (11, 12) and remove 10 from CreateWithVersions
   // once shipped CDM manifests also list 11 in x-cdm-interface-versions.
+=======
+>>>>>>> 158.0.8127.0~1
   static_assert(CheckSupportedCdmInterfaceVersions(10, 12),
 #endif
                 "Mismatch between CdmWrapper::Create() and "

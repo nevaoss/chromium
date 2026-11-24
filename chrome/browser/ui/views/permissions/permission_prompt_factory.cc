@@ -39,11 +39,6 @@
 #include "third_party/blink/public/common/features_generated.h"
 #include "url/origin.h"
 
-#if BUILDFLAG(IS_MAC)
-#include "chrome/browser/ui/views/permissions/permission_prompt_notifications_mac.h"
-#include "chrome/browser/web_applications/os_integration/mac/web_app_shortcut_mac.h"
-#endif
-
 namespace {
 
 BrowserWindowInterface* GetBrowser(content::WebContents* web_contents) {
@@ -132,7 +127,8 @@ bool IsAmbientLoginRequest(permissions::PermissionPrompt::Delegate* delegate) {
                                      permissions::RequestType::kAmbientLogin;
 }
 
-bool ShouldUseChip(permissions::PermissionPrompt::Delegate* delegate) {
+bool ShouldUseChip(content::WebContents* web_contents,
+                   permissions::PermissionPrompt::Delegate* delegate) {
   // Ambient login requests are made without a user gesture, but always display
   // a permission chip in the omnibox.
   if (IsAmbientLoginRequest(delegate)) {
@@ -140,8 +136,16 @@ bool ShouldUseChip(permissions::PermissionPrompt::Delegate* delegate) {
   }
 
   // Otherwise, the permission request chip should not be shown if
-  // `delegate->Requests()` were requested without a user gesture.
-  if (!permissions::PermissionUtil::HasUserGesture(delegate)) {
+  // `delegate->Requests()` were requested without a user gesture. Secondary UI
+  // surfaces with their own location bar, such as the Contextual Tasks side
+  // panel, are exempt: their toolbar has no location icon for a chip-less
+  // prompt bubble to point at, so the request chip is always shown to identify
+  // the request and anchor the bubble. Some requests there never have a user
+  // gesture, e.g. voice search's microphone request via the Web Speech API.
+  // Note that this applies to any `WebContents` with `LocationBarOverrideData`,
+  // including web origins transferred from a tab into the side panel.
+  if (!permissions::PermissionUtil::HasUserGesture(delegate) &&
+      !::location_bar::LocationBarOverrideData::FromWebContents(web_contents)) {
     return false;
   }
 
@@ -250,7 +254,8 @@ std::unique_ptr<permissions::PermissionPrompt> CreateNormalPrompt(
                ? std::make_unique<EmbeddedPermissionPrompt>(web_contents,
                                                             delegate)
                : nullptr;
-  } else if (ShouldUseChip(delegate) && IsLocationBarDisplayed(web_contents)) {
+  } else if (ShouldUseChip(web_contents, delegate) &&
+             IsLocationBarDisplayed(web_contents)) {
     return std::make_unique<PermissionPromptChip>(web_contents, delegate);
   } else {
     return std::make_unique<PermissionPromptBubble>(web_contents, delegate);
@@ -317,21 +322,6 @@ std::unique_ptr<permissions::PermissionPrompt> CreatePermissionPrompt(
   if (ShouldIgnorePermissionRequest(web_contents, delegate)) {
     return nullptr;
   }
-
-#if BUILDFLAG(IS_MAC)
-  // If this is a notification permission request coming from a PWA (or a PWA
-  // associated tab), and this is the first time we show a permission prompt for
-  // this request, try using a OS-native permission prompt. If showing the
-  // prompt fails, it will trigger the view to be recreated for the request, at
-  // which point we end up in the normal code path below.
-  if (web_app::UseNotificationAttributionForWebAppShims() &&
-      !delegate->WasCurrentRequestAlreadyDisplayed() &&
-      PermissionPromptNotificationsMac::CanHandleRequest(web_contents,
-                                                         delegate)) {
-    return std::make_unique<PermissionPromptNotificationsMac>(web_contents,
-                                                              delegate);
-  }
-#endif
 
   if (web_app::AppBrowserController::IsWebApp(GetBrowser(web_contents))) {
     return CreatePwaPrompt(web_contents, delegate);

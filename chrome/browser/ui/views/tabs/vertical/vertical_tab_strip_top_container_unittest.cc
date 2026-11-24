@@ -11,12 +11,15 @@
 #include "base/memory/raw_ptr.h"
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
+#include "chrome/browser/ui/animation/browser_animation_controller.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
 #include "chrome/browser/ui/layout_constants.h"
+#include "chrome/browser/ui/tabs/organizer/organizer_panel_controller.h"
 #include "chrome/browser/ui/tabs/organizer/organizer_panel_utils.h"
 #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller_impl.h"
+#include "chrome/browser/ui/views/animations/organizer_panel_animations.h"
 #include "chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_segmented_control.h"
 #include "chrome/common/pref_names.h"
@@ -28,6 +31,7 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/actions/actions.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/compositor/layer.h"
 #include "ui/views/controls/button/label_button.h"
 #include "ui/views/widget/widget.h"
 
@@ -98,6 +102,8 @@ class VerticalTabStripTopContainerTest : public ChromeViewsTestBase {
   void TearDown() override {
     top_container_ = nullptr;
     widget_.reset();
+    organizer_panel_controller_.reset();
+    animation_controller_.reset();
     if (controller_) {
       controller_->SetDelegate(nullptr);
     }
@@ -107,6 +113,20 @@ class VerticalTabStripTopContainerTest : public ChromeViewsTestBase {
 
   void ResetTopContainer() {
     top_container_ = nullptr;
+    if (organizer_panel::IsOrganizerPanelFeatureEnabled()) {
+      if (!organizer_panel_controller_) {
+        animation_controller_ = std::make_unique<BrowserAnimationController>(
+            mock_browser_window_interface_);
+        animation_controller_->AddAnimationProvider(
+            std::make_unique<OrganizerPanelAnimations>());
+        organizer_panel_controller_ =
+            std::make_unique<OrganizerPanelController>(
+                mock_browser_window_interface_, /*root_action_item=*/nullptr);
+      }
+    } else {
+      organizer_panel_controller_.reset();
+      animation_controller_.reset();
+    }
     top_container_ =
         widget_->SetContentsView(std::make_unique<VerticalTabStripTopContainer>(
             controller_.get(), action_item_.get(),
@@ -152,6 +172,8 @@ class VerticalTabStripTopContainerTest : public ChromeViewsTestBase {
   raw_ptr<VerticalTabStripTopContainer> top_container_;
   TestVerticalTabStripDelegate test_delegate_;
   std::unique_ptr<tabs::VerticalTabStripStateController> controller_;
+  std::unique_ptr<BrowserAnimationController> animation_controller_;
+  std::unique_ptr<OrganizerPanelController> organizer_panel_controller_;
   ui::UnownedUserDataHost unowned_user_data_host_;
   TestingProfile profile_;
   MockBrowserWindowInterface mock_browser_window_interface_;
@@ -390,33 +412,28 @@ TEST_F(VerticalTabStripTopContainerTest,
   EXPECT_EQ(top_container()->height(), collapsing_height);
 
   // As soon as the expand-on-hover animation starts (even below the snap
-  // width), the combo button is visible and rendered at the expanded width.
+  // width), the combo button is visible and rendered at the expanded width,
+  // with its layer clipped to the visible bounds within the top container.
   LayoutView(tabs::kVerticalTabStripCollapseSnapWidth - 10);
   EXPECT_TRUE(combo_button()->GetVisible());
+  ASSERT_NE(combo_button()->layer(), nullptr);
+  EXPECT_FALSE(combo_button()->layer()->clip_rect().IsEmpty());
 
-  // When fully expanded on hover, the combo button is visible and fits within
-  // the container width.
-  top_container()->SetSize(gfx::Size(300, 40));
-  views::ProposedLayout layout = top_container()->CalculateProposedLayout(
-      views::SizeBounds(top_container()->size()));
-  auto it = std::ranges::find(layout.child_layouts, combo_button(),
-                              &views::ChildLayout::child_view);
-  ASSERT_NE(it, layout.child_layouts.end());
-  EXPECT_TRUE(it->visible);
-  EXPECT_LE(it->bounds.right(), top_container()->width());
+  // When fully expanded on hover, the combo button is visible, fits within
+  // the container width, and has no layer clip rect so focus rings are not
+  // clipped.
+  LayoutView(300);
+  EXPECT_TRUE(combo_button()->GetVisible());
+  EXPECT_LE(combo_button()->bounds().right(), top_container()->width());
+  EXPECT_TRUE(combo_button()->layer()->clip_rect().IsEmpty());
 
   // When expand on hover is disabled while collapsed, combo button is
-  // laid out vertically inside the collapsed width.
+  // laid out vertically inside the collapsed width with no layer clip rect.
   controller()->SetExpandOnHoverEnabled(false);
-  top_container()->SetSize(
-      gfx::Size(tabs::kVerticalTabStripCollapseSnapWidth - 10, 40));
-  layout = top_container()->CalculateProposedLayout(
-      views::SizeBounds(top_container()->size()));
-  it = std::ranges::find(layout.child_layouts, combo_button(),
-                         &views::ChildLayout::child_view);
-  ASSERT_NE(it, layout.child_layouts.end());
-  EXPECT_TRUE(it->visible);
-  EXPECT_LE(it->bounds.right(), top_container()->width());
+  LayoutView(tabs::kVerticalTabStripCollapseSnapWidth - 10);
+  EXPECT_TRUE(combo_button()->GetVisible());
+  EXPECT_LE(combo_button()->bounds().right(), top_container()->width());
+  EXPECT_TRUE(combo_button()->layer()->clip_rect().IsEmpty());
 }
 
 TEST_F(VerticalTabStripTopContainerTest,

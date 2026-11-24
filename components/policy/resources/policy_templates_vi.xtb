@@ -1546,6 +1546,23 @@ Nếu bạn không đặt chính sách này, thì tính năng Nhấp để gọi
       Xin lưu ý rằng chính sách này chặn JavaScript dựa trên việc nguồn gốc của tài liệu cấp cao nhất (thường là URL của trang cũng hiển thị trong thanh địa chỉ) có khớp với mẫu nào hay không. Do đó, chính sách này không phù hợp cho mục đích giảm thiểu các cuộc tấn công vào chuỗi cung ứng web. Ví dụ: Việc cung cấp mẫu "https://[*.]foo.com/" sẽ không ngăn một trang (được lưu trữ trên https://example.com chẳng hạn) chạy tập lệnh được tải từ https://www.foo.com/example.js. Hơn nữa, việc cung cấp mẫu "https://example.com/" sẽ không ngăn tài liệu trên https://example.com chạy tập lệnh nếu đó không phải là tài liệu cấp cao nhất nhưng được nhúng dưới dạng khung phụ vào một trang được lưu trữ trên nguồn gốc khác (chẳng hạn như https://www.bar.com).</translation>
 <translation id="1942015922182679826">Cho phép xoá mật khẩu không giải mã được</translation>
 <translation id="1942626390957213764">Tắt trung tâm chia sẻ trên máy tính</translation>
+<translation id="1943243146727870858">Tắt tính năng đăng nhập một lần bằng <ph name="EXTENSIBLE_ENTERPRISE_SSO_PRODUCT_NAME" /> đối với các nhà cung cấp dịch vụ danh tính có trong danh sách.
+
+Khi bạn thêm giá trị <ph name="POLICY_VALUE_ALL" />, tất cả các nhà cung cấp dịch vụ danh tính được hỗ trợ tính năng SSO sẽ bị tắt.
+
+Khi bạn thêm giá trị <ph name="POLICY_VALUE_MICROSOFT" />, nhà cung cấp dịch vụ danh tính trên đám mây của Microsoft® trong Chrome sẽ không được hỗ trợ tính năng đăng nhập một lần.
+
+Nếu bạn không đặt chính sách này, tất cả các nhà cung cấp dịch vụ danh tính được <ph name="PRODUCT_NAME" /> hỗ trợ sẽ được bật.
+
+Đối với nhà cung cấp dịch vụ danh tính được bật trong <ph name="PRODUCT_NAME" /> và được quản trị viên định cấu hình trên thiết bị, những người dùng từng đăng nhập bằng nhà cung cấp dịch vụ danh tính đó, trên bất kỳ ứng dụng nào hỗ trợ <ph name="EXTENSIBLE_ENTERPRISE_SSO_PRODUCT_NAME" />, đều có thể tự động đăng nhập vào các tài sản web bằng nhà cung cấp dịch vụ danh tính đó. Thông tin liên quan đến thông tin xác thực của người dùng được truyền đến nhà cung cấp dịch vụ danh tính trên đám mây của người dùng cho từng sự kiện xác thực.
+
+Lưu ý:
+
+<ph name="PRODUCT_NAME" /> không hỗ trợ tính năng Đăng nhập một lần bằng <ph name="EXTENSIBLE_ENTERPRISE_SSO_PRODUCT_NAME" /> ở chế độ ẩn danh hoặc chế độ khách.
+
+<ph name="PRODUCT_NAME" /> chỉ hỗ trợ tính năng Đăng nhập một lần bằng <ph name="EXTENSIBLE_ENTERPRISE_SSO_PRODUCT_NAME" /> đối với các nhà cung cấp dịch vụ danh tính sau đây: Microsoft, Okta, Ping.
+
+Tính năng này có trên <ph name="MAC_OS_NAME" /> 10.15 trở lên.</translation>
 <translation id="1943628907052340534">Không mở <ph name="PRODUCT_NAME" /> khi người dùng đăng nhập vào <ph name="MS_WIN_NAME" /></translation>
 <translation id="194407941132272412">Tắt tính năng tách biệt trang web đối với tất cả trang web nhưng cho phép người dùng bật tính năng này</translation>
 <translation id="1945994447126139909">Chính sách doanh nghiệp này là để áp dụng trong thời gian ngắn và sẽ bị loại bỏ trong phiên bản <ph name="PRODUCT_NAME" /> 88.
@@ -3531,6 +3548,8 @@ Nếu bạn không đặt hoặc đặt chính sách này thành tắt, thì tr�
 <translation id="3146711617256415776">Không cho phép dùng các giọng nói của tính năng chuyển văn bản sang lời nói trên mạng nâng cao khi dùng tính năng Chọn để nói</translation>
 <translation id="315013437951136266">Bật tính năng <ph name="IP_PROTECTION_NAME" />.</translation>
 <translation id="3150351525324499342">Không hiển thị biểu tượng <ph name="PRODUCT_NAME" /> trên thanh công cụ theo mặc định mà để người dùng chọn</translation>
+<translation id="3151501327418961907">Khi bạn không đặt chính sách này hoặc đặt thành 0, chính sách <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> và chính sách <ph name="PROXY_PROVISIONING_DOMAINS_POLICY_NAME" /> sẽ chỉ được áp dụng ở phạm vi người dùng đối với người dùng liên kết trên trình duyệt được quản lý.
+Khi bạn đặt chính sách này thành 1, chính sách <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> và chính sách <ph name="PROXY_PROVISIONING_DOMAINS_POLICY_NAME" /> sẽ được áp dụng ở phạm vi người dùng, ngay cả khi người dùng đó chưa được liên kết.</translation>
 <translation id="3152135410085709340">Cho phép truy cập tệp cục bộ vào URL file:// trên các trang web này trong Trình xem PDF</translation>
 <translation id="3152425128389603870">Cho phép Màn hình hợp nhất và chính sách này bật theo mặc định.</translation>
 <translation id="3159375329008977062">Người dùng được phép xuất/nhập các vùng chứa Crostini qua giao diện người dùng</translation>
@@ -4363,6 +4382,21 @@ Bạn cũng cần bật tuỳ chọn chuyển dữ liệu bằng Takeout để �
 <translation id="370314752761795411">Khởi động <ph name="PRODUCT_NAME" /> bằng <ph name="MS_WIN_NAME" /></translation>
 <translation id="3711895659073496551">Tạm ngừng</translation>
 <translation id="3712861436661566358">Buộc phân tách hồ sơ</translation>
+<translation id="3715589988915487768">Định cấu hình danh sách các Miền cấp phép (PvD) mà <ph name="PRODUCT_NAME" /> sẽ sử dụng để tìm nạp cấu hình proxy một cách linh động.
+
+Chính sách này cho phép chỉ định danh sách tên miền hoặc URI tài nguyên đại diện cho các Miền cấp phép theo định nghĩa trong RFC 8801 ("Khám phá tên miền và dữ liệu cấp phép"). Đối với mỗi PvD, trình duyệt sẽ phân giải cấu hình JSON tương ứng bằng cách gửi một yêu cầu HTTPS đến đường dẫn điểm cuối phổ biến: "https://[<ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />]/.well-known/pvd".
+
+Mỗi mục trong danh sách chỉ định:
+
+* <ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />: Giá trị nhận dạng của Miền cấp phép (một tên miền).
+
+* <ph name="PROXY_PROVISIONING_DOMAINS_AUTH_CONFIG" />: Cấu hình xác thực không bắt buộc. Nếu bạn không định cấu hình hoặc đặt thành "none" (không có), thì hệ thống sẽ không thực hiện quy trình xác thực. Khi được đặt thành "profile_bearer_token", trình duyệt sẽ truy xuất một mã truy cập OAuth2 có phạm vi được cung cấp cho tài khoản chính đã đăng nhập và đính kèm mã đó vào tiêu đề "Authorization" dưới dạng mã thông báo "Bearer".
+
+* <ph name="PROXY_PROVISIONING_DOMAINS_EXTRA_HEADERS" />: Một danh sách không bắt buộc gồm các tiêu đề HTTP tuỳ chỉnh cần đưa vào khi truy vấn điểm cuối PvD. Có thể chèn các giá trị động, chẳng hạn như "profile_id" (đại diện cho một giá trị nhận dạng riêng biệt và ổn định của hồ sơ trình duyệt trên thiết bị, cho phép nhắm mục tiêu cấu hình theo từng hồ sơ) hoặc "accept_language" (đại diện cho các ngôn ngữ ưu tiên của trình duyệt).
+
+Các cấu hình đã tìm nạp được phân giải theo lược đồ RFC 8801. Chỉ các quy tắc định tuyến liên quan đến cấu hình proxy và các proxy từ tải trọng JSON của PvD mới được áp dụng. Nếu bạn không đặt chính sách này, thì hệ thống sẽ không truy vấn hoặc sử dụng Miền cấp phép nào để tìm nạp cấu hình proxy.
+
+Bạn chỉ có thể đặt chính sách này ở cấp người dùng khi người dùng đó liên kết với trình duyệt, nếu trình duyệt đó không được quản lý hoặc nếu chính sách <ph name="ENABLE_PROXY_OVERRIDE_RULES_FOR_ALL_USERS_POLICY_NAME" /> được đặt thành 1.</translation>
 <translation id="3719826155360621982">Trang chủ</translation>
 <translation id="3724039569609354541">Sử dụng hành vi mặc định khi xác định xem các trang web có thể gửi yêu cầu đến thiết bị đầu cuối trên mạng hay không</translation>
 <translation id="3726715125055227414">Chính sách này định cấu hình <ph name="PRODUCT_OS_NAME" /> để sắp xếp thứ tự các thuật toán thoả thuận về khoá được ưu tiên (nhóm được hỗ trợ) trong giao thức TLS 1.3 nhằm thể hiện mức độ ưu tiên đối với các thuật toán đã được một cơ chế tuân thủ cụ thể phê duyệt khi gửi yêu cầu mạng từ màn hình đăng nhập.
@@ -5620,6 +5654,27 @@ Bạn phải tự chịu rủi ro khi đặt giá trị cao hơn giá trị mặ
 Xin lưu ý rằng các giới hạn được áp dụng chịu ảnh hưởng bởi <ph name="ALLOW_SOCKET_POOL_SIZE_RANDOMIZATION_FOR_PROXIES_POLICY_NAME" />.</translation>
 <translation id="4528981768990874684">Tắt tính năng <ph name="IP_PROTECTION_NAME" />.</translation>
 <translation id="453031441196755904">Chính sách này không còn dùng nữa.</translation>
+<translation id="4531088355818260318">Chính sách này cho phép xác định danh sách các quy tắc để chèn các tiêu đề HTTP tuỳ chỉnh vào những yêu cầu web khớp với các mẫu URL cụ thể. Các tiêu đề được thiết lập theo chính sách này sẽ được ưu tiên hơn những tiêu đề vốn có trong yêu cầu, cũng như những thay đổi mà người dùng hoặc tiện ích cố gắng thực hiện.
+
+Một trường hợp sử dụng phổ biến của chính sách này là thực thi các chế độ kiểm soát quyền truy cập của đối tượng thuê bằng cách chèn các tiêu đề tuỳ chỉnh (ví dụ: <ph name="EXAMPLE_HEADER_NAME" />).
+
+Chính sách này chấp nhận một danh sách các Quy tắc. Mỗi quy tắc chứa:
+
+* <ph name="PATTERNS_KEY" />: Danh sách các mẫu URL cần so khớp. Xem cách định dạng mẫu URL ( https://support.google.com/chrome/a?p=url_blocklist_filter_format ).
+
+* <ph name="HEADERS_KEY" />: Danh sách các đối tượng đại diện cho tiêu đề cần chèn, mỗi đối tượng chứa:
+
+  * <ph name="HEADER_NAME_KEY" />: Tên của tiêu đề cần chèn.
+
+  * <ph name="HEADER_VALUE_KEY" />: Giá trị của tiêu đề cần chèn.
+
+Nếu nhiều quy tắc khớp với một yêu cầu, thì các tiêu đề trong tất cả các quy tắc trùng khớp sẽ được áp dụng. Trong trường hợp có nhiều tiêu đề cùng tên, tiêu đề có mẫu URL cụ thể nhất sẽ được áp dụng. Nếu các mẫu có mức độ cụ thể như nhau, thì mẫu xuất hiện cuối cùng trong danh sách sẽ được áp dụng.
+
+Tên tiêu đề phải tuân thủ RFC 2616 ( https://www.rfc-editor.org/rfc/rfc2616 ). Giá trị tiêu đề không được chứa các ký hiệu NUL, CR hoặc LF. Kích thước của từng tiêu đề không được vượt quá 8 KB. Tiêu đề và mẫu URL không hợp lệ sẽ bị bỏ qua.
+
+Chính sách này chỉ áp dụng cho tổng cộng 500 mẫu URL trên tất cả các quy tắc. Mỗi quy tắc có thể chứa tối đa 20 tiêu đề. Các mẫu và tiêu đề vượt quá ngưỡng này sẽ bị bỏ qua.
+
+Lưu ý: Nếu một mẫu URL khớp với các giao thức không được mã hoá (http://, ws:// hoặc khi giao thức bị lược bỏ), thì các tiêu đề đã định cấu hình có thể được truyền dưới dạng văn bản thuần tuý qua một kênh không được mã hoá và có thể bị các đối tượng theo dõi mạng phát hiện. Để bảo vệ các giá trị tiêu đề nhạy cảm hoặc có tính chất định danh, hãy giới hạn mẫu URL ở những giao thức được mã hoá (https:// hoặc wss://).</translation>
 <translation id="4531706050939927436">Các ứng dụng Android có thể bị buộc cài đặt từ Bảng điều khiển dành cho quản trị viên của Google bằng Google Play. Các ứng dụng đó không sử dụng chính sách này.</translation>
 <translation id="4534500438517478692">Tên giới hạn Android:</translation>
 <translation id="4541530620466526913">Tài khoản trong thiết bị</translation>
@@ -7201,6 +7256,7 @@ Có nhiều chính sách liệt kê những nguồn gốc ảnh hưởng đến 
 
       Nếu bạn không đặt chính sách này hoặc đặt chính sách thành false, thì thông tin sẽ không được báo cáo.
       Nếu bạn đặt chính sách này thành true, thì các ứng dụng và mức sử dụng của thiết bị sẽ được báo cáo.</translation>
+<translation id="5418723809273651607">Nhà cung cấp dịch vụ danh tính trên đám mây Ping®</translation>
 <translation id="5420245232720940848">Tắt tính năng tạo đường hầm dựa trên PCIe cho các thiết bị ngoại vi Thunderbolt/USB4, các thiết bị ngoại vi sẽ bị hạn chế về hiệu suất hoạt động</translation>
 <translation id="5420673997623782432">Chặn quyền truy cập vào dữ liệu định vị vị trí của hệ thống đối với tất cả máy khách</translation>
 <translation id="5420774177427557782">Kiểm soát xem máy ảo sử dụng cấu hình này có thể được cài đặt và chạy (<ph name="INSTALL_ALLOWED" />), chạy nhưng không được cài đặt (<ph name="RUN_ALLOWED" />) hay không thể chạy (<ph name="BLOCKED" />). Xin lưu ý rằng để cài đặt máy ảo, bạn cũng phải đặt khoá installer_image_x86_64. Việc loại bỏ hoàn toàn một cấu hình sẽ ngầm đặt chế độ cài đặt này thành <ph name="BLOCKED" />, ngăn máy ảo chạy mà không có chính sách.</translation>
@@ -11883,6 +11939,7 @@ Tính năng này sẽ chỉ có trên kênh Canary.
 
 Nếu bạn bật hoặc không đặt chính sách, thì người dùng có thể truy cập vào trang.
 Nếu bạn tắt chính sách, thì trang sẽ bị chặn.</translation>
+<translation id="8266506455952754231">Kiểm soát danh sách những người dùng được quản lý có thể đặt chính sách <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> và chính sách <ph name="PROXY_PROVISIONING_DOMAINS_POLICY_NAME" />.</translation>
 <translation id="8266778278542911985">Nếu bạn đặt chính sách này thành 3, thì các trang web có thể yêu cầu quyền truy cập vào cổng nối tiếp. Nếu bạn đặt chính sách này thành 2, quyền truy cập vào cổng nối tiếp sẽ bị từ chối.
 
       Nếu bạn không đặt chính sách này, thì các trang web có thể yêu cầu quyền truy cập nhưng người dùng được quyền thay đổi tùy chọn cài đặt này.</translation>

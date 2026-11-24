@@ -17,7 +17,6 @@ import type {SearchboxInputElement} from '//resources/cr_components/searchbox/se
 import {kDefaultSelection} from '//resources/cr_components/searchbox/searchbox_match.js';
 import type {SearchboxMixinInterface} from '//resources/cr_components/searchbox/searchbox_mixin.js';
 import {ControlKeyState, SearchboxMixin} from '//resources/cr_components/searchbox/searchbox_mixin.js';
-import type {OmniboxPopupSelection, SelectionDirection, SelectionStep} from '//resources/cr_components/searchbox/searchbox_selection_mixin.js';
 import {selectionIsNativelySupported, selectionsEqual} from '//resources/cr_components/searchbox/searchbox_selection_mixin.js';
 import {afterNextPaint, markOnce, sanitizeTextForPaste} from '//resources/cr_components/searchbox/utils.js';
 import {I18nMixinLit} from '//resources/cr_elements/i18n_mixin_lit.js';
@@ -28,7 +27,7 @@ import {isMac} from '//resources/js/platform.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import {SelectionLineState} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import type {AutocompleteMatch, AutocompleteResult, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerInterface as SearchboxPageHandlerInterface, UrlEmphasis} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {AutocompleteMatch, AutocompleteResult, OmniboxPopupSelection, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerInterface as SearchboxPageHandlerInterface, SelectionDirection, SelectionStep, UrlEmphasis} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
 
 import {browserProxyFactory, MatchesUpdate, OmniboxEscapeAction} from './omnibox_popup.mojom-webui.js';
@@ -1157,6 +1156,7 @@ export class OmniboxPopupSearchboxElement extends
     const newValue = input.value.substring(0, start) + sanitizedText +
         input.value.substring(end);
 
+    this.syncTextfieldModelWithInput_(input.value);
     this.textfieldModel_.selectRange(oldSelection);
     this.textfieldModel_.paste(sanitizedText);
     this.lastInputText_ = newValue;
@@ -1205,6 +1205,7 @@ export class OmniboxPopupSearchboxElement extends
         this.currentSequenceNum_, isCut, oldValue, {start, end});
 
     if (isCut) {
+      this.syncTextfieldModelWithInput_(oldValue);
       this.textfieldModel_.selectRange({start, end});
       this.textfieldModel_.cut();
       this.lastInputText_ = this.textfieldModel_.text;
@@ -1227,6 +1228,23 @@ export class OmniboxPopupSearchboxElement extends
         this.clearAutocompleteMatches();
       }
     }
+  }
+
+  /**
+   * Adopts `text`, the text `#input` shows, as the text of `textfieldModel_` if
+   * the model holds different text, so that an edit applied to the model (e.g.
+   * a cut or paste) acts on the text the user sees. `#input` can show text that
+   * was never recorded in the model, e.g. a match previewed via arrow-key
+   * navigation or inline autocompletion. The switch is recorded as an edit of
+   * its own, so undo first reverts the cut or paste, then goes back to the
+   * model's previous text (e.g. what the user typed), then through the earlier
+   * edits.
+   */
+  private syncTextfieldModelWithInput_(text: string) {
+    if (this.textfieldModel_.text === text) {
+      return;
+    }
+    this.textfieldModel_.replaceAllText(text);
   }
 
   protected onInputCopy_(e: ClipboardEvent) {
@@ -1608,10 +1626,14 @@ export class OmniboxPopupSearchboxElement extends
     if (!this.userInputInProgress_) {
       // Clear permanent URL text and transition to user input mode with empty
       // text.
+      this.fullUrlShown_ = false;
       this.$.input.setInputText('');
       this.userInputInProgress_ = true;
       this.hasUserInput_ = false;
       this.lastInputText_ = '';
+      this.lastInputSelection_ = {start: 0, end: 0};
+      this.textfieldModel_.setInitialText('', {start: 0, end: 0});
+      this.updateEditHistoryState_();
     } else {
       // Preserve existing user draft text and select all of it.
       this.getInputElement().select();

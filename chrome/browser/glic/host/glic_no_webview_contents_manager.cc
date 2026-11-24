@@ -63,6 +63,7 @@
 #endif
 
 #if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/actor/android/background_tabs/offscreen_rendering_manager_android.h"
 #include "chrome/browser/glic/android/settings/glic_navigation_utils_android.h"
 #include "ui/android/view_android.h"
 #include "ui/gfx/geometry/size_conversions.h"
@@ -679,7 +680,14 @@ GlicNoWebviewContentsManager::GlicNoWebviewContentsManager(
   UpdateForProfileReadyState(/*is_initial=*/true);
 }
 
-GlicNoWebviewContentsManager::~GlicNoWebviewContentsManager() = default;
+GlicNoWebviewContentsManager::~GlicNoWebviewContentsManager() {
+#if BUILDFLAG(IS_ANDROID)
+  if (guest_contents() &&
+      base::FeatureList::IsEnabled(features::kGlicAndroidOffscreenRendering)) {
+    actor::StopOffscreenRenderingForWebContents(guest_contents());
+  }
+#endif
+}
 
 content::WebContents* GlicNoWebviewContentsManager::guest_contents() const {
   return privileged_guest_contents_ ? privileged_guest_contents_->web_contents()
@@ -787,6 +795,38 @@ void GlicNoWebviewContentsManager::SetErrorCallback(
   if (error_callback_ && ShouldReloadOnShow()) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
                                                              error_callback_);
+  }
+}
+
+void GlicNoWebviewContentsManager::WaitForLoad(
+    base::OnceCallback<void(bool failed)> callback) {
+  const mojom::WebClientState state = web_client_state();
+  if (state == mojom::WebClientState::kResponsive ||
+      state == mojom::WebClientState::kUnresponsive) {
+    std::move(callback).Run(/*failed=*/false);
+    return;
+  }
+  if (HasClientLoadFailed()) {
+    std::move(callback).Run(/*failed=*/true);
+    return;
+  }
+  pending_wait_for_load_callbacks_.push_back(std::move(callback));
+}
+
+void GlicNoWebviewContentsManager::ResolvePendingWaitForLoadCallbacks() {
+  if (pending_wait_for_load_callbacks_.empty()) {
+    return;
+  }
+  const mojom::WebClientState state = web_client_state();
+  const bool is_ready = state == mojom::WebClientState::kResponsive ||
+                        state == mojom::WebClientState::kUnresponsive;
+  const bool is_failed = HasClientLoadFailed();
+  if (!is_ready && !is_failed) {
+    return;
+  }
+  auto callbacks = std::exchange(pending_wait_for_load_callbacks_, {});
+  for (auto& cb : callbacks) {
+    std::move(cb).Run(is_failed);
   }
 }
 
@@ -903,6 +943,7 @@ void GlicNoWebviewContentsManager::UpdateClientLoadFailed() {
   if (host_) {
     host_->SetClientLoadFailed(HasClientLoadFailed());
   }
+  ResolvePendingWaitForLoadCallbacks();
 }
 
 void GlicNoWebviewContentsManager::UpdateDisplayState() {
@@ -912,6 +953,7 @@ void GlicNoWebviewContentsManager::UpdateDisplayState() {
     TransitionTo(desired);
   }
   UpdateLoadingTimer();
+  ResolvePendingWaitForLoadCallbacks();
 }
 
 void GlicNoWebviewContentsManager::OnGuestNavigationStarted() {

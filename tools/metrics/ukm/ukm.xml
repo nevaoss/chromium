@@ -2849,7 +2849,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="Autofill.AiAmountExtraction.ApcFetchResult" singular="true">
-  <owner>jamessun@google.com</owner>
+  <owner>vinnypersky@google.com</owner>
   <owner>payments-autofill-team@google.com</owner>
   <summary>
     Records whether the Annotated Page Content (APC) fetch was successful. APC
@@ -2873,7 +2873,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="Autofill.AiAmountExtraction.Result" singular="true">
-  <owner>jamessun@google.com</owner>
+  <owner>vinnypersky@google.com</owner>
   <owner>payments-autofill-team@google.com</owner>
   <summary>
     Records the final result of the AI-based checkout amount extraction process.
@@ -2948,8 +2948,9 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="Autofill.AmountExtractionComplete" singular="true">
-  <owner>jamessun@google.com</owner>
   <owner>longsheng@google.com</owner>
+  <owner>vinnypersky@google.com</owner>
+  <owner>payments-autofill-team@google.com</owner>
   <summary>
     Records the result of the amount extraction process. This process is to
     search for the final checkout amount from the merchants' checkout page and
@@ -3001,7 +3002,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="Autofill.Bnpl.AiAmountExtraction.AmountInIssuerRange">
-  <owner>jamessun@google.com</owner>
+  <owner>vinnypersky@google.com</owner>
   <owner>payments-autofill-team@google.com</owner>
   <summary>
     Records whether the AI-based checkout amount is within the issuer's
@@ -23123,26 +23124,6 @@ be describing additional metrics about the same event.
     <summary>
       Whether the highlighting of a set of text fragments was a complete success
       or not.
-    </summary>
-  </metric>
-</event>
-
-<event name="SharedStorage.Worklet.OnDestroyed">
-  <owner>yaoxia@chromium.org</owner>
-  <owner>cammie@chromium.org</owner>
-  <summary>
-    Metrics for Shared Storage worklet. Each document can create zero or more
-    worklets, and the recorded URL represents the URL of the top-level page that
-    creates the worklet. (Note: The Storage.SharedStorage.Worklet.NumPerPage
-    histogram tracks the number of worklets per page.) Recorded when a worklet
-    is destroyed. See https://wicg.github.io/shared-storage/#worklet.
-  </summary>
-  <metric name="AbsoluteUsefulResourceDuration">
-    <summary>
-      The total duration (ms) that a Shared Storage worklet is actively
-      processing operations (i.e, from the worklet's creation until either its
-      last operation completes or it is destroyed). The number is exponentially
-      bucketed.
     </summary>
   </metric>
 </event>

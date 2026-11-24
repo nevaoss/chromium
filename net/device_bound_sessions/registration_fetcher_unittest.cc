@@ -25,6 +25,7 @@
 #include "base/test/gmock_callback_support.h"
 #include "base/test/gmock_expected_support.h"
 #include "base/test/metrics/histogram_tester.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "base/test/values_test_util.h"
 #include "components/unexportable_keys/background_task_origin.h"
@@ -760,13 +761,9 @@ TEST_F(RegistrationTest, SigningKeyGenerationFailure) {
 TEST_F(RegistrationTest, AttestationKeyGenerationFailure) {
   unexportable_keys::MockUnexportableKeyService mock_service;
 
-  // Required because StartCreateTokenAndFetch concurrently calls both
-  // GenerateSigningKeySlowlyAsync and GenerateAttestationKeySlowlyAsync.
-  // Expecting it without invoking its callback is enough because the
-  // attestation failure immediately aborts the fetch flow, and omitting
-  // real service delegation prevents dispatching background tasks to the
-  // thread pool that could outlive the test.
-  EXPECT_CALL(mock_service, GenerateSigningKeySlowlyAsync);
+  // The attestation key fails synchronously, so the fetch has already failed
+  // and the fetcher must not start generating a signing key.
+  EXPECT_CALL(mock_service, GenerateSigningKeySlowlyAsync).Times(0);
 
   // Mock attestation key generation to fail
   EXPECT_CALL(mock_service, GenerateAttestationKeySlowlyAsync)
@@ -791,6 +788,43 @@ TEST_F(RegistrationTest, AttestationKeyGenerationFailure) {
   callback.WaitForCall();
 
   EXPECT_EQ(callback.outcome().SessionErrorForTesting()->type,
+            SessionError::kAttestationKeyGenerationError);
+}
+
+// `UnexportableKeyServiceProxied` fails requests synchronously once its Mojo
+// pipe is disconnected, and `SessionServiceImpl` deletes the fetcher from the
+// completion callback. The fetcher must not be used after that.
+TEST_F(RegistrationTest, AttestationKeyGenerationFailureDeletesFetcher) {
+  unexportable_keys::MockUnexportableKeyService mock_service;
+  EXPECT_CALL(mock_service, GenerateAttestationKeySlowlyAsync)
+      .WillOnce(RunOnceCallback<2>(base::unexpected(
+          unexportable_keys::ServiceError::kOperationCancelled)));
+  EXPECT_CALL(mock_service, GenerateSigningKeySlowlyAsync).Times(0);
+
+  auto isolation_info = IsolationInfo::CreateTransient(/*nonce=*/std::nullopt);
+  auto request_param = RegistrationRequestParam::CreateForTesting(
+      GURL("https://a.test"), /*session_identifier=*/std::nullopt, kChallenge,
+      /*authorization=*/std::nullopt, AttestationMode::kRequired);
+
+  std::unique_ptr<RegistrationFetcher> fetcher =
+      RegistrationFetcher::CreateFetcher(
+          request_param, session_service(), mock_service, context_.get(),
+          isolation_info, isolation_info.site_for_cookies(),
+          /*net_log_source=*/std::nullopt,
+          /*original_request_initiator=*/std::nullopt,
+          unexportable_keys::BackgroundTaskPriority::kBestEffort);
+
+  std::optional<RegistrationResult> result;
+  fetcher->StartCreateTokenAndFetch(
+      request_param, CreateAlgArray(),
+      base::BindLambdaForTesting(
+          [&](RegistrationFetcher*, RegistrationResult registration_result) {
+            fetcher.reset();
+            result = std::move(registration_result);
+          }));
+
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result->SessionErrorForTesting()->type,
             SessionError::kAttestationKeyGenerationError);
 }
 
@@ -1962,6 +1996,69 @@ TEST_F(RegistrationTest, ServerError500) {
 
   EXPECT_EQ(callback.outcome().SessionErrorForTesting()->type,
             SessionError::kTransientHttpError);
+}
+
+TEST_F(RegistrationTest, ServerError429) {
+  crypto::ScopedFakeUnexportableKeyProvider scoped_fake_key_provider;
+  server_.RegisterRequestHandler(base::BindRepeating(
+      &ReturnResponse, HTTP_TOO_MANY_REQUESTS, kBasicValidJson));
+  ASSERT_TRUE(server_.Start());
+
+  TestRegistrationCallback callback;
+
+  RegistrationRequestParam param = GetBasicParam();
+  std::unique_ptr<RegistrationFetcher> fetcher =
+      RegistrationFetcher::CreateFetcher(
+          param, session_service(), unexportable_key_service(), context_.get(),
+          IsolationInfo::CreateTransient(/*nonce=*/std::nullopt),
+          SiteForCookies(),
+          /*net_log_source=*/std::nullopt,
+          /*original_request_initiator=*/std::nullopt,
+          unexportable_keys::BackgroundTaskPriority::kBestEffort);
+  fetcher->StartCreateTokenAndFetch(param, CreateAlgArray(),
+                                    callback.callback());
+  callback.WaitForCall();
+
+  EXPECT_EQ(callback.outcome().SessionErrorForTesting()->type,
+            SessionError::kTransientHttpError);
+}
+
+// A 429 on refresh is a transient error that does not terminate the session
+// and is not retried immediately.
+TEST_F(RegistrationTest, ServerError429OnRefresh) {
+  base::test::ScopedFeatureList scoped_feature_list(
+      features::kDeviceBoundSessionsRetryTransientRefreshErrors);
+  crypto::ScopedFakeUnexportableKeyProvider scoped_fake_key_provider;
+
+  int request_count = 0;
+  server_.RegisterRequestHandler(base::BindLambdaForTesting(
+      [&request_count](const test_server::HttpRequest& request) {
+        request_count++;
+        return ReturnResponse(HTTP_TOO_MANY_REQUESTS, "", request);
+      }));
+  ASSERT_TRUE(server_.Start());
+
+  TestRegistrationCallback callback;
+  auto param = RegistrationRequestParam::CreateForTesting(
+      GetBaseURL(), kSessionIdentifier, kChallenge,
+      /*authorization=*/std::nullopt);
+  std::unique_ptr<RegistrationFetcher> fetcher =
+      RegistrationFetcher::CreateFetcher(
+          param, session_service(), unexportable_key_service(), context_.get(),
+          IsolationInfo::CreateTransient(/*nonce=*/std::nullopt),
+          SiteForCookies(),
+          /*net_log_source=*/std::nullopt,
+          /*original_request_initiator=*/std::nullopt,
+          unexportable_keys::BackgroundTaskPriority::kBestEffort);
+  fetcher->StartFetchWithExistingKey(param, CreateSigningKey(),
+                                     callback.callback());
+  callback.WaitForCall();
+
+  const SessionError* error = callback.outcome().SessionErrorForTesting();
+  ASSERT_TRUE(error);
+  EXPECT_EQ(error->type, SessionError::kTransientHttpError);
+  EXPECT_FALSE(error->GetDeletionReason().has_value());
+  EXPECT_EQ(request_count, 1);
 }
 
 TEST_F(RegistrationTest, ServerErrorReturnOne403ThenSuccess) {

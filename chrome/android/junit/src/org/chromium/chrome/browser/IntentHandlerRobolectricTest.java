@@ -56,8 +56,8 @@ import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.IntentHandler.ExternalAppId;
 import org.chromium.chrome.browser.actor.ActorKeyedService;
 import org.chromium.chrome.browser.actor.ActorKeyedServiceFactory;
-import org.chromium.chrome.browser.actor.ActorNotificationFactory;
 import org.chromium.chrome.browser.actor.ActorTask;
+import org.chromium.chrome.browser.actor.notifications.ActorNotificationFactory;
 import org.chromium.chrome.browser.app.tabmodel.AsyncTabParamsManagerSingleton;
 import org.chromium.chrome.browser.customtabs.CustomTabsConnection;
 import org.chromium.chrome.browser.customtabs.CustomTabsIntentTestUtils;
@@ -166,8 +166,12 @@ public class IntentHandlerRobolectricTest {
         {"file://foo.mht", "application/octet-stream"},
         {"file://foo", "multipart/related"},
         {"file://foo", "message/rfc822"},
+        {"file://foo", "Multipart/Related"},
+        {"file://foo", "Message/RFC822"},
         {"content://example.com/1", "multipart/related"},
         {"content://example.com/1", "message/rfc822"},
+        {"content://example.com/1", "Multipart/Related"},
+        {"content://example.com/1", "Message/RFC822"},
     };
 
     private static final String[][] INTENT_URLS_AND_TYPES_NOT_FOR_MHTML = {
@@ -442,6 +446,17 @@ public class IntentHandlerRobolectricTest {
         Assert.assertEquals(
                 "Foo: bar\nX-Chrome-intent-type: message/rfc822",
                 IntentHandler.maybeAddAdditionalContentHeaders(intent, contentUrl, "Foo: bar"));
+
+        // Mixed-case MHTML types.
+        intent.setType("Multipart/Related");
+        Assert.assertEquals(
+                "X-Chrome-intent-type: Multipart/Related",
+                IntentHandler.maybeAddAdditionalContentHeaders(intent, contentUrl, null));
+
+        intent.setType("Message/RFC822");
+        Assert.assertEquals(
+                "X-Chrome-intent-type: Message/RFC822",
+                IntentHandler.maybeAddAdditionalContentHeaders(intent, contentUrl, null));
     }
 
     @Test
@@ -630,11 +645,11 @@ public class IntentHandlerRobolectricTest {
     public void testScreenOffNoContext() {
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setData(Uri.parse(GOOGLE_URL));
-        mShadowPowerManager.setIsInteractive(false);
+        mShadowPowerManager.turnScreenOn(false);
         Assert.assertTrue(IntentHandler.shouldIgnoreIntent(intent, null));
-        mShadowPowerManager.setIsInteractive(true);
+        mShadowPowerManager.turnScreenOn(true);
         Assert.assertFalse(IntentHandler.shouldIgnoreIntent(intent, null));
-        mShadowPowerManager.setIsInteractive(false);
+        mShadowPowerManager.turnScreenOn(false);
         intent = new Intent(Intent.ACTION_MAIN);
         Assert.assertFalse(IntentHandler.shouldIgnoreIntent(intent, null));
         intent.setData(Uri.parse(GOOGLE_URL));
@@ -654,11 +669,11 @@ public class IntentHandlerRobolectricTest {
 
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setData(Uri.parse(GOOGLE_URL));
-        mShadowPowerManager.setIsInteractive(false);
+        mShadowPowerManager.turnScreenOn(false);
         Assert.assertTrue(IntentHandler.shouldIgnoreIntent(intent, activity));
-        mShadowPowerManager.setIsInteractive(true);
+        mShadowPowerManager.turnScreenOn(true);
         Assert.assertFalse(IntentHandler.shouldIgnoreIntent(intent, activity));
-        mShadowPowerManager.setIsInteractive(false);
+        mShadowPowerManager.turnScreenOn(false);
         intent = new Intent(Intent.ACTION_MAIN);
         Assert.assertFalse(IntentHandler.shouldIgnoreIntent(intent, activity));
         intent.setData(Uri.parse(GOOGLE_URL));
@@ -680,16 +695,16 @@ public class IntentHandlerRobolectricTest {
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setData(Uri.parse(GOOGLE_URL));
         // Test with main screen on
-        mShadowPowerManager.setIsInteractive(true);
-        shadowPowerManagerAct.setIsInteractive(false);
+        mShadowPowerManager.turnScreenOn(true);
+        shadowPowerManagerAct.turnScreenOn(false);
         Assert.assertTrue(IntentHandler.shouldIgnoreIntent(intent, activity));
-        shadowPowerManagerAct.setIsInteractive(true);
+        shadowPowerManagerAct.turnScreenOn(true);
         Assert.assertFalse(IntentHandler.shouldIgnoreIntent(intent, activity));
         // Test with main screen off
-        mShadowPowerManager.setIsInteractive(false);
-        shadowPowerManagerAct.setIsInteractive(false);
+        mShadowPowerManager.turnScreenOn(false);
+        shadowPowerManagerAct.turnScreenOn(false);
         Assert.assertTrue(IntentHandler.shouldIgnoreIntent(intent, activity));
-        shadowPowerManagerAct.setIsInteractive(true);
+        shadowPowerManagerAct.turnScreenOn(true);
         Assert.assertFalse(IntentHandler.shouldIgnoreIntent(intent, activity));
     }
 

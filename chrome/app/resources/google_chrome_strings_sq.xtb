@@ -118,6 +118,7 @@ Disa funksione mund të mos ofrohen dhe ndryshimet në preferenca nuk do të ruh
 <translation id="2039417478970545937">Cilësimet.</translation>
 <translation id="2040220733769034247">Skano kodin QR me telefonin tënd për të shkarkuar Chrome dhe identifikohu në "Llogarinë tënde të Google".</translation>
 <translation id="2044908892530830113">Shfaq kërkimin me Chrome në shiritin e menysë së Mac dhe aktivizo shkurtoren e tastierës</translation>
+<translation id="2050189601866423230">Mund ta gozhdosh "Modalitetin e IA-së" të "Kërko në Google" për të bërë pyetje ndërkohë që shfleton</translation>
 <translation id="2091012649849228750">Për të marrë përditësimet e ardhshme të Google Chrome, do të të duhet Windows 10 ose një version i mëvonshëm. Ky kompjuter përdor Windows 8.</translation>
 <translation id="2094648590148273905">Kushtet e Chrome OS Flex</translation>
 <translation id="2094919256425865063">Dëshiron ta mbyllësh Chrome gjithsesi?</translation>
@@ -143,7 +144,6 @@ Disa funksione mund të mos ofrohen dhe ndryshimet në preferenca nuk do të ruh
 <translation id="2216543877350048334">Për ta hequr "Llogarinë tënde të Google" nga Chrome, dil nga llogaria</translation>
 <translation id="2236949375853147973">Aktiviteti im</translation>
 <translation id="22791603784558743">Mbyll Gemini në Chrome Dev</translation>
-<translation id="2284380654876659752">Kur ti viziton një sajt, Chrome dërgon një pjesë të pakuptueshme të URL-së te <ph name="BEGIN_LINK" />"Shfletimi i sigurt" i Google<ph name="END_LINK" /> nëpërmjet një serveri të privatësisë që e fsheh adresën tënde IP. Nëse një sajt bën diçka të dyshimtë, dërgohen edhe URL-të e plota dhe pjesët e përmbajtjeve të faqeve.</translation>
 <translation id="2290014774651636340">Çelësat API të Google mungojnë. Disa funksione të Chrome do të çaktivizohen.</translation>
 <translation id="2290095356545025170">Je i sigurt që dëshiron ta çinstalosh Google Chrome?</translation>
 <translation id="2295218613066132598">Shfaq shkurtoret e sajteve të Chrome</translation>
@@ -383,7 +383,6 @@ Nëse kjo faqe nuk funksionon siç pritet, provo të lejosh optimizimin.</transl
 <translation id="459622048091363950">Pasi Chrome të ketë qasje, uebsajtet do të jenë në gjendje të kërkojnë prej teje qasje.</translation>
 <translation id="4598116752460667024">Kërko për çdo proces nga lista.</translation>
 <translation id="4600710005438004015">Chrome nuk mund të përditësohej me versionin më të fundit, kështu që të mungojnë rregullimet e sigurisë dhe funksionet e reja.</translation>
-<translation id="4606805686144157064">Merr paralajmërim nëse Chrome gjen një nga fjalëkalimet e tua në një nxjerrje publike të paautorizuar të të dhënave</translation>
 <translation id="4608435347866444037">Kërkoje këtë imazh me "Lenten e Google"</translation>
 <translation id="4624065194742029982">Modaliteti "i fshehtë" i Chrome</translation>
 <translation id="4627412468266359539">Opsionale: Ndihmo në përmirësimin e veçorive dhe të cilësisë së funksionimit të Chrome OS Flex duke dërguar automatikisht te Google të dhëna përdorimi dhe diagnostikuese.</translation>
@@ -400,9 +399,9 @@ Nëse kjo faqe nuk funksionon siç pritet, provo të lejosh optimizimin.</transl
 <translation id="4768676935374695498">Kërkoje këtë video me "Lenten e Google"</translation>
 <translation id="479167709087336770">Kjo përdor të njëjtin kontrollues drejtshkrimor që përdoret në kërkimin e Google. Teksti që shkruan në shfletues dërgohet te Google. Mund ta ndryshosh këtë sjellje gjithmonë te cilësimet.</translation>
 <translation id="4793679854893018356">Mëso se si të mban të sigurt Chrome</translation>
-<translation id="4799870290441980300">Aktivizon veçori shtesë për të ofruar mbrojtjet më të forta të Chrome</translation>
 <translation id="4828579605166583682">Google Chrome po përpiqet të zëvendësojë fjalëkalimet ekzistuese. Shkruaj fjalëkalimin tënd të Windows për ta lejuar këtë.</translation>
 <translation id="4836321460899997044">Profili i Chrome</translation>
+<translation id="4839733921943823254">Gozhdo shkurtoren</translation>
 <translation id="4842397268809523050">Chrome OS Flex nuk mund t'i sinkronizonte të dhënat e tua sepse "Sinkronizimi" nuk ofrohet për domenin tënd.</translation>
 <translation id="4851866215237571846"><ph name="EXISTING_USER" /> është i identifikuar tashmë. Për ta mbajtur shfletimin tënd të ndarë, identifikohu në Chrome në profilin tënd si <ph name="USER_EMAIL_ADDRESS" />.</translation>
 <translation id="4855026984605187434">Për të ndarë ekranin, lejo regjistrimin e ekranit për Chrome te "Cilësimet e sistemit"</translation>
@@ -559,7 +558,6 @@ Google Chrome nuk është në gjendje të rikuperojë cilësimet e tua.</transla
 <translation id="6251759518630934363">Të paralajmëron për sajtet e rrezikshme, edhe ato që Google nuk i ka njohur më parë, duke analizuar më shumë të dhëna nga sajtet sesa nga mbrojtja standarde. Mund të zgjedhësh që t'i kapërcesh paralajmërimet e Chrome.</translation>
 <translation id="6277547788421725101">Prindi yt ka çaktivizuar "Lejet për sajtet, aplikacionet dhe shtesat" për Chrome</translation>
 <translation id="627882678981830918">Personalizo dhe kontrollo Chrome. Cakto Chrome si parazgjedhje.</translation>
-<translation id="6280042952415350607">Mbrojtja e përmirësuar e çaktivizon optimizimin e JavaScript për sajtet që Chrome nuk i njeh</translation>
 <translation id="6288580400488258237">Cakto Google Chrome si shfletuesin tënd të parazgjedhur dhe gozhdoje te shiriti i detyrave</translation>
 <translation id="6291089322031436445">Aplikacionet e Chrome Dev</translation>
 <translation id="6291549208091401781">Google Chrome është i instaluar tashmë për të gjithë përdoruesit në kompjuterin tënd.</translation>
@@ -771,6 +769,7 @@ Google Chrome nuk është në gjendje të rikuperojë cilësimet e tua.</transla
 <translation id="8074398340364918139">Për të kërkuar një veçori ose shtesë specifike të Chrome, shkruaj shkurtoren e saj në shiritin e adresave, të ndjekur nga tasti i zgjedhur i tastierës</translation>
 <translation id="8077579734294125741">Profilet e tjera të Chrome</translation>
 <translation id="8086881907087796310">Instalimi dështoi sepse kompjuteri yt nuk i përmbush kërkesat minimale për harduerin.</translation>
+<translation id="8110438089258398864">Mund ta rihapësh "Modalitetin e IA-së të 'Kërko në Google'" për të bërë pyetje ndërkohë që shfleton</translation>
 <translation id="8113883687556086139">Verifiko që je ti për të përdorur dhe ruajtur të dhënat e Chrome në llogarinë tënde <ph name="ACCOUNT_EMAIL" /></translation>
 <translation id="8115695070094288807">Chrome po personalizohet...</translation>
 <translation id="8118331347066725040">Dërgo komente për kërkimin me "Lenten"</translation>
@@ -827,6 +826,8 @@ Faqeshënuesit e rinj nuk mund të ruhen në llogarinë tënde derisa të fshish
 <translation id="8555465886620020932">Gabim shërbimi: <ph name="SERVICE_ERROR" />.</translation>
 <translation id="856656450041460113">Kërko në listën e gjuhëve</translation>
 <translation id="8575047640889685742">Përdor <ph name="BEGIN_LINK" />frazën tënde të kalimit<ph name="END_LINK" /> për të enkriptuar të gjitha të dhënat e Chrome në "Llogarinë tënde të Google". Mënyrat e pagesës dhe adresat nga Google Pay nuk do të enkriptohen. Historiku i shfletimit nga Chrome nuk do të sinkronizohet.</translation>
+<translation id="8590782867495422699">Rihap "Modalitetin e IA-së" të "Kërko në Google"</translation>
+<translation id="8598779894319572882">Nga butoni "Modaliteti i IA-së i 'Kërko në Google'" në shiritin e veglave, mund të rihapësh "Modalitetin e IA-së të 'Kërko në Google'" për të bërë pyetje ndërkohë që shfleton</translation>
 <translation id="8614913330719544658">Google Chrome nuk përgjigjet. Dëshiron ta hapësh sërish tani?</translation>
 <translation id="8623450603356630491">Identifikohu në Chrome në telefonin tënd</translation>
 <translation id="8624541899164515475">Cilësimet, hapet në një skedë të re.</translation>
@@ -881,6 +882,7 @@ Faqeshënuesit e rinj nuk mund të ruhen në llogarinë tënde derisa të fshish
 <translation id="9014771989710951291">Disa organizata menaxhojnë Chrome</translation>
 <translation id="9018218886431812662">Instalimi përfundoi</translation>
 <translation id="9066987883552592250">Mbyll Gemini në Chrome Canary</translation>
+<translation id="9074041031320636790">Me sukses! Tani mund të bësh me lehtësi pyetje ndërkohë që shfleton me "Modalitetin e IA-së" të "Kërko në Google"</translation>
 <translation id="9090566250983691233">Mëso se pse Chrome i bllokon disa skedarë</translation>
 <translation id="9106236359747881194">Zgjidh tekstin për të kërkuar</translation>
 <translation id="911206726377975832">Të fshihen po ashtu të dhënat e shfletimit?</translation>

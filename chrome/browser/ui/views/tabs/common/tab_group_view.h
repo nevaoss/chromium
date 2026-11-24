@@ -77,10 +77,13 @@ class TabGroupView : public TabCollectionZOrderManager,
   void HideHoverCard(int update_type) const override;
   bool IsFocusInTabStrip() override;
   std::unique_ptr<ExpandOnHoverLock> AcquireExpandOnHoverLock() override;
+  std::unique_ptr<TabHoverCardController::ScopedHideHoverCardLock>
+  AcquireHoverCardHideLock() override;
   void ShiftGroupUp() override;
   void ShiftGroupDown() override;
   bool IsGroupFocused() const override;
   bool IsUnfocusButtonFocused() const override;
+  bool CanShowEditorBubbleButton() const override;
   HorizontalTabClosingHelper* GetTabClosingHelper() const override;
 
   // TabCollectionAnimatingLayoutManager::Delegate:
@@ -90,7 +93,7 @@ class TabGroupView : public TabCollectionZOrderManager,
       const views::View& child_view) const override;
   bool ShouldSnapToTarget(const views::View& child_view) const override;
   void OnAnimationEnded() override;
-  bool IsAnimationAllowed() override;
+  bool ShouldAnimateLayout() override;
 
   bool IsCollapsed() const;
 
@@ -149,15 +152,14 @@ class TabGroupView : public TabCollectionZOrderManager,
   raw_ptr<TabCollectionNode> collection_node_ = nullptr;
   tab_groups::TabGroupVisualData tab_group_visual_data_;
   bool is_ephemeral_ = false;
-  const raw_ptr<TabGroupUnfocusButton> unfocus_header_ = nullptr;
-  const raw_ptr<TabGroupHeaderView> group_header_ = nullptr;
-  const raw_ptr<TabGroupLineView> group_line_ = nullptr;
-
   // Tracked separately for layout purposes so child/underline visibility
   // updates occur only when collapse/expand animations complete, rather than
   // reacting immediately to visual data updates during animation.
   bool is_collapsed_ = false;
 
+  const raw_ptr<TabGroupUnfocusButton> unfocus_header_ = nullptr;
+  const raw_ptr<TabGroupHeaderView> group_header_ = nullptr;
+  const raw_ptr<TabGroupLineView> group_line_ = nullptr;
   const raw_ref<TabCollectionAnimatingLayoutManager> layout_manager_;
 
   std::unique_ptr<tabs::TabGroupDataObserver> tab_group_data_observer_;

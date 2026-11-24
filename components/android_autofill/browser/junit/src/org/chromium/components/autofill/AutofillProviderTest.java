@@ -938,6 +938,37 @@ public class AutofillProviderTest {
     }
 
     @Test
+    public void testCallsNativeOnDidShowSuggestions() {
+        FormFieldDataBuilder fieldBuilder = new FormFieldDataBuilder();
+        FormData formData =
+                new FormData(
+                        /* sessionId= */ 123,
+                        /* name= */ null,
+                        /* host= */ null,
+                        Collections.singletonList(fieldBuilder.build()));
+        mAutofillProvider.startAutofillSession(
+                formData,
+                /* focus= */ 0,
+                /* x= */ 0,
+                /* y= */ 0,
+                /* width= */ 50,
+                /* height= */ 20,
+                /* hasServerPrediction= */ false);
+
+        mAutofillProvider.getAutofillManagerWrapper().notifyInputUiChange();
+        verify(mNativeMock).onDidShowSuggestions(eq(mMockedNativeAndroidAutofillProvider));
+    }
+
+    @Test
+    public void testIsAutofillDisabled() {
+        when(mAutofillManager.isEnabled()).thenReturn(true);
+        assertFalse(mAutofillProvider.isAutofillDisabled());
+
+        when(mAutofillManager.isEnabled()).thenReturn(false);
+        assertTrue(mAutofillProvider.isAutofillDisabled());
+    }
+
+    @Test
     @Features.EnableFeatures({
         AndroidAutofillFeatures.ANDROID_AUTOFILL_FIELDS_UPDATED_ON_SELECT_NAME
     })

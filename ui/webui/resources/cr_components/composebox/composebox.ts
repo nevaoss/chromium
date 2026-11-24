@@ -34,15 +34,13 @@ import type {PageHandlerRemote} from './composebox.mojom-webui.js';
 import type {ComposeboxDropdownElement} from './composebox_dropdown.js';
 import type {ComposeboxFileInputsElement} from './composebox_file_inputs.js';
 import type {ComposeboxInputElement} from './composebox_input.js';
-import {ComposeboxEmbedderMixin, SubmitButtonIconType, VoiceSearchAction} from './composebox_mixin.js';
+import {ComposeboxEmbedderMixin} from './composebox_mixin.js';
 import {ComposeboxProxyImpl} from './composebox_proxy.js';
 import type {ContextUploadErrorType} from './composebox_query.mojom-webui.js';
 import {ContextUploadStatus, ToolMode} from './composebox_query.mojom-webui.js';
 import type {ContextualEntrypointAndMenuElement} from './contextual_entrypoint_and_menu.js';
 import type {ContextualEntrypointButtonElement} from './contextual_entrypoint_button.js';
 import type {ComposeboxFileCarouselElement} from './file_carousel.js';
-
-export {SubmitButtonIconType, VoiceSearchAction};
 
 const DEBOUNCE_TIMEOUT_MS: number = 20;
 
@@ -451,44 +449,6 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     this.processFiles(e.detail.files);
     recordContextAdditionMethod(
         ComposeboxContextAddedMethod.CONTEXT_MENU, this.composeboxSource);
-  }
-
-  // TODO(crbug.com/486707842): Move this to contextual tasks composebox.
-  injectInput(
-      title: string, thumbnail: string, fileToken: UnguessableToken,
-      supportsUnimodal: boolean, iconName?: string) {
-    const attachment = ComposeboxFile.createFromInjectedInput(
-        fileToken, thumbnail, title, iconName ?? null);
-    attachment.supportsUnimodal = supportsUnimodal;
-
-    this.onFileContextAdded(attachment);
-  }
-
-  setInputProgrammatically(
-      queryText: string, willSubmitAfterInjection: boolean) {
-    this.input = queryText;
-
-    if (!willSubmitAfterInjection) {
-      // If not submitting immediately, suggestions for the new input might be
-      // desired.
-      this.queryAutocomplete(/*clearMatches=*/ true);
-      return;
-    }
-
-    // Stop any in-flight autocomplete queries to prevent them from returning
-    // and triggering an automatic selection that would overwrite the injected
-    // input. This also prevents unnecessary backend work for a query that is
-    // about to be submitted.
-    this.getSearchboxHandler().stopAutocomplete(/*clearResult=*/ true);
-
-    // Clear lastQueriedInput to ensure that if any autocomplete results still
-    // arrive (e.g., if stopAutocomplete didn't stop them in time), they will
-    // be ignored because result.input won't match lastQueriedInput.
-    this.lastQueriedInput = '';
-
-    // Clear any existing matches to ensure the dropdown is hidden and no stale
-    // matches are displayed or interactable while waiting for submission.
-    this.clearAutocompleteMatches();
   }
 
   // TODO(crbug.com/486707842): Move this to contextual tasks composebox.

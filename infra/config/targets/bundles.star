@@ -130,7 +130,7 @@ targets.bundle(
     per_test_modifications = {
         "chrome_public_test_apk_tablet": targets.mixin(
             swarming = targets.swarming(
-                shards = 3,
+                shards = 5,
             ),
         ),
     },
@@ -3446,7 +3446,6 @@ targets.bundle(
                 ],
             ),
             "skia_gold_test",
-            "skia_gold_bypass",
         ],
     },
 )
@@ -3468,7 +3467,6 @@ targets.bundle(
         ),
         "gl_unittests": [
             "skia_gold_test",
-            "skia_gold_bypass",
         ],
     },
 )
@@ -3506,7 +3504,6 @@ targets.bundle(
                 ],
             ),
             "skia_gold_test",
-            "skia_gold_bypass",
         ],
     },
 )
@@ -5223,12 +5220,6 @@ targets.bundle(
                 "--test-launcher-filter-file=testing/buildbot/filters/ios.media_unittests.filter",
             ],
         ),
-        "midi_unittests": targets.mixin(
-            args = [
-                "--test-launcher-bot-mode",
-                "--test-launcher-filter-file=testing/buildbot/filters/ios.use_blink.midi_unittests.filter",
-            ],
-        ),
         "mojo_unittests": targets.mixin(
             args = [
                 "--test-launcher-bot-mode",
@@ -5635,14 +5626,14 @@ targets.bundle(
             ],
         ),
         targets.bundle(
-            targets = "ios_vm_eg2_cq_tests",
+            targets = "ios_vm_eg2_smoke_cq_tests",
             mixins = [
-                "ci_only",
                 "xcodebuild_sim_runner",
                 "mac_26_vm_optional",
             ],
             variants = [
                 "SIM_IPHONE_15_18_5",
+                "SIM_IPHONE_16_26_5",
             ],
         ),
         targets.bundle(
@@ -5652,7 +5643,6 @@ targets.bundle(
                 "mac_26_vm_optional",
             ],
             variants = [
-                "SIM_IPHONE_16_26_5",
                 "SIM_IPHONE_16_27_0",
             ],
         ),
@@ -5702,6 +5692,28 @@ targets.bundle(
                     shards = 18,
                 ),
             ),
+        ],
+    },
+)
+
+targets.bundle(
+    name = "ios_vm_eg2_smoke_cq_tests",
+    targets = [
+        "ios_chrome_all_eg2tests_module",
+        "ios_web_shell_eg2tests_module",
+    ],
+    per_test_modifications = {
+        "ios_chrome_all_eg2tests_module": [
+            targets.mixin(
+                args = [
+                    "--clones",
+                    "1",
+                ],
+                swarming = targets.swarming(
+                    shards = 3,
+                ),
+            ),
+            "ios_smoke_tests",
         ],
     },
 )
@@ -6054,18 +6066,6 @@ targets.bundle(
     per_test_modifications = {
         "views_examples_unittests": [
             "skia_gold_test",
-            targets.mixin(
-                # TODO(crbug.com/574560342): Remove this precommit_args bypass
-                # once post-submit CI diffs are triaged.
-                # @chromium-luci's _apply_mixin overwrites precommit_args rather
-                # than appending, so retain skia_gold_test's precommit_args.
-                precommit_args = [
-                    "--gerrit-issue=${patch_issue}",
-                    "--gerrit-patchset=${patch_set}",
-                    "--buildbucket-id=${buildbucket_build_id}",
-                    "--bypass-skia-gold-functionality",
-                ],
-            ),
         ],
     },
 )

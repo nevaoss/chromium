@@ -1582,6 +1582,23 @@ Si no la estableces, se habilitará la función Llamar con un clic de forma pred
       Ten en cuenta que esta política bloquea JavaScript según si el origen del documento de nivel superior (generalmente la URL de la página que también se muestra en la barra de direcciones) coincide con alguno de los patrones. Por lo tanto, esta política no es adecuada para mitigar los ataques a la cadena de suministro web. Por ejemplo, si proporcionas el patrón "https://[*.]foo.com/", no se impedirá que una página alojada en, por ejemplo, https://example.com ejecute una secuencia de comandos cargada desde https://www.foo.com/example.js. Además, si proporcionas el patrón "https://example.com/", no se impedirá que un documento de https://example.com ejecute secuencias de comandos si no es el documento de nivel superior, sino que se incorpora como un submarco en una página alojada en otro origen, por ejemplo, https://www.bar.com.</translation>
 <translation id="1942015922182679826">Habilitar la opción para borrar las contraseñas que no se pueden desencriptar</translation>
 <translation id="1942626390957213764">Inhabilitar el centro para compartir el escritorio</translation>
+<translation id="1943243146727870858">Inhabilita el inicio de sesión único con <ph name="EXTENSIBLE_ENTERPRISE_SSO_PRODUCT_NAME" /> para los proveedores de identidad que se muestran.
+
+Si agregas el valor <ph name="POLICY_VALUE_ALL" />, se inhabilitarán todos los proveedores de identidad compatibles para SSO.
+
+Si agregas el valor <ph name="POLICY_VALUE_MICROSOFT" />, se inhabilita la compatibilidad con el inicio de sesión único para el proveedor de identidad en la nube de Microsoft® en Chrome.
+
+Si no estableces esta política, se habilitarán todos los proveedores de identidad que admita <ph name="PRODUCT_NAME" />.
+
+En el caso de los proveedores de identidad que están habilitados en <ph name="PRODUCT_NAME" /> y configurados en el dispositivo por el administrador, los usuarios que accedan a su cuenta con ese proveedor de identidad, en cualquier aplicación que admita <ph name="EXTENSIBLE_ENTERPRISE_SSO_PRODUCT_NAME" />, pueden acceder a las propiedades web con ese proveedor de forma automática. La información de autenticación del usuario se transmite al proveedor de identidad en la nube del usuario para cada evento de autenticación.
+
+Notas:
+
+<ph name="PRODUCT_NAME" /> no admite el inicio de sesión único con <ph name="EXTENSIBLE_ENTERPRISE_SSO_PRODUCT_NAME" /> en los modos Incógnito o de invitado.
+
+<ph name="PRODUCT_NAME" /> solo admite el inicio de sesión único con <ph name="EXTENSIBLE_ENTERPRISE_SSO_PRODUCT_NAME" /> para los siguientes proveedores de identidad: Microsoft, Okta, Ping.
+
+Esta función está disponible a partir de la versión 10.15 de <ph name="MAC_OS_NAME" />.</translation>
 <translation id="1943628907052340534">No abrir <ph name="PRODUCT_NAME" /> cuando el usuario acceda a <ph name="MS_WIN_NAME" /></translation>
 <translation id="194407941132272412">Inhabilitar el aislamiento de sitios para todos los sitios web, pero permitir que el usuario lo habilite</translation>
 <translation id="1945994447126139909">Esta política empresarial es una adaptación por corto plazo y se quitará en la versión 88 de <ph name="PRODUCT_NAME" />.
@@ -3640,6 +3657,8 @@ Si la inhabilitas o no la estableces, nunca se mostrará el menú de accesibilid
 <translation id="3146711617256415776">No permitir las voces de texto a voz de la red mejorada cuando se utiliza Seleccionar para pronunciar</translation>
 <translation id="315013437951136266">Habilitar la función <ph name="IP_PROTECTION_NAME" />.</translation>
 <translation id="3150351525324499342">No mostrar el ícono de <ph name="PRODUCT_NAME" /> en la barra de herramientas de forma predeterminada, pero permitir que los usuarios elijan</translation>
+<translation id="3151501327418961907">Si estableces esta política en 0 o no la estableces, las políticas <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> y <ph name="PROXY_PROVISIONING_DOMAINS_POLICY_NAME" /> solo se aplicarán en el permiso del usuario para los usuarios afiliados en un navegador administrado.
+Cuando esta política se establezca en 1, se aplicarán las políticas <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> y <ph name="PROXY_PROVISIONING_DOMAINS_POLICY_NAME" /> en el permiso del usuario, incluso si no está afiliado.</translation>
 <translation id="3152135410085709340">Permitir el acceso de archivo local a las URLs de file:// para estos sitios en el Lector de PDF</translation>
 <translation id="3152425128389603870">Habilitar el modo de escritorio unificado y activarlo de forma predeterminada</translation>
 <translation id="3159375329008977062">El usuario está habilitado para exportar o importar contenedores de Crostini mediante la IU</translation>
@@ -4485,6 +4504,21 @@ También se debe habilitar la transferencia de datos con Takeout para que la app
 <translation id="370314752761795411">Iniciar <ph name="PRODUCT_NAME" /> con <ph name="MS_WIN_NAME" /></translation>
 <translation id="3711895659073496551">Suspender</translation>
 <translation id="3712861436661566358">Aplicar de manera forzosa la separación de perfiles</translation>
+<translation id="3715589988915487768">Configura una lista de dominios de aprovisionamiento (PvD) que <ph name="PRODUCT_NAME" /> usará para recuperar la configuración del proxy de forma dinámica.
+
+Esta política permite especificar una lista de nombres de dominio o URI de recursos que representan dominios de aprovisionamiento, tal como se define en RFC 8801 ("Descubrimiento de nombres de dominio y datos de aprovisionamiento"). Para cada PvD, el navegador resuelve la configuración JSON correspondiente haciendo una solicitud HTTPS a la ruta de acceso del extremo conocido: "https://[<ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />]/.well-known/pvd".
+
+Cada entrada de la lista especifica lo siguiente:
+
+* <ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />: El identificador del dominio de aprovisionamiento (un nombre de dominio).
+
+* <ph name="PROXY_PROVISIONING_DOMAINS_AUTH_CONFIG" />: La configuración de autenticación opcional. Si no se configura o se establece como "ninguna", no se realiza ninguna autenticación. Cuando se establece en "profile_bearer_token", el navegador recupera un token de acceso de OAuth2 con el permiso proporcionado para la cuenta principal con la que se accedió y lo adjunta en el encabezado "Authorization" como un token "Bearer".
+
+* <ph name="PROXY_PROVISIONING_DOMAINS_EXTRA_HEADERS" />: Una lista opcional de encabezados HTTP personalizados para incluir cuando se consulta el extremo de PvD. Se pueden inyectar valores dinámicos, como "profile_id" (que representa un identificador único y estable del perfil del navegador en el dispositivo, lo que permite la segmentación de la configuración por perfil) o "accept_language" (que representa los idiomas preferidos del navegador).
+
+Las configuraciones recuperadas se analizan según el esquema RFC 8801. Solo se aplican las reglas de enrutamiento y los proxies relacionados con la configuración del proxy de la carga útil JSON del PvD. Si no estableces esta política, no se consultará ni se usará ningún dominio de aprovisionamiento para recuperar la configuración del proxy.
+
+Esta política se puede establecer a nivel del usuario solo si el usuario está afiliado al navegador, si el navegador no está administrado o si la política <ph name="ENABLE_PROXY_OVERRIDE_RULES_FOR_ALL_USERS_POLICY_NAME" /> se establece en 1.</translation>
 <translation id="3719826155360621982">Página principal</translation>
 <translation id="3724039569609354541">Utilizar el comportamiento predeterminado al decidir si los sitios web pueden hacer solicitudes a extremos de red</translation>
 <translation id="3726715125055227414">Esta política configura <ph name="PRODUCT_OS_NAME" /> para ordenar sus algoritmos de acuerdo de claves preferidos (grupos admitidos) en TLS 1.3 para reflejar una preferencia por los algoritmos que fueron aprobados por un régimen de cumplimiento específico cuando se realizan solicitudes de red desde la pantalla de acceso.
@@ -5743,6 +5777,27 @@ Usa un valor mayor al valor predeterminado (128) bajo tu responsabilidad.
 Ten en cuenta que los límites aplicados se ven afectados por <ph name="ALLOW_SOCKET_POOL_SIZE_RANDOMIZATION_FOR_PROXIES_POLICY_NAME" />.</translation>
 <translation id="4528981768990874684">Inhabilitar la función <ph name="IP_PROTECTION_NAME" />.</translation>
 <translation id="453031441196755904">Esta política es obsoleta.</translation>
+<translation id="4531088355818260318">Esta política permite definir una lista de reglas para inyectar encabezados HTTP personalizados en las solicitudes web que coincidan con patrones de URL específicos. Los encabezados establecidos por esta política tienen prioridad sobre los que estaban presentes inicialmente en la solicitud, así como sobre las modificaciones que intenten realizar los usuarios o las extensiones.
+
+Un caso de uso común para esta política es aplicar controles de acceso de usuarios inyectando encabezados personalizados (p. ej., <ph name="EXAMPLE_HEADER_NAME" />).
+
+La política acepta una lista de reglas. Cada regla contiene lo siguiente:
+
+* <ph name="PATTERNS_KEY" />: Una lista de patrones de URL que deben coincidir. Consulta cómo darle formato a un patrón de URL ( https://support.google.com/chrome/a?p=url_blocklist_filter_format ).
+
+* <ph name="HEADERS_KEY" />: Una lista de objetos que representan los encabezados que se inyectarán, cada uno de los cuales contiene lo siguiente:
+
+  * <ph name="HEADER_NAME_KEY" />: El nombre del encabezado que se inyectará.
+
+  * <ph name="HEADER_VALUE_KEY" />: El valor del encabezado que se inyectará.
+
+Si varias reglas coinciden con una solicitud, se aplicarán los encabezados de todas las reglas coincidentes. En caso de que haya varios encabezados con el mismo nombre, se aplicará el que tenga el patrón de URL más específico. Si los patrones son igualmente específicos, se aplicará el que aparezca último en la lista.
+
+Los nombres de encabezado deben cumplir con RFC 2616 ( https://www.rfc-editor.org/rfc/rfc2616 ). Los valores de encabezado no deben contener símbolos NUL, CR ni LF. Los encabezados individuales no deben superar los 8 KB de tamaño. Se ignorarán los encabezados y patrones de URL no válidos.
+
+Esta política está limitada a un total de 500 patrones de URL en todas las reglas. Cada regla puede contener 20 encabezados como máximo. Se ignorarán los patrones y encabezados que superen estos límites.
+
+Nota: Si un patrón de URL coincide con esquemas no encriptados (http://, ws:// o cuando se omite el esquema), los encabezados configurados podrían transmitirse en texto sin formato a través de un canal no encriptado y podrían quedar expuestos a observadores de red. Para proteger los valores de encabezado sensibles o de identificación, restringe los patrones de URL a esquemas encriptados (https:// o wss://).</translation>
 <translation id="4531706050939927436">Con Google Play, se puede forzar la instalación de apps de Android desde la Consola del administrador de Google. Estas apps no usan esta política.</translation>
 <translation id="4534500438517478692">Nombre de restricción de Android:</translation>
 <translation id="4541530620466526913">Cuentas locales del dispositivo</translation>
@@ -7345,6 +7400,7 @@ los accesos directos basados en la búsqueda funcionarán de forma predeterminad
 
       Si se establece la política como falsa o no se establece, no se enviará la información.
       Si se establece como verdadera, se enviará la información.</translation>
+<translation id="5418723809273651607">Proveedor de identidad en la nube de Ping®</translation>
 <translation id="5420245232720940848">Inhabilitar la tunelización PCIe para los dispositivos periféricos Thunderbolt/USB4, lo que limita las capacidades de los dispositivos</translation>
 <translation id="5420673997623782432">Bloquear el acceso a la ubicación geográfica del sistema para todos los clientes</translation>
 <translation id="5420774177427557782">Controla si las VM que usan esta configuración se pueden instalar y ejecutar (<ph name="INSTALL_ALLOWED" />), ejecutar, pero no instalar (<ph name="RUN_ALLOWED" />) o si no se pueden ejecutar (<ph name="BLOCKED" />). Ten en cuenta que, para instalar una VM, también se debe configurar la clave installer_image_x86_64. Si quitas una configuración, se la establece de forma implícita en <ph name="BLOCKED" />, lo que evita que las VMs se ejecuten sin una política.</translation>
@@ -9530,7 +9586,7 @@ Si la inhabilitabas, las pruebas de campo no podían activar <ph name="ALR_FEATU
 
 Para obtener más información sobre esta función, visita https://github.com/explainers-by-googlers/reduce-accept-language.
 
-NOTA: Solo los procesos de renderizado recién iniciados reflejarán los cambios de esta política mientras se esté ejecutando el navegador.</translation>
+NOTA: Solo los procesos de renderización recién iniciados reflejarán los cambios de esta política mientras se esté ejecutando el navegador.</translation>
 <translation id="6665670272107384733">Establecer la frecuencia con la que el usuario debe ingresar la contraseña para usar el desbloqueo rápido</translation>
 <translation id="6667586534922258705">Muestra el botón para ver la contraseña en la pantalla de inicio o de bloqueo</translation>
 <translation id="6668559639284945695">Esta política permite volver al comportamiento heredado del alcance de las cookies.
@@ -10825,7 +10881,7 @@ Especifica si los usuarios pueden permitir que <ph name="PRODUCT_NAME" /> use la
 
 0 = Tiene el mismo efecto que 1. Antes de la versión M153, el parámetro de configuración permitía que Google usara datos pertinentes para mejorar sus modelos de IA. Los datos pertinentes pueden incluir instrucciones, entradas, resultados, materiales de referencia y comentarios escritos, según la función. 0 es el valor predeterminado, excepto en los siguientes casos.
 
-1 = Permite que se use la función, pero no permite que Google mejore los modelos con datos pertinentes (lo que incluye las instrucciones, las entradas, los resultados, los materiales de referencia y los comentarios escritos). 1 es el valor predeterminado para los usuarios empresariales que administra <ph name="GOOGLE_ADMIN_CONSOLE_PRODUCT_NAME" /> y las cuentas de institución educativa que administra <ph name="GOOGLE_WORKSPACE_PRODUCT_NAME" />.
+1 = Permite que se use la función, pero no permite que Google mejore los modelos con datos pertinentes (lo que incluye las instrucciones, las entradas, los resultados, los materiales de referencia y los comentarios escritos). 1 es el valor predeterminado para los usuarios empresariales administrados mediante la <ph name="GOOGLE_ADMIN_CONSOLE_PRODUCT_NAME" /> y las cuentas de institución educativa administrados mediante <ph name="GOOGLE_WORKSPACE_PRODUCT_NAME" />.
 
 2 = No permite la función.
 
@@ -12150,6 +12206,7 @@ La función solo estará disponible en el canal de Canary.
 
 Si se habilita la política o no se establece, se podrá acceder a la página.
 Si se inhabilita, se bloqueará la página.</translation>
+<translation id="8266506455952754231">Controla qué usuarios administrados pueden establecer las políticas <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> y <ph name="PROXY_PROVISIONING_DOMAINS_POLICY_NAME" />.</translation>
 <translation id="8266778278542911985">Si estableces la política en 3, los sitios web podrán solicitar acceso a los puertos en serie. Si la estableces en 2, se rechaza el acceso a los puertos en serie.
 
       Si no la estableces, los sitios web podrán solicitar acceso, pero los usuarios podrán cambiar esta configuración.</translation>

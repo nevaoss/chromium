@@ -561,7 +561,6 @@ VISIT_PROTO_FIELDS(const sync_pb::CommitResponse::EntryResponse& proto) {
   VISIT(id_string);
   VISIT(version);
   VISIT(error_message);
-  VISIT(mtime);
   VISIT(attachment_modification_time_unix_epoch_millis);
 }
 
@@ -692,6 +691,7 @@ VISIT_PROTO_FIELDS(const sync_pb::GooglePlayServicesVersionInfo& proto) {
 VISIT_PROTO_FIELDS(const sync_pb::PersonalContextSpecificFields& proto) {
   VISIT_BYTES(p256dh_v2);
   VISIT_BYTES(serialized_tink_keyset);
+  VISIT(eligible_for_spii);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::DictionarySpecifics& proto) {
@@ -851,6 +851,7 @@ VISIT_PROTO_FIELDS(const sync_pb::ExtensionSpecifics& proto) {
   VISIT(all_urls_enabled);
   VISIT(disable_reasons);
   VISIT_REP(disable_reasons_list);
+  VISIT(withhold_permissions);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::GetUpdateTriggers& proto) {
@@ -2525,6 +2526,7 @@ VISIT_PROTO_FIELDS(const sync_pb::AutofillEntitySuppressionSpecifics& proto) {
   VISIT(entity_suppression_key);
   VISIT(schema_version);
   VISIT(creation_time_windows_epoch_micros);
+  VISIT(entity_suppression_hash);
 }
 
 }  // namespace syncer

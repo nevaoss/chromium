@@ -66,6 +66,8 @@ class ProfileKeyedServiceFactoryIOS : public KeyedServiceFactory {
   // ProfileIOS instance. This is used for testing where the test wants
   // to create a specific test double for a service.
   using TestingFactory = KeyedServiceTestingFactoryIOS;
+  using TestingFactoryByPtr = KeyedServiceTestingFactoryIOSByPtr;
+  using TestingFactoryByRef = KeyedServiceTestingFactoryIOSByRef;
 
   // Constructor accepts zero or more traits.
   template <typename... Traits>
@@ -86,15 +88,19 @@ class ProfileKeyedServiceFactoryIOS : public KeyedServiceFactory {
   // empty to signal that KeyedService should be null. Multiple calls to
   // SetTestingFactory() are allowed; previous services will be shut down.
   void SetTestingFactory(PassKey pass_key,
-                         ProfileIOS* profile,
-                         TestingFactory testing_factory);
+                         ProfileIOS& profile,
+                         TestingFactoryByPtr testing_factory);
+
+  void SetTestingFactory(PassKey pass_key,
+                         ProfileIOS& profile,
+                         TestingFactoryByRef testing_factory);
 
  protected:
   // Helper that casts the value returned by GetKeyedServiceForProfile() to the
   // sub-class T of KeyedService.
   template <typename T>
     requires std::convertible_to<T*, KeyedService*>
-  T* GetServiceForProfileAs(ProfileIOS* profile, bool create) {
+  T* GetServiceForProfileAs(ProfileIOS& profile, bool create) {
     return static_cast<T*>(GetServiceForProfile(profile, create));
   }
 
@@ -103,8 +109,13 @@ class ProfileKeyedServiceFactoryIOS : public KeyedServiceFactory {
   virtual void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry);
 
   // Creates a new instance of the service for `profile`.
+  // TODO(crbug.com/576182342): Remove overloads and make pure virtual
+  // once all sub-classes have been converted to override the overload
+  // accepting a ProfileIOS& instead of a ProfileIOS*.
   virtual std::unique_ptr<KeyedService> BuildServiceInstanceFor(
-      ProfileIOS* profile) const = 0;
+      ProfileIOS& profile) const;
+  virtual std::unique_ptr<KeyedService> BuildServiceInstanceFor(
+      ProfileIOS* profile) const;
 
   // The main public interface for declaring dependencies between services
   // created by factories.
@@ -124,7 +135,7 @@ class ProfileKeyedServiceFactoryIOS : public KeyedServiceFactory {
   // with incognito and testing profiles according to constructor traits. If
   // `create` is true, the service will be create using
   // BuildServiceInstanceFor() if it doesn't already exists.
-  KeyedService* GetServiceForProfile(ProfileIOS* profile, bool create);
+  KeyedService* GetServiceForProfile(ProfileIOS& profile, bool create);
 
   // The template constructor has to be in the header but it delegates to this
   // constructor to initialize all other members out-of-line

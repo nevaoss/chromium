@@ -133,7 +133,6 @@ class MODULES_EXPORT CanvasRenderingContext2D final
   void SetShouldAntialias(bool);
 
   void setFontForTesting(const String& new_font) override;
-  void fillTextForTesting(const String& text, double x, double y) override;
 
   void drawFocusIfNeeded(Element*);
   void drawFocusIfNeeded(Path2D*, Element*);
@@ -245,7 +244,6 @@ class MODULES_EXPORT CanvasRenderingContext2D final
  protected:
   HTMLCanvasElement* HostAsHTMLCanvasElement() const final;
   UniqueFontSelector* GetFontSelector() const final;
-  void SizeChanged() final;
 
   bool WritePixels(const SkImageInfo& orig_info,
                    const void* pixels,
@@ -264,6 +262,7 @@ class MODULES_EXPORT CanvasRenderingContext2D final
                            PrepareMailboxWhenContextIsLostWithFailedRestore);
 
   void ResetInternal() override;
+  void Reshape(gfx::Size old_size, gfx::Size new_size) override;
 
   void Dispose() override;
 

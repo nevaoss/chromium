@@ -178,7 +178,6 @@
 #include "third_party/blink/renderer/platform/widget/input/widget_input_handler_manager.h"
 #include "third_party/blink/renderer/platform/widget/widget_base.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
-#include "third_party/blink/renderer/platform/wtf/cross_thread_copier_base.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/perfetto/include/perfetto/tracing/track.h"
@@ -2938,9 +2937,11 @@ void WebFrameWidgetImpl::RegisterActiveUnboundedElement(
     ScriptPromiseResolver<IDLUndefined>* resolver) {
   CHECK(RuntimeEnabledFeatures::UnboundedElementEnabled());
   // Dismiss any existing active unbounded element to ensure only one is
-  // active at a time.
+  // active at a time. This must not be cancelable: the new element replaces
+  // the previous one regardless, so letting the page cancel would leave the
+  // previous element active without a surface.
   if (unbounded_surface_state_) {
-    OnDismissed();
+    DismissUnboundedSurfaceState(UnboundedDismissReason::kProgrammatic);
   }
   auto* execution_context = element->GetDocument().GetFrame()
                                 ? element->GetDocument().GetFrame()->DomWindow()

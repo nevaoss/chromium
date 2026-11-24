@@ -29,12 +29,14 @@ import type {ContextualTasksOnboardingTooltipElement} from './onboarding_tooltip
 // clang-format on
 
 
+
 import '//resources/cr_elements/cr_button/cr_button.js';
 import './error_dialog.js';
 import './error_page.js';
 import './ghost_loader.js';
 import './top_toolbar.js';
 
+import type {LoadAbortEvent, LoadEvent, NewWindowEvent, PermissionRequestEvent} from '/shared/guest_view/slim_webview.js';
 import type {ChromeEvent} from '/tools/typescript/definitions/chrome_event.js';
 import {assert} from 'chrome://resources/js/assert.js';
 import {EventTracker} from 'chrome://resources/js/event_tracker.js';
@@ -56,7 +58,7 @@ import type {Rect} from './post_message_handler.js';
 import {recordAction} from './utils.js';
 import {getNonOccludedClipPath} from './utils/clip_path.js';
 import {isFullWebView} from './web_view_type.js';
-import type {LoadAbortEvent, LoadEvent, NewWindowEvent, PermissionRequestEvent, WebViewType} from './web_view_type.js';
+import type {WebViewType} from './web_view_type.js';
 import {WindowManager} from './window_manager.js';
 
 
@@ -887,6 +889,7 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
   }
   // </if>
 
+  // LINT.IfChange(ContextualTasksTooltipLogic)
   private get isAskGEntryPointEligible_(): boolean {
     if (this.isShownInTab_) {
       return this.entryPoint_ === 'omnibox_tab_search';
@@ -957,6 +960,7 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
       this.onboardingTooltipShowing_ = onboardingTooltip.shouldShow;
     }
   }
+  // LINT.ThenChange(//chrome/browser/contextual_tasks/contextual_tasks_onboarding_tooltip_controller.cc:ContextualTasksTooltipLogic)
 
   protected onOnboardingTooltipDismissed_() {
     this.onboardingTooltipShowing_ = false;
@@ -1544,6 +1548,13 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
 
   protected async onNewThreadClick_() {
     recordAction('ContextualTasks.WebUI.UserAction.OpenNewThread');
+    // The browser may start the new thread in a new side panel for the active
+    // tab, so that other tabs sharing this thread keep it.
+    const {moved} =
+        await this.browserProxy_.handler.moveActiveTabToNewThreadIfShared();
+    if (moved) {
+      return;
+    }
     const {url} = await this.browserProxy_.handler.getThreadUrl();
     const newThreadUrl = new URL(url);
     const currentUrlString = this.$.threadFrame.src || this.pendingUrl_;

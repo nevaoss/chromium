@@ -294,12 +294,8 @@ external/wpt/resize-observer/scrollbars.html
 external/wpt/resize-observer/svg.html
 external/wpt/screen-wake-lock/wakelock-enabled-by-permissions-policy-attribute.https.html
 external/wpt/screen-wake-lock/wakelock-enabled-by-permissions-policy.https.html
-external/wpt/scroll-animations/css/animation-fill-outside-range-test.html
 external/wpt/scroll-animations/css/animation-range-visual-test.html
-external/wpt/scroll-animations/css/scroll-timeline-dynamic.tentative.html
 external/wpt/scroll-animations/css/view-timeline-range-animation.html
-external/wpt/scroll-animations/scroll-timelines/layout-changes-on-percentage-based-timeline.html
-external/wpt/scroll-animations/view-timelines/range-boundary.html
 external/wpt/scroll-to-text-fragment/find-range-from-text-directive.html
 external/wpt/service-workers/service-worker/client-navigate.https.html
 external/wpt/service-workers/service-worker/clients-matchall-frozen.https.html
@@ -313,7 +309,7 @@ external/wpt/shadow-dom/focus/focus-pseudo-on-shadow-host-1.html
 external/wpt/shadow-dom/focus/focus-pseudo-on-shadow-host-2.html
 external/wpt/shadow-dom/focus-navigation/delegatesFocus-highlight-sibling.html
 external/wpt/shadow-dom/focus-navigation/focus-navigation-slot-fallback.html
-external/wpt/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-with-iframe.html
+external/wpt/shadow-dom/focus-navigation/reading-flow/grid-order-with-iframe.html
 external/wpt/shadow-dom/reference-target/tentative/*
 external/wpt/speech-api/SpeechSynthesisEvent-properties.html
 external/wpt/speech-api/SpeechSynthesis-pause-resume.tentative.html
@@ -338,11 +334,6 @@ external/wpt/uievents/interface/keyboard-accesskey-click-event.html
 external/wpt/video-rvfc/request-video-frame-callback-webrtc.https.html
 external/wpt/visual-viewport/page-and-offset-in-iframe.html
 external/wpt/visual-viewport/resize-event-order.html
-external/wpt/wai-aria/accessibility_properties_basic.tentative.html
-external/wpt/wai-aria/checked/checked.tentative.html
-external/wpt/wai-aria/pressed/pressed.tentative.html
-external/wpt/wai-aria/role/invalid-roles.html
-external/wpt/wai-aria/subtree/tablist.tentative.html
 external/wpt/web-animations/interfaces/Animation/finished.html
 external/wpt/web-animations/interfaces/Animation/onremove.html
 external/wpt/web-animations/timing-model/timelines/timelines.html
@@ -350,13 +341,6 @@ external/wpt/web-animations/responsive/toggle-animated-iframe-visibility.html
 external/wpt/web-bundle/subresource-loading/csp-blocked.https.tentative.html
 external/wpt/web-locks/bfcache/sharedworker-multiple.tentative.https.html
 external/wpt/web-locks/query-ordering.https.html
-external/wpt/webcodecs/audioDecoder-codec-specific.https.any.worker.html?flac
-external/wpt/webcodecs/audioDecoder-codec-specific.https.any.worker.html?pcm_f32
-external/wpt/webcodecs/audioDecoder-codec-specific.https.any.worker.html?pcm_s24
-external/wpt/webcodecs/audioDecoder-codec-specific.https.any.worker.html?pcm_s32
-external/wpt/webcodecs/audioDecoder-codec-specific.https.any.worker.html?pcm_u8
-external/wpt/webcodecs/per-frame-qp-encoding.https.any.html?vp9_p2
-external/wpt/webcodecs/per-frame-qp-encoding.https.any.worker.html?vp9_p2
 external/wpt/webcodecs/videoDecoder-codec-specific.https.any.html?h265_annexb
 external/wpt/webcodecs/videoDecoder-codec-specific.https.any.html?h265_hevc
 external/wpt/webcodecs/videoDecoder-codec-specific.https.any.worker.html?h265_annexb
@@ -366,8 +350,6 @@ external/wpt/webcodecs/videoDecoder-codec-specific-orientation.https.any.html?h2
 external/wpt/webcodecs/videoDecoder-codec-specific-orientation.https.any.worker.html?h265_annexb
 external/wpt/webcodecs/videoDecoder-codec-specific-orientation.https.any.worker.html?h265_hevc
 external/wpt/webcodecs/videoFrame-construction.any.html
-external/wpt/webcodecs/videoFrame-texImage.any.html
-external/wpt/webcodecs/videoFrame-texImage.any.worker.html
 external/wpt/webrtc/protocol/h264-unidirectional-codec-offer.https.html
 external/wpt/webrtc/RTCDataChannel-close.html
 external/wpt/webrtc/RTCPeerConnection-operations.https.html

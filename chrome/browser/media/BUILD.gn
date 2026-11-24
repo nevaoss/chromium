@@ -131,7 +131,10 @@ source_set("unittests") {
 
   if (enable_extensions) {
     sources += [ "cast_mirroring_service_host_unittest.cc" ]
-    deps += [ ":impl" ]
+    deps += [
+      ":impl",
+      "//chrome/browser/media/router:media_router_feature",
+    ]
   }
 
   if (enable_media_remoting && !is_android) {
@@ -442,6 +445,7 @@ source_set("impl") {
       "platform_verification_chromeos.cc",
     ]
     deps += [
+      "//chrome/browser/ui:screen_capture_notification_ui",
       "//chrome/browser/ui/ash/login",
       "//chrome/browser/ui/webui/ash/lock_screen_reauth",
       "//chromeos/ash/components/settings",

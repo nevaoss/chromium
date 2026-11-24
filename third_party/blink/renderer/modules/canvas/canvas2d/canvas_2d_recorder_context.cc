@@ -472,7 +472,9 @@ void Canvas2DRecorderContext::beginLayerImpl(ScriptState* script_state,
       FilterEffectBuilder filter_effect_builder(
           gfx::RectF(canvas_viewport), canvas_viewport,
           1.0f,  // Deliberately ignore zoom on the canvas element.
-          Color::kBlack, mojom::blink::ColorScheme::kLight);
+          Color::kBlack, mojom::blink::ColorScheme::kLight,
+          // 2D context filters rely on origin tainting, not subtree scoping.
+          /*is_in_canvas_subtree=*/false);
 
       FilterEffect* filter_effect = filter_effect_builder.BuildFilterEffect(
           std::move(filter_operations), !OriginClean());
@@ -835,7 +837,7 @@ void Canvas2DRecorderContext::RestoreMatrixClipStack(cc::PaintCanvas* c) const {
   ValidateStateStack(c);
 }
 
-void Canvas2DRecorderContext::ResetInternal() {
+void Canvas2DRecorderContext::ResetState() {
   ValidateStateStack();
   state_stack_.resize(1);
   state_stack_.front() = MakeGarbageCollected<CanvasRenderingContext2DState>();
@@ -847,17 +849,24 @@ void Canvas2DRecorderContext::ResetInternal() {
     recorder->RestartRecording();
   }
 
-  // Clear the frame in case a flush previously drew to the canvas surface.
-  if (cc::PaintCanvas* c = GetPaintCanvas()) {
-    int width = Width();  // Keeping results to avoid repetitive virtual calls.
-    int height = Height();
-    WillDraw(gfx::Rect(width, height),
-             CanvasPerformanceMonitor::DrawType::kOther);
-    c->drawRect(SkRect::MakeXYWH(0.0f, 0.0f, width, height), GetClearFlags());
-  }
-
   ValidateStateStack();
   origin_tainted_by_content_ = false;
+}
+
+void Canvas2DRecorderContext::ClearCanvas(gfx::Size size) {
+  if (cc::PaintCanvas* c = GetPaintCanvas()) {
+    WillDraw(gfx::Rect(size), CanvasPerformanceMonitor::DrawType::kOther);
+    c->drawRect(SkRect::MakeWH(size.width(), size.height()), GetClearFlags());
+  }
+}
+
+void Canvas2DRecorderContext::ResetInternal() {
+  ResetState();
+
+  // Clear the frame in case a flush previously drew to the canvas surface.
+  if (GetPaintCanvas()) {
+    ClearCanvas(gfx::Size(Width(), Height()));
+  }
 }
 
 void Canvas2DRecorderContext::reset() {

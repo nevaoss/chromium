@@ -27,7 +27,7 @@ declare_args() {
   # (chrome_public_apk, trichrome_chrome_bundle, etc. as well as the
   # *_bundle variants). This defaults to the Chromium browser package name.
   chrome_public_manifest_package = "org.chromium.chrome"
-  if (use_stable_package_name_for_trichrome) {
+  if (use_stable_package_name) {
     chrome_public_manifest_package += ".stable"
   } else if (android_channel != "default") {
     chrome_public_manifest_package += "." + android_channel
@@ -149,7 +149,7 @@ template("chrome_common_apk_or_module_tmpl") {
   # both 64-bit and 32-bit ABIs. The 32-bit ABI remains the primary one via
   # use32bitAbi="true".
   _is_32_bit_multiarch_browser =
-      !_is_trichrome && !_is_test && !_is_64_bit_browser &&
+      is_chrome_branded && !_is_trichrome && !_is_test && !_is_64_bit_browser &&
       (android_64bit_target_cpu || defined(android_app_64bit_placeholder_abi))
 
   if (_is_trichrome) {

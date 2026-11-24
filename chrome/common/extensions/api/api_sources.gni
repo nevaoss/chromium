@@ -124,9 +124,7 @@ if (enable_extensions) {
       "platform_keys.idl",
       "platform_keys_internal.idl",
       "quick_unlock_private.idl",
-      "smart_card_provider_private.idl",
       "terminal_private.json",
-      "wallpaper.json",
     ]
   }
 

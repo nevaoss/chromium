@@ -111,6 +111,11 @@ class ContainerSpec:
   output_directory: str
 
 
+# section_name -> full_name -> (full_name, template_name, name, added_flags).
+# Many symbols share names, both within and across .size files.
+_NORMALIZED_NAMES_CACHE = collections.defaultdict(dict)
+
+
 def _NormalizeNames(raw_symbols):
   """Ensures that all names are formatted in a useful way.
 
@@ -122,27 +127,46 @@ def _NormalizeNames(raw_symbols):
   found_prefixes = set()
   for symbol in raw_symbols:
     full_name = symbol.full_name
+    section_name = symbol.section_name
+    cache = _NORMALIZED_NAMES_CACHE[section_name]
+    cached = cache.get(full_name)
+    if cached:
+      symbol.full_name, symbol.template_name, symbol.name, added_flags = cached
+      symbol.flags |= added_flags
+      # Skipping |found_prefixes| is fine since it is used only for debug
+      # logging (the prefix was logged when first seen, possibly by a prior
+      # call).
+      continue
+    cache_key = full_name
+    # Clear flags so that the ones added below can be cached.
+    orig_flags = symbol.flags
+    symbol.flags = 0
 
     # See comment in _CalculatePadding() about when this can happen. Don't
     # process names for non-native sections.
-    if symbol.IsPak():
+    if section_name in models.PAK_SECTIONS:
       # full_name: "about_ui_resources.grdp: IDR_ABOUT_UI_CREDITS_HTML".
       space_idx = full_name.rindex(' ')
       name = full_name[space_idx + 1 :]
       symbol.template_name = name
       symbol.name = name
-    elif full_name.startswith('**') or symbol.IsOverhead() or symbol.IsOther():
+    elif (
+      full_name.startswith('**')
+      or full_name.startswith('Overhead:')
+      or section_name == models.SECTION_OTHER
+    ):
       symbol.template_name = full_name
       symbol.name = full_name
-    elif symbol.IsStringLiteral():  # Handles native and DEX strings.
+    elif full_name == models.STRING_LITERAL_NAME or full_name.startswith('"'):
+      # Handles native and DEX strings.
       symbol.full_name = full_name
       symbol.template_name = full_name
       symbol.name = full_name
-    elif symbol.IsDex():
+    elif section_name in models.DEX_SECTIONS:
       symbol.full_name, symbol.template_name, symbol.name = (
         function_signature.ParseJava(full_name)
       )
-    elif symbol.IsNative():
+    elif section_name in models.NATIVE_SECTIONS:
       # Remove [clone] suffix, and set flag accordingly.
       # Search from left-to-right, as multiple [clone]s can exist.
       # Example name suffixes:
@@ -157,7 +181,7 @@ def _NormalizeNames(raw_symbols):
         symbol.flags |= models.FLAG_CLONE
 
       # Clones for C symbols.
-      if symbol.section == 't':
+      if section_name == models.SECTION_TEXT:
         idx = full_name.rfind('.')
         if idx != -1 and full_name[idx + 1 :].isdigit():
           new_name = full_name[:idx]
@@ -192,18 +216,28 @@ def _NormalizeNames(raw_symbols):
       )
 
       # Remove anonymous namespaces (they just harm clustering).
-      symbol.template_name = symbol.template_name.replace(
-        '(anonymous namespace)::', ''
-      )
-      symbol.full_name = symbol.full_name.replace('(anonymous namespace)::', '')
-      non_anonymous_name = symbol.name.replace('(anonymous namespace)::', '')
-      if symbol.name != non_anonymous_name:
-        symbol.flags |= models.FLAG_ANONYMOUS
-        symbol.name = non_anonymous_name
+      if '(anonymous namespace)::' in full_name:
+        symbol.template_name = symbol.template_name.replace(
+          '(anonymous namespace)::', ''
+        )
+        symbol.full_name = symbol.full_name.replace(
+          '(anonymous namespace)::', ''
+        )
+        non_anonymous_name = symbol.name.replace('(anonymous namespace)::', '')
+        if symbol.name != non_anonymous_name:
+          symbol.flags |= models.FLAG_ANONYMOUS
+          symbol.name = non_anonymous_name
 
     # Allow using "is" to compare names (and should help with RAM). This applies
     # to all symbols.
     function_signature.InternSameNames(symbol)
+    cache[cache_key] = (
+      symbol.full_name,
+      symbol.template_name,
+      symbol.name,
+      symbol.flags,
+    )
+    symbol.flags |= orig_flags
 
   logging.debug('Found name prefixes of: %r', found_prefixes)
 
@@ -319,6 +353,7 @@ def _CreateContainerSymbols(
   container_spec,
   apk_file_manager,
   dex_async_results,
+  arsc_async_results,
   ninja_source_mapper,
   pak_id_map,
   component_overrides,
@@ -433,7 +468,7 @@ def _CreateContainerSymbols(
   if not native_spec and apk_spec:
     logging.info('Analyzing ARSC')
     arsc_section_ranges, arsc_symbols, arsc_metrics_by_file = (
-      apk.CreateArscSymbols(apk_spec)
+      arsc_async_results[container_name].get()
     )
     add_syms(arsc_section_ranges, arsc_symbols)
     metrics_by_file.update(arsc_metrics_by_file)
@@ -1261,22 +1296,28 @@ def CreateSizeInfo(
 
   container_specs.sort(key=sort_key)
 
-  dex_containers = [
-    c
-    for c in container_specs
-    if not c.native_spec and c.apk_spec and c.apk_spec.analyze_dex
+  apk_containers = [
+    c for c in container_specs if not c.native_spec and c.apk_spec
   ]
-  # Parse dex files in background processes so that other containers can be
-  # processed concurrently.
+  # Parse dex and arsc files in background processes so that other containers
+  # can be processed concurrently.
   dex_async_results = {}
-  if dex_containers:
+  arsc_async_results = {}
+  if apk_containers:
     logging.info(
-      'Kicking off dex analysis for %d .apk files', len(dex_containers)
+      'Kicking off dex and arsc analysis for %d .apk files',
+      len(apk_containers),
     )
-    for container_spec in dex_containers:
+    for container_spec in apk_containers:
       apk_spec = container_spec.apk_spec
-      dex_async_results[container_spec.container_name] = dex.AnalyzeDexAsync(
-        apk_spec.apk_path, apk_spec.mapping_path, apk_spec.track_string_literals
+      if apk_spec.analyze_dex:
+        dex_async_results[container_spec.container_name] = dex.AnalyzeDexAsync(
+          apk_spec.apk_path,
+          apk_spec.mapping_path,
+          apk_spec.track_string_literals,
+        )
+      arsc_async_results[container_spec.container_name] = parallel.ForkAndCall(
+        apk.CreateArscSymbols, (apk_spec,)
       )
 
   ninja_containers = [
@@ -1302,6 +1343,7 @@ def CreateSizeInfo(
       container_spec,
       apk_file_manager,
       dex_async_results,
+      arsc_async_results,
       ninja_source_mapper,
       pak_id_map,
       json_config.ComponentOverrides(),

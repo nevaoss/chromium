@@ -107,7 +107,6 @@
 #include "ui/gfx/geometry/rect_f.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/views/accessibility/view_accessibility.h"
-#include "ui/views/controls/webview/unhandled_keyboard_event_handler.h"
 #include "ui/views/controls/webview/web_contents_set_background_color.h"
 #include "ui/views/controls/webview/webview.h"
 #include "ui/views/focus/focus_manager.h"
@@ -180,6 +179,7 @@ class WebUIToolbarInternalWebView : public views::WebView {
       : views::WebView(browser_context),
         webui_toolbar_web_view_(webui_toolbar_web_view) {
     SetBackground(nullptr);
+    SetAcceleratorHandling(views::WebContentsAcceleratorHandling::kEnabled);
 #if BUILDFLAG(IS_MAC)
     forwarder_ = std::make_unique<WebUIToolbarEventForwarder>(
         *webui_toolbar_web_view, *this);
@@ -268,15 +268,6 @@ class WebUIToolbarInternalWebView : public views::WebView {
                                          std::move(hang_monitor_restarter));
   }
 
-  bool HandleKeyboardEvent(
-      content::WebContents* source,
-      const input::NativeWebKeyboardEvent& event) override {
-    // Used to handle the focus event triggered by keyboard (e.g. cmd+L to focus
-    // on the omnibox from macOS). See crbug.com/491963415.
-    return unhandled_keyboard_event_handler_.HandleKeyboardEvent(
-        event, GetFocusManager());
-  }
-
   bool HandleContextMenu(content::RenderFrameHost& render_frame_host,
                          const content::ContextMenuParams& params) override {
     gfx::Point point(params.x, params.y);
@@ -337,9 +328,6 @@ class WebUIToolbarInternalWebView : public views::WebView {
 #endif
   // owns `this` as a child view.
   raw_ptr<WebUIToolbarWebView> webui_toolbar_web_view_;
-  // A handler to handle unhandled keyboard messages coming back from the
-  // renderer process.
-  views::UnhandledKeyboardEventHandler unhandled_keyboard_event_handler_;
   std::optional<base::FilePath> cached_dragged_file_path_;
   std::optional<gfx::PointF> cached_dragged_file_position_;
 };
@@ -628,6 +616,9 @@ void WebUIToolbarWebView::OnThemeChanged() {
   if (features::IsWebUIPinnedToolbarActionsEnabled()) {
     pinned_toolbar_actions_.OnThemeChanged();
   }
+  if (features::IsWebUIGlicButtonEnabled()) {
+    glic_control_.OnThemeChanged();
+  }
   extensions_container_.OnThemeChanged();
   icon_table_.OnThemeChanged();
 }
@@ -695,6 +686,7 @@ void WebUIToolbarWebView::HandleContextMenu(
     const gfx::RectF& bounds_in_css_pixels,
     ui::mojom::MenuSourceType source,
     std::optional<uint32_t> show_menu_token) {
+  EnsureWidgetActive();
   gfx::Rect screen_rect =
       ConvertBoundsFromCssPixelsToScreenCoords(bounds_in_css_pixels);
 
@@ -792,6 +784,7 @@ void WebUIToolbarWebView::ShowOverflowMenu(
     ui::mojom::MenuSourceType source,
     toolbar_ui_api::mojom::ToolbarUIService::ShowOverflowMenuCallback
         callback) {
+  EnsureWidgetActive();
   overflow_button_.ShowOverflowMenu(
       controls, ConvertBoundsFromCssPixelsToScreenCoords(bounds_in_css_pixels),
       source, std::move(callback));
@@ -957,6 +950,7 @@ void WebUIToolbarWebView::ExecuteExtensionAction(
 void WebUIToolbarWebView::ShowExtensionContextMenu(
     const std::string& extension_id,
     ui::mojom::MenuSourceType source) {
+  EnsureWidgetActive();
   extensions_container_.ShowContextMenu(source, extension_id);
 }
 
@@ -1797,7 +1791,15 @@ void WebUIToolbarWebView::OnFocusRequested(
 }
 
 void WebUIToolbarWebView::OnInternalWebViewFocused() {
+  const bool had_pending_focus_request = pending_focus_request_.has_value();
   MaybeFlushPendingFocusRequest();
+  // Only notify `location_bar_` when `web_view_` gains focus outside of an
+  // explicit `OnFocusRequested()` flow or pre-menu widget activation (e.g. when
+  // `FocusManager` restores focus to `web_view_` on browser widget activation).
+  if (!had_pending_focus_request && !in_focus_request_ &&
+      !activating_for_menu_ && location_bar_) {
+    location_bar_->OnToolbarFocused();
+  }
 }
 
 void WebUIToolbarWebView::MaybeFlushPendingFocusRequest() {
@@ -1852,8 +1854,27 @@ void WebUIToolbarWebView::HandleOmniboxContextMenu(
     const gfx::Point& point,
     ui::mojom::MenuSourceType source_type,
     content::ContextMenuParams params) {
+  EnsureWidgetActive();
   if (location_bar_) {
     location_bar_->HandleContextMenu(GetWidget(), point, source_type, params);
+  }
+}
+
+void WebUIToolbarWebView::EnsureWidgetActive() {
+  // Opening a toolbar menu via a WebUI click occurs asynchronously after an IPC
+  // round-trip. If the Omnibox popup widget reclaimed activation in the
+  // meantime, ensure the browser widget is active before running the menu so
+  // subsequent focus changes within the browser widget (e.g. opening the Find
+  // bar from the menu) do not trigger a widget activation change that cancels
+  // the menu prematurely. Check `ShouldPaintAsActive()` so an inactive browser
+  // window in the background is not pulled to the front.
+  views::Widget* widget = GetWidget();
+  if (widget && !widget->IsActive() && widget->ShouldPaintAsActive()) {
+    // Suppress `location_bar_->OnToolbarFocused()` if `Activate()`
+    // synchronously restores focus to `web_view_`, so the omnibox popup does
+    // not reclaim activation before the menu opens.
+    base::AutoReset<bool> activating_for_menu(&activating_for_menu_, true);
+    widget->Activate();
   }
 }
 

@@ -29,10 +29,10 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import static org.chromium.chrome.browser.settings.SettingsSearchTestUtils.assertHighlighted;
 import static org.chromium.chrome.browser.settings.SettingsSearchTestUtils.assertNoSearchResultsFound;
 import static org.chromium.chrome.browser.settings.SettingsSearchTestUtils.assertPreferenceScreenMatchesIndex;
 import static org.chromium.chrome.browser.settings.SettingsSearchTestUtils.clickSearchResult;
-import static org.chromium.chrome.browser.settings.SettingsSearchTestUtils.highlighted;
 import static org.chromium.chrome.browser.settings.SettingsSearchTestUtils.typeSearchQuery;
 import static org.chromium.ui.test.util.ViewUtils.onViewWaiting;
 
@@ -91,6 +91,7 @@ import org.chromium.base.test.util.Restriction;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.device_reauth.BiometricStatus;
+import org.chromium.chrome.browser.device_reauth.DeviceAuthAvailabilityCheckerBridge;
 import org.chromium.chrome.browser.device_reauth.ReauthenticatorBridge;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
@@ -255,7 +256,7 @@ public class ManageSyncSettingsTest {
                 GoogleActivityController.class, mGoogleActivityController);
 
         RegionalCapabilitiesServiceFactory.setInstanceForTesting(mRegionalCapabilities);
-        when(mRegionalCapabilities.isInEeaCountry()).thenReturn(false);
+        when(mRegionalCapabilities.mayShowLinkedGoogleServicesSetting()).thenReturn(false);
 
         HistorySyncHelper.setInstanceForTesting(mHistorySyncHelperMock);
 
@@ -1245,7 +1246,7 @@ public class ManageSyncSettingsTest {
     @Feature({"PersonalizedGoogleServices", "RenderTest"})
     @DisabledTest(message = "Flaky - crbug.com/466094740")
     public void testLinkedServicesSettingEea() throws Exception {
-        when(mRegionalCapabilities.isInEeaCountry()).thenReturn(true);
+        when(mRegionalCapabilities.mayShowLinkedGoogleServicesSetting()).thenReturn(true);
         mSyncTestRule.setUpAccountAndSignInForTesting();
         final ManageSyncSettings fragment = startManageSyncPreferences();
         ThreadUtils.runOnUiThreadBlocking(
@@ -1272,7 +1273,7 @@ public class ManageSyncSettingsTest {
     @LargeTest
     @Feature({"PersonalizedGoogleServices"})
     public void testClickPersonalizeGoogleServicesEEA() {
-        when(mRegionalCapabilities.isInEeaCountry()).thenReturn(true);
+        when(mRegionalCapabilities.mayShowLinkedGoogleServicesSetting()).thenReturn(true);
         mSyncTestRule.setUpAccountAndSignInForTesting();
         startManageSyncPreferences();
         // Scroll to and click the Personalize Google services pref.
@@ -1510,6 +1511,8 @@ public class ManageSyncSettingsTest {
         ReauthenticatorBridge.setInstanceForTesting(mReauthenticatorMock);
         when(mReauthenticatorMock.getBiometricAvailabilityStatus())
                 .thenReturn(biometricAvailabilityStatus);
+        DeviceAuthAvailabilityCheckerBridge.setBiometricAvailabilityStatusForTesting(
+                biometricAvailabilityStatus);
         SyncServiceFactory.setInstanceForTesting(mSyncService);
         when(mSyncService.getTransportState()).thenReturn(transportState);
         when(mSyncService.getAuthError())
@@ -1744,7 +1747,6 @@ public class ManageSyncSettingsTest {
 
     @Test
     @SmallTest
-    @DisableIf.Device(DeviceFormFactor.AUTOMOTIVE) // crbug.com/573984028
     public void testSearchHistoryAndTabs_signedIn() {
         mSettingsSearchTestRule.startSettingsActivity();
         mSyncTestRule.setUpAccountAndSignInForTesting();
@@ -1752,7 +1754,7 @@ public class ManageSyncSettingsTest {
         typeSearchQuery("history and tabs");
         clickSearchResult(R.string.account_section_history_toggle);
 
-        onView(highlighted(R.string.account_section_history_toggle)).check(matches(isDisplayed()));
+        assertHighlighted(R.string.account_section_history_toggle);
     }
 
     @Test
@@ -1789,7 +1791,7 @@ public class ManageSyncSettingsTest {
     @Test
     @SmallTest
     public void testPreferenceScreenMatchesSearchIndex_signedIn_nonEea() {
-        when(mRegionalCapabilities.isInEeaCountry()).thenReturn(false);
+        when(mRegionalCapabilities.mayShowLinkedGoogleServicesSetting()).thenReturn(false);
         mSyncTestRule.setUpAccountAndSignInForTesting();
         ManageSyncSettings fragment = startManageSyncPreferences();
 
@@ -1799,7 +1801,7 @@ public class ManageSyncSettingsTest {
     @Test
     @SmallTest
     public void testPreferenceScreenMatchesSearchIndex_signedIn_eea() {
-        when(mRegionalCapabilities.isInEeaCountry()).thenReturn(true);
+        when(mRegionalCapabilities.mayShowLinkedGoogleServicesSetting()).thenReturn(true);
         mSyncTestRule.setUpAccountAndSignInForTesting();
         ManageSyncSettings fragment = startManageSyncPreferences();
 

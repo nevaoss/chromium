@@ -56,7 +56,6 @@
 #include "chrome/browser/ash/login/wizard_controller.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/browser_process_platform_part.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/ash/login/login_display_host.h"
 #include "chrome/browser/ui/ash/login/login_display_host_common.h"
 #include "chrome/browser/ui/ash/login/login_screen_client_impl.h"
@@ -190,12 +189,14 @@ LoginDisplayHostMojo::AuthState::~AuthState() = default;
 
 LoginDisplayHostMojo::LoginDisplayHostMojo(
     PrefService* local_state,
+    ::metrics::MetricsService* metrics_service,
     ApplicationLocaleStorage* application_locale_storage,
     scoped_refptr<network::SharedURLLoaderFactory> shared_url_loader_factory,
     policy::BrowserPolicyConnectorAsh* browser_policy_connector_ash,
     DisplayedScreen displayed_screen,
     bool update_geolocation_usage_allowed)
     : LoginDisplayHostCommon(local_state,
+                             metrics_service,
                              application_locale_storage,
                              shared_url_loader_factory,
                              browser_policy_connector_ash,
@@ -930,7 +931,7 @@ void LoginDisplayHostMojo::EnsureOobeDialogLoaded() {
   // Should be created after dialog was created and OobeUI was loaded.
   // TODO(crbug.com/404133029): Avoid using g_browser_process.
   wizard_controller_ = std::make_unique<WizardController>(
-      &local_state_.get(), g_browser_process->metrics_service(),
+      &local_state_.get(), &metrics_service_.get(),
       &application_locale_storage_.get(), shared_url_loader_factory_.get(),
       &browser_policy_connector_ash_.get(),
       g_browser_process->platform_part()->component_manager_ash(),

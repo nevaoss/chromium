@@ -325,6 +325,7 @@
 <translation id="1925706052394657380">Atveriet <ph name="BEGIN_BOLD" />noklusējuma lietotņu<ph name="END_BOLD" /> iestatījumus iOS ierīcē.</translation>
 <translation id="1938871630297275912">{count,plural, =1{Saite saņemta}zero{Saņemtas {count} saites}one{Saņemta {count} saite}other{Saņemtas {count} saites}}</translation>
 <translation id="1941314575388338491">Veiciet dubultskārienu, lai kopētu.</translation>
+<translation id="1942483019269000450">Lai turpinātu uzdevumu, Gemini var lūgt Google makam aizpildīt jūsu kredītkartes informāciju.</translation>
 <translation id="1943478190258551035">Izvēlne → Iestatījumi</translation>
 <translation id="1944477975050820119">Saņemiet reāllaika ieteikumus, kas var palīdzēt jums atrast jaunus veidus, kā pārlūkot saturu, izmantojot MI. <ph name="BEGIN_LINK" />Uzziniet vairāk<ph name="END_LINK" />.</translation>
 <translation id="1952728750904661634">Pierakstīšanās pārvaldītā kontā</translation>
@@ -365,6 +366,7 @@
 <translation id="20485545164632846">jauns vienums</translation>
 <translation id="2049727122989709386">Vēl <ph name="COUNT" /> kontos tiek izmantota tā pati parole.</translation>
 <translation id="205013082884273671">Varat meklēt jebkādu ekrānā redzamo saturu</translation>
+<translation id="2053311407685904414">Atlasiet adresi</translation>
 <translation id="2054044186557130763">Pierakstieties ar kontu <ph name="NAME" />, <ph name="EMAIL" /> (pārvalda jūsu organizācija).</translation>
 <translation id="2059166748188874810">Pašvaldība</translation>
 <translation id="2060638295449304809">Šī adrese ir saglabāta tikai šajā ierīcē. Lai varētu izmantot šo adresi citās ierīcēs, saglabājiet to savā Google kontā <ph name="USER_EMAIL" />.</translation>
@@ -465,6 +467,7 @@
 <translation id="2359043044084662842">Tulkot</translation>
 <translation id="2359808026110333948">Turpināt</translation>
 <translation id="2360196772093551345">Pieprasīt mobilo vietni</translation>
+<translation id="2360272811987888433">Pierakstīties manuāli</translation>
 <translation id="2362083820973145409">Pierakstījies kā <ph name="USER_NAME" />. <ph name="USER_EMAIL" />. Tiek atvērti iestatījumi.</translation>
 <translation id="2367025302166767427">Nevar aizpildīt jūsu informāciju</translation>
 <translation id="2371084566192454134">Cilnes un ciļņu grupas</translation>
@@ -773,11 +776,13 @@
 <translation id="3404232721752787413">Saglabāt pakalpojumā Google fotoattēli</translation>
 <translation id="3406506285180498376">Kopīgot lapu…</translation>
 <translation id="340669334496430859">Pēdējoreiz mainīts</translation>
+<translation id="3407832712016477396">Gemini var izmantot Google paroļu pārvaldnieku, lai pierakstītos jūsu vietā.</translation>
 <translation id="3409785640040772790">Maps</translation>
 <translation id="3416023309465857378">2023. gada 25. oktobris</translation>
 <translation id="3419787211763835342">Palīdziet pilnveidot uzlaboto automātisko aizpildi</translation>
 <translation id="3422958112451181446">Nospiediet un turiet, lai piespraustu savu iecienītāko rīku šeit</translation>
 <translation id="3430407169377889553">Izmantojiet Gemini piesardzīgi un, ja nepieciešams, pārņemiet vadību. Jūs atbildat par Gemini darbībām uzdevumu veikšanas laikā.</translation>
+<translation id="3432601291244612633">Aizvērt lapu</translation>
 <translation id="3435738964857648380">Drošība</translation>
 <translation id="3441673211568148613">Saglabājiet pārlūkošanas konfidencialitāti</translation>
 <translation id="3445288400492335833"><ph name="MINUTES" /> min</translation>
@@ -1049,6 +1054,8 @@
 <translation id="4290920330097335010">Nekad neatļaut</translation>
 <translation id="4293154608148215505">sava tālruņa</translation>
 <translation id="4294506173142861371">Vai pierakstīties ar kontu <ph name="FIRST_NAME" />?</translation>
+<translation id="4297031046690565608">Ievadīt manuāli</translation>
+<translation id="4297418774230471285">Atlasiet personas informāciju</translation>
 <translation id="4302061870579014542">Iestatīt pozīciju</translation>
 <translation id="4304713468139749426">Paroļu pārvaldnieks</translation>
 <translation id="4309403553630140242">Veiciet dubultskārienu, lai skatītu plašāku informāciju.</translation>
@@ -1387,6 +1394,7 @@
 <translation id="5315029634103634221">Gemini ir MI un var pieļaut kļūdas. <ph name="BEGIN_LINK" />Plašāka informācija par atbilstošajiem datiem, kas tiek sūtīti uzņēmumam Google<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">Nav vienumu importēšanai</translation>
 <translation id="5316356981864168850"><ph name="INDEX" />. no <ph name="NUM_SUGGESTIONS" /></translation>
+<translation id="5316823130598991834">Pierakstīšanās vietnē <ph name="SITE_DOMAIN" /></translation>
 <translation id="5317780077021120954">Saglabāt</translation>
 <translation id="5318298563956633672">Jūs jau sekojat līdzi šī produkta informācijai.</translation>
 <translation id="5327248766486351172">Nosaukums</translation>
@@ -1934,6 +1942,7 @@ Lai turpinātu datorā, pārslēdzieties uz kontu <ph name="OTHER_EMAIL" />. Jū
 <translation id="6946722113367118030">Domāšana</translation>
 <translation id="6947751977892029882">Radās ar iestatījumu saistīta problēma. Atjauniniet un restartējiet pārlūku Chrome un operētājsistēmu iOS un mēģiniet vēlreiz. Ja šī kļūda atkārtojas, iespējams, jūsu iPhone tālrunī netiek atbalstīts šis iestatījums.</translation>
 <translation id="6950522403736391608">Paslēptas</translation>
+<translation id="6957084631403333422">Vienkāršotas jaunas cilnes lapas izmēģināšana</translation>
 <translation id="695965663642079255">Saglabājiet un pārvaldiet maksājumu informāciju, lai norēķinātos ātrāk.</translation>
 <translation id="6962809930976936328">Gūt ieskatus, izmantojot Gemini</translation>
 <translation id="6964300328304469089">Pašlaik ir atlasīts šāds konts: <ph name="NAME" />, <ph name="EMAIL" />. Izvēlieties kontu.</translation>
@@ -2171,6 +2180,7 @@ Varat jebkurā laikā atkal iespējot Level Up.</translation>
 <translation id="7724085059277147439">{count,plural, =1{Vienums ir saglabāts jūsu Google kontā ({email})}zero{Vienumi ir saglabāti jūsu Google kontā ({email})}one{Vienumi ir saglabāti jūsu Google kontā ({email})}other{Vienumi ir saglabāti jūsu Google kontā ({email})}}</translation>
 <translation id="7729458878441927652">Lai skatītu cilnes no citām savām ierīcēm, sinhronizējiet cilnes un vēsturi.</translation>
 <translation id="7730020510075123961">Nē, sapludināt datus</translation>
+<translation id="7730937523779541003">Tika lietots vienkāršots jaunas cilnes lapas izkārtojums</translation>
 <translation id="7733646263819020771"><ph name="BOOKMRK_NAME" />. Tikai šajā ierīcē.</translation>
 <translation id="7737550920399185748">Sākumlapas fotoattēli no jūsu fotoattēlu bibliotēkas netiks sinhronizēti jūsu ierīcēs.</translation>
 <translation id="7738120385185846461">Ziņot par problēmu…</translation>
@@ -2206,6 +2216,7 @@ Varat jebkurā laikā atkal iespējot Level Up.</translation>
 <translation id="7839994177130598711">Jūsu ģimenes locekļi tagad var izmantot jūsu lietotājvārdu un paroli, ar Google paroļu pārvaldnieku pierakstoties vietnē <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" />.</translation>
 <translation id="7841180087127694526">Meklēt kopēto tekstu</translation>
 <translation id="7841418003178675048">Izvēlieties, kuras kartītes jums tiek rādītas jaunas cilnes lapā.</translation>
+<translation id="7842369010458597654">Maksājuma informācijas aizpildīšana</translation>
 <translation id="7845466610722898">Rādīt lasīšanas sarakstu</translation>
 <translation id="7846161022626028328">Radās kļūda. Mēģiniet vēlreiz.</translation>
 <translation id="784623644169604270">Nav pēdējā laikā veiktu darbību</translation>
@@ -2613,6 +2624,7 @@ Varat jebkurā laikā atkal iespējot Level Up.</translation>
 <translation id="9032405509996909363">Apstiprināt pārlūkošanas datu dzēšanu</translation>
 <translation id="9038526468059454274">Apkopojiet, izmantojot</translation>
 <translation id="9039373489628511875">Joslas platums</translation>
+<translation id="9042363670218758847">Pārslēdzieties uz izkārtojumu, kas izveidots ātrai meklēšanai.</translation>
 <translation id="9042893549633094279">Konfidencialitāte un drošība</translation>
 <translation id="9044703854323320868">Gmail ziņojums <ph name="INDEX" /></translation>
 <translation id="9055291197094969722">Izveidojiet ciļņu grupas, lai kārtotu atvērtās cilnes un saglabātu produktivitāti</translation>

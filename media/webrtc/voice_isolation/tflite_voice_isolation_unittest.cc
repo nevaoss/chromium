@@ -7,20 +7,25 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <string_view>
 #include <vector>
 
+#include "base/check.h"
 #include "base/check_op.h"
 #include "base/containers/span.h"
 #include "base/containers/to_vector.h"
 #include "base/memory/aligned_memory.h"
 #include "base/test/gmock_expected_support.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/time/time.h"
+#include "base/timer/elapsed_timer.h"
 #include "media/webrtc/voice_isolation/speech_mask_estimator.h"
 #include "media/webrtc/voice_isolation/voice_isolation_test_utils.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/flatbuffers/src/include/flatbuffers/flatbuffers.h"
 #include "third_party/tflite/src/tensorflow/lite/schema/schema_generated.h"
+#include "third_party/tflite/src/tensorflow/lite/version.h"
 
 namespace media {
 namespace {
@@ -165,6 +170,534 @@ std::vector<std::vector<float>> ProcessAndGetSpeechMasks(
   return masks;
 }
 
+constexpr int32_t kModelInputElements = kNumDfts * kDftSize;
+constexpr int32_t kModelOutputElements = 2 * kModelInputElements;
+
+FakeModel FinishFakeModel(flatbuffers::FlatBufferBuilder& builder,
+                          flatbuffers::Offset<tflite::Model> model_offset) {
+  tflite::FinishModelBuffer(builder, model_offset);
+
+  FakeModel fake_model;
+  fake_model.buffer = builder.Release();
+  fake_model.model = tflite::FlatBufferModel::VerifyAndBuildFromBuffer(
+      reinterpret_cast<const char*>(fake_model.buffer.data()),
+      fake_model.buffer.size());
+  CHECK(fake_model.model);
+  return fake_model;
+}
+
+// Builds a model whose input tensor has shape [1, 640] (640 elements) and is
+// backed by a constant FlatBuffer buffer (`kTfLiteMmapRo`).
+FakeModel BuildModelWithConstantInputBuffer() {
+  flatbuffers::FlatBufferBuilder builder(8192);
+
+  const std::vector<uint8_t> constant_input_bytes(
+      kModelInputElements * sizeof(float), 0);
+  std::vector<flatbuffers::Offset<tflite::Buffer>> buffers = {
+      tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder, builder.CreateVector(constant_input_bytes)),
+      tflite::CreateBuffer(builder),
+  };
+
+  const std::vector<int32_t> input_shape = {1, kModelInputElements};
+  const std::vector<int32_t> output_shape = {1, kModelOutputElements};
+  std::vector<flatbuffers::Offset<tflite::Tensor>> tensors = {
+      tflite::CreateTensorDirect(builder, &input_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/1,
+                                 "input"),
+      tflite::CreateTensorDirect(builder, &output_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/2,
+                                 "output"),
+  };
+
+  std::vector<flatbuffers::Offset<tflite::OperatorCode>> opcodes = {
+      tflite::CreateOperatorCode(builder, /*deprecated_builtin_code=*/0,
+                                 /*custom_code=*/0, /*version=*/1,
+                                 tflite::BuiltinOperator_CONCATENATION),
+  };
+
+  const std::vector<int32_t> op_inputs = {0, 0};
+  const std::vector<int32_t> op_outputs = {1};
+  std::vector<flatbuffers::Offset<tflite::Operator>> operators = {
+      tflite::CreateOperatorDirect(
+          builder, /*opcode_index=*/0, &op_inputs, &op_outputs,
+          tflite::BuiltinOptions_ConcatenationOptions,
+          tflite::CreateConcatenationOptions(builder, /*axis=*/1).Union()),
+  };
+
+  const std::vector<int32_t> subgraph_inputs = {0};
+  const std::vector<int32_t> subgraph_outputs = {1};
+  std::vector<flatbuffers::Offset<tflite::SubGraph>> subgraphs = {
+      tflite::CreateSubGraphDirect(builder, &tensors, &subgraph_inputs,
+                                   &subgraph_outputs, &operators, "main"),
+  };
+
+  return FinishFakeModel(
+      builder, tflite::CreateModelDirect(
+                   builder, /*version=*/TFLITE_SCHEMA_VERSION, &opcodes,
+                   &subgraphs, "constant_input_buffer", &buffers));
+}
+
+// Builds a model with a valid primary subgraph and an unreferenced secondary
+// subgraph containing an `is_variable` tensor. `Interpreter::AllocateTensors()`
+// only allocates the primary subgraph, so `Interpreter::ResetVariableTensors()`
+// fails on the unallocated secondary-subgraph variable tensor.
+FakeModel BuildModelWithUnallocatedSecondarySubgraphVariable() {
+  flatbuffers::FlatBufferBuilder builder(4096);
+
+  std::vector<flatbuffers::Offset<tflite::Buffer>> buffers = {
+      tflite::CreateBuffer(builder), tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder), tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder),
+  };
+
+  std::vector<flatbuffers::Offset<tflite::OperatorCode>> opcodes = {
+      tflite::CreateOperatorCode(builder, /*deprecated_builtin_code=*/0,
+                                 /*custom_code=*/0, /*version=*/1,
+                                 tflite::BuiltinOperator_CONCATENATION),
+  };
+
+  const std::vector<int32_t> input_shape = {1, kModelInputElements};
+  const std::vector<int32_t> output_shape = {1, kModelOutputElements};
+  std::vector<flatbuffers::Offset<tflite::Tensor>> primary_tensors = {
+      tflite::CreateTensorDirect(builder, &input_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/1,
+                                 "input"),
+      tflite::CreateTensorDirect(builder, &output_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/2,
+                                 "output"),
+  };
+  const std::vector<int32_t> op_inputs = {0, 0};
+  const std::vector<int32_t> op_outputs = {1};
+  std::vector<flatbuffers::Offset<tflite::Operator>> primary_operators = {
+      tflite::CreateOperatorDirect(
+          builder, /*opcode_index=*/0, &op_inputs, &op_outputs,
+          tflite::BuiltinOptions_ConcatenationOptions,
+          tflite::CreateConcatenationOptions(builder, /*axis=*/1).Union()),
+  };
+  const std::vector<int32_t> primary_inputs = {0};
+  const std::vector<int32_t> primary_outputs = {1};
+
+  std::vector<flatbuffers::Offset<tflite::Tensor>> secondary_tensors = {
+      tflite::CreateTensorDirect(builder, &input_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/3,
+                                 "unallocated_var", /*quantization=*/0,
+                                 /*is_variable=*/true),
+      tflite::CreateTensorDirect(builder, &output_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/4,
+                                 "secondary_out"),
+  };
+  std::vector<flatbuffers::Offset<tflite::Operator>> secondary_operators = {
+      tflite::CreateOperatorDirect(
+          builder, /*opcode_index=*/0, &op_inputs, &op_outputs,
+          tflite::BuiltinOptions_ConcatenationOptions,
+          tflite::CreateConcatenationOptions(builder, /*axis=*/1).Union()),
+  };
+  const std::vector<int32_t> secondary_inputs = {0};
+  const std::vector<int32_t> secondary_outputs = {1};
+
+  std::vector<flatbuffers::Offset<tflite::SubGraph>> subgraphs = {
+      tflite::CreateSubGraphDirect(builder, &primary_tensors, &primary_inputs,
+                                   &primary_outputs, &primary_operators,
+                                   "main"),
+      tflite::CreateSubGraphDirect(
+          builder, &secondary_tensors, &secondary_inputs, &secondary_outputs,
+          &secondary_operators, "unreferenced_subgraph"),
+  };
+
+  return FinishFakeModel(
+      builder, tflite::CreateModelDirect(
+                   builder, /*version=*/TFLITE_SCHEMA_VERSION, &opcodes,
+                   &subgraphs, "unallocated_secondary_var", &buffers));
+}
+
+enum class ExtraPrimaryResourceVariable {
+  kNone,
+  kUnassignedByInitSubgraph,
+};
+
+// Builds a model whose CallOnce initialization subgraph assigns a 640-element
+// int32 tensor initialized to `init_byte_value` to a resource variable, while
+// the primary subgraph assigns a `primary_elements`-element int32 tensor to the
+// same resource variable during `Invoke()`. When `extra_variable` is
+// `kUnassignedByInitSubgraph`, the primary subgraph also assigns an all-zero
+// tensor to a second resource variable that the initialization subgraph omits.
+// `INT32` is used so the XNNPACK delegate does not claim `ASSIGN_VARIABLE`.
+FakeModel BuildModelWithResourceVariable(
+    int32_t primary_elements = kModelInputElements,
+    uint8_t init_byte_value = 0,
+    ExtraPrimaryResourceVariable extra_variable =
+        ExtraPrimaryResourceVariable::kNone) {
+  flatbuffers::FlatBufferBuilder builder(16384);
+
+  const std::vector<uint8_t> primary_value_bytes(
+      primary_elements * sizeof(int32_t), 0);
+  const std::vector<uint8_t> init_value_bytes(
+      kModelInputElements * sizeof(int32_t), init_byte_value);
+  std::vector<flatbuffers::Offset<tflite::Buffer>> buffers = {
+      tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder, builder.CreateVector(primary_value_bytes)),
+      tflite::CreateBuffer(builder, builder.CreateVector(init_value_bytes)),
+      tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder),
+  };
+
+  std::vector<flatbuffers::Offset<tflite::OperatorCode>> opcodes = {
+      tflite::CreateOperatorCode(builder, /*deprecated_builtin_code=*/0,
+                                 /*custom_code=*/0, /*version=*/1,
+                                 tflite::BuiltinOperator_CALL_ONCE),
+      tflite::CreateOperatorCode(builder, /*deprecated_builtin_code=*/0,
+                                 /*custom_code=*/0, /*version=*/1,
+                                 tflite::BuiltinOperator_VAR_HANDLE),
+      tflite::CreateOperatorCode(builder, /*deprecated_builtin_code=*/0,
+                                 /*custom_code=*/0, /*version=*/1,
+                                 tflite::BuiltinOperator_ASSIGN_VARIABLE),
+      tflite::CreateOperatorCode(builder, /*deprecated_builtin_code=*/0,
+                                 /*custom_code=*/0, /*version=*/1,
+                                 tflite::BuiltinOperator_CONCATENATION),
+  };
+
+  const std::vector<int32_t> input_shape = {1, kModelInputElements};
+  const std::vector<int32_t> output_shape = {1, kModelOutputElements};
+  const std::vector<int32_t> primary_var_shape = {1, primary_elements};
+  const std::vector<int32_t> resource_shape = {1};
+
+  // Primary subgraph: runs CallOnce(subgraph 1), concatenates the 640-float
+  // input into the 1280-float output, and overwrites resource variable "state"
+  // with a `primary_elements`-int32 tensor.
+  std::vector<flatbuffers::Offset<tflite::Tensor>> primary_tensors = {
+      tflite::CreateTensorDirect(builder, &input_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/1,
+                                 "input"),
+      tflite::CreateTensorDirect(builder, &output_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/2,
+                                 "output"),
+      tflite::CreateTensorDirect(builder, &resource_shape,
+                                 tflite::TensorType_RESOURCE, /*buffer=*/3,
+                                 "var_handle"),
+      tflite::CreateTensorDirect(builder, &primary_var_shape,
+                                 tflite::TensorType_INT32, /*buffer=*/4,
+                                 "primary_const"),
+  };
+  const std::vector<int32_t> empty_tensors = {};
+  const std::vector<int32_t> concat_inputs = {0, 0};
+  const std::vector<int32_t> concat_outputs = {1};
+  const std::vector<int32_t> var_handle_outputs = {2};
+  const std::vector<int32_t> primary_assign_inputs = {2, 3};
+  std::vector<flatbuffers::Offset<tflite::Operator>> primary_operators = {
+      tflite::CreateOperatorDirect(
+          builder, /*opcode_index=*/0, &empty_tensors, &empty_tensors,
+          tflite::BuiltinOptions_CallOnceOptions,
+          tflite::CreateCallOnceOptions(builder, /*init_subgraph_index=*/1)
+              .Union()),
+      tflite::CreateOperatorDirect(
+          builder, /*opcode_index=*/3, &concat_inputs, &concat_outputs,
+          tflite::BuiltinOptions_ConcatenationOptions,
+          tflite::CreateConcatenationOptions(builder, /*axis=*/1).Union()),
+      tflite::CreateOperatorDirect(
+          builder, /*opcode_index=*/1, &empty_tensors, &var_handle_outputs,
+          tflite::BuiltinOptions_VarHandleOptions,
+          tflite::CreateVarHandleOptionsDirect(builder, /*container=*/"c",
+                                               /*shared_name=*/"state")
+              .Union()),
+      tflite::CreateOperatorDirect(
+          builder, /*opcode_index=*/2, &primary_assign_inputs, &empty_tensors,
+          tflite::BuiltinOptions_AssignVariableOptions,
+          tflite::CreateAssignVariableOptions(builder).Union()),
+  };
+  if (extra_variable ==
+      ExtraPrimaryResourceVariable::kUnassignedByInitSubgraph) {
+    primary_tensors.push_back(tflite::CreateTensorDirect(
+        builder, &resource_shape, tflite::TensorType_RESOURCE, /*buffer=*/7,
+        "unassigned_var_handle"));
+    const std::vector<int32_t> unassigned_var_handle_outputs = {4};
+    const std::vector<int32_t> unassigned_assign_inputs = {4, 3};
+    primary_operators.push_back(tflite::CreateOperatorDirect(
+        builder, /*opcode_index=*/1, &empty_tensors,
+        &unassigned_var_handle_outputs, tflite::BuiltinOptions_VarHandleOptions,
+        tflite::CreateVarHandleOptionsDirect(builder, /*container=*/"c",
+                                             /*shared_name=*/"unassigned_state")
+            .Union()));
+    primary_operators.push_back(tflite::CreateOperatorDirect(
+        builder, /*opcode_index=*/2, &unassigned_assign_inputs, &empty_tensors,
+        tflite::BuiltinOptions_AssignVariableOptions,
+        tflite::CreateAssignVariableOptions(builder).Union()));
+  }
+  const std::vector<int32_t> primary_inputs = {0};
+  const std::vector<int32_t> primary_outputs = {1};
+
+  // Init subgraph: initializes resource variable "state" with 640 int32s.
+  std::vector<flatbuffers::Offset<tflite::Tensor>> init_tensors = {
+      tflite::CreateTensorDirect(builder, &input_shape,
+                                 tflite::TensorType_INT32, /*buffer=*/5,
+                                 "init_const"),
+      tflite::CreateTensorDirect(builder, &resource_shape,
+                                 tflite::TensorType_RESOURCE, /*buffer=*/6,
+                                 "init_var_handle"),
+  };
+  const std::vector<int32_t> init_var_handle_outputs = {1};
+  const std::vector<int32_t> init_assign_inputs = {1, 0};
+  std::vector<flatbuffers::Offset<tflite::Operator>> init_operators = {
+      tflite::CreateOperatorDirect(
+          builder, /*opcode_index=*/1, &empty_tensors, &init_var_handle_outputs,
+          tflite::BuiltinOptions_VarHandleOptions,
+          tflite::CreateVarHandleOptionsDirect(builder, /*container=*/"c",
+                                               /*shared_name=*/"state")
+              .Union()),
+      tflite::CreateOperatorDirect(
+          builder, /*opcode_index=*/2, &init_assign_inputs, &empty_tensors,
+          tflite::BuiltinOptions_AssignVariableOptions,
+          tflite::CreateAssignVariableOptions(builder).Union()),
+  };
+
+  std::vector<flatbuffers::Offset<tflite::SubGraph>> subgraphs = {
+      tflite::CreateSubGraphDirect(builder, &primary_tensors, &primary_inputs,
+                                   &primary_outputs, &primary_operators,
+                                   "main"),
+      tflite::CreateSubGraphDirect(builder, &init_tensors, /*inputs=*/nullptr,
+                                   /*outputs=*/nullptr, &init_operators,
+                                   "init"),
+  };
+
+  return FinishFakeModel(
+      builder, tflite::CreateModelDirect(
+                   builder, /*version=*/TFLITE_SCHEMA_VERSION, &opcodes,
+                   &subgraphs, "resource_var_model", &buffers));
+}
+
+// Builds a model whose primary subgraph writes a resource variable without a
+// CallOnce initialization subgraph.
+FakeModel BuildModelWithResourceVariableWithoutInitSubgraph() {
+  flatbuffers::FlatBufferBuilder builder(8192);
+
+  const std::vector<uint8_t> primary_value_bytes(
+      kModelInputElements * sizeof(int32_t), 0);
+  std::vector<flatbuffers::Offset<tflite::Buffer>> buffers = {
+      tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder, builder.CreateVector(primary_value_bytes)),
+  };
+
+  std::vector<flatbuffers::Offset<tflite::OperatorCode>> opcodes = {
+      tflite::CreateOperatorCode(builder, /*deprecated_builtin_code=*/0,
+                                 /*custom_code=*/0, /*version=*/1,
+                                 tflite::BuiltinOperator_VAR_HANDLE),
+      tflite::CreateOperatorCode(builder, /*deprecated_builtin_code=*/0,
+                                 /*custom_code=*/0, /*version=*/1,
+                                 tflite::BuiltinOperator_ASSIGN_VARIABLE),
+      tflite::CreateOperatorCode(builder, /*deprecated_builtin_code=*/0,
+                                 /*custom_code=*/0, /*version=*/1,
+                                 tflite::BuiltinOperator_CONCATENATION),
+  };
+
+  const std::vector<int32_t> input_shape = {1, kModelInputElements};
+  const std::vector<int32_t> output_shape = {1, kModelOutputElements};
+  const std::vector<int32_t> resource_shape = {1};
+  std::vector<flatbuffers::Offset<tflite::Tensor>> primary_tensors = {
+      tflite::CreateTensorDirect(builder, &input_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/1,
+                                 "input"),
+      tflite::CreateTensorDirect(builder, &output_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/2,
+                                 "output"),
+      tflite::CreateTensorDirect(builder, &resource_shape,
+                                 tflite::TensorType_RESOURCE, /*buffer=*/3,
+                                 "var_handle"),
+      tflite::CreateTensorDirect(builder, &input_shape,
+                                 tflite::TensorType_INT32, /*buffer=*/4,
+                                 "primary_const"),
+  };
+
+  const std::vector<int32_t> empty_tensors = {};
+  const std::vector<int32_t> concat_inputs = {0, 0};
+  const std::vector<int32_t> concat_outputs = {1};
+  const std::vector<int32_t> var_handle_outputs = {2};
+  const std::vector<int32_t> assign_inputs = {2, 3};
+  std::vector<flatbuffers::Offset<tflite::Operator>> primary_operators = {
+      tflite::CreateOperatorDirect(
+          builder, /*opcode_index=*/2, &concat_inputs, &concat_outputs,
+          tflite::BuiltinOptions_ConcatenationOptions,
+          tflite::CreateConcatenationOptions(builder, /*axis=*/1).Union()),
+      tflite::CreateOperatorDirect(
+          builder, /*opcode_index=*/0, &empty_tensors, &var_handle_outputs,
+          tflite::BuiltinOptions_VarHandleOptions,
+          tflite::CreateVarHandleOptionsDirect(builder, /*container=*/"c",
+                                               /*shared_name=*/"state")
+              .Union()),
+      tflite::CreateOperatorDirect(
+          builder, /*opcode_index=*/1, &assign_inputs, &empty_tensors,
+          tflite::BuiltinOptions_AssignVariableOptions,
+          tflite::CreateAssignVariableOptions(builder).Union()),
+  };
+  const std::vector<int32_t> primary_inputs = {0};
+  const std::vector<int32_t> primary_outputs = {1};
+  std::vector<flatbuffers::Offset<tflite::SubGraph>> subgraphs = {
+      tflite::CreateSubGraphDirect(builder, &primary_tensors, &primary_inputs,
+                                   &primary_outputs, &primary_operators,
+                                   "main"),
+  };
+
+  return FinishFakeModel(
+      builder, tflite::CreateModelDirect(
+                   builder, /*version=*/TFLITE_SCHEMA_VERSION, &opcodes,
+                   &subgraphs, "resource_var_without_init", &buffers));
+}
+
+// Builds a model whose output tensor is produced by a RESHAPE op with a
+// non-constant shape tensor (`is_variable = true`), making the subgraph have
+// dynamic tensors (`Subgraph::HasDynamicTensors() == true`).
+FakeModel BuildModelWithDynamicTensor() {
+  flatbuffers::FlatBufferBuilder builder(4096);
+
+  std::vector<flatbuffers::Offset<tflite::Buffer>> buffers = {
+      tflite::CreateBuffer(builder), tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder), tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder),
+  };
+
+  std::vector<flatbuffers::Offset<tflite::OperatorCode>> opcodes = {
+      tflite::CreateOperatorCode(builder, /*deprecated_builtin_code=*/0,
+                                 /*custom_code=*/0, /*version=*/1,
+                                 tflite::BuiltinOperator_CONCATENATION),
+      tflite::CreateOperatorCode(builder, /*deprecated_builtin_code=*/0,
+                                 /*custom_code=*/0, /*version=*/1,
+                                 tflite::BuiltinOperator_RESHAPE),
+  };
+
+  const std::vector<int32_t> input_shape = {1, kModelInputElements};
+  const std::vector<int32_t> output_shape = {1, kModelOutputElements};
+  const std::vector<int32_t> target_shape_dims = {2};
+  std::vector<flatbuffers::Offset<tflite::Tensor>> tensors = {
+      tflite::CreateTensorDirect(builder, &input_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/1,
+                                 "input"),
+      tflite::CreateTensorDirect(builder, &output_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/2,
+                                 "concat_out"),
+      tflite::CreateTensorDirect(builder, &target_shape_dims,
+                                 tflite::TensorType_INT32, /*buffer=*/3,
+                                 "dynamic_shape", /*quantization=*/0,
+                                 /*is_variable=*/true),
+      tflite::CreateTensorDirect(builder, &output_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/4,
+                                 "output"),
+  };
+
+  const std::vector<int32_t> concat_inputs = {0, 0};
+  const std::vector<int32_t> concat_outputs = {1};
+  const std::vector<int32_t> reshape_inputs = {1, 2};
+  const std::vector<int32_t> reshape_outputs = {3};
+  std::vector<flatbuffers::Offset<tflite::Operator>> operators = {
+      tflite::CreateOperatorDirect(
+          builder, /*opcode_index=*/0, &concat_inputs, &concat_outputs,
+          tflite::BuiltinOptions_ConcatenationOptions,
+          tflite::CreateConcatenationOptions(builder, /*axis=*/1).Union()),
+      tflite::CreateOperatorDirect(builder, /*opcode_index=*/1, &reshape_inputs,
+                                   &reshape_outputs),
+  };
+
+  const std::vector<int32_t> subgraph_inputs = {0};
+  const std::vector<int32_t> subgraph_outputs = {3};
+  std::vector<flatbuffers::Offset<tflite::SubGraph>> subgraphs = {
+      tflite::CreateSubGraphDirect(builder, &tensors, &subgraph_inputs,
+                                   &subgraph_outputs, &operators, "main"),
+  };
+
+  return FinishFakeModel(
+      builder, tflite::CreateModelDirect(
+                   builder, /*version=*/TFLITE_SCHEMA_VERSION, &opcodes,
+                   &subgraphs, "dynamic_tensor", &buffers));
+}
+
+// Builds a model whose primary subgraph uses an `IF` control-flow operator to
+// invoke a secondary subgraph.
+FakeModel BuildModelWithIfOp() {
+  flatbuffers::FlatBufferBuilder builder(8192);
+
+  const std::vector<uint8_t> cond_bytes = {1};
+  std::vector<flatbuffers::Offset<tflite::Buffer>> buffers = {
+      tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder, builder.CreateVector(cond_bytes)),
+      tflite::CreateBuffer(builder),
+      tflite::CreateBuffer(builder),
+  };
+
+  std::vector<flatbuffers::Offset<tflite::OperatorCode>> opcodes = {
+      tflite::CreateOperatorCode(builder, /*deprecated_builtin_code=*/0,
+                                 /*custom_code=*/0, /*version=*/1,
+                                 tflite::BuiltinOperator_IF),
+      tflite::CreateOperatorCode(builder, /*deprecated_builtin_code=*/0,
+                                 /*custom_code=*/0, /*version=*/1,
+                                 tflite::BuiltinOperator_CONCATENATION),
+  };
+
+  const std::vector<int32_t> input_shape = {1, kModelInputElements};
+  const std::vector<int32_t> output_shape = {1, kModelOutputElements};
+  const std::vector<int32_t> cond_shape = {1};
+  std::vector<flatbuffers::Offset<tflite::Tensor>> primary_tensors = {
+      tflite::CreateTensorDirect(builder, &input_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/1,
+                                 "input"),
+      tflite::CreateTensorDirect(builder, &output_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/2,
+                                 "output"),
+      tflite::CreateTensorDirect(builder, &cond_shape, tflite::TensorType_BOOL,
+                                 /*buffer=*/3, "cond"),
+  };
+  const std::vector<int32_t> if_inputs = {2, 0};
+  const std::vector<int32_t> if_outputs = {1};
+  std::vector<flatbuffers::Offset<tflite::Operator>> primary_operators = {
+      tflite::CreateOperatorDirect(
+          builder, /*opcode_index=*/0, &if_inputs, &if_outputs,
+          tflite::BuiltinOptions_IfOptions,
+          tflite::CreateIfOptions(builder, /*then_subgraph_index=*/1,
+                                  /*else_subgraph_index=*/1)
+              .Union()),
+  };
+  const std::vector<int32_t> primary_inputs = {0};
+  const std::vector<int32_t> primary_outputs = {1};
+
+  std::vector<flatbuffers::Offset<tflite::Tensor>> branch_tensors = {
+      tflite::CreateTensorDirect(builder, &input_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/4,
+                                 "branch_in"),
+      tflite::CreateTensorDirect(builder, &output_shape,
+                                 tflite::TensorType_FLOAT32, /*buffer=*/5,
+                                 "branch_out"),
+  };
+  const std::vector<int32_t> concat_inputs = {0, 0};
+  const std::vector<int32_t> concat_outputs = {1};
+  std::vector<flatbuffers::Offset<tflite::Operator>> branch_operators = {
+      tflite::CreateOperatorDirect(
+          builder, /*opcode_index=*/1, &concat_inputs, &concat_outputs,
+          tflite::BuiltinOptions_ConcatenationOptions,
+          tflite::CreateConcatenationOptions(builder, /*axis=*/1).Union()),
+  };
+  const std::vector<int32_t> branch_inputs = {0};
+  const std::vector<int32_t> branch_outputs = {1};
+
+  std::vector<flatbuffers::Offset<tflite::SubGraph>> subgraphs = {
+      tflite::CreateSubGraphDirect(builder, &primary_tensors, &primary_inputs,
+                                   &primary_outputs, &primary_operators,
+                                   "main"),
+      tflite::CreateSubGraphDirect(builder, &branch_tensors, &branch_inputs,
+                                   &branch_outputs, &branch_operators,
+                                   "branch"),
+  };
+
+  return FinishFakeModel(
+      builder,
+      tflite::CreateModelDirect(builder, /*version=*/TFLITE_SCHEMA_VERSION,
+                                &opcodes, &subgraphs, "if_op", &buffers));
+}
+
 }  // namespace
 
 TEST(TfLiteVoiceIsolation, CreateWorks) {
@@ -200,8 +733,7 @@ TEST(TfLiteVoiceIsolation, ProcessAudioWorks) {
 // closed form expects 1.1 times the dereverberated output: returning the
 // dereverberated output alone, or unpacking the wrong channel, gives 1.0 and
 // swapped weights give 1.9. DC and Nyquist bypass the model.
-TEST(TfLiteVoiceIsolation,
-     ProcessAudioMixesDereverberatedAndDenoisingOnlyOutputs) {
+TEST(TfLiteVoiceIsolation, ProcessAudioMatchesClosedForm) {
   std::unique_ptr<tflite::FlatBufferModel> model =
       LoadStatefulVoiceIsolationTestModel();
   ASSERT_NE(model, nullptr);
@@ -209,21 +741,11 @@ TEST(TfLiteVoiceIsolation,
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TfLiteVoiceIsolation> voice_isolation,
                        TfLiteVoiceIsolation::MaybeCreate(model.get()));
 
-  // The first call depends on the model state that the bias computation in
-  // MaybeCreate() leaves behind. Every call overwrites the whole state, so
-  // after one priming call the output follows the closed form exactly.
-  // TODO(barrerap): Check from frame 0 without priming and deduplicate with
-  // ProcessAudioMatchesClosedForm once TfLiteVoiceIsolation resets the model
-  // resource variables after computing the bias.
+  // A freshly created object must start from the initial model state.
   StatefulTestModelReference reference;
-  std::vector<float> output(voice_isolation->FrameSize());
-  const std::vector<float> priming_input =
-      MakeTestInput(voice_isolation->FrameSize(), /*frame_index=*/0);
-  reference.ProcessAudio(priming_input);
-  voice_isolation->ProcessAudio(priming_input, output);
-
-  constexpr int kNumCheckedFrames = 3;
-  for (int frame = 1; frame <= kNumCheckedFrames; ++frame) {
+  std::vector<float> output(voice_isolation->FrameSize(), 0.0f);
+  constexpr int kNumFrames = 4;
+  for (int frame = 0; frame < kNumFrames; ++frame) {
     const std::vector<float> input =
         MakeTestInput(voice_isolation->FrameSize(), frame);
     const std::vector<float> expected = reference.ProcessAudio(input);
@@ -236,40 +758,12 @@ TEST(TfLiteVoiceIsolation,
   }
 }
 
-// TODO(barrerap): Enable once TfLiteVoiceIsolation resets the model resource
-// variables in ClearBuffers() and after computing the bias.
-TEST(TfLiteVoiceIsolation, DISABLED_ProcessAudioMatchesClosedForm) {
+TEST(TfLiteVoiceIsolation, ClearBuffersRestoresInitialState) {
   std::unique_ptr<tflite::FlatBufferModel> model =
-      LoadVoiceIsolationTestModel();
+      LoadStatefulVoiceIsolationTestModel();
   ASSERT_NE(model, nullptr);
 
-  ASSERT_OK_AND_ASSIGN(auto voice_isolation,
-                       TfLiteVoiceIsolation::MaybeCreate(model.get()));
-
-  // A freshly created object must start from the initial model state.
-  StatefulTestModelReference reference;
-  std::vector<float> output(voice_isolation->FrameSize(), 0.0f);
-  constexpr int kNumFrames = 3;
-  for (int frame = 0; frame < kNumFrames; ++frame) {
-    const std::vector<float> input =
-        MakeTestInput(voice_isolation->FrameSize(), frame);
-    const std::vector<float> expected = reference.ProcessAudio(input);
-
-    voice_isolation->ProcessAudio(input, output);
-
-    // The test model output is exact in float32.
-    EXPECT_EQ(output, expected) << "frame " << frame;
-  }
-}
-
-// TODO(barrerap): Enable once TfLiteVoiceIsolation resets the model resource
-// variables in ClearBuffers() and after computing the bias.
-TEST(TfLiteVoiceIsolation, DISABLED_ClearBuffersRestoresInitialState) {
-  std::unique_ptr<tflite::FlatBufferModel> model =
-      LoadVoiceIsolationTestModel();
-  ASSERT_NE(model, nullptr);
-
-  ASSERT_OK_AND_ASSIGN(auto voice_isolation,
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<TfLiteVoiceIsolation> voice_isolation,
                        TfLiteVoiceIsolation::MaybeCreate(model.get()));
 
   const std::vector<float> input =
@@ -360,9 +854,7 @@ TEST(TfLiteVoiceIsolation, SpeechMaskIgnoresDereverberatedOutput) {
     voice_isolation->ProcessAudio(input, output);
   };
 
-  // The first DFT of the first call depends on the model state that the bias
-  // computation in MaybeCreate() leaves behind, so the first call only primes
-  // the model and the overlap-add history of the estimators.
+  // The first call primes the overlap-add history of the estimators.
   process_frame(/*frame=*/0);
 
   constexpr int kNumCheckedFrames = 3;
@@ -486,4 +978,165 @@ TEST(TfLiteVoiceIsolation, FailsOnIncompatibleModel) {
                           VoiceIsolationCreationResult::kIncompatibleModel));
 #endif
 }
+
+TEST(TfLiteVoiceIsolation, RejectsModelWithConstantInputTensor) {
+  FakeModel fake_model = BuildModelWithConstantInputBuffer();
+  ASSERT_NE(fake_model.model, nullptr);
+
+  base::expected<std::unique_ptr<TfLiteVoiceIsolation>,
+                 VoiceIsolationCreationResult>
+      result = TfLiteVoiceIsolation::MaybeCreate(fake_model.model.get());
+  EXPECT_THAT(result, base::test::ErrorIs(
+                          VoiceIsolationCreationResult::kIncompatibleModel));
+}
+
+TEST(TfLiteVoiceIsolation, RejectsModelWithVariableTensorsThatCannotBeReset) {
+  FakeModel fake_model = BuildModelWithUnallocatedSecondarySubgraphVariable();
+  ASSERT_NE(fake_model.model, nullptr);
+
+  base::expected<std::unique_ptr<TfLiteVoiceIsolation>,
+                 VoiceIsolationCreationResult>
+      result = TfLiteVoiceIsolation::MaybeCreate(fake_model.model.get());
+  EXPECT_THAT(result, base::test::ErrorIs(
+                          VoiceIsolationCreationResult::kIncompatibleModel));
+}
+
+TEST(TfLiteVoiceIsolation, RejectsModelWhoseInitValueSizeDiffersFromStateSize) {
+  FakeModel fake_model =
+      BuildModelWithResourceVariable(/*primary_elements=*/kModelOutputElements,
+                                     /*init_byte_value=*/0);
+  ASSERT_NE(fake_model.model, nullptr);
+
+  base::expected<std::unique_ptr<TfLiteVoiceIsolation>,
+                 VoiceIsolationCreationResult>
+      result = TfLiteVoiceIsolation::MaybeCreate(fake_model.model.get());
+  EXPECT_THAT(result, base::test::ErrorIs(
+                          VoiceIsolationCreationResult::kIncompatibleModel));
+}
+
+TEST(TfLiteVoiceIsolation, RejectsModelWithNonZeroResourceVariableInit) {
+  FakeModel fake_model =
+      BuildModelWithResourceVariable(/*primary_elements=*/kModelInputElements,
+                                     /*init_byte_value=*/1);
+  ASSERT_NE(fake_model.model, nullptr);
+
+  base::expected<std::unique_ptr<TfLiteVoiceIsolation>,
+                 VoiceIsolationCreationResult>
+      result = TfLiteVoiceIsolation::MaybeCreate(fake_model.model.get());
+  EXPECT_THAT(result, base::test::ErrorIs(
+                          VoiceIsolationCreationResult::kIncompatibleModel));
+}
+
+TEST(TfLiteVoiceIsolation,
+     RejectsModelWithResourceVariableWithoutInitSubgraph) {
+  FakeModel fake_model = BuildModelWithResourceVariableWithoutInitSubgraph();
+  ASSERT_NE(fake_model.model, nullptr);
+
+  base::expected<std::unique_ptr<TfLiteVoiceIsolation>,
+                 VoiceIsolationCreationResult>
+      result = TfLiteVoiceIsolation::MaybeCreate(fake_model.model.get());
+  EXPECT_THAT(result, base::test::ErrorIs(
+                          VoiceIsolationCreationResult::kIncompatibleModel));
+}
+
+TEST(TfLiteVoiceIsolation, RejectsModelWithUnassignedResourceVariable) {
+  FakeModel fake_model = BuildModelWithResourceVariable(
+      /*primary_elements=*/kModelInputElements, /*init_byte_value=*/0,
+      /*extra_variable=*/
+      ExtraPrimaryResourceVariable::kUnassignedByInitSubgraph);
+  ASSERT_NE(fake_model.model, nullptr);
+
+  base::expected<std::unique_ptr<TfLiteVoiceIsolation>,
+                 VoiceIsolationCreationResult>
+      result = TfLiteVoiceIsolation::MaybeCreate(fake_model.model.get());
+  EXPECT_THAT(result, base::test::ErrorIs(
+                          VoiceIsolationCreationResult::kIncompatibleModel));
+}
+
+TEST(TfLiteVoiceIsolation, RejectsModelWithDynamicTensors) {
+  FakeModel fake_model = BuildModelWithDynamicTensor();
+  ASSERT_NE(fake_model.model, nullptr);
+
+  base::expected<std::unique_ptr<TfLiteVoiceIsolation>,
+                 VoiceIsolationCreationResult>
+      result = TfLiteVoiceIsolation::MaybeCreate(fake_model.model.get());
+  EXPECT_THAT(result, base::test::ErrorIs(
+                          VoiceIsolationCreationResult::kIncompatibleModel));
+}
+
+TEST(TfLiteVoiceIsolation, RejectsModelWithControlFlowOp) {
+  FakeModel fake_model = BuildModelWithIfOp();
+  ASSERT_NE(fake_model.model, nullptr);
+
+  base::expected<std::unique_ptr<TfLiteVoiceIsolation>,
+                 VoiceIsolationCreationResult>
+      result = TfLiteVoiceIsolation::MaybeCreate(fake_model.model.get());
+  EXPECT_THAT(result, base::test::ErrorIs(
+                          VoiceIsolationCreationResult::kIncompatibleModel));
+}
+
+TEST(TfLiteVoiceIsolation, RecordsModelInferenceExecutionTimeEvery10Seconds) {
+  constexpr size_t kMetricsReportingIntervalSeconds = 10;
+  constexpr std::string_view kAverageInferenceTimeHistogram =
+      "Media.Audio.Capture.VoiceIsolation.ModelInferenceExecutionTime.Average";
+  constexpr std::string_view kMaxInferenceTimeHistogram =
+      "Media.Audio.Capture.VoiceIsolation.ModelInferenceExecutionTime.Max";
+  base::ScopedMockElapsedTimersForTest mock_elapsed_timers;
+  base::HistogramTester histogram_tester;
+
+  std::unique_ptr<tflite::FlatBufferModel> model =
+      LoadVoiceIsolationTestModel();
+  ASSERT_NE(model, nullptr);
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<TfLiteVoiceIsolation> voice_isolation,
+                       TfLiteVoiceIsolation::MaybeCreate(model.get()));
+
+  const std::vector<float> input(voice_isolation->FrameSize(), 0.0f);
+  std::vector<float> output(voice_isolation->FrameSize(), 0.0f);
+
+  // 10 seconds of active processing at 50 Hz = 500 calls. The warmup Invoke()
+  // inside MaybeCreate() must not count toward the 500-call period.
+  const size_t calls_per_10_seconds =
+      kMetricsReportingIntervalSeconds * voice_isolation->FramesPerSecond();
+  for (size_t i = 0; i < calls_per_10_seconds - 1; ++i) {
+    voice_isolation->ProcessAudio(input, output);
+  }
+
+  histogram_tester.ExpectTotalCount(kAverageInferenceTimeHistogram,
+                                    /*expected_count=*/0);
+  histogram_tester.ExpectTotalCount(kMaxInferenceTimeHistogram,
+                                    /*expected_count=*/0);
+
+  // The 500th call completes the 10-second window.
+  voice_isolation->ProcessAudio(input, output);
+
+  const int expected_high_res_samples =
+      base::TimeTicks::IsHighResolution() ? 1 : 0;
+  histogram_tester.ExpectUniqueSample(
+      kAverageInferenceTimeHistogram,
+      base::ScopedMockElapsedTimersForTest::kMockElapsedTime.InMicroseconds(),
+      /*expected_bucket_count=*/expected_high_res_samples);
+  histogram_tester.ExpectUniqueSample(
+      kMaxInferenceTimeHistogram,
+      base::ScopedMockElapsedTimersForTest::kMockElapsedTime.InMicroseconds(),
+      /*expected_bucket_count=*/expected_high_res_samples);
+
+  // Verify that the per-period counter resets and only logs again after a
+  // second 500-call window completes.
+  for (size_t i = 0; i < calls_per_10_seconds - 1; ++i) {
+    voice_isolation->ProcessAudio(input, output);
+  }
+  histogram_tester.ExpectTotalCount(
+      kAverageInferenceTimeHistogram,
+      /*expected_count=*/expected_high_res_samples);
+
+  voice_isolation->ProcessAudio(input, output);
+  histogram_tester.ExpectTotalCount(
+      kAverageInferenceTimeHistogram,
+      /*expected_count=*/2 * expected_high_res_samples);
+  histogram_tester.ExpectTotalCount(
+      kMaxInferenceTimeHistogram,
+      /*expected_count=*/2 * expected_high_res_samples);
+}
+
 }  // namespace media

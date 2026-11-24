@@ -46,20 +46,6 @@ BASE_FEATURE(kActorFormFillingServiceEnableCreditCard,
 BASE_FEATURE(kAutofillAcceptDomMutationAfterAutofillSubmission,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// LINT.IfChange(autofill_across_iframes_ios_throttling)
-// Throttles child frame extraction to a maximum number of child frames that
-// can be extracted by applying the following rules: (1) remove the child frames
-// from an individual form that busts the limit and (2) stop extracting child
-// frames on other forms once the limit is reached across forms.
-BASE_FEATURE(kAutofillAcrossIframesIosThrottling,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-// LINT.ThenChange(//components/autofill/ios/form_util/resources/autofill_form_features.ts:autofill_across_iframes_ios_throttling)
-
-// Controls whether to trigger form extraction when detecting a form activity on
-// a xframe form.
-BASE_FEATURE(kAutofillAcrossIframesIosTriggerFormExtraction,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // When enabled, the extracted APC proto includes node geometry.
 BASE_FEATURE(kAutofillActionableAIPageContent,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -404,7 +390,7 @@ BASE_FEATURE_WITH_COUNTRY_RESTRICTIONS(kAutofillAiWalletPrivatePasses,
 // signals that were readily available in Chrome prior to the Autofill-specific
 // capability (e.g., using geo-location).
 BASE_FEATURE(kAutofillAiWalletPrivatePassesCapability,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, Wallet private pass entries in settings link to their pass
 // details page rather than the generic pass overview page.
@@ -439,7 +425,8 @@ BASE_FEATURE(kAutofillAllowFillingModifiedInitialValues,
 BASE_FEATURE(kAutofillAmbientAutofill, base::FEATURE_DISABLED_BY_DEFAULT);
 // A comma-separated list of EntityType string names (e.g. "Passport,Driver's
 // license,Vehicle") supported for Ambient Autofill. If empty, no entity types
-// are supported.
+// are supported (unless enabled via `kAutofillAmbientAutofillPassport` or
+// `kAutofillAmbientAutofillDriversLicense`).
 BASE_FEATURE_PARAM(std::string,
                    kAutofillAmbientAutofillSupportedEntityTypes,
                    &kAutofillAmbientAutofill,
@@ -599,9 +586,6 @@ BASE_FEATURE(kAutofillAtMemorySupportTextAreaOnAndroid,
 // Ctrl+Space.
 BASE_FEATURE(kAutofillAtMemoryTriggerShortcut,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// If enabled, AtMemory can be triggered by typing the trigger string like "@@".
-BASE_FEATURE(kAutofillAtMemoryTriggerString, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, the placeholder is not considered a label fallback on the
 // renderer side anymore. Instead, local heuristic will match regexes against
@@ -1056,6 +1040,14 @@ BASE_FEATURE(kAutofillServerUploadMoreData, base::FEATURE_ENABLED_BY_DEFAULT);
 // When enabled, autofill suggestions for one-time passwords (OTPs) from Gmail
 // are shown.
 BASE_FEATURE(kAutofillShowGmailOtpSuggestions,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, the PHONE_EXTENSION regex only matches "ext" as a token
+// (e.g. "Ext.", "phone_ext", "phoneExt") and no longer matches words that
+// merely contain it (e.g. "text-8", "next", "extra", "exterior"). Such fields
+// right after a phone number were misclassified as PHONE_HOME_EXTENSION.
+// TODO(crbug.com/417192418): Clean up when launched.
+BASE_FEATURE(kAutofillStricterPhoneExtensionRegex,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If this feature is enabled, the AddressFieldParser does NOT try to parse

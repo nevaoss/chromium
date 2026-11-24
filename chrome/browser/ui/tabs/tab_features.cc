@@ -35,6 +35,7 @@
 #include "chrome/browser/contextual_cueing/features.h"
 #include "chrome/browser/contextual_search/contextual_search_cue_tab_state.h"
 #include "chrome/browser/contextual_search/contextual_search_cue_target.h"
+#include "chrome/browser/dictation/features.h"
 #include "chrome/browser/enterprise/data_protection/data_protection_navigation_controller.h"
 #include "chrome/browser/enterprise/net/enterprise_proxy_error_service_factory.h"
 #include "chrome/browser/enterprise/reporting/saas_usage/saas_usage_navigation_observer.h"
@@ -182,6 +183,7 @@
 #include "chrome/browser/ui/views/bookmarks/bookmark_page_action_controller.h"
 #include "chrome/browser/ui/views/commerce/discounts_page_action_view_controller.h"
 #include "chrome/browser/ui/views/commerce/price_insights_page_action_view_controller.h"
+#include "chrome/browser/ui/views/dictation/dictation_iph_controller.h"
 #include "chrome/browser/ui/views/file_system_access/file_system_access_page_action_controller.h"
 #include "chrome/browser/ui/views/intent_picker/intent_picker_view_page_action_controller.h"
 #include "chrome/browser/ui/views/js_optimization/js_optimizations_page_action_controller.h"
@@ -298,7 +300,6 @@
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"  // nogncheck
 #include "chrome/browser/ash/boot_times_recorder/boot_times_recorder_tab_helper.h"
-#include "chrome/browser/ash/child_accounts/time_limits/web_time_navigation_observer.h"
 #include "chrome/browser/ash/growth/campaigns_manager_session_tab_helper.h"
 #include "chrome/browser/ash/mahi/web_contents/mahi_tab_helper.h"
 #include "chrome/browser/chromeos/gemini_app/gemini_app_tab_helper.h"
@@ -1030,9 +1031,6 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
       std::make_unique<ash::CrosIsolatedWebAppEnabler>(tab.GetContents());
   gemini_app_tab_helper_ = GeminiAppTabHelper::MaybeCreate(tab.GetContents());
   mahi_tab_helper_ = mahi::MahiTabHelper::MaybeCreate(tab.GetContents());
-  web_time_navigation_observer_ =
-      ash::app_time::WebTimeNavigationObserver::MaybeCreate(tab,
-                                                            tab.GetContents());
   boot_times_recorder_tab_helper_ =
       ash::BootTimesRecorderTabHelper::MaybeCreate(tab.GetContents());
   dlp_content_tab_helper_ =
@@ -1045,6 +1043,12 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
     back_to_opener_controller_ =
         GetUserDataFactory()
             .CreateInstance<back_to_opener::BackToOpenerController>(tab, tab);
+  }
+
+  if (base::FeatureList::IsEnabled(dictation::kDictation) &&
+      profile->IsRegularProfile()) {
+    dictation_iph_controller_ =
+        std::make_unique<dictation::DictationIphController>(tab);
   }
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || \
@@ -1803,9 +1807,6 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
       std::make_unique<ash::CrosIsolatedWebAppEnabler>(new_contents);
   gemini_app_tab_helper_ = GeminiAppTabHelper::MaybeCreate(new_contents);
   mahi_tab_helper_ = mahi::MahiTabHelper::MaybeCreate(new_contents);
-  if (web_time_navigation_observer_) {
-    web_time_navigation_observer_->OnDiscardContents(new_contents);
-  }
   boot_times_recorder_tab_helper_ =
       ash::BootTimesRecorderTabHelper::MaybeCreate(new_contents);
   dlp_content_tab_helper_.reset();

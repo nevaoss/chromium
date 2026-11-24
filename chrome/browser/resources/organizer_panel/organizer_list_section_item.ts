@@ -20,8 +20,6 @@ import {getHtml} from './organizer_list_section_item.html.js';
 import type {OrganizerListSectionItemDescriptionElement, OrganizerListSectionItemDescriptionPart} from './organizer_list_section_item_description.js';
 import type {OrganizerListSectionItemTitleElement} from './organizer_list_section_item_title.js';
 
-export type {OrganizerListSectionItemDescriptionPart};
-
 // Stacked favicons configuration for an organizer list section item.
 export interface OrganizerListSectionItemStackedFavicons {
   // URLs to display favicons for.
@@ -170,26 +168,26 @@ export class OrganizerListSectionItemElement extends
             this.shadowRoot.querySelector<HTMLElement>('#actionButton');
         if (actionButton && this.hasActionButton_()) {
           actionButton.focus();
+          e.preventDefault();
+          e.stopPropagation();
         } else {
-          this.fire('focus-next-section');
+          this.fire('focus-next-section', {sourceEvent: e});
         }
       } else {
-        this.fire('focus-current-section');
+        this.fire('focus-current-section', {sourceEvent: e});
       }
-      e.preventDefault();
-      e.stopPropagation();
     }
   }
 
   protected onActionButtonKeydown_(e: KeyboardEvent) {
     if (e.key === 'Tab') {
       if (!e.shiftKey) {
-        this.fire('focus-next-section');
+        this.fire('focus-next-section', {sourceEvent: e});
       } else {
         this.focus();
+        e.preventDefault();
+        e.stopPropagation();
       }
-      e.preventDefault();
-      e.stopPropagation();
     }
   }
 

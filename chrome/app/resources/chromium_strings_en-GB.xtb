@@ -258,7 +258,6 @@ Some features may be unavailable and changes to preferences won't be saved.</tra
 <translation id="3531741627422851418">QR code to download Chromium browser on mobile devices</translation>
 <translation id="354621070532799440">Reminder: Google's best safety features in your pocket</translation>
 <translation id="3561853857681580870">To share your screen, allow screen recording for Chromium in System Settings.</translation>
-<translation id="3588112919289558122">Enhanced protection turns off JavaScript optimisation for sites that Chromium doesn't recognise</translation>
 <translation id="3597003331831379823">Failed to run setup with elevated privileges. <ph name="METAINSTALLER_ERROR" /></translation>
 <translation id="3600428265489994557">Sign in to Chromium</translation>
 <translation id="3639635944603682591">This person's browsing data will be deleted from this device. To recover the data, sign in to Chromium as <ph name="USER_EMAIL" />.</translation>
@@ -297,7 +296,6 @@ Some features may be unavailable and changes to preferences won't be saved.</tra
 <translation id="3971865010372729242">When you type in the address bar or search box, Chromium sends what you type to your organisation's search, AI and agent tools to get suggestions.</translation>
 <translation id="3975724895399328945">About Google Chrome for testing</translation>
 <translation id="3997429360543082038">About Chromium OS</translation>
-<translation id="4010059961270896984">When you visit a site, Chromium sends an obfuscated portion of the URL to <ph name="BEGIN_LINK" />Google Safe Browsing<ph name="END_LINK" /> through a privacy server that hides your IP address. If a site does something suspicious, full URLs and bits of page content are also sent.</translation>
 <translation id="4016217212818346953">Stay safe with Password Manager</translation>
 <translation id="4019629340646866719">Chromium OS is made possible by additional <ph name="BEGIN_LINK_CROS_OSS" />open-source software<ph name="END_LINK_CROS_OSS" />, as is <ph name="BEGIN_LINK_LINUX_OSS" />Linux development environment<ph name="END_LINK_LINUX_OSS" />.</translation>
 <translation id="4022972681110646219">Translate screen</translation>
@@ -375,6 +373,7 @@ Some features may be unavailable and changes to preferences won't be saved.</tra
 <translation id="4786083865378785874">If Gemini in Chromium is open, the side panel stays open when creating new tabs</translation>
 <translation id="479167709087336770">This uses the same spell checker that's used in Google search. Text that you type in the browser is sent to Google. You can always change this behaviour in settings.</translation>
 <translation id="4814736265800133385">Use Chromium without an account</translation>
+<translation id="4839733921943823254">Pin shortcut</translation>
 <translation id="4888717733111232871">Inbound rule for Chromium to allow mDNS traffic.</translation>
 <translation id="4893347770495441059">Relaunch to Update &amp;Chromium</translation>
 <translation id="4918086044614829423">Accept</translation>
@@ -458,7 +457,6 @@ If this page isn't working as expected, try allowing optimisation.</translation>
 <translation id="5821520528363214608">To use and save Chromium data in your Google Account, update Chromium</translation>
 <translation id="5824893331272123205">Couldn't load this panel, try again</translation>
 <translation id="5862307444128926510">Welcome to Chromium</translation>
-<translation id="5867606647614813312">Turns on additional features to provide Chromium’s strongest protections</translation>
 <translation id="5871205389137001634">Click to exit image search</translation>
 <translation id="5883558403894052917">Chromium found that these items contain malware:</translation>
 <translation id="5889361821821684993">Chromium regularly checks to make sure your browser has the safest settings. We'll let you know if anything needs your review.</translation>
@@ -760,13 +758,13 @@ Google Chrome is unable to recover your settings.</translation>
 <translation id="8522801943730206384">Chromium can check your passwords when you save them</translation>
 <translation id="8525579356836940628">Installation stopped</translation>
 <translation id="8545729292258443488">Take your passwords, tabs and more on the go with the Chromium app on your <ph name="DEVICE_TYPE" /></translation>
-<translation id="8548787790260785208">Get warned if Chromium finds one of your passwords in a public data breach</translation>
 <translation id="8555465886620020932">Service error: <ph name="SERVICE_ERROR" />.</translation>
 <translation id="8556055872671007529">Some Chromium features and extensions come with shortcuts. You can choose to turn them back on.</translation>
 <translation id="8556420416730706394">You can pin image search for easy access; click the Pin button at the top of the side panel</translation>
 <translation id="856656450041460113">Search language list</translation>
 <translation id="8576826849825683917">Multiple organisations manage Chromium</translation>
 <translation id="8586442755830160949">Copyright <ph name="YEAR" /> The Chromium Authors. All rights reserved.</translation>
+<translation id="8590782867495422699">Reopen Google Search AI Mode</translation>
 <translation id="8619360774459241877">Launching Chromium...</translation>
 <translation id="8624541899164515475">Settings, opens in new tab.</translation>
 <translation id="8648201657708811153">Google Chrome for testing cannot be made your default browser.</translation>
@@ -817,6 +815,7 @@ Google Chrome is unable to recover your settings.</translation>
 <translation id="9056398481763999048">Use Google's best AI tools with the Chromium app on your phone</translation>
 <translation id="9057625473949801035">To get your passwords and more from <ph name="DEVICE" />, sign in to Chromium</translation>
 <translation id="9062666675513499497">Sign in to Chromium when you sign in to other Google services</translation>
+<translation id="9074041031320636790">Success! You can now easily ask questions as you browse with Google Search AI Mode</translation>
 <translation id="9078733879136747090">Chromium was automatically closed</translation>
 <translation id="9089354809943900324">Chromium is out of date</translation>
 <translation id="9093206154853821181">{0,plural, =1{Chromium will relaunch in an hour}other{Chromium will relaunch in # hours}}</translation>

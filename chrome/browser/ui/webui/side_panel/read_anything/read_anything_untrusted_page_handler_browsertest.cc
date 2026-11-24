@@ -31,6 +31,7 @@
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/read_anything/read_anything_entry_point_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_immersive_web_view.h"
 #include "chrome/browser/ui/read_anything/read_anything_prefs.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry.h"
@@ -58,6 +59,7 @@
 #include "components/translate/core/browser/language_state.h"
 #include "components/translate/core/browser/translate_manager.h"
 #include "components/translate/core/common/language_detection_details.h"
+#include "components/translate/core/common/translate_errors.h"
 #include "components/translate/core/common/translate_features.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/common/content_switches.h"
@@ -174,6 +176,7 @@ class MockPage : public read_anything::mojom::UntrustedPage {
               OnTranslationStateChanged,
               (bool is_translated),
               (override));
+  MOCK_METHOD(void, OnTranslationFailed, (), (override));
 
   mojo::Receiver<read_anything::mojom::UntrustedPage> receiver_{this};
 };
@@ -292,6 +295,8 @@ class ReadAnythingUntrustedPageHandlerTest : public InProcessBrowserTest {
 
   void SetUpOnMainThread() override {
     InProcessBrowserTest::SetUpOnMainThread();
+    browser()->GetProfile()->GetPrefs()->ClearPref(
+        prefs::kAccessibilityReadAnythingLastOpenedPresentationState);
     host_resolver()->AddRule("*", "127.0.0.1");
 
     // Wait for both load stop and language determination so that an in-flight
@@ -2327,11 +2332,10 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerTest,
 IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerTest,
                        MAYBE_Activate_OnCloseReadingMode_ListensForPageAck) {
   handler_ = CreateHandler();
-  auto* controller =
-      ReadAnythingController::From(browser()->GetActiveTabInterface());
 
   // Open reading mode and getting the starting web contents.
-  controller->ShowImmersiveUI(ReadAnythingOpenTrigger::kAppMenu);
+  read_anything::ReadAnythingEntryPointController::ShowUI(
+      browser(), ReadAnythingOpenTrigger::kAppMenu);
   BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
   views::View* overlay_view =
       browser_view->GetWidget()->GetContentsView()->GetViewByID(
@@ -2344,23 +2348,27 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerTest,
   ASSERT_NE(original_contents, nullptr);
 
   // Close reading mode without acknowledging it.
-  controller->CloseImmersiveUI(ReadAnythingCloseReason::kClosedByUser);
+  read_anything::ReadAnythingEntryPointController::ToggleUI(
+      browser(), ReadAnythingOpenTrigger::kAppMenu);
   EXPECT_TRUE(base::test::RunUntil(
       [&]() { return handler_->ack_timed_out_for_testing(); }));
 
   // After showing RM again, the web contents should be new
-  controller->ShowImmersiveUI(ReadAnythingOpenTrigger::kAppMenu);
+  read_anything::ReadAnythingEntryPointController::ShowUI(
+      browser(), ReadAnythingOpenTrigger::kAppMenu);
   auto* new_contents = GetImmersiveWebContents();
   ASSERT_NE(new_contents, original_contents);
 
   // Close reading mode again and now acknowledge it.
-  controller->CloseImmersiveUI(ReadAnythingCloseReason::kClosedByUser);
+  read_anything::ReadAnythingEntryPointController::ToggleUI(
+      browser(), ReadAnythingOpenTrigger::kAppMenu);
   handler_->AckReadingModeHidden();
   EXPECT_TRUE(base::test::RunUntil(
       [&]() { return !handler_->ack_timed_out_for_testing(); }));
 
   // After showing RM again, the web contents should be the same.
-  controller->ShowImmersiveUI(ReadAnythingOpenTrigger::kAppMenu);
+  read_anything::ReadAnythingEntryPointController::ShowUI(
+      browser(), ReadAnythingOpenTrigger::kAppMenu);
   ASSERT_EQ(GetImmersiveWebContents(), new_contents);
 }
 
@@ -2463,7 +2471,8 @@ IN_PROC_BROWSER_TEST_F(
   handler_ = CreateHandler();
   ReadAnythingController* controller =
       ReadAnythingController::From(browser()->GetActiveTabInterface());
-  controller->ShowImmersiveUI(ReadAnythingOpenTrigger::kOmniboxChip);
+  read_anything::ReadAnythingEntryPointController::ShowUI(
+      browser(), ReadAnythingOpenTrigger::kOmniboxChip);
 
   handler_->OnDistillationStateChanged(
       read_anything::mojom::ReadAnythingDistillationState::kDistillationEmpty);
@@ -2478,7 +2487,8 @@ IN_PROC_BROWSER_TEST_F(
   handler_ = CreateHandler();
   ReadAnythingController* controller =
       ReadAnythingController::From(browser()->GetActiveTabInterface());
-  controller->ShowImmersiveUI(ReadAnythingOpenTrigger::kOmniboxChip);
+  read_anything::ReadAnythingEntryPointController::ShowUI(
+      browser(), ReadAnythingOpenTrigger::kOmniboxChip);
 
   handler_->OnDistillationStateChanged(
       read_anything::mojom::ReadAnythingDistillationState::
@@ -2562,6 +2572,14 @@ class ReadAnythingUntrustedPageHandlerPdfTranslationStateTest
   // Makes the tab's language state report that the tab is translated.
   void TranslateTab() { Translate(GetReadAnythingWebContents()); }
 
+  // Makes the tab's translate driver report that a translation finished with
+  // `error`, as it does when the translate agents report the result.
+  void FinishTabTranslation(translate::TranslateErrors error) {
+    ChromeTranslateClient::FromWebContents(GetReadAnythingWebContents())
+        ->translate_driver()
+        ->OnPageTranslated(/*cancelled=*/false, "fr", "en", error);
+  }
+
   // Dispatches the messages sent to `page_` so far, then verifies and clears
   // its expectations.
   void FlushAndVerifyPage() {
@@ -2599,6 +2617,28 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerPdfTranslationStateTest,
   // Reverting to the original language, e.g. via "Show original".
   EXPECT_CALL(page_, OnTranslationStateChanged(false)).Times(1);
   GetTabLanguageState()->SetCurrentLanguage("fr");
+  FlushAndVerifyPage();
+}
+
+IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerPdfTranslationStateTest,
+                       TabTranslationFailed_SendsTranslationFailed) {
+  handler_ = CreateHandler();
+  FlushAndVerifyPage();
+
+  EXPECT_CALL(page_, OnTranslationFailed()).Times(1);
+  EXPECT_CALL(page_, OnTranslationStateChanged).Times(0);
+  FinishTabTranslation(translate::TranslateErrors::TRANSLATION_ERROR);
+  FlushAndVerifyPage();
+}
+
+IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerPdfTranslationStateTest,
+                       TabTranslationSucceeded_DoesNotSendTranslationFailed) {
+  handler_ = CreateHandler();
+  FlushAndVerifyPage();
+
+  EXPECT_CALL(page_, OnTranslationFailed()).Times(0);
+  EXPECT_CALL(page_, OnTranslationStateChanged(true)).Times(1);
+  FinishTabTranslation(translate::TranslateErrors::NONE);
   FlushAndVerifyPage();
 }
 
@@ -2661,9 +2701,11 @@ IN_PROC_BROWSER_TEST_F(
     ReadAnythingUntrustedPageHandlerPdfTranslationStateDisabledTest,
     DoesNotSendTranslationState) {
   EXPECT_CALL(page_, OnTranslationStateChanged).Times(0);
+  EXPECT_CALL(page_, OnTranslationFailed).Times(0);
 
   handler_ = CreateHandler();
   TranslateTab();
+  FinishTabTranslation(translate::TranslateErrors::TRANSLATION_ERROR);
   FlushAndVerifyPage();
 }
 

@@ -42,6 +42,7 @@ constexpr APIPermissionInfo::InitInfo kPermissionsToRegister[] = {
      APIPermissionInfo::kFlagRequiresManagementUIWarning},
     {APIPermissionID::kPrintingMetrics, "printingMetrics",
      APIPermissionInfo::kFlagRequiresManagementUIWarning},
+    {APIPermissionID::kSmartCardProviderPrivate, "smartCardProviderPrivate"},
     {APIPermissionID::kSpeechRecognitionPrivate, "speechRecognitionPrivate",
      APIPermissionInfo::kFlagDoesNotRequireManagedSessionFullLoginWarning},
     {APIPermissionID::kSystemLog, "systemLog",
@@ -49,6 +50,9 @@ constexpr APIPermissionInfo::InitInfo kPermissionsToRegister[] = {
     {APIPermissionID::kUsersPrivate, "usersPrivate",
      APIPermissionInfo::kFlagCannotBeOptional},
     {APIPermissionID::kVpnProvider, "vpnProvider",
+     APIPermissionInfo::kFlagCannotBeOptional |
+         APIPermissionInfo::kFlagDoesNotRequireManagedSessionFullLoginWarning},
+    {APIPermissionID::kWallpaper, "wallpaper",
      APIPermissionInfo::kFlagCannotBeOptional |
          APIPermissionInfo::kFlagDoesNotRequireManagedSessionFullLoginWarning},
     {APIPermissionID::kWmDesksPrivate, "wmDesksPrivate"},

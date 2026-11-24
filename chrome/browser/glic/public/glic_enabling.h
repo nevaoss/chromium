@@ -24,6 +24,7 @@
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/host/glic_webui.mojom.h"
 #include "chrome/browser/glic/public/features.h"
+#include "chrome/browser/glic/public/glic_provider.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
@@ -212,14 +213,6 @@ enum class RequiredExperimentalOptIn {
   kMaxValue = kNotNeeded,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicRequiredExperimentalOptIn)
-
-// The product that powers Glic for a profile. Providers are mutually exclusive.
-enum class GlicProvider {
-  // Gemini in Chrome.
-  kGemini,
-  // Gemini Enterprise in Chrome (GEiC).
-  kGeminiEnterprise,
-};
 
 // Returns true if any Glic entry point (such as the tab strip button or the
 // OS-level shortcut) is enabled in settings.
@@ -571,10 +564,13 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
   // otherwise.
   bool HasConsented() const;
 
-  // Returns the FRE status.
+  // Returns the status of the FRE the profile's provider uses (see
+  // `GlicProviderSpec::GetFreStore()`).
   static prefs::FreStatus GetCompletedFre(Profile* profile);
   prefs::FreStatus GetCompletedFre() const;
-  // Sets the FRE status.
+  // Sets the status of the FRE the profile's provider uses (see
+  // `GlicProviderSpec::GetFreStore()`). Statuses that FRE doesn't support are
+  // ignored, e.g. the GEiC FRE can only be completed.
   void SetCompletedFre(prefs::FreStatus status);
 
   // Whether the Web Actuation Toggle (Auto Browse) should be shown in Settings.

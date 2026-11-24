@@ -526,7 +526,9 @@ DeveloperPrivateGetExtensionInfoFunction::Run() {
 
 void DeveloperPrivateGetExtensionInfoFunction::OnInfosGenerated(
     ExtensionInfoGenerator::ExtensionInfoList list) {
-  CHECK_LE(1u, list.size(), base::NotFatalUntil::M161);
+  // TODO(crbug.com/577180920): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK_LE(1u, list.size());
   Respond(list.empty() ? NoSuchExtensionError()
                        : WithArguments(list[0].ToValue()));
 }
@@ -2377,7 +2379,9 @@ DeveloperPrivateShowSiteSettingsFunction::Run() {
 ExtensionFunction::ResponseAction DeveloperPrivateLoadDirectoryFunction::Run() {
   // In theory `extension()` can be null when an ExtensionFunction is invoked
   // from WebUI, but this should never be the case for this particular API.
-  CHECK(extension(), base::NotFatalUntil::M161);
+  // TODO(crbug.com/576392566): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(extension());
 
   // TODO(grv) : add unittests.
   EXTENSION_FUNCTION_VALIDATE(args().size() >= 3);

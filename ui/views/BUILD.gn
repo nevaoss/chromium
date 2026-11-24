@@ -327,6 +327,8 @@ component("views") {
     "view_class_properties.h",
     "view_constants.h",
     "view_decoration.h",
+    "view_guard.h",
+    "view_hierarchy_changed_details.h",
     "view_model.h",
     "view_model_utils.h",
     "view_observer.h",
@@ -567,6 +569,7 @@ component("views") {
     "view.cc",
     "view_class_properties.cc",
     "view_decoration.cc",
+    "view_guard.cc",
     "view_model.cc",
     "view_model_utils.cc",
     "view_targeter.cc",
@@ -1060,7 +1063,6 @@ component("views") {
   if (use_ozone) {
     deps += [ "//ui/ozone" ]
   }
-  check_includes_strict = CHECK_INCLUDES_STRICT_PUBLIC_INCLUDES_PRIVATE
 }
 
 if (is_win || is_mac || is_linux || is_chromeos) {
@@ -1408,6 +1410,7 @@ test("views_unittests") {
     "selection_controller_unittest.cc",
     "test/widget_test_unittest.cc",
     "view_decoration_unittest.cc",
+    "view_guard_unittest.cc",
     "view_model_unittest.cc",
     "view_model_utils_unittest.cc",
     "view_targeter_unittest.cc",

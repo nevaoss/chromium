@@ -8,6 +8,7 @@
 
 #include "base/functional/callback_helpers.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/mock_callback.h"
 #include "base/test/scoped_feature_list.h"
@@ -2295,6 +2296,84 @@ TEST_F(ContextualSearchSessionHandleTest,
   EXPECT_TRUE(local_handle->GetPersistedTabs().empty());
 }
 
+TEST_F(ContextualSearchSessionHandleTest,
+       MarkTabAckByServer_CopiesUrlAndTitleFromFileInfo) {
+  base::UnguessableToken tab_token = handle_->CreateContextToken();
+  FileInfo tab_info;
+  tab_info.file_token = tab_token;
+  tab_info.tab_session_id = SessionID::FromSerializedValue(1);
+  tab_info.tab_url = GURL("https://example.com/tab");
+  tab_info.tab_title = "Tab Title";
+  tab_info.request_id = lens::LensOverlayRequestId();
+  EXPECT_CALL(*mock_controller_ptr_, GetFileInfo(tab_token))
+      .WillRepeatedly(testing::Return(&tab_info));
+
+  // Submitting marks the tab as acked by the server, which attaches it with
+  // the URL and title from its FileInfo.
+  handle_->ClearFiles(/*query_submitted=*/true);
+
+  const std::vector<TabInfo>& attached = handle_->GetTabContextState().attached;
+  ASSERT_EQ(attached.size(), 1u);
+  EXPECT_EQ(attached[0].tab_id, 1);
+  EXPECT_EQ(attached[0].url, GURL("https://example.com/tab"));
+  EXPECT_EQ(attached[0].title, "Tab Title");
+  EXPECT_TRUE(attached[0].submitted);
+}
+
+TEST_F(ContextualSearchSessionHandleTest,
+       SetPersistedTabs_CopiesUrlAndTitleFromFileInfo) {
+  SessionID session_id = SessionID::FromSerializedValue(1);
+  base::UnguessableToken token = base::UnguessableToken::Create();
+  FileInfo file_info;
+  file_info.file_token = token;
+  file_info.tab_session_id = session_id;
+  file_info.tab_url = GURL("https://example.com/tab");
+  file_info.tab_title = "Tab Title";
+  EXPECT_CALL(*mock_controller_ptr_, GetFileInfo(token))
+      .WillRepeatedly(testing::Return(&file_info));
+
+  handle_->SetPersistedTabs(
+      {{session_id, {token, lens::LensOverlayRequestId()}}});
+
+  const std::vector<TabInfo>& attached = handle_->GetTabContextState().attached;
+  ASSERT_EQ(attached.size(), 1u);
+  EXPECT_EQ(attached[0].tab_id, session_id.id());
+  EXPECT_EQ(attached[0].url, GURL("https://example.com/tab"));
+  EXPECT_EQ(attached[0].title, "Tab Title");
+}
+
+TEST_F(ContextualSearchSessionHandleTest,
+       SetPersistedTabs_KeepsUrlAndTitleOfReplacedTab) {
+  SessionID session_id = SessionID::FromSerializedValue(1);
+  base::UnguessableToken old_token = base::UnguessableToken::Create();
+  FileInfo old_file_info;
+  old_file_info.file_token = old_token;
+  old_file_info.tab_session_id = session_id;
+  old_file_info.tab_url = GURL("https://example.com/tab");
+  old_file_info.tab_title = "Tab Title";
+  EXPECT_CALL(*mock_controller_ptr_, GetFileInfo(old_token))
+      .WillRepeatedly(testing::Return(&old_file_info));
+  handle_->SetPersistedTabs(
+      {{session_id, {old_token, lens::LensOverlayRequestId()}}});
+
+  // The new token's FileInfo has no URL or title, so the tab keeps the ones
+  // of the persisted tab it replaces.
+  base::UnguessableToken new_token = base::UnguessableToken::Create();
+  FileInfo new_file_info;
+  new_file_info.file_token = new_token;
+  new_file_info.tab_session_id = session_id;
+  EXPECT_CALL(*mock_controller_ptr_, GetFileInfo(new_token))
+      .WillRepeatedly(testing::Return(&new_file_info));
+  handle_->SetPersistedTabs(
+      {{session_id, {new_token, lens::LensOverlayRequestId()}}});
+
+  const std::vector<TabInfo>& attached = handle_->GetTabContextState().attached;
+  ASSERT_EQ(attached.size(), 1u);
+  EXPECT_EQ(attached[0].context_token, new_token);
+  EXPECT_EQ(attached[0].url, GURL("https://example.com/tab"));
+  EXPECT_EQ(attached[0].title, "Tab Title");
+}
+
 TEST_F(ContextualSearchSessionHandleTest, HasSubmittedContext) {
   auto mock_controller =
       std::make_unique<MockContextualSearchContextController>();
@@ -3504,6 +3583,457 @@ TEST_F(ContextualSearchSessionHandleTest,
   EXPECT_TRUE(handle_->GetTabContextState().attached.empty());
   EXPECT_TRUE(handle_->GetTabContextState().restored.empty());
   EXPECT_TRUE(handle_->GetTokenForTab(session_id).is_empty());
+}
+
+TEST_F(ContextualSearchSessionHandleTest,
+       GetNonDeselectedTabSessionIds_CombinesAttachedAndRestoredAndFilters) {
+  const SessionID attached_id = SessionID::FromSerializedValue(11);
+  const SessionID restored_id = SessionID::FromSerializedValue(22);
+
+  base::UnguessableToken token = handle_->CreateContextToken();
+  handle_->AttachTabPendingUpload(token, attached_id.id(),
+                                  GURL("https://example.com/11"), "Tab 11");
+  handle_->SetRestoredTabs(
+      {MakeRestoredTab("https://example.com/22", "Tab 22", restored_id.id())});
+
+  EXPECT_THAT(handle_->GetNonDeselectedTabSessionIds(),
+              testing::UnorderedElementsAre(attached_id, restored_id));
+
+  handle_->AddDeselectedTab(attached_id, GURL("https://example.com/11"),
+                            "Tab 11");
+  EXPECT_THAT(handle_->GetNonDeselectedTabSessionIds(),
+              testing::ElementsAre(restored_id));
+
+  handle_->RemoveDeselectedTab(attached_id);
+  EXPECT_THAT(handle_->GetNonDeselectedTabSessionIds(),
+              testing::UnorderedElementsAre(attached_id, restored_id));
+}
+
+TEST_F(
+    ContextualSearchSessionHandleTest,
+    DeleteTabContext_BySessionId_DisplacesRestoredTabWhenDeselectionEnabled) {
+  auto mock_controller =
+      std::make_unique<MockContextualSearchContextController>();
+  MockContextualSearchContextController* mock_controller_ptr =
+      mock_controller.get();
+  auto local_handle =
+      service_->CreateSessionForTesting(std::move(mock_controller), nullptr);
+  local_handle->CheckSearchContentSharingSettings(&prefs_);
+
+  const SessionID session_id = SessionID::FromSerializedValue(33);
+  const base::UnguessableToken submitted_token =
+      base::UnguessableToken::Create();
+  local_handle->SetSubmittedContextTokens({submitted_token});
+
+  // Cancelling a non-attached token via `RemoveUploadedContextToken()` must not
+  // query `GetFileInfo()` for submitted tokens (e.g. during handler teardown).
+  EXPECT_CALL(*mock_controller_ptr, GetFileInfo(_)).Times(0);
+  EXPECT_FALSE(local_handle->RemoveUploadedContextToken(submitted_token));
+  testing::Mock::VerifyAndClearExpectations(mock_controller_ptr);
+
+  FileInfo submitted_info;
+  submitted_info.file_token = submitted_token;
+  submitted_info.tab_session_id = session_id;
+  submitted_info.tab_url = GURL("https://example.com/33");
+  lens::LensOverlayRequestId req_id;
+  req_id.set_uuid(3333);
+  submitted_info.request_id = req_id;
+  EXPECT_CALL(*mock_controller_ptr, GetFileInfo(submitted_token))
+      .WillRepeatedly(testing::Return(&submitted_info));
+
+  const base::UnguessableToken second_submitted_token =
+      base::UnguessableToken::Create();
+  FileInfo second_submitted_info;
+  second_submitted_info.file_token = second_submitted_token;
+  second_submitted_info.tab_session_id = session_id;
+  second_submitted_info.tab_url = GURL("https://example.com/33");
+  lens::LensOverlayRequestId second_req_id;
+  second_req_id.set_uuid(4444);
+  second_submitted_info.request_id = second_req_id;
+  EXPECT_CALL(*mock_controller_ptr, GetFileInfo(second_submitted_token))
+      .WillRepeatedly(testing::Return(&second_submitted_info));
+  EXPECT_CALL(*mock_controller_ptr, DeleteFile(_)).Times(0);
+
+  // With all deselection/rearchitecture flags disabled, `DeleteTabContext`
+  // removes the restored entry locally without recording server deselection.
+  {
+    base::test::ScopedFeatureList disabled_flags;
+    disabled_flags.InitWithFeatures(
+        {}, {omnibox::kContextManagementInComposebox,
+             contextual_tasks::kContextualTasksRearchitecture,
+             contextual_tasks::kContextualTasksSidePanelRearchitecture});
+    local_handle->SetRestoredTabs(
+        {MakeRestoredTab("https://example.com/33", "Tab 33", session_id.id())});
+    std::optional<std::vector<base::UnguessableToken>> removed_tokens =
+        local_handle->DeleteTabContext(
+            session_id, GURL("https://example.com/33"), "Tab 33");
+    ASSERT_TRUE(removed_tokens.has_value());
+    EXPECT_TRUE(local_handle->GetTabContextState().restored.empty());
+    EXPECT_FALSE(local_handle->IsTabDeselected(
+        session_id, GURL("https://example.com/33"), "Tab 33"));
+    EXPECT_TRUE(local_handle->TakeRemovedContexts().empty());
+  }
+
+  // With Contextual Tasks Rearchitecture enabled (even without
+  // `kContextManagementInComposebox`), `DeleteTabContext` marks the tab
+  // deselected, clears all `submitted_context_tokens_` without double-deleting
+  // sibling tokens from the controller, and reports `3333u` in
+  // `TakeRemovedContexts()`.
+  {
+    base::test::ScopedFeatureList enabled_flags;
+    enabled_flags.InitWithFeatures(
+        {contextual_tasks::kContextualTasksRearchitecture},
+        {omnibox::kContextManagementInComposebox});
+    local_handle->SetSubmittedContextTokens(
+        {submitted_token, second_submitted_token});
+    local_handle->SetRestoredTabs(
+        {MakeRestoredTab("https://example.com/33", "Tab 33", session_id.id())});
+    std::optional<std::vector<base::UnguessableToken>> removed_tokens =
+        local_handle->DeleteTabContext(
+            session_id, GURL("https://example.com/33"), "Tab 33");
+    ASSERT_TRUE(removed_tokens.has_value());
+    EXPECT_THAT(*removed_tokens,
+                testing::ElementsAre(submitted_token, second_submitted_token));
+    EXPECT_TRUE(local_handle->GetTabContextState().restored.empty());
+    EXPECT_TRUE(local_handle->GetSubmittedContextTokens().empty());
+    EXPECT_TRUE(local_handle->IsTabDeselected(
+        session_id, GURL("https://example.com/33"), "Tab 33"));
+
+    const std::vector<lens::LensOverlayRequestId> removed =
+        local_handle->TakeRemovedContexts();
+    ASSERT_EQ(removed.size(), 1u);
+    EXPECT_EQ(removed[0].uuid(), 3333u);
+  }
+}
+
+TEST_F(
+    ContextualSearchSessionHandleTest,
+    OnTabClosedOrNavigated_NavigationRemovesSubmittedAndRestoredTabsAndRetainsForRemovedContexts) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndEnableFeature(
+      lens::features::kLensDeleteContextOnPageNavigation);
+  EXPECT_CALL(*mock_controller_ptr_, StartFileUploadFlow(_, _, _))
+      .Times(testing::AnyNumber());
+
+  const SessionID session_id = SessionID::FromSerializedValue(10);
+  const base::UnguessableToken tab_token = handle_->CreateContextToken();
+  auto input_data = MakeTabInputData(10);
+  input_data->page_url = GURL("https://example.com/10");
+  handle_->StartTabContextUploadFlow(tab_token, std::move(input_data),
+                                     std::nullopt);
+
+  FileInfo tab_info;
+  tab_info.file_token = tab_token;
+  tab_info.tab_session_id = session_id;
+  tab_info.tab_url = GURL("https://example.com/10");
+  lens::LensOverlayRequestId req_id;
+  req_id.set_uuid(98765);
+  tab_info.request_id = req_id;
+  EXPECT_CALL(*mock_controller_ptr_, GetFileInfo(tab_token))
+      .WillRepeatedly(testing::Return(&tab_info));
+
+  handle_->MarkQuerySubmitted({}, std::nullopt);
+  handle_->ClearSubmittedContextTokens();
+
+  TabInfo restored_tab;
+  restored_tab.tab_id = 10;
+  restored_tab.url = GURL("https://example.com/10");
+  restored_tab.title = "Tab 10";
+  restored_tab.submitted = true;
+  handle_->SetRestoredTabs({restored_tab});
+
+  int subscriber_notifications = 0;
+  base::CallbackListSubscription sub =
+      handle_->SubscribeTabContext(base::BindLambdaForTesting(
+          [&](const TabContextState&) { ++subscriber_notifications; }));
+
+  // Same-URL navigation (or ref-only change) keeps the tab context intact.
+  EXPECT_TRUE(
+      handle_
+          ->OnTabClosedOrNavigated(
+              session_id, GURL("https://example.com/10#section"), "Tab 10")
+          .empty());
+  EXPECT_EQ(0, subscriber_notifications);
+  EXPECT_EQ(1u, handle_->GetTabContextState().attached.size());
+  EXPECT_EQ(1u, handle_->GetTabContextState().restored.size());
+
+  // Cross-URL navigation removes the tab from `attached` and `restored`
+  // immediately, notifies subscribers, and retains its request ID for
+  // `TakeRemovedContexts()`.
+  EXPECT_CALL(*mock_controller_ptr_, DeleteFile(tab_token)).Times(0);
+  std::vector<base::UnguessableToken> removed_tokens =
+      handle_->OnTabClosedOrNavigated(session_id,
+                                      GURL("https://other.com/page"), "Other");
+  EXPECT_THAT(removed_tokens, testing::ElementsAre(tab_token));
+  EXPECT_EQ(1, subscriber_notifications);
+  EXPECT_TRUE(handle_->GetTabContextState().attached.empty());
+  EXPECT_TRUE(handle_->GetTabContextState().restored.empty());
+
+  std::vector<lens::LensOverlayRequestId> removed_contexts =
+      handle_->TakeRemovedContexts();
+  ASSERT_EQ(1u, removed_contexts.size());
+  EXPECT_EQ(98765u, removed_contexts[0].uuid());
+  EXPECT_TRUE(tab_info.is_superceded);
+}
+
+TEST_F(
+    ContextualSearchSessionHandleTest,
+    OnTabClosedOrNavigated_NavigatedAndReattachedWithoutValidator_KeepsNewToken) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndEnableFeature(
+      lens::features::kLensDeleteContextOnPageNavigation);
+  EXPECT_CALL(*mock_controller_ptr_, StartFileUploadFlow(_, _, _))
+      .Times(testing::AnyNumber());
+
+  const SessionID session_id = SessionID::FromSerializedValue(12);
+  const base::UnguessableToken tab_token1 = handle_->CreateContextToken();
+  auto input_data1 = MakeTabInputData(12);
+  input_data1->page_url = GURL("https://example.com/12");
+  handle_->StartTabContextUploadFlow(tab_token1, std::move(input_data1),
+                                     std::nullopt);
+
+  FileInfo tab_info1;
+  tab_info1.file_token = tab_token1;
+  tab_info1.tab_session_id = session_id;
+  tab_info1.tab_url = GURL("https://example.com/12");
+  lens::LensOverlayRequestId req_id1;
+  req_id1.set_uuid(12001);
+  tab_info1.request_id = req_id1;
+  EXPECT_CALL(*mock_controller_ptr_, GetFileInfo(tab_token1))
+      .WillRepeatedly(testing::Return(&tab_info1));
+
+  handle_->MarkQuerySubmitted({}, std::nullopt);
+  handle_->ClearSubmittedContextTokens();
+
+  // Navigate to a new URL, then re-attach the tab at the new URL before
+  // submitting the next turn (with no `TabValidator` wired up on `handle_`).
+  EXPECT_THAT(handle_->OnTabClosedOrNavigated(
+                  session_id, GURL("https://other.com/new"), "New"),
+              testing::ElementsAre(tab_token1));
+
+  const base::UnguessableToken tab_token2 = handle_->CreateContextToken();
+  auto input_data2 = MakeTabInputData(12);
+  input_data2->page_url = GURL("https://other.com/new");
+  handle_->StartTabContextUploadFlow(tab_token2, std::move(input_data2),
+                                     std::nullopt);
+
+  FileInfo tab_info2;
+  tab_info2.file_token = tab_token2;
+  tab_info2.tab_session_id = session_id;
+  tab_info2.tab_url = GURL("https://other.com/new");
+  lens::LensOverlayRequestId req_id2;
+  req_id2.set_uuid(12002);
+  tab_info2.request_id = req_id2;
+  EXPECT_CALL(*mock_controller_ptr_, GetFileInfo(tab_token2))
+      .WillRepeatedly(testing::Return(&tab_info2));
+
+  // `TakeRemovedContexts()` must report `req_id1`, mark `tab_info1` superseded,
+  // and preserve `tab_token2` in `uploaded_context_tokens_` for submission.
+  std::vector<lens::LensOverlayRequestId> removed_contexts =
+      handle_->TakeRemovedContexts();
+  ASSERT_EQ(1u, removed_contexts.size());
+  EXPECT_EQ(12001u, removed_contexts[0].uuid());
+  EXPECT_TRUE(tab_info1.is_superceded);
+  EXPECT_FALSE(tab_info2.is_superceded);
+  EXPECT_THAT(handle_->GetUploadedContextTokens(),
+              testing::ElementsAre(tab_token2));
+
+  std::vector<base::UnguessableToken> submitted =
+      handle_->MarkQuerySubmitted({}, std::nullopt);
+  EXPECT_THAT(submitted, testing::ElementsAre(tab_token2));
+}
+
+TEST_F(
+    ContextualSearchSessionHandleTest,
+    OnTabClosedOrNavigated_TabCloseRemovesSubmittedAndRestoredTabsAndRetainsForRemovedContexts) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndEnableFeature(
+      lens::features::kLensDeleteContextOnPageNavigation);
+  EXPECT_CALL(*mock_controller_ptr_, StartFileUploadFlow(_, _, _))
+      .Times(testing::AnyNumber());
+
+  const SessionID session_id = SessionID::FromSerializedValue(15);
+  const base::UnguessableToken tab_token = handle_->CreateContextToken();
+  auto input_data = MakeTabInputData(15);
+  input_data->page_url = GURL("https://example.com/15");
+  handle_->StartTabContextUploadFlow(tab_token, std::move(input_data),
+                                     std::nullopt);
+
+  FileInfo tab_info;
+  tab_info.file_token = tab_token;
+  tab_info.tab_session_id = session_id;
+  tab_info.tab_url = GURL("https://example.com/15");
+  lens::LensOverlayRequestId req_id;
+  req_id.set_uuid(54321);
+  tab_info.request_id = req_id;
+  EXPECT_CALL(*mock_controller_ptr_, GetFileInfo(tab_token))
+      .WillRepeatedly(testing::Return(&tab_info));
+
+  handle_->MarkQuerySubmitted({}, std::nullopt);
+  handle_->ClearSubmittedContextTokens();
+
+  TabInfo restored_tab;
+  restored_tab.tab_id = 15;
+  restored_tab.url = GURL("https://example.com/15");
+  restored_tab.title = "Tab 15";
+  restored_tab.submitted = true;
+  handle_->SetRestoredTabs({restored_tab});
+
+  int subscriber_notifications = 0;
+  base::CallbackListSubscription sub =
+      handle_->SubscribeTabContext(base::BindLambdaForTesting(
+          [&](const TabContextState&) { ++subscriber_notifications; }));
+
+  // Tab closure (`current_url` is `std::nullopt`) removes the tab from
+  // `attached` and `restored` immediately, notifies subscribers, and retains
+  // its request ID for `TakeRemovedContexts()`.
+  EXPECT_CALL(*mock_controller_ptr_, DeleteFile(tab_token)).Times(0);
+  std::vector<base::UnguessableToken> removed_tokens =
+      handle_->OnTabClosedOrNavigated(session_id, std::nullopt, std::nullopt);
+  EXPECT_THAT(removed_tokens, testing::ElementsAre(tab_token));
+  EXPECT_EQ(1, subscriber_notifications);
+  EXPECT_TRUE(handle_->GetTabContextState().attached.empty());
+  EXPECT_TRUE(handle_->GetTabContextState().restored.empty());
+
+  std::vector<lens::LensOverlayRequestId> removed_contexts =
+      handle_->TakeRemovedContexts();
+  ASSERT_EQ(1u, removed_contexts.size());
+  EXPECT_EQ(54321u, removed_contexts[0].uuid());
+  EXPECT_TRUE(tab_info.is_superceded);
+}
+
+TEST_F(ContextualSearchSessionHandleTest,
+       OnTabClosedOrNavigated_TabCloseRemovesUnsubmittedStagedTab) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndEnableFeature(
+      lens::features::kLensDeleteContextOnPageNavigation);
+  EXPECT_CALL(*mock_controller_ptr_, StartFileUploadFlow(_, _, _))
+      .Times(testing::AnyNumber());
+
+  const SessionID session_id = SessionID::FromSerializedValue(20);
+  const base::UnguessableToken tab_token = handle_->CreateContextToken();
+  auto input_data = MakeTabInputData(20);
+  input_data->page_url = GURL("https://example.com/20");
+  handle_->StartTabContextUploadFlow(tab_token, std::move(input_data),
+                                     std::nullopt);
+
+  FileInfo tab_info;
+  tab_info.file_token = tab_token;
+  tab_info.tab_session_id = session_id;
+  tab_info.tab_url = GURL("https://example.com/20");
+  EXPECT_CALL(*mock_controller_ptr_, GetFileInfo(tab_token))
+      .WillRepeatedly(testing::Return(&tab_info));
+  EXPECT_CALL(*mock_controller_ptr_, DeleteFile(tab_token))
+      .WillOnce(testing::Return(true));
+
+  std::vector<base::UnguessableToken> removed_tokens =
+      handle_->OnTabClosedOrNavigated(session_id, std::nullopt, std::nullopt);
+  EXPECT_THAT(removed_tokens, testing::ElementsAre(tab_token));
+  EXPECT_TRUE(handle_->GetTabContextState().attached.empty());
+  EXPECT_TRUE(handle_->GetUploadedContextTokens().empty());
+}
+
+TEST_F(
+    ContextualSearchSessionHandleTest,
+    OnTabClosedOrNavigated_NavigatedAwayThenBackAndReattached_MarksOldFileInfoSuperceded) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndEnableFeature(
+      lens::features::kLensDeleteContextOnPageNavigation);
+  EXPECT_CALL(*mock_controller_ptr_, StartFileUploadFlow(_, _, _))
+      .Times(testing::AnyNumber());
+
+  const SessionID session_id = SessionID::FromSerializedValue(21);
+  const base::UnguessableToken tab_token1 = handle_->CreateContextToken();
+  auto input_data1 = MakeTabInputData(21);
+  input_data1->page_url = GURL("https://example.com/21");
+  handle_->StartTabContextUploadFlow(tab_token1, std::move(input_data1),
+                                     std::nullopt);
+
+  FileInfo tab_info1;
+  tab_info1.file_token = tab_token1;
+  tab_info1.tab_session_id = session_id;
+  tab_info1.tab_url = GURL("https://example.com/21");
+  lens::LensOverlayRequestId req_id1;
+  req_id1.set_uuid(21001);
+  tab_info1.request_id = req_id1;
+  EXPECT_CALL(*mock_controller_ptr_, GetFileInfo(tab_token1))
+      .WillRepeatedly(testing::Return(&tab_info1));
+
+  handle_->MarkQuerySubmitted({}, std::nullopt);
+  handle_->ClearSubmittedContextTokens();
+
+  // Navigate to a different URL (`tab_token1` moves to
+  // `displaced_submitted_tabs_`), then navigate back to the original URL and
+  // re-attach with `tab_token2`.
+  EXPECT_THAT(handle_->OnTabClosedOrNavigated(
+                  session_id, GURL("https://other.com/away"), "Away"),
+              testing::ElementsAre(tab_token1));
+
+  const base::UnguessableToken tab_token2 = handle_->CreateContextToken();
+  auto input_data2 = MakeTabInputData(21);
+  input_data2->page_url = GURL("https://example.com/21");
+  handle_->StartTabContextUploadFlow(tab_token2, std::move(input_data2),
+                                     std::nullopt);
+
+  FileInfo tab_info2;
+  tab_info2.file_token = tab_token2;
+  tab_info2.tab_session_id = session_id;
+  tab_info2.tab_url = GURL("https://example.com/21");
+  lens::LensOverlayRequestId req_id2;
+  req_id2.set_uuid(21002);
+  tab_info2.request_id = req_id2;
+  EXPECT_CALL(*mock_controller_ptr_, GetFileInfo(tab_token2))
+      .WillRepeatedly(testing::Return(&tab_info2));
+
+  // `TakeRemovedContexts()` should not remove the context from the server
+  // (since the tab is back on an equivalent URL), but must still mark
+  // `tab_info1` as superseded.
+  EXPECT_TRUE(handle_->TakeRemovedContexts().empty());
+  EXPECT_TRUE(tab_info1.is_superceded);
+  EXPECT_FALSE(tab_info2.is_superceded);
+}
+
+TEST_F(
+    ContextualSearchSessionHandleTest,
+    OnTabClosedOrNavigated_DelayedTabTokenRetainedOnEquivalentUrlAndReturnedOnRemoval) {
+  EXPECT_CALL(*mock_controller_ptr_, StartFileUploadFlow(_, _, _))
+      .Times(testing::AnyNumber());
+
+  const SessionID session_id = SessionID::FromSerializedValue(22);
+  const base::UnguessableToken delayed_token = handle_->AddPendingDelayedTab(
+      session_id.id(), GURL("https://example.com/22"), "Tab 22");
+  const base::UnguessableToken upload_token = handle_->CreateContextToken();
+  auto input_data = MakeTabInputData(22);
+  input_data->page_url = GURL("https://example.com/22");
+  handle_->StartTabContextUploadFlow(upload_token, std::move(input_data),
+                                     std::nullopt);
+
+  FileInfo tab_info;
+  tab_info.file_token = upload_token;
+  tab_info.tab_session_id = session_id;
+  tab_info.tab_url = GURL("https://example.com/22");
+  EXPECT_CALL(*mock_controller_ptr_, GetFileInfo(upload_token))
+      .WillRepeatedly(testing::Return(&tab_info));
+  EXPECT_CALL(*mock_controller_ptr_, GetFileInfo(delayed_token))
+      .WillRepeatedly(testing::Return(nullptr));
+
+  // Equivalent-URL navigation (#ref) keeps the tab attached and retains the
+  // delayed token mapping.
+  EXPECT_TRUE(
+      handle_
+          ->OnTabClosedOrNavigated(
+              session_id, GURL("https://example.com/22#section"), "Tab 22")
+          .empty());
+
+  // Cross-URL navigation removes both `upload_token` and `delayed_token`.
+  EXPECT_CALL(*mock_controller_ptr_, DeleteFile(upload_token))
+      .WillOnce(testing::Return(true));
+  std::vector<base::UnguessableToken> removed_tokens =
+      handle_->OnTabClosedOrNavigated(session_id,
+                                      GURL("https://other.com/page"), "Other");
+  EXPECT_THAT(removed_tokens,
+              testing::ElementsAre(upload_token, delayed_token));
+  EXPECT_FALSE(handle_->DeleteTabContext(delayed_token).has_value());
 }
 
 }  // namespace contextual_search

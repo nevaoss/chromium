@@ -8,6 +8,7 @@
 #include <string>
 
 #include "base/observer_list_types.h"
+#include "chrome/browser/ttc/app/public/audio_envelope.h"
 #include "chrome/browser/ttc/core/states.h"
 #include "components/ttc/app/public/error_codes.h"
 #include "components/ttc/app/public/tool_types.h"
@@ -17,6 +18,7 @@ class Profile;
 namespace ttc {
 
 class Conversation;
+class DebugSink;
 class SessionJournal;
 
 // High-level lifecycle coordinator for a TTC session. Manages the lifetime
@@ -35,6 +37,7 @@ class SessionController {
                                           bool success) {}
     virtual void OnInputTranscription(const std::string& text) {}
     virtual void OnOutputTranscription(const std::string& text) {}
+    virtual void OnModelAudioEnvelopeReady(const AudioEnvelope& envelope) {}
   };
 
   virtual ~SessionController() = default;
@@ -58,6 +61,10 @@ class SessionController {
 
   // The profile this session belongs to.
   virtual Profile* GetProfile() = 0;
+
+  // Instrumentation for chrome://ttc-internals. Null unless the TTC debug
+  // tools are enabled. Valid for the lifetime of this object.
+  virtual DebugSink* GetDebugSink() = 0;
 
   // The journal this session's events are recorded in.
   virtual SessionJournal& GetJournal() = 0;
@@ -87,6 +94,7 @@ class SessionController {
   virtual void OnModelInterrupted() = 0;
   virtual void OnInputTranscription(const std::string& text) = 0;
   virtual void OnOutputTranscription(const std::string& text) = 0;
+  virtual void OnModelAudioEnvelopeReady(const AudioEnvelope& envelope) = 0;
 };
 
 }  // namespace ttc

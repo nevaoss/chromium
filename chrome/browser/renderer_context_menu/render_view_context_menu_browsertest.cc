@@ -45,6 +45,7 @@
 #include "chrome/browser/context_hub/context_hub_service_factory.h"
 #include "chrome/browser/context_hub/features.h"
 #include "chrome/browser/context_hub/memory_bank/memory_bank.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/search_journey_tracker.h"
 #include "chrome/browser/contextual_tasks/search_journey_tracker_factory.h"
 #include "chrome/browser/download/download_stats.h"
@@ -3442,11 +3443,15 @@ IN_PROC_BROWSER_TEST_F(LensOverlayBrowserTest,
                                              base::NullCallback());
       }));
 
+  auto* panel_controller =
+      contextual_tasks::ContextualTasksPanelController::From(browser());
+  ASSERT_TRUE(panel_controller);
+
   // Wait for the side panel to load.
   ASSERT_TRUE(base::test::RunUntil(
-      [&]() { return controller->GetSidePanelWebContentsForTesting(); }));
-  EXPECT_TRUE(content::WaitForLoadStop(
-      controller->GetSidePanelWebContentsForTesting()));
+      [&]() { return panel_controller->GetActiveWebContents() != nullptr; }));
+  EXPECT_TRUE(
+      content::WaitForLoadStop(panel_controller->GetActiveWebContents()));
   ASSERT_EQ(controller->state(), LensOverlayController::State::kOff);
 }
 
@@ -5266,8 +5271,9 @@ class ABASearchJourneysContextMenuBrowserTest : public ContextMenuBrowserTest {
 // `AutocompleteInput::kInvalidChars`.
 IN_PROC_BROWSER_TEST_F(ABASearchJourneysContextMenuBrowserTest,
                        SearchWebForRecordsCopyMatchingCommittedSrpQuery) {
-  ASSERT_TRUE(embedded_test_server()->Start());
-  const GURL source_url = embedded_test_server()->GetURL("/title1.html");
+  // Only HTTPS pages can be the source tab of a journey.
+  ASSERT_TRUE(embedded_https_test_server().Start());
+  const GURL source_url = embedded_https_test_server().GetURL("/title1.html");
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), source_url));
 
   content::WebContents* source_web_contents =
@@ -5307,7 +5313,7 @@ IN_PROC_BROWSER_TEST_F(ABASearchJourneysContextMenuBrowserTest,
 
   // Extract the search terms from the SRP URL opened by the context menu and
   // verify that its normalized hash agrees with the recorded selection and
-  // correlates the journey.
+  // labels the journey as a copy match.
   TemplateURLService* template_url_service =
       TemplateURLServiceFactory::GetForProfile(browser()->GetProfile());
   ASSERT_TRUE(template_url_service);
@@ -5328,9 +5334,9 @@ IN_PROC_BROWSER_TEST_F(ABASearchJourneysContextMenuBrowserTest,
   const auto& journeys = tracker()->GetActiveJourneysForTesting();
   auto it = journeys.find(source_tab_id);
   ASSERT_NE(it, journeys.end());
-  EXPECT_EQ(source_tab_id, it->second.copy_record.source_tab_id);
-  EXPECT_EQ(source_nav_entry_id, it->second.copy_record.source_nav_entry_id);
+  EXPECT_EQ(source_nav_entry_id, it->second.source_nav_entry_id);
   EXPECT_EQ(search_tab_id, it->second.search_tab_id);
+  EXPECT_TRUE(it->second.matched_copy);
 }
 
 // Verifies that if Enterprise Data Controls cancels the context-menu search,

@@ -114,6 +114,7 @@
 <translation id="2039417478970545937">การตั้งค่า</translation>
 <translation id="2040220733769034247">สแกนคิวอาร์โค้ดด้วยโทรศัพท์เพื่อดาวน์โหลด Chrome และลงชื่อเข้าใช้บัญชี Google</translation>
 <translation id="2044908892530830113">แสดงการค้นหาด้วย Chrome ในแถบเมนูของ Mac และเปิดแป้นพิมพ์ลัด</translation>
+<translation id="2050189601866423230">คุณสามารถปักหมุดโหมด AI ของ Google Search เพื่อถามคำถามขณะท่องเว็บ</translation>
 <translation id="2091012649849228750">คุณจะต้องใช้ Windows 10 ขึ้นไปเพื่อรับการอัปเดต Google Chrome ในอนาคต คอมพิวเตอร์เครื่องนี้ใช้ Windows 8</translation>
 <translation id="2094648590148273905">ข้อกำหนดของ Chrome OS Flex</translation>
 <translation id="2094919256425865063">ปิด Chrome ใช่ไหม</translation>
@@ -139,7 +140,6 @@
 <translation id="2216543877350048334">หากต้องการนำบัญชี Google ออกจาก Chrome ให้ออกจากระบบ</translation>
 <translation id="2236949375853147973">กิจกรรมของฉัน</translation>
 <translation id="22791603784558743">ปิด Gemini ใน Chrome Dev</translation>
-<translation id="2284380654876659752">เมื่อคุณเข้าชมเว็บไซต์ Chrome จะนำเฉพาะบางส่วนของ URL มาปรับให้ยากต่อการอ่าน (Obfuscated) แล้วส่งไปยัง  <ph name="BEGIN_LINK" />Google Safe Browsing<ph name="END_LINK" />  ผ่านเซิร์ฟเวอร์ส่วนตัวที่ซ่อนที่อยู่ IP ของคุณ หากเว็บไซต์ทำสิ่งที่น่าสงสัย ระบบจะส่ง URL แบบเต็มและเนื้อหาของหน้าเว็บบางส่วนด้วย</translation>
 <translation id="2290014774651636340">คีย์ API ของ Google หายไป การทำงานบางอย่างของ Google Chrome จะถูกปิดใช้งาน</translation>
 <translation id="2290095356545025170">คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการติดตั้ง Google Chrome</translation>
 <translation id="2295218613066132598">แสดงทางลัดของเว็บไซต์ใน Chrome</translation>
@@ -379,7 +379,6 @@
 <translation id="459622048091363950">เมื่อ Chrome มีสิทธิ์การเข้าถึงแล้ว เว็บไซต์จะขอสิทธิ์การเข้าถึงจากคุณได้</translation>
 <translation id="4598116752460667024">ค้นหากระบวนการใดๆ จากรายการ</translation>
 <translation id="4600710005438004015">Chrome อัปเดตเป็นเวอร์ชันล่าสุดไม่ได้ คุณจึงไม่ได้รับฟีเจอร์ใหม่และการแก้ไขด้านความปลอดภัย</translation>
-<translation id="4606805686144157064">รับคำเตือนหาก Chrome พบรหัสผ่านของคุณในการละเมิดข้อมูลสาธารณะ</translation>
 <translation id="4608435347866444037">ค้นหารูปภาพนี้ด้วย Google Lens</translation>
 <translation id="4624065194742029982">โหมดไม่ระบุตัวตนของ Chrome</translation>
 <translation id="4627412468266359539">ไม่บังคับ: ช่วยปรับปรุงฟีเจอร์และประสิทธิภาพของ Chrome OS Flex ด้วยการส่งข้อมูลการวินิจฉัยและการใช้งานให้ Google โดยอัตโนมัติ</translation>
@@ -396,9 +395,9 @@
 <translation id="4768676935374695498">ค้นหาวิดีโอนี้ด้วย Google Lens</translation>
 <translation id="479167709087336770">การดำเนินการนี้จะใช้โปรแกรมตรวจตัวสะกดแบบเดียวกับใน Google Search ข้อความที่คุณพิมพ์ในเบราว์เซอร์จะส่งไปยัง Google คุณปรับเปลี่ยนลักษณะการทำงานนี้ได้ทุกเมื่อในการตั้งค่า</translation>
 <translation id="4793679854893018356">ดูวิธีที่ Chrome ช่วยให้คุณปลอดภัย</translation>
-<translation id="4799870290441980300">เปิดฟีเจอร์เพิ่มเติมเพื่อให้การปกป้องที่เข้มงวดที่สุดของ Chrome</translation>
 <translation id="4828579605166583682">Google Chrome กำลังพยายามแทนที่รหัสผ่านที่มีอยู่ โปรดพิมพ์รหัสผ่าน Windows ของคุณเพื่ออนุญาต</translation>
 <translation id="4836321460899997044">โปรไฟล์ Chrome</translation>
+<translation id="4839733921943823254">ปักหมุดทางลัด</translation>
 <translation id="4842397268809523050">Chrome OS Flex ซิงค์ข้อมูลไม่ได้เนื่องจากการซิงค์ใช้ไม่ได้กับโดเมนของคุณ</translation>
 <translation id="4851866215237571846"><ph name="EXISTING_USER" /> ลงชื่อเข้าใช้อยู่แล้ว  หากต้องการแยกการท่องเว็บไว้ต่างหาก ให้ลงชื่อเข้าใช้ Chrome ในโปรไฟล์ของคุณเองด้วย <ph name="USER_EMAIL_ADDRESS" /></translation>
 <translation id="4855026984605187434">หากต้องการแชร์หน้าจอ ให้อนุญาตการบันทึกหน้าจอสำหรับ Chrome ใน "การตั้งค่าระบบ"</translation>
@@ -551,7 +550,6 @@
 <translation id="6251759518630934363">เตือนคุณเกี่ยวกับเว็บไซต์ที่เป็นอันตราย แม้แต่เว็บไซต์ที่ Google ไม่เคยรู้จักมาก่อนด้วยการวิเคราะห์ข้อมูลจากเว็บไซต์มากกว่าการปกป้องแบบมาตรฐาน คุณเลือกข้ามคำเตือนของ Chrome ได้</translation>
 <translation id="6277547788421725101">ผู้ปกครองได้ปิด "สิทธิ์สำหรับเว็บไซต์ แอป และส่วนขยาย" ใน Chrome</translation>
 <translation id="627882678981830918">ปรับแต่งและควบคุม Chrome ตั้ง Chrome เป็นเบราว์เซอร์เริ่มต้น</translation>
-<translation id="6280042952415350607">การปกป้องที่ดียิ่งขึ้นจะปิดการเพิ่มประสิทธิภาพ JavaScript สำหรับเว็บไซต์ที่ Chrome ไม่รู้จัก</translation>
 <translation id="6288580400488258237">ตั้ง Google Chrome เป็นเบราว์เซอร์เริ่มต้นและปักหมุดไว้ที่แถบงาน</translation>
 <translation id="6291089322031436445">แอป Chrome Dev</translation>
 <translation id="6291549208091401781">มีการติดตั้ง Google Chrome สำหรับผู้ใช้ทุกคนบนคอมพิวเตอร์ของคุณแล้ว</translation>
@@ -765,6 +763,7 @@
 <translation id="8074398340364918139">หากต้องการค้นหาฟีเจอร์หรือส่วนขยาย Chrome ที่เฉพาะเจาะจง ให้พิมพ์ทางลัดของฟีเจอร์หรือส่วนขยายนั้นในแถบที่อยู่ แล้วตามด้วยปุ่มบนแป้นพิมพ์ที่เลือกไว้</translation>
 <translation id="8077579734294125741">โปรไฟล์ Chrome อื่นๆ</translation>
 <translation id="8086881907087796310">การติดตั้งไม่สำเร็จเนื่องจากคอมพิวเตอร์ของคุณไม่เป็นไปตามข้อกำหนดขั้นต่ำสำหรับฮาร์ดแวร์</translation>
+<translation id="8110438089258398864">คุณเปิดโหมด AI ของ Google Search อีกครั้งเพื่อถามคำถามขณะท่องเว็บได้</translation>
 <translation id="8113883687556086139">โปรดยืนยันว่าเป็นคุณเพื่อใช้และบันทึกข้อมูล Chrome ในบัญชี <ph name="ACCOUNT_EMAIL" /></translation>
 <translation id="8115695070094288807">กำลังปรับแต่ง Chrome ในแบบของคุณ...</translation>
 <translation id="8118331347066725040">ส่งความคิดเห็นเกี่ยวกับการค้นหาด้วย Lens</translation>
@@ -821,6 +820,8 @@
 <translation id="8555465886620020932">ข้อผิดพลาดในการบริการ: <ph name="SERVICE_ERROR" /></translation>
 <translation id="856656450041460113">ค้นหารายการภาษา</translation>
 <translation id="8575047640889685742">ใช้<ph name="BEGIN_LINK" />พาสเฟรสของคุณเอง<ph name="END_LINK" />ในการเข้ารหัสข้อมูล Chrome ทั้งหมดในบัญชี Google ที่อยู่และวิธีการชำระเงินจาก Google Pay จะไม่มีการเข้ารหัส ประวัติการท่องเว็บจาก Chrome จะไม่ซิงค์</translation>
+<translation id="8590782867495422699">เปิดโหมด AI ของ Google Search อีกครั้ง</translation>
+<translation id="8598779894319572882">จากปุ่ม "โหมด AI ของ Google Search" บนแถบเครื่องมือ คุณเปิดโหมด AI ของ Google Search อีกครั้งเพื่อถามคำถามขณะท่องเว็บได้</translation>
 <translation id="8614913330719544658">Google Chrome ไม่ตอบสนอง เปิดใช้งานใหม่ตอนนี้หรือไม่</translation>
 <translation id="8623450603356630491">ลงชื่อเข้าใช้ Chrome ในโทรศัพท์</translation>
 <translation id="8624541899164515475">การตั้งค่า เปิดในแท็บใหม่</translation>
@@ -875,6 +876,7 @@
 <translation id="9014771989710951291">องค์กรหลายแห่งจัดการ Chrome</translation>
 <translation id="9018218886431812662">ติดตั้งเสร็จสมบูรณ์แล้ว</translation>
 <translation id="9066987883552592250">ปิด Gemini ใน Chrome Canary</translation>
+<translation id="9074041031320636790">สำเร็จ! ตอนนี้คุณสามารถถามคำถามได้อย่างง่ายดายขณะท่องเว็บด้วยโหมด AI ของ Google Search</translation>
 <translation id="9090566250983691233">ดูสาเหตุที่ Chrome บล็อกบางไฟล์</translation>
 <translation id="9106236359747881194">เลือกข้อความที่จะค้นหา</translation>
 <translation id="911206726377975832">ลบข้อมูลการท่องเว็บด้วยหรือไม่</translation>

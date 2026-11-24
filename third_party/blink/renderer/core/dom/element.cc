@@ -4392,7 +4392,7 @@ Node::InsertionNotificationRequest Element::InsertedInto(
     UpdateId(scope, g_null_atom, id_value);
   }
 
-  const AtomicString& name_value = GetNameAttribute();
+  AtomicString name_value = GetNameAttribute();
   if (!name_value.IsNull()) {
     UpdateName(g_null_atom, name_value);
   }
@@ -4606,9 +4606,9 @@ void Element::DidChangeIsInCanvasSubtree(CanvasSubtreePropagation) {
     layout_object->SetNeedsPaintPropertyUpdate();
     layout_object->SetSubtreeShouldDoFullPaintInvalidation();
     if (layout_object->HasLayer()) {
-      To<LayoutBoxModelObject>(layout_object)
-          ->Layer()
-          ->SetFilterOnEffectNodeDirty();
+      PaintLayer* layer = To<LayoutBoxModelObject>(layout_object)->Layer();
+      layer->SetFilterOnEffectNodeDirty();
+      layer->SetBackdropFilterOnEffectNodeDirty();
     }
   }
 }
@@ -4714,7 +4714,7 @@ void Element::RemovedFrom(ContainerNode& insertion_point) {
       UpdateId(insertion_point.GetTreeScope(), id_value, g_null_atom);
     }
 
-    const AtomicString& name_value = GetNameAttribute();
+    AtomicString name_value = GetNameAttribute();
     if (!name_value.IsNull()) {
       UpdateName(name_value, g_null_atom);
     }
@@ -8490,7 +8490,8 @@ void Element::RemoveAttributeInternal(wtf_size_t index,
     DetachAttrNodeFromElementWithValue(attr_node, value_being_removed);
   }
 
-  // WillModifyAttribute() may pause in the debugger and allow script to mutate
+  // WillModifyAttribute() may run script (e.g. by pausing in the debugger or
+  // lazily initializing a WindowProxy during UpdateName()) and mutate
   // attributes, invalidating `index`.
   if (index >= mutable_attributes.size() ||
       mutable_attributes[index].GetName() != name) {
@@ -8519,7 +8520,15 @@ void Element::AppendAttributeInternal(const QualifiedName& name,
   }
   attribute_or_class_bloom_ |= FilterForAttribute(name);
   UpdateSubtreeBloomFilterAfterInsert();
-  EnsureUniqueElementData().Attributes().Append(name, value);
+  // WillModifyAttribute() may run script (e.g. by pausing in the debugger or
+  // lazily initializing a WindowProxy during UpdateName()) and add the
+  // attribute re-entrantly before we append it here.
+  if (wtf_size_t index = FindAttributeIndex(name); index != kNotFound)
+      [[unlikely]] {
+    EnsureUniqueElementData().Attributes().at(index).SetValue(value);
+  } else {
+    EnsureUniqueElementData().Attributes().Append(name, value);
+  }
   if (reason !=
       AttributeModificationReason::kBySynchronizationOfLazyAttribute) {
     DidAddAttribute(name, value);
@@ -10528,20 +10537,6 @@ void Element::SetShadowPseudoId(const AtomicString& id) {
   setAttribute(html_names::kPseudoAttr, id);
 }
 
-bool Element::IsInDescendantTreeOf(const Element* shadow_host) const {
-  DCHECK(shadow_host);
-  DCHECK(IsShadowHost(shadow_host));
-
-  for (const Element* ancestor_shadow_host = OwnerShadowHost();
-       ancestor_shadow_host;
-       ancestor_shadow_host = ancestor_shadow_host->OwnerShadowHost()) {
-    if (ancestor_shadow_host == shadow_host) {
-      return true;
-    }
-  }
-  return false;
-}
-
 namespace {
 
 HeapVector<Member<Element>> CollectAncestorsToEnsure(Element& element) {
@@ -12294,7 +12289,7 @@ bool Element::HasNamedNodeMap() const {
 
 inline void Element::UpdateName(const AtomicString& old_name,
                                 const AtomicString& new_name) {
-  if (!IsInDocumentTree()) {
+  if (!IsInDocumentTree() || IsPseudoElement()) {
     return;
   }
 
@@ -12310,7 +12305,7 @@ inline void Element::UpdateName(const AtomicString& old_name,
 
 inline void Element::UpdateId(const AtomicString& old_id,
                               const AtomicString& new_id) {
-  if (!IsInTreeScope()) {
+  if (!IsInTreeScope() || IsPseudoElement()) {
     return;
   }
 
@@ -12325,6 +12320,9 @@ inline void Element::UpdateId(const AtomicString& old_id,
 inline void Element::UpdateId(TreeScope& scope,
                               const AtomicString& old_id,
                               const AtomicString& new_id) {
+  if (IsPseudoElement()) {
+    return;
+  }
   DCHECK(IsInTreeScope() || scope.RootNode().IsInShadowTree());
   DCHECK_NE(old_id, new_id);
 
@@ -12506,13 +12504,13 @@ void Element::DidMoveToNewDocument(Document& old_document) {
     // this element's attributes, we shouldn't make UniqueElementData, and this
     // element should point to the shareable one.
 
-    if (const AtomicString& id_attr = GetIdAttribute()) {
+    if (AtomicString id_attr = GetIdAttribute()) {
       if (!id_attr.ContainsNoAsciiUpper()) {
         EnsureUniqueElementData();
         SetIdAttribute(id_attr);
       }
     }
-    if (const AtomicString& class_attr = GetClassAttribute()) {
+    if (AtomicString class_attr = GetClassAttribute()) {
       if (!class_attr.ContainsNoAsciiUpper()) {
         EnsureUniqueElementData();
         // Going through setAttribute() to synchronize the attribute is only
@@ -12674,15 +12672,15 @@ void Element::CloneAttributesFrom(const Element& other) {
     return;
   }
 
-  const AtomicString& old_id = GetIdAttribute();
-  const AtomicString& new_id = other.GetIdAttribute();
+  AtomicString old_id = GetIdAttribute();
+  AtomicString new_id = other.GetIdAttribute();
 
   if (!old_id.IsNull() || !new_id.IsNull()) {
     UpdateId(old_id, new_id);
   }
 
-  const AtomicString& old_name = GetNameAttribute();
-  const AtomicString& new_name = other.GetNameAttribute();
+  AtomicString old_name = GetNameAttribute();
+  AtomicString new_name = other.GetNameAttribute();
 
   if (!old_name.IsNull() || !new_name.IsNull()) {
     UpdateName(old_name, new_name);
@@ -12850,9 +12848,14 @@ bool Element::IsStyleAttributeChangeAllowed(const AtomicString& style_string) {
         start_position =
             document.GetScriptableDocumentParser()->GetTextPosition();
       }
+      ReportingDisposition disposition =
+          document.IsDOMParserDocument()
+              ? ReportingDisposition::kSuppressReporting
+              : ReportingDisposition::kReport;
       return policy->AllowInline(
           ContentSecurityPolicy::InlineType::kStyleAttribute, this,
-          style_string, String() /* nonce */, document.Url(), start_position);
+          style_string, String() /* nonce */, document.Url(), start_position,
+          disposition);
     }
   }
   return false;
@@ -13622,6 +13625,13 @@ void Element::UpdateTransitionPseudoElements(
     return;
   }
 
+  if (ChildStyleRecalcBlockedByDisplayLock()) {
+    GetDisplayLockContext()->NotifyChildStyleRecalcWasBlocked(
+        style_recalc_change.EnsureAtLeast(
+            StyleRecalcChange::kUpdatePseudoElements));
+    return;
+  }
+
   switch (GetPseudoId()) {
     case kPseudoIdViewTransition: {
       for (const AtomicString& name :
@@ -14131,8 +14141,9 @@ ALWAYS_INLINE void Element::SetAttributeInternal(
     }
     MutableAttributeCollection mutable_attributes =
         EnsureUniqueElementData().Attributes();
-    // WillModifyAttribute() may pause in the debugger and allow script to
-    // mutate attributes, invalidating `index`.
+    // WillModifyAttribute() may run script (e.g. by pausing in the debugger or
+    // lazily initializing a WindowProxy during UpdateName()) and mutate
+    // attributes, invalidating `index`.
     if (index >= mutable_attributes.size() ||
         mutable_attributes[index].GetName() != existing_attribute_name) {
       index = mutable_attributes.FindIndex(existing_attribute_name);

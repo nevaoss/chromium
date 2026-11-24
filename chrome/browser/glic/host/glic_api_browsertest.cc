@@ -71,6 +71,7 @@
 #include "chrome/browser/signin/chrome_signin_client_test_util.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/identity_test_environment_profile_adaptor.h"
+#include "chrome/browser/sync/send_tab_to_self_sync_service_factory.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
@@ -97,12 +98,15 @@
 #include "components/policy/core/common/policy_types.h"
 #include "components/policy/policy_constants.h"
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
+#include "components/send_tab_to_self/fake_send_tab_to_self_model.h"
+#include "components/send_tab_to_self/stub_send_tab_to_self_sync_service.h"
 #include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/identity_manager/account_capabilities_test_mutator.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
 #include "components/skills/features.h"
 #include "components/subscription_eligibility/subscription_eligibility_prefs.h"
+#include "components/sync_device_info/remote_device_info.h"
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tabs/public/tab_interface.h"
 #include "components/variations/active_field_trials.h"
@@ -681,6 +685,70 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, MAYBE_testAttachPanel) {
   ExecuteJsTest();
 }
 
+IN_PROC_BROWSER_TEST_P(GlicApiTest,
+                       testGetSendTabToSelfDevicesFeatureDisabled) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+}
+
+class GlicApiTestWithSendTabToSelf : public GlicApiTest {
+ public:
+  GlicApiTestWithSendTabToSelf() {
+    send_tab_to_self_features_.InitAndEnableFeature(
+        mojom::features::kGlicSendTabToSelf);
+  }
+
+  void SetUpBrowserContextKeyedServices(
+      content::BrowserContext* context) override {
+    SendTabToSelfSyncServiceFactory::GetInstance()->SetTestingFactory(
+        context, base::BindRepeating([](content::BrowserContext* context)
+                                         -> std::unique_ptr<KeyedService> {
+          return std::make_unique<
+              send_tab_to_self::StubSendTabToSelfSyncService>();
+        }));
+    GlicApiTest::SetUpBrowserContextKeyedServices(context);
+  }
+
+  send_tab_to_self::FakeSendTabToSelfModel* GetFakeSendTabToSelfModel() {
+    auto* stub_service =
+        static_cast<send_tab_to_self::StubSendTabToSelfSyncService*>(
+            SendTabToSelfSyncServiceFactory::GetForProfile(GetProfile()));
+    return stub_service ? stub_service->GetFakeSendTabToSelfModel() : nullptr;
+  }
+
+ private:
+  base::test::ScopedFeatureList send_tab_to_self_features_;
+};
+
+IN_PROC_BROWSER_TEST_P(GlicApiTestWithSendTabToSelf,
+                       testGetSendTabToSelfDevicesFeatureEnabled) {
+  auto* fake_model = GetFakeSendTabToSelfModel();
+  ASSERT_TRUE(fake_model);
+  fake_model->SetTargetDeviceInfoSortedList({syncer::RemoteDeviceInfo(
+      "My Phone", "device_guid_1", syncer::DeviceInfo::FormFactor::kPhone,
+      syncer::DeviceInfo::OsType::kAndroid,
+      base::Time::FromMillisecondsSinceUnixEpoch(1700000000000.0),
+      /*has_high_precision_timestamp=*/false)});
+
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+}
+
+IN_PROC_BROWSER_TEST_P(GlicApiTestWithSendTabToSelf,
+                       testGetSendTabToSelfDevicesModelNotReady) {
+  auto* fake_model = GetFakeSendTabToSelfModel();
+  ASSERT_TRUE(fake_model);
+  fake_model->SetIsReady(false);
+  fake_model->SetTargetDeviceInfoSortedList({syncer::RemoteDeviceInfo(
+      "My Phone", "device_guid_1", syncer::DeviceInfo::FormFactor::kPhone,
+      syncer::DeviceInfo::OsType::kAndroid,
+      base::Time::FromMillisecondsSinceUnixEpoch(1700000000000.0),
+      /*has_high_precision_timestamp=*/false)});
+
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+}
+
 class GlicApiTestForNoWebUiLoader : public GlicApiTest {
  public:
   GlicApiTestForNoWebUiLoader() {
@@ -960,9 +1028,12 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testGetPinCandidatesSingleTab) {
   ExecuteJsTest();
 }
 
-// Flaky on Android and MSan.
-// TODO(crbug.com/554636751): Flaky on Linux.
-#if BUILDFLAG(IS_ANDROID) || defined(MEMORY_SANITIZER) || BUILDFLAG(IS_LINUX)
+// Flaky on MSan.
+// TODO(crbug.com/554636751): On Android, SlimWebView's non-associated
+// PageHandler::CreateGuest pipe can race ahead of the channel-associated
+// GuestViewHost::ViewCreated pipe, failing with "View was not registered".
+// Re-enable on Android once kGlicNoWebview (b/534807813) launches.
+#if BUILDFLAG(IS_ANDROID) || defined(MEMORY_SANITIZER)
 #define MAYBE_testGetPinCandidatesWithPanelClosed \
   DISABLED_testGetPinCandidatesWithPanelClosed
 #else
@@ -1136,8 +1207,16 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest,
       {second_tab->GetHandle()});
   ContinueJsTest();
 }
-// TODO(crbug.com/554315364): Fix flaky test.
-IN_PROC_BROWSER_TEST_P(GlicApiTest, DISABLED_testGetZoomLevel) {
+// TODO(crbug.com/554315364): On Android, SlimWebView's non-associated
+// PageHandler::CreateGuest pipe can race ahead of the channel-associated
+// GuestViewHost::ViewCreated pipe, failing with "View was not registered".
+// Re-enable on Android once kGlicNoWebview (b/534807813) launches.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_testGetZoomLevel DISABLED_testGetZoomLevel
+#else
+#define MAYBE_testGetZoomLevel testGetZoomLevel
+#endif
+IN_PROC_BROWSER_TEST_P(GlicApiTest, MAYBE_testGetZoomLevel) {
   // Confirm that the observer is notified through getZoomLevel of the initial
   // state, i.e. zoom level of 1.0.
   ASSERT_OK_AND_ASSIGN(auto* instance, OpenGlicForActiveTab());
@@ -5717,6 +5796,11 @@ INSTANTIATE_TEST_SUITE_P(,
 
 INSTANTIATE_TEST_SUITE_P(,
                          GlicApiTestWithNewTabDaisyChain,
+                         DefaultTestParamSet(),
+                         &WithTestParams::PrintTestVariant);
+
+INSTANTIATE_TEST_SUITE_P(,
+                         GlicApiTestWithSendTabToSelf,
                          DefaultTestParamSet(),
                          &WithTestParams::PrintTestVariant);
 

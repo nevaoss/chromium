@@ -4,15 +4,21 @@
 
 #include "components/autofill/content/browser/integrators/email_verifier/email_verifier_delegate.h"
 
+#include <algorithm>
+#include <string_view>
+#include <utility>
+
 #include "base/check.h"
 #include "base/check_deref.h"
 #include "base/command_line.h"
+#include "base/containers/map_util.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/function_ref.h"
 #include "base/json/values_util.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/notreached.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -29,10 +35,13 @@
 #include "components/autofill/core/browser/form_structure.h"
 #include "components/autofill/core/browser/foundations/autofill_client.h"
 #include "components/autofill/core/browser/foundations/browser_autofill_manager.h"
+#include "components/autofill/core/browser/logging/log_manager.h"
 #include "components/autofill/core/browser/strike_databases/evp/email_verification_not_signed_in_strike_database.h"
 #include "components/autofill/core/browser/strike_databases/evp/email_verification_strike_database.h"
+#include "components/autofill/core/common/autofill_internals/logging_scope.h"
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/autofill/core/common/autofill_switches.h"
+#include "components/autofill/core/common/logging/log_macros.h"
 #include "components/page_load_metrics/browser/metrics_web_contents_observer.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
@@ -118,6 +127,52 @@ content::webid::EmailVerifier* GetOrCreateEmailVerifier(
   return content::webid::EmailVerifier::GetOrCreateForFrame(rfh);
 }
 
+// Returns a human-readable description of `result` for
+// chrome://autofill-internals.
+std::string_view FlowResultToString(EvpAutofillFlowResult result) {
+  switch (result) {
+    case EvpAutofillFlowResult::kSuccess:
+      return "Success.";
+    case EvpAutofillFlowResult::kTokenFieldHasNoNonce:
+      return "The email verification token field has no nonce or an empty "
+             "nonce attribute.";
+    case EvpAutofillFlowResult::kUserPrefDisabled:
+      return "The user turned off email verification in the settings.";
+    case EvpAutofillFlowResult::kStrikeDatabaseBlock:
+      return "Blocked because the user declined or dismissed the permission "
+             "prompt for this email address too many times.";
+    case EvpAutofillFlowResult::kVerifierUnavailable:
+      return "The email verifier is unavailable because the "
+             "EmailVerificationProtocol feature or origin trial is not enabled "
+             "for this frame.";
+    case EvpAutofillFlowResult::kNotVerifiable:
+      return "The email address is not verifiable.";
+    case EvpAutofillFlowResult::kUserDeclinedPermissionPrompt:
+      return "The user declined the permission prompt.";
+    case EvpAutofillFlowResult::kUserIgnoredPermissionPrompt:
+      return "The permission prompt or loading UI was dismissed, ignored or "
+             "could not be shown.";
+    case EvpAutofillFlowResult::kVerificationFailed:
+      return "The issuer did not issue a valid email verification token.";
+    case EvpAutofillFlowResult::kManagerDestroyed:
+      return "The AutofillManager was destroyed during the flow.";
+    case EvpAutofillFlowResult::kTokenSentToRenderer:
+      return "Success: the email verification token was sent to the renderer.";
+    case EvpAutofillFlowResult::kDriverInactive:
+      return "The frame became inactive during the flow.";
+    case EvpAutofillFlowResult::kPageNavigatedDuringVerification:
+      return "The page navigated or the form was submitted while the token was "
+             "being issued.";
+    case EvpAutofillFlowResult::kPageNavigatedDuringCheckIfVerifiable:
+      return "The page navigated or the form was submitted while checking "
+             "whether the email address is verifiable.";
+    case EvpAutofillFlowResult::kNotSignedInStrikeDatabaseBlock:
+      return "Blocked because the user was repeatedly not signed in to the "
+             "issuer with this email address.";
+  }
+  NOTREACHED();
+}
+
 }  // namespace
 
 void EmailVerifierDelegate::Verify(
@@ -155,17 +210,16 @@ void EmailVerifierDelegate::OnVerificationResponseReceived(
     std::optional<std::string> token,
     blink::mojom::EmailVerificationRequestResult status,
     base::TimeDelta verify_duration) {
-  auto it = pending_request_metrics_.find(email_field_id);
-  if (it == pending_request_metrics_.end() ||
-      it->second.request_id != request_id) {
+  RequestMetrics* metrics =
+      base::FindOrNull(pending_request_metrics_, email_field_id);
+  if (!metrics || metrics->request_id != request_id) {
     // The flow was already terminated or superseded by navigation, form
     // submission, user cancellation (`CancelVerification()`), or a newer
     // verification request on the same field.
     return;
   }
-  RequestMetrics& metrics = it->second;
-  metrics.verify_status = status;
-  metrics.verify_duration = verify_duration;
+  metrics->verify_status = status;
+  metrics->verify_duration = verify_duration;
 
   if (!manager) {
     NotifyFlowCompleted(email_field_id,
@@ -209,14 +263,13 @@ void EmailVerifierDelegate::OnEmailVerificationDecision(
     std::string nonce,
     content::webid::EmailVerifier::Result result,
     AutofillClient::EmailVerificationPermissionUiStatus ui_status) {
-  auto it = pending_request_metrics_.find(email_field_id);
-  if (it == pending_request_metrics_.end() ||
-      it->second.request_id != request_id) {
+  RequestMetrics* metrics =
+      base::FindOrNull(pending_request_metrics_, email_field_id);
+  if (!metrics || metrics->request_id != request_id) {
     // Navigation or a newer request already completed or superseded this flow.
     return;
   }
-  RequestMetrics& metrics = it->second;
-  metrics.permission_ui_status = ui_status;
+  metrics->permission_ui_status = ui_status;
 
   if (!manager) {
     NotifyFlowCompleted(email_field_id,
@@ -303,19 +356,18 @@ void EmailVerifierDelegate::OnIsVerifiable(
     std::optional<content::webid::EmailVerifier::Result> result,
     blink::mojom::EmailVerificationRequestResult status,
     base::TimeDelta is_verifiable_duration) {
-  auto it = pending_request_metrics_.find(email_field_id);
-  if (it == pending_request_metrics_.end() ||
-      it->second.request_id != request_id) {
+  RequestMetrics* metrics =
+      base::FindOrNull(pending_request_metrics_, email_field_id);
+  if (!metrics || metrics->request_id != request_id) {
     // Navigation or a newer request already completed or superseded this flow.
     return;
   }
-  RequestMetrics& metrics = it->second;
   // Prevent double logging
-  if (metrics.is_verifiable_status) {
+  if (metrics->is_verifiable_status) {
     return;
   }
-  metrics.is_verifiable_status = status;
-  metrics.is_verifiable_duration = is_verifiable_duration;
+  metrics->is_verifiable_status = status;
+  metrics->is_verifiable_duration = is_verifiable_duration;
 
   if (!manager) {
     NotifyFlowCompleted(email_field_id,
@@ -414,9 +466,9 @@ void EmailVerifierDelegate::RemoveObserver(Observer* observer) {
 void EmailVerifierDelegate::CancelVerification(
     const FieldGlobalId& email_field_id,
     uint64_t request_id) {
-  auto it = pending_request_metrics_.find(email_field_id);
-  if (it == pending_request_metrics_.end() ||
-      it->second.request_id != request_id) {
+  const RequestMetrics* metrics =
+      base::FindOrNull(pending_request_metrics_, email_field_id);
+  if (!metrics || metrics->request_id != request_id) {
     return;
   }
 
@@ -438,22 +490,22 @@ void EmailVerifierDelegate::MetricsObserver::OnFlowCompleted(
   ukm::builders::Blink_EmailVerificationProtocol builder(metrics.ukm_source_id);
   if (metrics.autofill_flow_result) {
     builder.SetAutofill_FlowResult(
-        static_cast<int64_t>(*metrics.autofill_flow_result));
+        std::to_underlying(*metrics.autofill_flow_result));
   }
   if (metrics.permission_ui_status) {
     builder.SetPermissionUi_Status(
-        static_cast<int64_t>(*metrics.permission_ui_status));
+        std::to_underlying(*metrics.permission_ui_status));
   }
   if (metrics.is_verifiable_status) {
     builder.SetStatus_IsVerifiable(
-        static_cast<int64_t>(*metrics.is_verifiable_status));
+        std::to_underlying(*metrics.is_verifiable_status));
   }
   if (metrics.is_verifiable_duration) {
     builder.SetTiming_IsVerifiable(ukm::GetExponentialBucketMinForUserTiming(
         metrics.is_verifiable_duration->InMilliseconds()));
   }
   if (metrics.verify_status) {
-    builder.SetStatus_Verify(static_cast<int64_t>(*metrics.verify_status));
+    builder.SetStatus_Verify(std::to_underlying(*metrics.verify_status));
   }
   if (metrics.verify_duration) {
     builder.SetTiming_Verify(ukm::GetExponentialBucketMinForUserTiming(
@@ -465,6 +517,9 @@ void EmailVerifierDelegate::MetricsObserver::OnFlowCompleted(
 void EmailVerifierDelegate::NotifyFlowCompleted(FieldGlobalId field_id,
                                                 EvpAutofillFlowResult result) {
   base::UmaHistogramEnumeration("Blink.Evp.Autofill.FlowResult", result);
+  LOG_AF(client_->GetCurrentLogManager())
+      << LoggingScope::kEmailVerification
+      << "Email verification flow finished: " << FlowResultToString(result);
 
   if (auto it = pending_request_metrics_.find(field_id);
       it != pending_request_metrics_.end()) {
@@ -591,8 +646,7 @@ void EmailVerifierDelegate::OnBeforeFormWithEmailVerificationTokenSubmitted(
       AutofillDriver::LifecycleState::kActive) {
     return;
   }
-  if (auto it = issuers_.find(email_field_id); it != issuers_.end()) {
-    issuers_.erase(it);
+  if (issuers_.erase(email_field_id) > 0) {
     // Record form submission metrics for verified email fields.
     base::UmaHistogramBoolean("Blink.Evp.Autofill.FormSubmitted", true);
     ukm::builders::Blink_EmailVerificationProtocol_FormSubmission(
@@ -657,9 +711,8 @@ void EmailVerifierDelegate::OnFieldLostFocus(AutofillManager& manager,
   std::string lowercase_value = base::ToLowerASCII(base::UTF16ToUTF8(value));
 
   // Check 4: Deduplication (LRU Cache)
-  auto it = std::ranges::find_if(last_verified_values_, [&](const auto& pair) {
-    return pair.first == field_id;
-  });
+  auto it = std::ranges::find(last_verified_values_, field_id,
+                              &std::pair<FieldGlobalId, std::string>::first);
   if (it != last_verified_values_.end() && it->second == lowercase_value) {
     // Value is same, deduplicate. Move to back to update LRU status.
     auto pair = *it;
@@ -731,8 +784,8 @@ void EmailVerifierDelegate::TriggerVerification(AutofillManager& manager,
                                                 std::u16string email_value,
                                                 const std::string& nonce) {
   const uint64_t request_id = ++next_request_id_;
-  pending_request_metrics_[email_field_id] = RequestMetrics();
   RequestMetrics& metrics = pending_request_metrics_[email_field_id];
+  metrics = RequestMetrics();
   metrics.request_id = request_id;
   content::RenderFrameHost* rfh = FindRenderFrameHostByToken(
       *static_cast<ContentAutofillClient&>(manager.client()).web_contents(),

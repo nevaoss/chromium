@@ -25,7 +25,6 @@
 #include "third_party/blink/renderer/modules/canvas/canvas2d/canvas_rendering_context_2d_state.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_2d_color_params.h"
-#include "third_party/blink/renderer/platform/graphics/canvas_deferred_paint_record.h"
 #include "third_party/blink/renderer/platform/graphics/flush_for_image_listener.h"
 #include "third_party/blink/renderer/platform/graphics/flush_reason.h"
 #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_recorder.h"
@@ -287,12 +286,11 @@ class MODULES_EXPORT BaseRenderingContext2D
   base::ByteSize AllocatedBufferSize() const override;
   scoped_refptr<StaticBitmapImage> PaintRenderingResultsToSnapshot(
       SourceDrawingBuffer source_buffer) override;
-  scoped_refptr<CanvasResource> PaintRenderingResultsToResource(
+  scoped_refptr<ExportedCanvasResource> PaintRenderingResultsToResource(
       SourceDrawingBuffer source_buffer,
       FlushReason reason) override;
   void DisableAccelerationForCanvas2D() final { DisableAcceleration(); }
   void PageVisibilityChanged() override {}
-  void Reset() override;
 
   void SetRestoreFailedCallbackForTesting(base::RepeatingClosure callback) {
     on_restore_failed_callback_for_testing_ = std::move(callback);
@@ -366,7 +364,6 @@ class MODULES_EXPORT BaseRenderingContext2D
                                  FlushReason reason) {}
 
   Canvas2DResourceProvider* GetSharedImageProvider() const;
-  SkSurface* GetSoftwareSurface() const { return surface_.get(); }
   void CreateSharedImageProvider(
       RasterMode raster_mode,
       gpu::SharedImageUsageSet shared_image_usage_flags);

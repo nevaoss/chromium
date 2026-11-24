@@ -60,16 +60,6 @@ inline constexpr char kAiSubscriptionAvatarRingFollowupDescription[] =
     "Shows the AI subscription avatar decorations on more surfaces. Requires "
     "#enable-ai-subscription-avatar-ring.";
 
-inline constexpr char kDynamicAiModeButtonName[] =
-    "Omnibox Dynamic AI Mode Button";
-inline constexpr char kDynamicAiModeButtonDescription[] =
-    "Enables dynamic behaviour for the AI mode button in the WebUI Omnibox.";
-
-inline constexpr char kNtpRealboxDynamicAiModeButtonName[] =
-    "NTP Realbox Dynamic AI Mode Button";
-inline constexpr char kNtpRealboxDynamicAiModeButtonDescription[] =
-    "Enables dynamic behaviour for the AI mode button in the NTP Realbox.";
-
 inline constexpr char kOmniboxDynamicAimSubmitName[] = "Dynamic Aim Submit";
 inline constexpr char kOmniboxDynamicAimSubmitDescription[] =
     "Enables dynamic aim button submission variants.";
@@ -1775,6 +1765,11 @@ inline constexpr char kGeicEnabledDescription[] =
     "of GEiC and fall back to consumer Gemini, even if a Gemini Enterprise "
     "policy or experiment applies to this profile.";
 
+inline constexpr char kGeicFreName[] = "GEiC first-run experience";
+inline constexpr char kGeicFreDescription[] =
+    "Enables the Gemini Enterprise in Chrome (GEiC) first-run experience. "
+    "Requires GEiC to be enabled.";
+
 inline constexpr char kGeicGuestUrlName[] = "GEiC guest URL";
 inline constexpr char kGeicGuestUrlDescription[] =
     "Configures the guest URL loaded into the Gemini Enterprise in Chrome "
@@ -2228,12 +2223,6 @@ inline constexpr char kEnableDesktopQrCodeDetectionName[] =
 inline constexpr char kEnableDesktopQrCodeDetectionDescription[] =
     "When enabled, QR code detection for facilitated payments will be "
     "supported on Desktop and Android.";
-
-inline constexpr char kEnablePixAccountLinkingName[] =
-    "Enable Pix account linking";
-inline constexpr char kEnablePixAccountLinkingDescription[] =
-    "When enabled, users without linked Pix accounts will be prompted to link "
-    "their Pix accounts to Google Wallet.";
 
 inline constexpr char kEnablePixAccountLinkingNativeName[] =
     "Enable native Pix account linking";
@@ -3431,6 +3420,12 @@ inline constexpr char kMacAccessibilityTextOperationDescription[] =
     "Enables support for performing text editing operations through "
     "the AXTextOperation accessibility API.";
 
+inline constexpr char kMediaCaptureElementPreviewName[] =
+    "Media capture element preview";
+inline constexpr char kMediaCaptureElementPreviewDescription[] =
+    "Enables camera and microphone preview for <camera>, <microphone>, and "
+    "<usermedia> elements.";
+
 inline constexpr char kMediaRouterCastAllowAllIPsName[] =
     "Connect to Cast devices on all IP addresses";
 inline constexpr char kMediaRouterCastAllowAllIPsDescription[] =
@@ -4244,13 +4239,6 @@ inline constexpr char kReportNotificationContentDetectionDataDescription[] =
     "Enables reporting a notification's contents to Google, when the user taps "
     "the `Report` button on the notification.";
 
-inline constexpr char kShowRelatedWebsiteSetsPermissionGrantsName[] =
-    "Show permission grants from Related Website Sets";
-inline constexpr char kShowRelatedWebsiteSetsPermissionGrantsDescription[] =
-    "Shows permission grants created by Related Website Sets in Chrome "
-    "Settings UI and Page Info Bubble, "
-    "default is hidden";
-
 inline constexpr char kSearchSettingsUpdateName[] = "Search Settings Update";
 inline constexpr char kSearchSettingsUpdateDescription[] =
     "Enables refactoring of the search settings pages in "
@@ -4694,6 +4682,13 @@ inline constexpr char kProfileCreationDeclineSigninCTAExperimentName[] =
 inline constexpr char kProfileCreationDeclineSigninCTAExperimentDescription[] =
     "As part of the Sign In Level Up experiment, changes the decline "
     "sign in CTA string in profile creation entry points";
+
+inline constexpr char kSmartCardContextReleaseName[] =
+    "Smart Card Context Release";
+inline constexpr char kSmartCardContextReleaseDescription[] =
+    "Enables SmartCardContext.release() in the Web Smart Card API, which "
+    "releases a smart card context and its connections without waiting for "
+    "garbage collection.";
 
 inline constexpr char kSmoothScrollingName[] = "Smooth Scrolling";
 inline constexpr char kSmoothScrollingDescription[] =
@@ -5268,8 +5263,10 @@ inline constexpr char kDecisionsAPIDescription[] =
     "Enables the Built-in AI Decisions API (DecisionModel) for on-device "
     "verification, classification, and decisions regarding unstructured data, "
     "over a developer-defined schema. See the explainer [1] for details. "
-    "The Gemma 4 option forces the CPU backend to work around GPU scoring "
-    "issues, this impacts Gemma 4 usage for all built-in AI APIs.";
+    "Uses the EmbeddingGemma V1 backend by default if the devTrialBackend "
+    "option for create() is not specified. Forces the Gemma 4 CPU backend to "
+    "work around GPU scoring issues, which impacts Gemma 4 usage for all "
+    "built-in AI APIs.";
 inline constexpr const char* kDecisionsAPILinks[1] = {
     "https://github.com/explainers-by-googlers/decisions-api"};
 
@@ -7081,6 +7078,10 @@ inline constexpr char kNtpCalendarModuleName[] = "NTP Calendar Module";
 inline constexpr char kNtpCalendarModuleDescription[] =
     "Shows the Google Calendar module on the New Tab Page.";
 
+inline constexpr char kNtpComponentExtensionName[] = "NTP Component Extension";
+inline constexpr char kNtpComponentExtensionDescription[] =
+    "When enabled, registers the New Tab Page as a component extension.";
+
 inline constexpr char kNtpComposeboxName[] = "NTP Composebox";
 inline constexpr char kNtpComposeboxDescription[] =
     "Shows the Composebox on the New Tab Page Searchbox upon clicking the "
@@ -7734,17 +7735,6 @@ inline constexpr char kFastPairDebugMetadataDescription[] =
     "advertisements, allowing notifications to pop up for debug-mode only "
     "devices.";
 
-inline constexpr char kFaceRetouchOverrideName[] =
-    "Enable face retouch using the relighting button in the VC panel";
-inline constexpr char kFaceRetouchOverrideDescription[] =
-    "Enables or disables the face retouch feature using the relighting button "
-    "in the VC panel.";
-
-inline constexpr char kFastPairPwaCompanionName[] =
-    "Enable Fast Pair Web Companion";
-inline constexpr char kFastPairPwaCompanionDescription[] =
-    "Enables Fast Pair Web Companion link after device pairing.";
-
 inline constexpr char kUseHDRTransferFunctionName[] =
     "Monitor/Display HDR transfer function";
 inline constexpr char kUseHDRTransferFunctionDescription[] =
@@ -7755,12 +7745,6 @@ inline constexpr char kEnableExternalDisplayHdr10Name[] =
     "Enable HDR10 support on external monitors";
 inline constexpr char kEnableExternalDisplayHdr10Description[] =
     "Allows using HDR10 mode on any external monitor that supports it";
-
-inline constexpr char kEnableDisplayPerformanceModeName[] =
-    "Enable Display Performance Mode";
-inline constexpr char kEnableDisplayPerformanceModeDescription[] =
-    "This option enables toggling different display features based on user "
-    "setting and power state";
 
 inline constexpr char kEnableRFC8925Name[] =
     "Enable RFC8925 (prefer IPv6-only on IPv6-only-capable network)";
@@ -7944,10 +7928,6 @@ inline constexpr char kFocusFollowsCursorName[] = "Focus follows cursor";
 inline constexpr char kFocusFollowsCursorDescription[] =
     "Enable window focusing by moving the cursor.";
 
-inline constexpr char kGameDashboardUtilities[] = "Game Dashboard Utilities";
-inline constexpr char kGameDashboardUtilitiesDescription[] =
-    "Enables utility features in the Game Dashboard.";
-
 inline constexpr char kGlanceablesTimeManagementClassroomStudentViewName[] =
     "Glanceables > Time Management > Classroom Student";
 inline constexpr char
@@ -7967,11 +7947,6 @@ inline constexpr char kIdbSqliteBackingStoreDescription[] =
     "Uses a SQLite-powered backing store for IndexedDB. No data is migrated "
     "from existing backing stores, including LevelDB stores or SQLite stores "
     "with older schemas; use at your own peril.";
-
-inline constexpr char kImeAssistMultiWordName[] =
-    "Enable assistive multi word suggestions";
-inline constexpr char kImeAssistMultiWordDescription[] =
-    "Enable assistive multi word suggestions for native IME";
 
 inline constexpr char kIppFirstSetupForUsbPrintersName[] =
     "Try to setup USB printers with IPP first";
@@ -8207,11 +8182,6 @@ inline constexpr char kUiDevToolsDescription[] =
 inline constexpr char kUiSlowAnimationsName[] = "Slow UI animations";
 inline constexpr char kUiSlowAnimationsDescription[] =
     "Makes all UI animations slow.";
-
-inline constexpr char kUnicornChromeActivityReportingName[] =
-    "Chrome app activity reporting for supervised users";
-inline constexpr char kUnicornChromeActivityReportingDescription[] =
-    "Enables reporting Chrome app activity for supervised users.";
 
 inline constexpr char kVirtualKeyboardName[] = "Virtual Keyboard";
 inline constexpr char kVirtualKeyboardDescription[] =

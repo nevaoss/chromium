@@ -73,45 +73,6 @@ bool IsAccessibilityTreeForViewsEnabled() {
   return base::FeatureList::IsEnabled(::features::kAccessibilityTreeForViews);
 }
 
-BASE_FEATURE(kAccessibilityPerformanceMeasurementExperiment,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-bool IsAccessibilityPerformanceMeasurementExperimentEnabled() {
-  return base::FeatureList::IsEnabled(
-      ::features::kAccessibilityPerformanceMeasurementExperiment);
-}
-
-namespace {
-
-constexpr base::FeatureParam<
-    AccessibilityPerformanceMeasurementExperimentGroup>::Option
-    kAccessibilityPerformanceMeasurementExperimentParamOptions[] = {
-        {AccessibilityPerformanceMeasurementExperimentGroup ::kAXModeComplete,
-         "AXModeComplete"},
-        {AccessibilityPerformanceMeasurementExperimentGroup ::kWebContentsOnly,
-         "WebContentsOnly"},
-        {AccessibilityPerformanceMeasurementExperimentGroup ::
-             kAXModeCompleteNoInlineTextBoxes,
-         "AXModeCompleteNoInlineTextBoxes"},
-        {AccessibilityPerformanceMeasurementExperimentGroup ::
-             kRendererSerializationOnly,
-         "RendererSerializationOnly"}};
-
-BASE_FEATURE_ENUM_PARAM(
-    AccessibilityPerformanceMeasurementExperimentGroup,
-    kAccessibilityPerformanceMeasurementExperimentParam,
-    &kAccessibilityPerformanceMeasurementExperiment,
-    "accessibility_performance_group_name",
-    AccessibilityPerformanceMeasurementExperimentGroup::kAXModeComplete,
-    &kAccessibilityPerformanceMeasurementExperimentParamOptions);
-
-}  // namespace
-
-AccessibilityPerformanceMeasurementExperimentGroup
-GetAccessibilityPerformanceMeasurementExperimentGroup() {
-  DCHECK(IsAccessibilityPerformanceMeasurementExperimentEnabled());
-  return kAccessibilityPerformanceMeasurementExperimentParam.Get();
-}
-
 BASE_FEATURE(kViewsAccessibilitySerializeOnDataChanged,
              base::FEATURE_ENABLED_BY_DEFAULT);
 bool IsViewsAccessibilitySerializeOnDataChangeEnabled() {
@@ -236,7 +197,7 @@ bool IsExperimentalAccessibilityDictationContextCheckingEnabled() {
       ::features::kExperimentalAccessibilityDictationContextChecking);
 }
 
-BASE_FEATURE(kAccessibilityShakeToLocate, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAccessibilityShakeToLocate, base::FEATURE_ENABLED_BY_DEFAULT);
 bool IsAccessibilityShakeToLocateEnabled() {
   return base::FeatureList::IsEnabled(::features::kAccessibilityShakeToLocate);
 }
@@ -442,7 +403,7 @@ bool IsReadAnythingWithReadabilityEnabled() {
 }
 
 BASE_FEATURE(kReadAnythingDistillationQualityEvaluation,
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 bool IsReadAnythingDistillationQualityEvaluationEnabled() {
   return base::FeatureList::IsEnabled(
       ::features::kReadAnythingDistillationQualityEvaluation);

@@ -248,6 +248,7 @@
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/common/webui_url_utils.h"
 #include "chrome/installer/util/google_update_settings.h"
+#include "components/actor/core/actor_features.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/autofill/core/common/autofill_switches.h"
 #include "components/blocked_content/popup_blocker.h"
@@ -442,6 +443,7 @@
 #include "services/network/public/mojom/url_loader_factory.mojom.h"
 #include "services/network/public/mojom/web_transport.mojom.h"
 #include "services/network/public/mojom/websocket.mojom.h"
+#include "storage/browser/file_system/in_memory_file_system_backend.h"
 #include "third_party/blink/public/common/chrome_debug_urls.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/loader/url_loader_throttle.h"
@@ -495,7 +497,6 @@
 #include "chrome/browser/browser_process_platform_part_mac.h"
 #include "chrome/browser/enterprise/platform_auth/platform_auth_proxying_url_loader_factory.h"
 #include "chrome/common/chrome_version.h"
-#include "components/enterprise/platform_auth/platform_auth_features.h"
 #include "components/soda/constants.h"
 #include "sandbox/mac/sandbox_serializer.h"
 #include "sandbox/policy/mac/params.h"
@@ -612,7 +613,6 @@
 #include "chrome/browser/webauthn/chrome_authenticator_request_delegate.h"
 #include "chrome/browser/webauthn/chrome_web_authentication_delegate.h"
 #include "chrome/grit/chrome_unscaled_resources.h"  // nogncheck crbug.com/40147906
-#include "components/actor/core/actor_features.h"
 #include "components/commerce/core/commerce_feature_list.h"
 #include "components/keep_alive_registry/keep_alive_registry.h"
 #include "components/password_manager/content/common/web_ui_constants.h"
@@ -1511,9 +1511,8 @@ bool IsActorActingOnWebContents(WebContents* web_contents) {
     return false;
   }
 
-  const auto* tab_interface =
-      tabs::TabInterface::MaybeGetFromContents(web_contents);
-  return tab_interface && actor_service->IsActiveOnTab(*tab_interface);
+  return actor_service->GetActingActorTaskForWebContents(web_contents) !=
+         nullptr;
 }
 #endif
 
@@ -5359,6 +5358,13 @@ void ChromeContentBrowserClient::GetAdditionalFileSystemBackends(
     const base::FilePath& storage_partition_path,
     std::vector<std::unique_ptr<storage::FileSystemBackend>>*
         additional_backends) {
+  // Serves the files that the actor file upload tool stages in
+  // storage::InMemoryFileRegistry.
+  if (base::FeatureList::IsEnabled(actor::kGlicActorFileUploadTool)) {
+    additional_backends->push_back(
+        std::make_unique<storage::InMemoryFileSystemBackend>());
+  }
+
   ::GetAdditionalFileSystemBackends(browser_context, storage_partition_path,
                                     additional_backends);
 }
@@ -6967,12 +6973,10 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
 #endif
 
 #if BUILDFLAG(IS_MAC)
-  if (base::FeatureList::IsEnabled(enterprise_auth::kOktaSSO)) {
-    // WARNING: This factory blocks certain requests from going out via the
-    // final network bound factory.
-    enterprise_auth::ProxyingURLLoaderFactory::MaybeProxyRequest(
-        request_initiator, type, browser_context, factory_builder);
-  }
+  // WARNING: This factory blocks certain requests from going out via the
+  // final network bound factory.
+  enterprise_auth::ProxyingURLLoaderFactory::MaybeProxyRequest(
+      request_initiator, type, browser_context, factory_builder);
 #endif
 
 #if BUILDFLAG(ENABLE_GUEST_VIEW)
@@ -6987,6 +6991,8 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
 #endif  // BUILDFLAG(ENABLE_GUEST_VIEW)
 
   if (type == URLLoaderFactoryType::kDocumentSubResource) {
+    contextual_tasks::ContextualTasksSubresourceProxyingURLLoaderFactory::
+        MaybeProxyRequest(browser_context, isolation_info, factory_builder);
     glic::GlicSubresourceProxyingURLLoaderFactory::MaybeProxyRequest(
         frame, factory_builder);
   }

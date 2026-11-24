@@ -630,89 +630,41 @@ IN_PROC_BROWSER_TEST_P(SamlTestWithFeatures, CredentialPassingAPI) {
                                      1);
 }
 
-// Verifies that a cross-origin subframe embedded in the SAML IdP page cannot
-// use the credentials passing API to override the user's password.
-IN_PROC_BROWSER_TEST_P(SamlTestWithFeatures,
-                       CrossOriginSubframeCannotUseCredentialPassingAPI) {
-  net::EmbeddedTestServer cross_origin_https_server(
-      net::EmbeddedTestServer::TYPE_HTTPS);
-  net::EmbeddedTestServer::ServerCertificateConfig cert_config;
-  cert_config.dns_names = {kAdditionalIdPHost};
-  cross_origin_https_server.SetSSLConfig(cert_config);
-  cross_origin_https_server.ServeFilesFromSourceDirectory("chrome/test/data");
-  ASSERT_TRUE(cross_origin_https_server.Start());
-
-  fake_saml_idp()->SetLoginHTMLTemplate("saml_login.html");
+// Tests the credentials passing API usage from a subframe. Regression test
+// against b/577034455.
+IN_PROC_BROWSER_TEST_P(SamlTestWithFeatures, CredentialPassingApiFromSubframe) {
+  fake_saml_idp()->SetLoginHTMLTemplate("saml_api_login_with_subframe.html");
+  fake_saml_idp()->SetLoginAuthHTMLTemplate("saml_api_subframe.html");
   StartSamlAndWaitForIdpPageLoad(
       saml_test_users::kFirstUserCorpExampleComEmail);
 
-  content::RenderFrameHost* signin_frame =
-      signin::GetAuthFrame(GetLoginUI()->GetWebContents(), gaia_frame_parent_);
-  ASSERT_TRUE(signin_frame);
+  // Wait for the subframe to load.
+  ASSERT_TRUE(content::WaitForLoadStop(SigninFrameJS().web_contents()));
+  content::RenderFrameHost* subframe = content::ChildFrameAt(
+      signin::GetAuthFrame(GetLoginUI()->GetWebContents(), gaia_frame_parent_),
+      0);
+  ASSERT_TRUE(subframe);
 
-  const GURL cross_origin_iframe_url =
-      cross_origin_https_server.GetURL(kAdditionalIdPHost, "/simple.html");
-  ASSERT_EQ(true,
-            content::EvalJs(signin_frame,
-                            content::JsReplace(
-                                "new Promise(resolve => {"
-                                "  const f = document.createElement('iframe');"
-                                "  f.onload = () => resolve(true);"
-                                "  f.src = $1;"
-                                "  document.body.appendChild(f);"
-                                "});",
-                                cross_origin_iframe_url)));
-
-  content::RenderFrameHost* child_frame =
-      content::ChildFrameAt(signin_frame, 0);
-  ASSERT_TRUE(child_frame);
-  ASSERT_NE(signin_frame->GetLastCommittedOrigin(),
-            child_frame->GetLastCommittedOrigin());
-
-  // Attempt to invoke the SAML credentials passing API from the cross-origin
-  // child frame and wait briefly for any postMessage relay to settle.
-  ASSERT_EQ(true,
-            content::EvalJs(child_frame,
-                            "new Promise(resolve => {"
-                            "  window.postMessage({"
-                            "    type: 'gaia_saml_api',"
-                            "    call: {"
-                            "      method: 'add',"
-                            "      token: 'subframe_token',"
-                            "      keyType: 'KEY_TYPE_PASSWORD_PLAIN',"
-                            "      passwordBytes: 'subframe_injected_password'"
-                            "    }"
-                            "  }, '/');"
-                            "  window.postMessage({"
-                            "    type: 'gaia_saml_api',"
-                            "    call: {"
-                            "      method: 'confirm',"
-                            "      token: 'subframe_token'"
-                            "    }"
-                            "  }, '/');"
-                            "  window.setTimeout(() => resolve(true), 100);"
-                            "});"));
-
-  // Fill in the top-level SAML IdP form with the user's real password and
-  // submit.
-  SigninFrameJS().TypeIntoPath("fake_user", {"Email"});
-  SigninFrameJS().TypeIntoPath("actual_password", {"Password"});
-  SigninFrameJS().TapOn("Submit");
+  // Fill-in the SAML IdP form in the subframe and submit.
+  ASSERT_TRUE(
+      content::ExecJs(subframe,
+                      "document.getElementById('Email').value = 'fake_user';"
+                      "document.getElementById('Password').value = 'password';"
+                      "document.getElementById('Submit').click();"));
 
   test::WaitForPrimaryUserSessionStart();
 
-  // The cryptohome secret must match the password entered in the top-level IdP
-  // form, not the password sent by the cross-origin child frame.
-  Key expected_key("actual_password");
-  expected_key.Transform(Key::KEY_TYPE_SALTED_SHA256_TOP_HALF,
-                         SystemSaltGetter::ConvertRawSaltToHexString(
-                             FakeCryptohomeMiscClient::GetStubSystemSalt()));
-  EXPECT_EQ(expected_key.GetSecret(),
-            cryptohome_client_->salted_hashed_secret());
-  EXPECT_FALSE(user_manager::KnownUser(g_browser_process->local_state())
-                   .GetIsUsingSAMLPrincipalsAPI(AccountId::FromUserEmailGaiaId(
-                       saml_test_users::kFirstUserCorpExampleComEmail,
-                       kFirstSAMLUserGaiaId)));
+  Key key("password");
+  key.Transform(Key::KEY_TYPE_SALTED_SHA256_TOP_HALF,
+                SystemSaltGetter::ConvertRawSaltToHexString(
+                    FakeCryptohomeMiscClient::GetStubSystemSalt()));
+  EXPECT_EQ(key.GetSecret(), cryptohome_client_->salted_hashed_secret());
+
+  // Verify that the password was passed via the credentials passing API.
+  EXPECT_TRUE(user_manager::KnownUser(g_browser_process->local_state())
+                  .GetIsUsingSAMLPrincipalsAPI(AccountId::FromUserEmailGaiaId(
+                      saml_test_users::kFirstUserCorpExampleComEmail,
+                      kFirstSAMLUserGaiaId)));
 }
 
 // Tests the sign-in flow when the credentials passing API is used w/o 'confirm'

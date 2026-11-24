@@ -11,7 +11,6 @@
 
 #include "base/auto_reset.h"
 #include "base/trace_event/trace_event.h"
-#include "chrome/browser/search/search.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
@@ -31,11 +30,8 @@
 #include "chrome/browser/ui/webui/searchbox/webui_omnibox_handler.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/common/url_constants.h"
-#include "chrome/common/webui_url_constants.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
 #include "components/strings/grit/components_strings.h"
-#include "content/public/browser/navigation_controller.h"
-#include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -67,24 +63,13 @@ searchbox::mojom::InputKeywordModelPtr CreateInputKeywordModel(
   return keyword_model;
 }
 
-// Returns true if `contents` should automatically focus the location bar by
-// default (e.g. New Tab Page), verifying both the visible and pending URLs to
-// avoid false-positives from stale navigation entries during tab creation.
+// Returns true if `contents` should focus the omnibox when it becomes active
+// with no saved omnibox state, e.g. on any New Tab Page, including one that an
+// extension overrides. A browser-initiated initial about:blank navigation is
+// excluded, although `FocusLocationBarByDefault()` is true for it too.
 bool ShouldFocusLocationBarForTab(content::WebContents* contents) {
-  if (!contents || !contents->FocusLocationBarByDefault()) {
-    return false;
-  }
-  const GURL& visible_url = contents->GetVisibleURL();
-  content::NavigationEntry* pending_entry =
-      contents->GetController().GetPendingEntry();
-  const GURL& pending_url = pending_entry ? pending_entry->GetURL() : GURL();
-
-  auto is_ntp_url = [](const GURL& url) {
-    return search::IsNTPURL(url) ||
-           url.spec() == chrome::kChromeUISplitViewNewTabPageURL;
-  };
-
-  return is_ntp_url(visible_url) || is_ntp_url(pending_url);
+  return contents->FocusLocationBarByDefault() &&
+         !contents->GetVisibleURL().IsAboutBlank();
 }
 
 }  // namespace
@@ -321,19 +306,25 @@ void OmniboxPopupViewFullWebUI::OnTabChanged(content::WebContents* contents) {
   const bool is_first_tab_changed = !has_completed_first_tab_changed_;
   has_completed_first_tab_changed_ = true;
 
+  // Don't open or focus the popup while the location bar isn't drawn (e.g. a
+  // tab switch in fullscreen). `ReshowPopup()` reopens it for a draft once it
+  // is drawn again.
+  const bool can_show_popup = !location_bar() || location_bar()->IsDrawn();
+
   if (state) {
     // Restore the saved state for the tab.
     controller()->edit_model()->RestoreState(&state->model_state);
 
     // Only request native keyboard focus for the omnibox
     // popup if it was logically focused when the user switched tabs.
-    should_focus_popup = (state->model_state.focus_state != OMNIBOX_FOCUS_NONE);
+    should_focus_popup =
+        can_show_popup && state->model_state.focus_state != OMNIBOX_FOCUS_NONE;
 
     // The popup must be visible (`OmniboxPopupState::kFull`) if there is an
     // active draft or if the omnibox should have visible focus, and the popup
     // is initialized and ready.
     target_popup_state =
-        IsPopupHandlerReady() &&
+        IsPopupHandlerReady() && can_show_popup &&
                 (non_empty_user_input_in_progress || should_focus_popup)
             ? OmniboxPopupState::kFull
             : OmniboxPopupState::kNone;
@@ -343,7 +334,7 @@ void OmniboxPopupViewFullWebUI::OnTabChanged(content::WebContents* contents) {
 
     // Prevent focus state leaks by explicitly syncing the `OmniboxEditModel`'s
     // focus state with the restored state of the newly active tab.
-    if (state->model_state.focus_state != OMNIBOX_FOCUS_NONE) {
+    if (should_focus_popup) {
       if (!is_first_tab_changed) {
         TRACE_EVENT_INSTANT0(
             "omnibox", "OmniboxPopupViewFullWebUI::OnTabChanged:OnSetFocus",
@@ -358,7 +349,8 @@ void OmniboxPopupViewFullWebUI::OnTabChanged(content::WebContents* contents) {
     // the location bar by default (e.g., New Tab Page).
     controller()->edit_model()->Revert();
     controller()->edit_model()->OnChanged();
-    should_focus_popup = ShouldFocusLocationBarForTab(contents);
+    should_focus_popup =
+        can_show_popup && ShouldFocusLocationBarForTab(contents);
     // Only transition to `kFull` if the popup is initialized and ready.
     // Otherwise, maintain `kNone` until `OnPopupHandlerReady()` is called.
     target_popup_state = IsPopupHandlerReady() && should_focus_popup
@@ -462,11 +454,31 @@ void OmniboxPopupViewFullWebUI::OnTabChanged(content::WebContents* contents) {
   }
 }
 
+void OmniboxPopupViewFullWebUI::ReshowPopup() {
+  // Only a draft reopens the popup, as only a draft keeps it open when the
+  // omnibox is blurred (see `OmniboxPopupFullPresenter`).
+  if (controller()->popup_state_manager()->popup_state() !=
+          OmniboxPopupState::kNone ||
+      !IsPopupHandlerReady() || !controller()->edit_model()->HasDraft()) {
+    return;
+  }
+  // Closing the popup cleared the WebUI, so resend the whole input state.
+  last_sent_text_.reset();
+  last_sent_focus_.reset();
+  controller()->popup_state_manager()->SetPopupState(OmniboxPopupState::kFull);
+  SyncNativeStateToWebUI(/*query_zps=*/false, /*show_full_url=*/false);
+}
+
 void OmniboxPopupViewFullWebUI::OnFocus(bool query_zps,
                                         bool select_all,
                                         bool show_full_url) {
   TRACE_EVENT("omnibox", "OmniboxPopupViewFullWebUI::OnFocus", "query_zps",
               query_zps, "select_all", select_all);
+  // Don't show the popup while the location bar isn't drawn, e.g. on Ctrl+L in
+  // fullscreen, which `BrowserView::SetFocusToLocationBar()` still allows.
+  if (location_bar() && !location_bar()->IsDrawn()) {
+    return;
+  }
   if (presenter() && presenter()->GetWebUIContent()) {
     static_cast<OmniboxFullPopupWebUIContent*>(presenter()->GetWebUIContent())
         ->CancelPendingContextMenuRequest();
@@ -576,9 +588,13 @@ void OmniboxPopupViewFullWebUI::DidFinishNavigation(
       navigation_handle->IsSameDocument()) {
     return;
   }
-  if (controller()->edit_model()->has_focus() ||
-      controller()->popup_state_manager()->popup_state() !=
-          OmniboxPopupState::kFull) {
+  // An unfocused draft is shown in the open popup, or kept in the edit model
+  // while the popup is closed because the location bar isn't drawn (see
+  // `ReshowPopup()`). Leave the AI Mode popup alone.
+  auto* edit_model = controller()->edit_model();
+  if (edit_model->has_focus() || !edit_model->HasDraft() ||
+      controller()->popup_state_manager()->popup_state() ==
+          OmniboxPopupState::kAim) {
     return;
   }
   if (omnibox_view_) {

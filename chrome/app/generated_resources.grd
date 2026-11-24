@@ -468,10 +468,10 @@ are declared in tools/grit/grit_args.gni.
       </message>
       <if expr="is_android">
         <message name="IDS_INTRANET_REDIRECT_MESSAGE_TITLE" desc="Title for the message banner asking if the user meant to navigate to an intranet site rather than search.">
-          Redirect to <ph name="URL">$1<ex>http://intranetsite/</ex></ph> instead?
+          Navigate to <ph name="URL">$1<ex>http://intranetsite/</ex></ph> instead?
         </message>
-        <message name="IDS_INTRANET_REDIRECT_MESSAGE_PRIMARY_BUTTON" desc="Label on the action button in the message banner to redirect to the intranet site.">
-          Redirect
+        <message name="IDS_INTRANET_REDIRECT_MESSAGE_PRIMARY_BUTTON" desc="Label on the action button in the message banner to navigate to the intranet site.">
+          Navigate
         </message>
       </if>
 
@@ -2830,6 +2830,10 @@ are declared in tools/grit/grit_args.gni.
           desc="Download context menu: Always open the download using the default handler for the platform.">
             Always open with system viewer
           </message>
+          <message name="IDS_DOWNLOAD_MENU_OPEN_WITH"
+                   desc="Download context menu: Open the system dialog to choose an application to open the download with.">
+            Open &amp;with...
+          </message>
           <message name="IDS_DOWNLOAD_MENU_CANCEL"
                    desc="Download context menu: Cancel">
             &amp;Cancel
@@ -2897,6 +2901,10 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_DOWNLOAD_MENU_PLATFORM_OPEN_ALWAYS"
                    desc="In Title Case: Download context menu: Always open the download using the default handler for the platform.">
             Always Open With System Viewer
+          </message>
+          <message name="IDS_DOWNLOAD_MENU_OPEN_WITH"
+                   desc="In Title Case: Download context menu: Open the system dialog to choose an application to open the download with.">
+            Open &amp;With...
           </message>
           <message name="IDS_DOWNLOAD_MENU_CANCEL"
                    desc="In Title Case: Download context menu: Cancel">
@@ -7649,7 +7657,7 @@ Keep your key file in a safe place. You will need it to create new versions of y
           </message>
         </else>
       </if>
-      <message name="IDS_ASK_GOOGLE_ABOUT_THIS_PAGE" desc="The name of the Ask Google about this page command in the app menu and toolbar.">
+      <message name="IDS_ASK_GOOGLE_ABOUT_THIS_PAGE" desc="The name of the Ask Google about this page command in the app menu.">
         Ask Google about this page
       </message>
 
@@ -7814,6 +7822,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_NTP_SHORTCUT_REORDER_A11Y" is_accessibility_with_no_ui="true" desc="The accessible label of a most visited tile when reordering shortcuts. (On the New Tab Page)">
         <ph name="SHORTCUT_TITLE">$1<ex>YouTube</ex></ph>, use the Left and Right arrow keys to move the shortcut. Press Enter or Escape to finish.
+      </message>
+      <message name="IDS_NTP_SHORTCUT_MOVED_A11Y" is_accessibility_with_no_ui="true" desc="The accessible label of a most visited tile when it has been moved. (On the New Tab Page)">
+        Moved <ph name="SHORTCUT_TITLE">$1<ex>YouTube</ex></ph> to position <ph name="SHORTCUT_POSITION">$2<ex>3</ex></ph> of <ph name="TOTAL_SHORTCUTS">$3<ex>5</ex></ph>.
       </message>
       <message name="IDS_NTP_MOST_VISITED_SITES_REMOVE" desc="The accessible label of the most visited tile remove button. (On the New Tab Page)">
         Remove <ph name="SHORTCUT_TITLE">$1<ex>YouTube</ex></ph>
@@ -8180,6 +8191,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_NTP_SHOW_LESS_BUTTON_LABEL" desc="Label for a button that allows the user to see fewer most visited tiles on the New Tab Page.">
         Show less
+      </message>
+      <message name="IDS_NTP_THREADS_GOOGLE_SEARCH_LABEL" desc="Label for navigating to Google Search from the threads rail.">
+        Google Search
       </message>
       <message name="IDS_NTP_THREADS_HISTORY_LABEL" desc="Label for listing the user's AI Mode threads history.">
         AI Mode history
@@ -8798,8 +8812,8 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_NTP_COMPOSE_ADD_FILE" desc="Text for a button label that opens a menu so users can add a file to their search.">
         Add file
       </message>
-      <message name="IDS_NTP_COMPOSE_ADD_DRIVE" desc="Placeholder text for a button label that opens a menu so users can add a Google Drive file to their search." translateable="false">
-         Add from Drive
+      <message name="IDS_NTP_COMPOSE_ADD_DRIVE" desc="Label for the menu item in the Composebox context menu that lets users add a file from Google Drive to their search. 'Drive' refers to the Google Drive product.">
+        Add from Drive
       </message>
       <message name="IDS_NTP_COMPOSE_ADD_CONTEXT" desc="The text to display to ask user to add context to their search e.g. pdf or image.">
         Add a tab and more
@@ -10094,6 +10108,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_READING_MODE_TRANSLATE" desc="Accessibility label for button that opens the translation box for the reading mode feature.">
         Translate
       </message>
+      <message name="IDS_READING_MODE_SEND_FEEDBACK_LABEL" desc="Label for the button in the reading mode settings menu that opens the send feedback dialog.">
+        Send feedback about reading mode
+      </message>
       <message name="IDS_READING_MODE_VOICE_SPEED" desc="Accessibility label for button that opens a dropdown with options for changing the speed of the voice for Read Aloud.">
         Voice speed
       </message>
@@ -10265,9 +10282,38 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_LENS_COBROWSE_CURRENT_TAB_IPH_DESCRIPTION" desc="Informs user that the content and URL of their current tab is shared with Google to get more relevant answers.">
         The page title, URL, and content of your current tab is shared with Google to give you more relevant answers. You can add or remove tabs as you browse.
       </message>
+      <message name="IDS_CONTEXTUAL_TASKS_ASK_ABOUT_THIS_PAGE" desc="Title for the zero state header in the Contextual Tasks side panel prompting the user to ask about the current page.">
+        Ask about this page
+      </message>
       <!-- TODO(crbug.com/576221905): Mark as translatable. -->
       <message name="IDS_LENS_SELECTION_SUGGESTION_DEFAULT_LABEL" desc="Default label for the Google Lens smart selection suggestion." translateable="false">
         Search with Google Lens
+      </message>
+
+      <!-- Contextual Tasks side panel identity -->
+      <message name="IDS_CONTEXTUAL_TASKS_IDENTITY_TOOLTIP_BODY" desc="Body text of the identity tooltip in the Contextual Tasks side panel informing the user which Google Account they are signed in to Search with.">
+        You're signed in to Search with your <ph name="USER_EMAIL">$1<ex>account@gmail.com</ex></ph> account
+      </message>
+      <message name="IDS_CONTEXTUAL_TASKS_IDENTITY_TOOLTIP_SCREENREADER" is_accessibility_with_no_ui="true" desc="Screen reader announcement for the identity tooltip in the Contextual Tasks side panel informing the user which Google Account they are signed in to Search with.">
+        You're signed in to Search with your <ph name="USER_EMAIL">$1<ex>account@gmail.com</ex></ph> account
+      </message>
+      <message name="IDS_CONTEXTUAL_TASKS_IDENTITY_TOOLTIP_MANAGE_ACCOUNT_BUTTON" desc="Label for the button in the Contextual Tasks side panel identity tooltip that opens the user's Google Account page.">
+        Manage account
+      </message>
+      <message name="IDS_CONTEXTUAL_TASKS_IDENTITY_TOOLTIP_CLOSE_BUTTON" desc="Accessible label and tooltip for the close button on the Contextual Tasks side panel identity tooltip.">
+        Close
+      </message>
+      <message name="IDS_CONTEXTUAL_TASKS_ACCOUNT_BUTTON_TOOLTIP" desc="Tooltip and accessible label for the account avatar button in the Contextual Tasks side panel toolbar showing the signed-in user's name and email.">
+        Google Account: <ph name="USER_NAME">$1<ex>Jane Doe</ex></ph> (<ph name="USER_EMAIL">$2<ex>account@gmail.com</ex></ph>)
+      </message>
+      <message name="IDS_CONTEXTUAL_TASKS_ACCOUNT_BUTTON_EMAIL_ONLY_TOOLTIP" desc="Tooltip and accessible label for the account avatar button in the Contextual Tasks side panel toolbar showing the signed-in user's email.">
+        Google Account: <ph name="USER_EMAIL">$1<ex>account@gmail.com</ex></ph>
+      </message>
+      <message name="IDS_CONTEXTUAL_TASKS_ACCOUNT_BUTTON_SIGNED_OUT_TOOLTIP" desc="Tooltip and accessible label for the account avatar indicator in the Contextual Tasks side panel toolbar when the user is signed out of Search.">
+        Signed out
+      </message>
+      <message name="IDS_CONTEXTUAL_TASKS_MENU_SIGN_IN" desc="The 'Sign in' option in the Contextual Tasks 3-dot overflow menu shown when the user is signed out.">
+        Sign in
       </message>
 
       <!--Tooltip strings -->
@@ -11479,6 +11525,20 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_TUTORIAL_TAB_GROUP_SUCCESS_DESCRIPTION" desc="The description of the success step in the tab group tutorial">
         Try using tab groups to organize tasks, for online shopping, and more
+      </message>
+
+      <!-- Tab Groups Focusing IPH Strings -->
+      <message name="IDS_TAB_GROUPS_FOCUSING_IPH_TITLE" desc="The title of the IPH for focusing on a tab group">
+        Focus on tab group
+      </message>
+      <message name="IDS_TAB_GROUPS_FOCUSING_IPH_BODY" desc="The body text of the IPH for focusing on a tab group">
+        Right-click to hide other tabs temporarily
+      </message>
+      <message name="IDS_TAB_GROUPS_UNFOCUSING_IPH_BODY" desc="The body text of the IPH pointing to the Unfocus button">
+        Click here to bring your other tabs back
+      </message>
+      <message name="IDS_TAB_GROUPS_UNFOCUSING_IPH_BODY_SCREENREADER" is_accessibility_with_no_ui="true" desc="The screen reader text of the IPH pointing to the Unfocus button">
+        Click the Unfocus button to bring your other tabs back
       </message>
 
       <!-- Customize Chrome Tutorial Strings -->
@@ -19833,6 +19893,12 @@ Please help our engineers fix this problem. Tell us what happened right before y
       </message>
       <message name="IDS_DICTATION_REVIEWING_PAGE" desc="Status label shown in the dictation bubble UI while page context is being reviewed." translateable="false">
         Reviewing page
+      </message>
+      <message name="IDS_DICTATION_IPH_TITLE" desc="Title of the in-product help bubble shown next to a focused text field, introducing the dictation feature." translateable="false">
+        Use your voice to type
+      </message>
+      <message name="IDS_DICTATION_IPH_BODY" desc="Body text of the in-product help bubble shown next to a focused text field, introducing the dictation feature. The placeholder is the name of the dictation item in the right-click context menu." translateable="false">
+        Right click and select “<ph name="MENU_ITEM_NAME">$1<ex>Talk to type</ex></ph>” to turn your spoken thoughts into polished text.
       </message>
     </if>
 

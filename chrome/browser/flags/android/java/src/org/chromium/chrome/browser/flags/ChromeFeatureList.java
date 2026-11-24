@@ -422,6 +422,7 @@ public abstract class ChromeFeatureList {
     public static final String BOOKMARKS_BAR_CONTEXT_MENU = "BookmarksBarContextMenu";
     public static final String BOOKMARKS_BAR_NTP = "BookmarksBarNTP";
     public static final String BOOKMARK_PANE_ANDROID = "BookmarkPaneAndroid";
+    public static final String BOOKMARK_WIDGET_V2 = "BookmarkWidgetV2";
     public static final String BOTTOM_CONTROLS_JANK_IMPROVEMENT = "BottomControlsJankImprovement";
     public static final String BOTTOM_SHEET_AS_BROWSER_CONTROLS = "BottomSheetAsBrowserControls";
     public static final String BOTTOM_SHEET_ON_DESKTOP_WINDOWING = "BottomSheetOnDesktopWindowing";
@@ -612,6 +613,7 @@ public abstract class ChromeFeatureList {
     public static final String FEED_NULL_ITEM_ANIMATOR_ON_SCROLL_RESTORE =
             "FeedNullItemAnimatorOnScrollRestore";
     public static final String FILLING_PASSWORDS_FROM_ANY_ORIGIN = "FillingPasswordsFromAnyOrigin";
+    public static final String FIX_TOOLBAR_HAIRLINE_REGRESSION = "FixToolbarHairlineRegression";
     public static final String FLUID_RESIZE = "FluidResize";
     public static final String FLYOUT_IN_BOOKMARKS_BAR = "FlyoutInBookmarksBar";
     public static final String FORCE_TRANSLUCENT_NOTIFICATION_TRAMPOLINE =
@@ -631,6 +633,7 @@ public abstract class ChromeFeatureList {
     public static final String GLIC_BACKGROUND_TRIGGERING = "GlicBackgroundTriggering";
     public static final String GLIC_EXPERIMENTAL_OPT_IN_DIALOG_NON_SCROLLABLE =
             "GlicExperimentalOptInDialogNonScrollable";
+    public static final String GLIC_NO_WEBVIEW = "GlicNoWebview";
     public static final String GLIC_SHARE_IMAGE = "GlicShareImage";
     public static final String GLIC_VOICE = "GlicVoice";
     public static final String GMSCORE_BIND_SERVICE_OPTIMIZATION = "GmsCoreBindServiceOptimization";
@@ -785,8 +788,6 @@ public abstract class ChromeFeatureList {
     public static final String SEND_TAB_TO_SELF_GESTURE = "SendTabToSelfGesture";
     public static final String SEND_TAB_TO_SELF_MULTI_TAB_SHARE = "SendTabToSelfMultiTabShare";
     public static final String SEND_TAB_TO_SELF_OPEN_NATIVE_APP = "SendTabToSelfOpenNativeApp";
-    public static final String SEND_TAB_TO_SELF_RECORD_SNACKBAR_ACTIVATION =
-            "SendTabToSelfRecordSnackbarActivation";
     public static final String SEND_TAB_TO_SELF_SUPPORT_AUTO_OPEN_IN_TAB_GRID =
             "SendTabToSelfSupportAutoOpenInTabGrid";
     public static final String SEND_TAB_TO_SELF_SWITCH_TO_PARENT_ON_BACK =
@@ -822,7 +823,6 @@ public abstract class ChromeFeatureList {
     public static final String SUGGESTION_ANSWERS_COLOR_REVERSE = "SuggestionAnswersColorReverse";
     public static final String SUPPRESS_ACCESSIBILITY_ON_DEFERRED_CONTENT_VIEW =
             "SuppressAccessibilityOnDeferredContentView";
-    public static final String SYNC_ENABLE_NEW_SYNC_DASHBOARD_URL = "SyncEnableNewSyncDashboardUrl";
     public static final String SYNC_RESTORE_ON_STARTUP_PREF = "SyncRestoreOnStartupPref";
     public static final String SYNC_TRUSTED_VAULT_ERROR_MESSAGE_DURATION =
             "SyncTrustedVaultErrorMessageDuration";
@@ -1045,6 +1045,7 @@ public abstract class ChromeFeatureList {
             newCachedFlag(BLOCK_INTENTS_WHILE_LOCKED, false);
     public static final CachedFlag sBookmarkPaneAndroid =
             newCachedFlag(BOOKMARK_PANE_ANDROID, false);
+    public static final CachedFlag sBookmarkWidgetV2 = newCachedFlag(BOOKMARK_WIDGET_V2, false);
     public static final CachedFlag sBottomControlsJankImprovement =
             newCachedFlag(
                     BOTTOM_CONTROLS_JANK_IMPROVEMENT,
@@ -1168,7 +1169,7 @@ public abstract class ChromeFeatureList {
     public static final CachedFlag sDesktopAndroidTWADisclosuresHelpLink =
             newCachedFlag(DESKTOP_ANDROID_TWA_DISCLOSURES_HELP_LINK, true);
     public static final CachedFlag sDesktopAndroidWebAppHeaderAppName =
-            newCachedFlag(DESKTOP_ANDROID_WEB_APP_HEADER_APP_NAME, false);
+            newCachedFlag(DESKTOP_ANDROID_WEB_APP_HEADER_APP_NAME, true);
     public static final CachedFlag sDesktopUAOnConnectedDisplay =
             newCachedFlag(
                     DESKTOP_UA_ON_CONNECTED_DISPLAY,
@@ -1237,6 +1238,8 @@ public abstract class ChromeFeatureList {
             newCachedFlag(ENABLE_X_AXIS_ACTIVITY_TRANSITION, false);
     public static final CachedFlag sEnforceIncognitoIsolation =
             newCachedFlag(ENFORCE_INCOGNITO_ISOLATION, /* defaultValue= */ false);
+    public static final CachedFlag sFixToolbarHairlineRegression =
+            newCachedFlag(FIX_TOOLBAR_HAIRLINE_REGRESSION, /* defaultValue= */ true);
     public static final CachedFlag sFluidResize =
             newCachedFlag(FLUID_RESIZE, /* defaultValue= */ true, /* defaultValueInTests= */ true);
     public static final CachedFlag sForceTranslucentNotificationTrampoline =
@@ -1344,10 +1347,7 @@ public abstract class ChromeFeatureList {
     public static final CachedFlag sPersistAcrossRebootsDebugLogs =
             newCachedFlag(PERSIST_ACROSS_REBOOTS_DEBUG_LOGS, false);
     public static final CachedFlag sPictureInPictureMovesToolbarAndroid =
-            newCachedFlag(
-                    PICTURE_IN_PICTURE_MOVES_TOOLBAR_ANDROID,
-                    /* defaultValue= */ false,
-                    /* defaultValueInTests= */ true);
+            newCachedFlag(PICTURE_IN_PICTURE_MOVES_TOOLBAR_ANDROID, true);
     public static final CachedFlag sPriceChangeModule = newCachedFlag(PRICE_CHANGE_MODULE, true);
     public static final CachedFlag sProtectRecentlyVisibleTab =
             newCachedFlag(PROTECT_RECENTLY_VISIBLE_TAB, false);
@@ -1518,6 +1518,7 @@ public abstract class ChromeFeatureList {
                     sBackgroundThreadPoolFieldTrial,
                     sBlockIntentsWhileLocked,
                     sBookmarkPaneAndroid,
+                    sBookmarkWidgetV2,
                     sBottomControlsJankImprovement,
                     sBottomSheetAsBrowserControls,
                     sBottomSheetOnDesktopWindowing,
@@ -1594,6 +1595,7 @@ public abstract class ChromeFeatureList {
                     sEnableFullscreenToAnyScreenAndroid,
                     sEnableXAxisActivityTransition,
                     sEnforceIncognitoIsolation,
+                    sFixToolbarHairlineRegression,
                     sFluidResize,
                     sForceTranslucentNotificationTrampoline,
                     sFullscreenInsetsApiMigration,
@@ -1763,6 +1765,8 @@ public abstract class ChromeFeatureList {
             newMutableFlagWithSafeDefault(ENABLE_TOOLBAR_POSITIONING_IN_RESIZE_MODE, true);
     public static final MutableFlagWithSafeDefault sFlyoutInBookmarksBar =
             newMutableFlagWithSafeDefault(FLYOUT_IN_BOOKMARKS_BAR, false);
+    public static final MutableFlagWithSafeDefault sGlicNoWebview =
+            newMutableFlagWithSafeDefault(GLIC_NO_WEBVIEW, false);
     public static final MutableFlagWithSafeDefault sHighPrioritySiteNotifications =
             newMutableFlagWithSafeDefault(HIGH_PRIORITY_SITE_NOTIFICATIONS, true);
     public static final MutableFlagWithSafeDefault sIncognitoScreenshot =
@@ -1803,8 +1807,6 @@ public abstract class ChromeFeatureList {
             newMutableFlagWithSafeDefault(SEND_TAB_TO_SELF_MULTI_TAB_SHARE, false);
     public static final MutableFlagWithSafeDefault sSendTabToSelfOpenNativeApp =
             newMutableFlagWithSafeDefault(SEND_TAB_TO_SELF_OPEN_NATIVE_APP, false);
-    public static final MutableFlagWithSafeDefault sSendTabToSelfRecordSnackbarActivation =
-            newMutableFlagWithSafeDefault(SEND_TAB_TO_SELF_RECORD_SNACKBAR_ACTIVATION, true);
     public static final MutableFlagWithSafeDefault sSendTabToSelfSupportAutoOpenInTabGrid =
             newMutableFlagWithSafeDefault(SEND_TAB_TO_SELF_SUPPORT_AUTO_OPEN_IN_TAB_GRID, false);
     public static final MutableFlagWithSafeDefault sSendTabToSelfSwitchToParentOnBack =
@@ -1990,11 +1992,15 @@ public abstract class ChromeFeatureList {
     // go/keep-sorted start
     public static final BooleanCachedFeatureParam sAndroidBottomBarAlwaysUseFilledGlicIcon =
             newBooleanCachedFeatureParam(ANDROID_BOTTOM_BAR, "always_use_filled_glic_icon", true);
-    // Default value of the user's "Show bottom toolbar" setting while the user has not touched it.
-    // Once the user flips the toggle, their explicit choice wins over this param. Cached because
-    // the resulting enablement is read pre-native while the toolbar layout is inflated.
+    // Default value of the user's "Toolbar" (bottom toolbar) setting while the user has not
+    // touched it. Once the user flips the toggle, their explicit choice wins over this param.
+    // Cached because the resulting enablement is read pre-native while the toolbar layout is
+    // inflated.
     public static final BooleanCachedFeatureParam sAndroidBottomBarDefaultUserEnabled =
             newBooleanCachedFeatureParam(ANDROID_BOTTOM_BAR, "default_user_enabled", true);
+    public static final BooleanCachedFeatureParam sAndroidBottomBarEducationAddressBarIphEnabled =
+            newBooleanCachedFeatureParam(
+                    ANDROID_BOTTOM_BAR, "education_address_bar_iph_enabled", false);
     public static final BooleanCachedFeatureParam sAndroidBottomBarEducationEnabled =
             newBooleanCachedFeatureParam(ANDROID_BOTTOM_BAR, "education_enabled", false);
     public static final BooleanCachedFeatureParam sAndroidBottomBarEducationGeminiFocused =
@@ -2016,9 +2022,9 @@ public abstract class ChromeFeatureList {
             newBooleanCachedFeatureParam(ANDROID_BOTTOM_BAR, "show_bottom_bar_on_gts", false);
     public static final BooleanCachedFeatureParam sAndroidBottomBarShowGlicSettingToggle =
             newBooleanCachedFeatureParam(ANDROID_BOTTOM_BAR, "show_glic_setting_toggle", true);
-    // Whether the "Show bottom toolbar" switch is offered in Appearance settings. Only consulted
-    // when the bottom bar is eligible; a disabled AndroidBottomBar flag always hides the switch.
-    // Cached to match sAndroidBottomBarDefaultUserEnabled.
+    // Whether the "Toolbar" (bottom toolbar) switch is offered in Appearance settings. Only
+    // consulted when the bottom bar is eligible; a disabled AndroidBottomBar flag always hides the
+    // switch. Cached to match sAndroidBottomBarDefaultUserEnabled.
     public static final BooleanCachedFeatureParam sAndroidBottomBarShowSettingsToggle =
             newBooleanCachedFeatureParam(ANDROID_BOTTOM_BAR, "show_settings_toggle", true);
     public static final BooleanCachedFeatureParam sAndroidBottomBarShowUpdateBadge =
@@ -2391,6 +2397,7 @@ public abstract class ChromeFeatureList {
                     sAndroidAppRatingPromptBypassChecks,
                     sAndroidBottomBarAlwaysUseFilledGlicIcon,
                     sAndroidBottomBarDefaultUserEnabled,
+                    sAndroidBottomBarEducationAddressBarIphEnabled,
                     sAndroidBottomBarEducationEnabled,
                     sAndroidBottomBarEducationGeminiFocused,
                     sAndroidBottomBarHeightDp,

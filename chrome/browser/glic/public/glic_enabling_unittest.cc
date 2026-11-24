@@ -16,6 +16,7 @@
 #include "base/run_loop.h"
 #include "base/strings/string_split.h"
 #include "base/strings/stringprintf.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
@@ -28,6 +29,8 @@
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chrome/browser/glic/actor/glic_actor_policy_checker.h"
 #include "chrome/browser/glic/experimental_triggering/glic_experimental_triggering_types.h"
+#include "chrome/browser/glic/gemini_enterprise/geic_fre.h"
+#include "chrome/browser/glic/gemini_enterprise/geic_pref_names.h"
 #include "chrome/browser/glic/glic_enums.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/glic_pref_names_internal.h"
@@ -35,11 +38,14 @@
 #include "chrome/browser/glic/host/glic_features.mojom-features.h"
 #include "chrome/browser/glic/host/glic_features.mojom.h"
 #include "chrome/browser/glic/public/features.h"
+#include "chrome/browser/glic/public/glic_fre_store.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
+#include "chrome/browser/glic/public/glic_provider_latch.h"
 #include "chrome/browser/glic/public/glic_provider_spec.h"
 #include "chrome/browser/glic/test_support/glic_test_util.h"
 #include "chrome/browser/global_features.h"
+#include "chrome/browser/prefs/browser_prefs.h"
 #include "chrome/browser/profiles/profile_attributes_entry.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/profiles/profile_manager.h"
@@ -57,6 +63,7 @@
 #include "components/metrics/test/test_enabled_state_provider.h"
 #include "components/policy/core/common/management/scoped_management_service_override_for_testing.h"
 #include "components/prefs/pref_service.h"
+#include "components/prefs/scoped_user_pref_update.h"
 #include "components/prefs/testing_pref_service.h"
 #include "components/signin/public/identity_manager/account_capabilities_test_mutator.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
@@ -665,7 +672,9 @@ class GlicEnablingProfileEligibilityTest : public testing::Test {
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
     profile_ = testing_profile_manager->CreateTestingProfile(
-        TestingProfile::kDefaultProfileUserName,
+        TestingProfile::kDefaultProfileUserName, CreatePrefService(),
+        base::UTF8ToUTF16(TestingProfile::kDefaultProfileUserName),
+        /*avatar_id=*/0,
         IdentityTestEnvironmentProfileAdaptor::
             GetIdentityTestEnvironmentFactories());
 
@@ -699,6 +708,14 @@ class GlicEnablingProfileEligibilityTest : public testing::Test {
   }
 
  protected:
+  // Returns the pref service for the test profile, or null to use the default
+  // testing pref service. Override to set prefs that must be in place before
+  // the profile's keyed services are created.
+  virtual std::unique_ptr<sync_preferences::PrefServiceSyncable>
+  CreatePrefService() {
+    return nullptr;
+  }
+
   Profile* profile() { return profile_.get(); }
   std::unique_ptr<IdentityTestEnvironmentProfileAdaptor>
       identity_test_env_adaptor_;
@@ -1120,6 +1137,73 @@ TEST_F(GlicEnablingAnchorEntryPointTestBase,
               "SteadyState",
               base::BucketsAre(
                   base::Bucket(Reason::kPrimaryAccountNotCapable, 1)))));
+}
+
+// GEiC profiles don't anchor the entry point, since the anchored error state is
+// specific to consumer Gemini in Chrome (b/576834093). Without
+// `features::kGeicFre`, GEiC profiles are always consented.
+class GlicEnablingGeicAnchorEntryPointTest
+    : public GlicEnablingAnchorEntryPointTestBase {
+ public:
+  GlicEnablingGeicAnchorEntryPointTest() {
+    // Enables GEiC before `SetUp()` creates the profile, which latches the
+    // Glic provider.
+    geic_feature_list_.InitWithFeaturesAndParameters(
+        {{features::kGeic,
+          {{"enabled", "true"},
+           {"geic-guest-url",
+            "https://business.gemini.google/side-panel?configId=abc"}}}},
+        {features::kGeicFre});
+  }
+
+  void SetUp() override {
+    GlicEnablingAnchorEntryPointTestBase::SetUp();
+    if (IsSkipped()) {
+      return;
+    }
+    // Only GEiC profiles are consented without completing an FRE, so this also
+    // checks that the profile is in GEiC mode.
+    ASSERT_TRUE(GlicEnabling::HasConsentedForProfile(profile()));
+  }
+
+ private:
+  base::test::ScopedFeatureList geic_feature_list_;
+};
+
+TEST_F(GlicEnablingGeicAnchorEntryPointTest,
+       NotAnchoredWhenGlobalCriteriaFail) {
+  base::test::ScopedFeatureList features;
+  features.InitAndEnableFeature(
+      features::kGlicAnchorEntryPointForOnboardedUsers);
+
+  // kGlic is disabled, so global criteria fail.
+  EXPECT_FALSE(GlicEnabling::IsProfileEligible(profile()));
+  GlicEnabling::ProfileEnablement enablement =
+      GlicEnabling::EnablementForProfile(profile());
+  EXPECT_FALSE(enablement.anchor_entrypoint_override_active);
+  EXPECT_FALSE(enablement.ShouldShowGlicButton());
+}
+
+TEST_F(GlicEnablingGeicAnchorEntryPointTest, NotAnchoredForIneligibleAccount) {
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(profile());
+  AccountInfo account_info =
+      identity_manager->FindExtendedAccountInfoByAccountId(
+          identity_manager->GetPrimaryAccountId(signin::ConsentLevel::kSignin));
+  AccountCapabilitiesTestMutator mutator(&account_info);
+  SetGlicCapability(mutator, false);
+  signin::UpdateAccountInfoForAccount(identity_manager, account_info);
+
+  base::test::ScopedFeatureList features;
+  features.InitWithFeatures(
+      {features::kGlicAnchorEntryPointForOnboardedUsers, features::kGlic}, {});
+
+  GlicEnabling::ProfileEnablement enablement =
+      GlicEnabling::EnablementForProfile(profile());
+  EXPECT_FALSE(enablement.anchor_entrypoint_override_active);
+  EXPECT_FALSE(enablement.ShouldShowGlicButton());
+  EXPECT_EQ(GlicEnabling::GetProfileReadyState(profile()),
+            mojom::ProfileReadyState::kIneligible);
 }
 
 TEST_F(GlicEnablingAnchorEntryPointTestBase,
@@ -1700,6 +1784,297 @@ TEST_F(GlicEnablingProfileEligibilityTest,
 }
 #endif
 
+// Enables GEiC in the constructor, i.e. before `SetUp()` creates the profile:
+// creating the profile latches its Glic provider (`GlicProviderLatch`), so
+// enabling GEiC later would have no effect.
+class GlicEnablingGeicTestBase : public GlicEnablingProfileEligibilityTest {
+ protected:
+  explicit GlicEnablingGeicTestBase(bool geic_fre_enabled) {
+    std::vector<base::test::FeatureRefAndParams> enabled = {
+        {features::kGeic,
+         {{"enabled", "true"},
+          {"geic-guest-url",
+           "https://business.gemini.google/side-panel?configId=abc"}}}};
+    std::vector<base::test::FeatureRef> disabled;
+    if (geic_fre_enabled) {
+      enabled.push_back({features::kGeicFre, {}});
+    } else {
+      disabled.push_back(features::kGeicFre);
+    }
+    geic_feature_list_.InitWithFeaturesAndParameters(enabled, disabled);
+  }
+
+ private:
+  base::test::ScopedFeatureList geic_feature_list_;
+};
+
+class GlicEnablingGeicFreTest : public GlicEnablingGeicTestBase {
+ protected:
+  GlicEnablingGeicFreTest()
+      : GlicEnablingGeicTestBase(/*geic_fre_enabled=*/true) {}
+};
+
+class GlicEnablingGeicWithoutGeicFreTest : public GlicEnablingGeicTestBase {
+ protected:
+  GlicEnablingGeicWithoutGeicFreTest()
+      : GlicEnablingGeicTestBase(/*geic_fre_enabled=*/false) {}
+};
+
+TEST_F(GlicEnablingProfileEligibilityTest, FreStoreIsGemini) {
+  const GlicFreStore& store = GetGlicProviderSpec(profile()).GetFreStore();
+  EXPECT_FALSE(store.HidesSettingsUntilCompleted());
+  EXPECT_EQ(store.GetStatusPrefName(), prefs::kGlicCompletedFre);
+  EXPECT_EQ(GetGlicProviderSpec(nullptr).GetFreStore().GetStatusPrefName(),
+            prefs::kGlicCompletedFre);
+}
+
+TEST_F(GlicEnablingGeicFreTest, FreStoreIsGeminiEnterprise) {
+  const GlicFreStore& store = GetGlicProviderSpec(profile()).GetFreStore();
+  // The GEiC settings section stays hidden until the GEiC FRE is completed.
+  EXPECT_TRUE(store.HidesSettingsUntilCompleted());
+  EXPECT_EQ(store.GetStatusPrefName(), geic::prefs::kGeicCompletedFre);
+}
+
+TEST_F(GlicEnablingGeicWithoutGeicFreTest, FreStoreIsGeminiEnterprise) {
+  // Without `features::kGeicFre`, GEiC still uses the GEiC store.
+  EXPECT_EQ(GetGlicProviderSpec(profile()).GetFreStore().GetStatusPrefName(),
+            geic::prefs::kGeicCompletedFre);
+}
+
+TEST_F(GlicEnablingGeicFreTest, ResetSwitchClearsGeicFre) {
+  base::test::ScopedCommandLine scoped_command_line;
+  const GlicFreStore& store = GetGlicProviderSpec(profile()).GetFreStore();
+  geic::CompleteFre(profile());
+  ASSERT_TRUE(GlicEnabling::HasConsentedForProfile(profile()));
+
+  // Without the switch, nothing changes.
+  store.ApplyDevSwitches(profile());
+  EXPECT_TRUE(GlicEnabling::HasConsentedForProfile(profile()));
+
+  scoped_command_line.GetProcessCommandLine()->AppendSwitch(
+      switches::kGeicResetFre);
+  store.ApplyDevSwitches(profile());
+  EXPECT_FALSE(GlicEnabling::HasConsentedForProfile(profile()));
+  EXPECT_TRUE(
+      profile()->GetPrefs()->GetDict(geic::prefs::kGeicCompletedFre).empty());
+}
+
+TEST_F(GlicEnablingGeicFreTest, ResetAndSkipSwitchesLeaveGeicFreCompleted) {
+  base::test::ScopedCommandLine scoped_command_line;
+  geic::CompleteFre(profile());
+  scoped_command_line.GetProcessCommandLine()->AppendSwitch(
+      switches::kGeicResetFre);
+  scoped_command_line.GetProcessCommandLine()->AppendSwitch(
+      switches::kGeicAlwaysSkipFre);
+
+  GetGlicProviderSpec(profile()).GetFreStore().ApplyDevSwitches(profile());
+  EXPECT_TRUE(GlicEnabling::HasConsentedForProfile(profile()));
+}
+
+TEST_F(GlicEnablingGeicFreTest, ConsentUsesGeicPref) {
+  // The consumer FRE doesn't count for GEiC.
+  profile()->GetPrefs()->SetInteger(
+      prefs::kGlicCompletedFre,
+      std::to_underlying(prefs::FreStatus::kCompleted));
+  EXPECT_FALSE(GlicEnabling::HasConsentedForProfile(profile()));
+
+  geic::CompleteFre(profile());
+  EXPECT_TRUE(GlicEnabling::HasConsentedForProfile(profile()));
+
+  // GEiC completion doesn't touch the consumer FRE.
+  profile()->GetPrefs()->SetInteger(
+      prefs::kGlicCompletedFre,
+      std::to_underlying(prefs::FreStatus::kNotStarted));
+  EXPECT_TRUE(GlicEnabling::HasConsentedForProfile(profile()));
+}
+
+TEST_F(GlicEnablingGeicFreTest, NeverDismissed) {
+  profile()->GetPrefs()->SetInteger(
+      prefs::kGlicCompletedFre,
+      std::to_underlying(prefs::FreStatus::kIncomplete));
+  EXPECT_FALSE(GlicEnabling::DidDismissForProfile(profile()));
+}
+
+TEST_F(GlicEnablingGeicFreTest, GetCompletedFreReadsGeicFre) {
+  EXPECT_EQ(GlicEnabling::GetCompletedFre(profile()),
+            prefs::FreStatus::kNotStarted);
+
+  // The consumer FRE pref doesn't complete the GEiC FRE.
+  profile()->GetPrefs()->SetInteger(
+      prefs::kGlicCompletedFre,
+      std::to_underlying(prefs::FreStatus::kCompleted));
+  EXPECT_EQ(GlicEnabling::GetCompletedFre(profile()),
+            prefs::FreStatus::kNotStarted);
+
+  geic::CompleteFre(profile());
+  EXPECT_EQ(GlicEnabling::GetCompletedFre(profile()),
+            prefs::FreStatus::kCompleted);
+}
+
+TEST_F(GlicEnablingGeicFreTest, SetCompletedFreCompletesGeicFre) {
+  GlicKeyedService::Get(profile())->enabling().SetCompletedFre(
+      prefs::FreStatus::kCompleted);
+
+  EXPECT_EQ(geic::GetFreStatus(profile()),
+            geic::prefs::GeicFreStatus::kCompleted);
+  EXPECT_TRUE(GlicEnabling::HasConsentedForProfile(profile()));
+  // The consumer FRE is untouched.
+  EXPECT_EQ(profile()->GetPrefs()->GetInteger(prefs::kGlicCompletedFre),
+            std::to_underlying(prefs::FreStatus::kNotStarted));
+}
+
+TEST_F(GlicEnablingGeicFreTest, SetCompletedFreIgnoresOtherGeicStatuses) {
+  GlicEnabling& enabling = GlicKeyedService::Get(profile())->enabling();
+  enabling.SetCompletedFre(prefs::FreStatus::kIncomplete);
+  EXPECT_EQ(geic::GetFreStatus(profile()),
+            geic::prefs::GeicFreStatus::kNotStarted);
+
+  enabling.SetCompletedFre(prefs::FreStatus::kCompleted);
+  // The GEiC FRE can't be undone, except with `--geic-reset-fre`.
+  enabling.SetCompletedFre(prefs::FreStatus::kNotStarted);
+  EXPECT_EQ(geic::GetFreStatus(profile()),
+            geic::prefs::GeicFreStatus::kCompleted);
+  // The consumer FRE is untouched.
+  EXPECT_EQ(profile()->GetPrefs()->GetInteger(prefs::kGlicCompletedFre),
+            std::to_underlying(prefs::FreStatus::kNotStarted));
+}
+
+TEST_F(GlicEnablingProfileEligibilityTest,
+       SetCompletedFreCompletesConsumerFre) {
+  GlicKeyedService::Get(profile())->enabling().SetCompletedFre(
+      prefs::FreStatus::kCompleted);
+
+  EXPECT_EQ(profile()->GetPrefs()->GetInteger(prefs::kGlicCompletedFre),
+            std::to_underlying(prefs::FreStatus::kCompleted));
+  EXPECT_TRUE(GlicEnabling::HasConsentedForProfile(profile()));
+}
+
+TEST_F(GlicEnablingGeicFreTest, ConsentChangedCallbackFiresOnGeicPref) {
+  bool callback_called = false;
+  auto subscription = glic::GlicKeyedService::Get(profile())
+                          ->enabling()
+                          .RegisterOnConsentChanged(base::BindLambdaForTesting(
+                              [&]() { callback_called = true; }));
+
+  geic::CompleteFre(profile());
+  EXPECT_TRUE(callback_called);
+}
+
+TEST_F(GlicEnablingGeicFreTest, ConsentChangedCallbackIgnoresConsumerPref) {
+  bool callback_called = false;
+  auto subscription = glic::GlicKeyedService::Get(profile())
+                          ->enabling()
+                          .RegisterOnConsentChanged(base::BindLambdaForTesting(
+                              [&]() { callback_called = true; }));
+
+  profile()->GetPrefs()->SetInteger(
+      prefs::kGlicCompletedFre,
+      std::to_underlying(prefs::FreStatus::kCompleted));
+  EXPECT_FALSE(callback_called);
+}
+
+TEST_F(GlicEnablingProfileEligibilityTest,
+       ConsentChangedCallbackIgnoresGeicPref) {
+  bool callback_called = false;
+  auto subscription = glic::GlicKeyedService::Get(profile())
+                          ->enabling()
+                          .RegisterOnConsentChanged(base::BindLambdaForTesting(
+                              [&]() { callback_called = true; }));
+
+  ScopedDictPrefUpdate(profile()->GetPrefs(), geic::prefs::kGeicCompletedFre)
+      ->Set("https://business.gemini.google/side-panel?configId=abc",
+            base::DictValue().Set(
+                "status",
+                std::to_underlying(geic::prefs::GeicFreStatus::kCompleted)));
+  EXPECT_FALSE(callback_called);
+}
+
+// Without `features::kGeicFre`, GEiC is always consented.
+TEST_F(GlicEnablingGeicWithoutGeicFreTest, AlwaysConsented) {
+  EXPECT_TRUE(GlicEnabling::HasConsentedForProfile(profile()));
+  EXPECT_EQ(GlicEnabling::GetCompletedFre(profile()),
+            prefs::FreStatus::kCompleted);
+
+  // The consumer FRE doesn't affect GEiC.
+  profile()->GetPrefs()->SetInteger(
+      prefs::kGlicCompletedFre,
+      std::to_underlying(prefs::FreStatus::kIncomplete));
+  EXPECT_TRUE(GlicEnabling::HasConsentedForProfile(profile()));
+  EXPECT_FALSE(GlicEnabling::DidDismissForProfile(profile()));
+}
+
+TEST_F(GlicEnablingGeicWithoutGeicFreTest, SetCompletedFreStoresNothing) {
+  GlicEnabling& enabling = GlicKeyedService::Get(profile())->enabling();
+  enabling.SetCompletedFre(prefs::FreStatus::kCompleted);
+  enabling.SetCompletedFre(prefs::FreStatus::kNotStarted);
+
+  EXPECT_TRUE(GlicEnabling::HasConsentedForProfile(profile()));
+  EXPECT_EQ(profile()->GetPrefs()->GetInteger(prefs::kGlicCompletedFre),
+            std::to_underlying(prefs::FreStatus::kNotStarted));
+  EXPECT_TRUE(
+      profile()->GetPrefs()->GetDict(geic::prefs::kGeicCompletedFre).empty());
+}
+
+// Appends a consumer FRE developer switch before the profile and its
+// `GlicKeyedService` are created, so that the switch is applied at startup.
+class GlicEnablingGeicFreSwitchTestBase
+    : public GlicEnablingGeicTestBase,
+      public testing::WithParamInterface<const char*> {
+ protected:
+  explicit GlicEnablingGeicFreSwitchTestBase(bool geic_fre_enabled)
+      : GlicEnablingGeicTestBase(geic_fre_enabled) {}
+
+  void SetUp() override {
+    scoped_command_line_.GetProcessCommandLine()->AppendSwitch(GetParam());
+    GlicEnablingGeicTestBase::SetUp();
+  }
+
+ private:
+  base::test::ScopedCommandLine scoped_command_line_;
+};
+
+class GlicEnablingGeicFreSkipSwitchTest
+    : public GlicEnablingGeicFreSwitchTestBase {
+ protected:
+  GlicEnablingGeicFreSkipSwitchTest()
+      : GlicEnablingGeicFreSwitchTestBase(/*geic_fre_enabled=*/true) {}
+};
+
+// The consumer FRE skip switches don't skip the GEiC FRE.
+TEST_P(GlicEnablingGeicFreSkipSwitchTest, DoesNotCompleteGeicFre) {
+  ASSERT_TRUE(GlicKeyedService::Get(profile()));
+  EXPECT_FALSE(GlicEnabling::HasConsentedForProfile(profile()));
+  EXPECT_EQ(geic::GetFreStatus(profile()),
+            geic::prefs::GeicFreStatus::kNotStarted);
+  EXPECT_EQ(profile()->GetPrefs()->GetInteger(prefs::kGlicCompletedFre),
+            std::to_underlying(prefs::FreStatus::kNotStarted));
+}
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         GlicEnablingGeicFreSkipSwitchTest,
+                         testing::Values(switches::kGlicAutomation,
+                                         switches::kGlicAlwaysSkipFre));
+
+class GlicEnablingGeicWithoutGeicFreSkipSwitchTest
+    : public GlicEnablingGeicFreSwitchTestBase {
+ protected:
+  GlicEnablingGeicWithoutGeicFreSkipSwitchTest()
+      : GlicEnablingGeicFreSwitchTestBase(/*geic_fre_enabled=*/false) {}
+};
+
+// Without `features::kGeicFre`, the consumer FRE switches don't apply to GEiC.
+TEST_P(GlicEnablingGeicWithoutGeicFreSkipSwitchTest,
+       DoesNotCompleteConsumerFre) {
+  ASSERT_TRUE(GlicKeyedService::Get(profile()));
+  EXPECT_EQ(profile()->GetPrefs()->GetInteger(prefs::kGlicCompletedFre),
+            std::to_underlying(prefs::FreStatus::kNotStarted));
+}
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         GlicEnablingGeicWithoutGeicFreSkipSwitchTest,
+                         testing::Values(switches::kGlicAutomation,
+                                         switches::kGlicAlwaysSkipFre));
+
 TEST_F(GlicEnablingProfileReadyStateTestBase,
        GetExperimentalTriggeringState_NonManaged_Ready) {
   base::test::ScopedFeatureList features;
@@ -1975,7 +2350,20 @@ TEST_F(GlicEnablingProfileReadyStateTestBase,
 TEST_F(GlicEnablingProfileReadyStateTestBase,
        GetExperimentalTriggeringCapabilities_UnavailableReturnsEmpty) {
   auto& enabling = glic::GlicKeyedService::Get(profile())->enabling();
-  // With experimental triggering unavailable, capabilities must be empty.
+  // Fully opt in and enable the screenshot feature. kGlicExperimentalTriggering
+  // is disabled by default in this fixture, so experimental triggering is
+  // still unavailable and no capability (including screenshot) may leak.
+  enabling.SetCompletedFre(prefs::FreStatus::kCompleted);
+  profile()->GetPrefs()->SetBoolean(prefs::kGlicUserEnabledActuationOnWeb,
+                                    true);
+  profile()->GetPrefs()->SetBoolean(prefs::kGlicExperimentalTriggeringEnabled,
+                                    true);
+  base::test::ScopedFeatureList features;
+  features.InitAndEnableFeature(
+      features::kGlicExperimentalTriggeringScreenshot);
+
+  EXPECT_EQ(enabling.GetExperimentalTriggeringState(),
+            syncer::DeviceInfo::GlicExperimentalTriggeringState::kUnavailable);
   EXPECT_TRUE(enabling.GetExperimentalTriggeringCapabilities().empty());
 }
 
@@ -2011,6 +2399,52 @@ TEST_F(GlicEnablingProfileReadyStateTestBase,
 
     EXPECT_EQ(enabling.GetExperimentalTriggeringState(),
               syncer::DeviceInfo::GlicExperimentalTriggeringState::kReady);
+    EXPECT_EQ(enabling.GetExperimentalTriggeringCapabilities(),
+              (base::flat_set<std::string>{kGlicCapabilityScreenshot,
+                                           kGlicCapabilityStructuredYields,
+                                           kGlicCapabilityPaymentMetadata}));
+  }
+}
+
+TEST_F(GlicEnablingProfileReadyStateTestBase,
+       GetExperimentalTriggeringCapabilities_NeedsOptIn) {
+  auto& enabling = glic::GlicKeyedService::Get(profile())->enabling();
+  // Leave the opt-in incomplete.
+  enabling.SetCompletedFre(prefs::FreStatus::kIncomplete);
+  enabling.SetUserEnabledActuationOnWeb(false);
+  enabling.SetExperimentalTriggeringEnabled(false);
+  // Bypass the enterprise policy check which defaults to disabled.
+  profile()->GetPrefs()->SetInteger(
+      prefs::kGlicSparkPolicySettings,
+      std::to_underlying(glic::prefs::GlicSparkPolicyState::kEnabled));
+
+  {
+    base::test::ScopedFeatureList features;
+    features.InitWithFeatures(
+        /*enabled_features=*/{features::kGlic,
+                              features::kGlicExperimentalTriggering},
+        /*disabled_features=*/{
+            features::kGlicExperimentalTriggeringOptInBypass,
+            features::kGlicExperimentalTriggeringScreenshot});
+
+    EXPECT_EQ(enabling.GetExperimentalTriggeringState(),
+              syncer::DeviceInfo::GlicExperimentalTriggeringState::kNeedsOptIn);
+    EXPECT_EQ(enabling.GetExperimentalTriggeringCapabilities(),
+              (base::flat_set<std::string>{kGlicCapabilityStructuredYields,
+                                           kGlicCapabilityPaymentMetadata}));
+  }
+
+  {
+    base::test::ScopedFeatureList features;
+    features.InitWithFeatures(
+        /*enabled_features=*/{features::kGlic,
+                              features::kGlicExperimentalTriggering,
+                              features::kGlicExperimentalTriggeringScreenshot},
+        /*disabled_features=*/{
+            features::kGlicExperimentalTriggeringOptInBypass});
+
+    EXPECT_EQ(enabling.GetExperimentalTriggeringState(),
+              syncer::DeviceInfo::GlicExperimentalTriggeringState::kNeedsOptIn);
     EXPECT_EQ(enabling.GetExperimentalTriggeringCapabilities(),
               (base::flat_set<std::string>{kGlicCapabilityScreenshot,
                                            kGlicCapabilityStructuredYields,
@@ -2302,6 +2736,36 @@ TEST_F(GlicEnablingWebActuationToggleGeicTest,
   EXPECT_FALSE(glic_service->actor_policy_checker().CanActOnWeb());
   EXPECT_FALSE(glic_service->actor_policy_checker().GlicApiCanActOnWeb());
   EXPECT_FALSE(glic_service->enabling().ShouldShowWebActuationToggle());
+}
+
+TEST_F(GlicEnablingWebActuationToggleGeicTest,
+       ManagedProfile_Geic_CanActOnWeb_WithFeatureEnabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(features::kGeicActuation);
+
+  auto* identity_test_env = identity_test_env_adaptor_->identity_test_env();
+  AccountInfo account_info = identity_test_env->MakePrimaryAccountAvailable(
+      "test@example.com", signin::ConsentLevel::kSignin);
+  AccountCapabilitiesTestMutator mutator(&account_info);
+  SetGlicCapability(mutator, true);
+  signin::UpdateAccountInfoForAccount(identity_test_env->identity_manager(),
+                                      account_info);
+
+  policy::ScopedManagementServiceOverrideForTesting browser_management(
+      policy::ManagementServiceFactory::GetForProfile(profile()),
+      policy::EnterpriseManagementAuthority::CLOUD_DOMAIN);
+
+  profile()->GetPrefs()->SetInteger(
+      glic::prefs::kGlicActuationOnWeb,
+      std::to_underlying(glic::prefs::GlicActuationOnWebPolicyState::kEnabled));
+  profile()->GetPrefs()->SetInteger(
+      subscription_eligibility::prefs::kAiSubscriptionTier, 1);
+
+  auto* glic_service = GlicKeyedService::Get(profile());
+  EXPECT_TRUE(glic_service->provider_spec().IsActuationSupported());
+  EXPECT_TRUE(glic_service->actor_policy_checker().CanActOnWeb());
+  EXPECT_TRUE(glic_service->actor_policy_checker().GlicApiCanActOnWeb());
+  EXPECT_TRUE(glic_service->enabling().ShouldShowWebActuationToggle());
 }
 
 // Tests for the subscription benefits priority pref
@@ -3297,6 +3761,109 @@ TEST_F(GlicEnablingProfileEligibilityTest, IsAnyEntryPointEnabled) {
 
   profile()->GetPrefs()->SetBoolean(prefs::kGlicPinnedToTabstrip, true);
   EXPECT_TRUE(IsAnyEntryPointEnabled(profile()));
+}
+
+TEST_F(GlicEnablingProfileEligibilityTest, Provider_GeminiWhenGeicDisabled) {
+  EXPECT_EQ(GlicProviderLatch::GetProvider(*profile()), GlicProvider::kGemini);
+  EXPECT_TRUE(GlicEnabling::IsProfileEligible(profile()));
+}
+
+// Creates the test profile with `features::kGeic` enabled and a GEiC policy URL
+// already set, so that the Glic provider latched when the profile's keyed
+// services are created is Gemini Enterprise.
+class GlicEnablingGeicPolicyTest : public GlicEnablingProfileEligibilityTest {
+ public:
+  GlicEnablingGeicPolicyTest() {
+    geic_feature_list_.InitAndEnableFeature(features::kGeic);
+  }
+
+ protected:
+  std::unique_ptr<sync_preferences::PrefServiceSyncable> CreatePrefService()
+      override {
+    auto pref_service =
+        std::make_unique<sync_preferences::TestingPrefServiceSyncable>();
+    RegisterUserProfilePrefs(pref_service->registry());
+    pref_service->SetManagedPref(
+        prefs::kGlicGeminiEnterpriseUrl,
+        base::Value("https://business.gemini.google/home/cid/abc123"));
+    return pref_service;
+  }
+
+ private:
+  base::test::ScopedFeatureList geic_feature_list_;
+};
+
+// Like `GlicEnablingGeicPolicyTest`, but with `features::kGeic` disabled when
+// the profile is created.
+class GlicEnablingGeicPolicyFeatureDisabledTest
+    : public GlicEnablingGeicPolicyTest {
+ public:
+  GlicEnablingGeicPolicyFeatureDisabledTest() {
+    geic_disabled_feature_list_.InitAndDisableFeature(features::kGeic);
+  }
+
+ private:
+  base::test::ScopedFeatureList geic_disabled_feature_list_;
+};
+
+// Like `GlicEnablingGeicPolicyTest`, but with `features::kGlic` disabled when
+// the profile is created, so the profile is ineligible for Glic.
+class GlicEnablingGeicPolicyGlicDisabledTest
+    : public GlicEnablingGeicPolicyTest {
+ public:
+  GlicEnablingGeicPolicyGlicDisabledTest() {
+    glic_disabled_feature_list_.InitAndDisableFeature(features::kGlic);
+  }
+
+ private:
+  base::test::ScopedFeatureList glic_disabled_feature_list_;
+};
+
+TEST_F(GlicEnablingGeicPolicyTest, Provider_GeminiEnterpriseWithPolicyUrl) {
+  EXPECT_EQ(GlicProviderLatch::GetProvider(*profile()),
+            GlicProvider::kGeminiEnterprise);
+  EXPECT_TRUE(GlicEnabling::IsProfileEligible(profile()));
+}
+
+TEST_F(GlicEnablingGeicPolicyFeatureDisabledTest,
+       Provider_GeminiWhenGeicFeatureDisabledWithPolicyUrl) {
+  EXPECT_EQ(GlicProviderLatch::GetProvider(*profile()), GlicProvider::kGemini);
+  EXPECT_TRUE(GlicEnabling::IsProfileEligible(profile()));
+}
+
+// The provider is latched independently of Glic eligibility.
+TEST_F(GlicEnablingGeicPolicyGlicDisabledTest,
+       Provider_GeminiEnterpriseLatchedButIneligibleForGlic) {
+  EXPECT_FALSE(GlicEnabling::IsProfileEligible(profile()));
+  EXPECT_EQ(GlicProviderLatch::GetProvider(*profile()),
+            GlicProvider::kGeminiEnterprise);
+  EXPECT_EQ(GlicKeyedService::Get(profile()), nullptr);
+}
+
+TEST_F(GlicEnablingGeicPolicyTest, Provider_LatchedAtCreation) {
+  // Removing the policy after the profile was created does not change the
+  // provider or the latched guest URL for the rest of the session.
+  static_cast<sync_preferences::TestingPrefServiceSyncable*>(
+      profile()->GetPrefs())
+      ->RemoveManagedPref(prefs::kGlicGeminiEnterpriseUrl);
+
+  EXPECT_EQ(GlicProviderLatch::GetProvider(*profile()),
+            GlicProvider::kGeminiEnterprise);
+  EXPECT_EQ(
+      GetGlicProviderSpec(profile()).GetGuestUrl(profile()),
+      GURL("https://business.gemini.google/side-panel?configId=abc123&hl=en"));
+}
+
+// Keyed services that read the provider while they are being built must be
+// created after the provider is latched. Creating the profile in SetUp() has
+// already built every service that is created with the browser context without
+// hitting the latch CHECK; this checks that the Glic keyed service can be built
+// for a GEiC profile and that the profile reports the GEiC provider.
+TEST_F(GlicEnablingGeicPolicyTest, KeyedServicesBuildForGeicProfile) {
+  EXPECT_TRUE(GlicKeyedServiceFactory::GetGlicKeyedService(profile(),
+                                                           /*create=*/true));
+  EXPECT_EQ(GlicProviderLatch::GetProvider(*profile()),
+            GlicProvider::kGeminiEnterprise);
 }
 
 #if BUILDFLAG(IS_ANDROID)

@@ -42,8 +42,10 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/extensions/extensions_container.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
+#include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
+#include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry_key.h"
 #include "chrome/browser/ui/side_panel/side_panel_ui.h"
@@ -108,12 +110,6 @@
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/accessibility/ax_node_data.h"
 #include "ui/accessibility/platform/ax_platform_node_delegate.h"
-#include "ui/aura/client/drag_drop_client.h"
-#include "ui/aura/client/drag_drop_client_observer.h"
-#include "ui/aura/env.h"
-#include "ui/aura/input_state_lookup.h"
-#include "ui/aura/test/env_test_helper.h"
-#include "ui/aura/window_observer.h"
 #include "ui/base/clipboard/clipboard.h"
 #include "ui/base/clipboard/clipboard_buffer.h"
 #include "ui/base/clipboard/clipboard_format_type.h"
@@ -137,6 +133,15 @@
 #include "ui/views/metrics.h"
 #include "ui/views/test/view_skia_gold_pixel_diff.h"
 #include "ui/webui/tracked_element/tracked_element_handler.h"
+
+#if defined(USE_AURA)
+#include "ui/aura/client/drag_drop_client.h"
+#include "ui/aura/client/drag_drop_client_observer.h"
+#include "ui/aura/env.h"
+#include "ui/aura/input_state_lookup.h"
+#include "ui/aura/test/env_test_helper.h"
+#include "ui/aura/window_observer.h"
+#endif
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "ash/constants/ash_switches.h"
@@ -1553,6 +1558,14 @@ class WebUIToolbarViewsLocationBarInteractiveUiTest
         base::StrCat({"el => el.hasFocus() && ", condition})));
   }
 
+  // Returns whether the omnibox suggestions popup is open.
+  bool IsOmniboxPopupOpen() {
+    return BrowserView::GetBrowserViewForBrowser(browser())
+        ->GetLocationBar()
+        ->GetOmniboxController()
+        ->IsPopupOpen();
+  }
+
 #if defined(USE_AURA)
   // The drag data expected from the omnibox. Like the native omnibox, both copy
   // and move are always allowed.
@@ -1712,6 +1725,10 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarViewsLocationBarInteractiveUiTest,
   Omnibox_DragPlainText_StateAfterDrop
 #define MAYBE_Omnibox_DragPlainText_StateAfterCancel \
   Omnibox_DragPlainText_StateAfterCancel
+#define MAYBE_Omnibox_DragPlainText_PopupAfterDrop \
+  Omnibox_DragPlainText_PopupAfterDrop
+#define MAYBE_Omnibox_DragPlainText_PopupAfterCancel \
+  Omnibox_DragPlainText_PopupAfterCancel
 #define MAYBE_Omnibox_DragHttpsUrl Omnibox_DragHttpsUrl
 #define MAYBE_Omnibox_DragHttpsUrl_StateAfterDrop \
   Omnibox_DragHttpsUrl_StateAfterDrop
@@ -1736,6 +1753,10 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarViewsLocationBarInteractiveUiTest,
   DISABLED_Omnibox_DragPlainText_StateAfterDrop
 #define MAYBE_Omnibox_DragPlainText_StateAfterCancel \
   DISABLED_Omnibox_DragPlainText_StateAfterCancel
+#define MAYBE_Omnibox_DragPlainText_PopupAfterDrop \
+  DISABLED_Omnibox_DragPlainText_PopupAfterDrop
+#define MAYBE_Omnibox_DragPlainText_PopupAfterCancel \
+  DISABLED_Omnibox_DragPlainText_PopupAfterCancel
 #define MAYBE_Omnibox_DragHttpsUrl DISABLED_Omnibox_DragHttpsUrl
 #define MAYBE_Omnibox_DragHttpsUrl_StateAfterDrop \
   DISABLED_Omnibox_DragHttpsUrl_StateAfterDrop
@@ -1841,6 +1862,76 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarViewsLocationBarInteractiveUiTest,
       CheckJsResultAt(WebUIToolbarId(), kOmniboxDeepQuery,
                       "el => el.omniboxViewState.userInputInProgress"),
       CheckOmniboxAfterDragOut("hello world"));
+#endif
+}
+
+// Typed text, with the suggestions popup that typing opened, dropped on an
+// external target that copies it. Like the native omnibox, dragging the text
+// closes the popup, so that it does not cover the drop target, and the popup
+// stays closed after the drop.
+IN_PROC_BROWSER_TEST_F(WebUIToolbarViewsLocationBarInteractiveUiTest,
+                       MAYBE_Omnibox_DragPlainText_PopupAfterDrop) {
+#if defined(USE_AURA) && !BUILDFLAG(IS_CHROMEOS)
+  const GURL initial_url = embedded_test_server()->GetURL("/title1.html");
+
+  RunTestSequence(
+      WaitForToolbarLoaded(), NavigateWebContents(TabId(), initial_url),
+      WaitForJsResultAt(WebUIToolbarId(), kTextInputDeepQuery,
+                        "el => el.value.includes('title1')"),
+      TypeInOmniboxAndSelectAll("hello world"),
+      WaitForAdjustedCopyUrl(
+          GURL(),
+          "el.omniboxViewState.userInputInProgress && "
+          "el.adjustedCopyResult.adjustedText === 'hello world'"),
+      PollUntil(
+          base::BindLambdaForTesting([this]() { return IsOmniboxPopupOpen(); }),
+          "Popup is open"),
+      DragFromOmniboxAndCheck({.text = u"hello world"}, kTextSpanDeepQuery,
+                              ui::mojom::DragOperation::kCopy),
+      PollUntil(base::BindLambdaForTesting(
+                    [this]() { return !IsOmniboxPopupOpen(); }),
+                "Popup is closed"),
+      // Round trip to the toolbar, so that a reopening caused by the drag
+      // would have reached the browser, before checking again.
+      CheckJsResultAt(WebUIToolbarId(), kOmniboxDeepQuery,
+                      "el => !el.isPopupOpen"),
+      CheckResult(
+          base::BindLambdaForTesting([this]() { return IsOmniboxPopupOpen(); }),
+          false, "Popup stays closed"));
+#endif
+}
+
+// Same as Omnibox_DragPlainText_PopupAfterDrop, but the drag is cancelled, or
+// dropped where no target accepts it.
+IN_PROC_BROWSER_TEST_F(WebUIToolbarViewsLocationBarInteractiveUiTest,
+                       MAYBE_Omnibox_DragPlainText_PopupAfterCancel) {
+#if defined(USE_AURA) && !BUILDFLAG(IS_CHROMEOS)
+  const GURL initial_url = embedded_test_server()->GetURL("/title1.html");
+
+  RunTestSequence(
+      WaitForToolbarLoaded(), NavigateWebContents(TabId(), initial_url),
+      WaitForJsResultAt(WebUIToolbarId(), kTextInputDeepQuery,
+                        "el => el.value.includes('title1')"),
+      TypeInOmniboxAndSelectAll("hello world"),
+      WaitForAdjustedCopyUrl(
+          GURL(),
+          "el.omniboxViewState.userInputInProgress && "
+          "el.adjustedCopyResult.adjustedText === 'hello world'"),
+      PollUntil(
+          base::BindLambdaForTesting([this]() { return IsOmniboxPopupOpen(); }),
+          "Popup is open"),
+      DragFromOmniboxAndCheck({.text = u"hello world"}, kTextSpanDeepQuery,
+                              ui::mojom::DragOperation::kNone),
+      PollUntil(base::BindLambdaForTesting(
+                    [this]() { return !IsOmniboxPopupOpen(); }),
+                "Popup is closed"),
+      // Round trip to the toolbar, so that a reopening caused by the drag
+      // would have reached the browser, before checking again.
+      CheckJsResultAt(WebUIToolbarId(), kOmniboxDeepQuery,
+                      "el => !el.isPopupOpen"),
+      CheckResult(
+          base::BindLambdaForTesting([this]() { return IsOmniboxPopupOpen(); }),
+          false, "Popup stays closed"));
 #endif
 }
 
@@ -2825,6 +2916,22 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewInteractiveUiTest,
       ExtensionsContainer::From(*browser()));
   ASSERT_TRUE(container);
 
+  auto wait_for_button_highlighted = [&](const std::string& id) {
+    return base::test::RunUntil([&]() {
+      return content::EvalJs(
+                 web_contents,
+                 base::StringPrintf(
+                     "document.querySelector('toolbar-app').shadowRoot"
+                     ".querySelector('#extensions').shadowRoot"
+                     ".querySelector("
+                     "'webui-toolbar-extension[data-key=\"%s\"]')"
+                     ".shadowRoot.querySelector('toolbar-chip-button')"
+                     ".hasAttribute('is-menu-open')",
+                     id.c_str()))
+          .ExtractBool();
+    });
+  };
+
   // 1. Test onClick plumbing for the extension.
   {
     ExtensionTestMessageListener listener("clicked");
@@ -2848,16 +2955,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewInteractiveUiTest,
         base::test::RunUntil([&]() { return coordinator->IsShowing(); }));
 
     // Verify button becomes highlighted.
-    EXPECT_TRUE(base::test::RunUntil([&]() {
-      return content::EvalJs(
-                 web_contents,
-                 "document.querySelector('toolbar-app').shadowRoot"
-                 ".querySelector('#extensions').shadowRoot"
-                 ".querySelector('webui-toolbar-extension[data-key=\"\"]')"
-                 ".shadowRoot.querySelector('cr-button')"
-                 ".hasAttribute('is-menu-open')")
-          .ExtractBool();
-    }));
+    EXPECT_TRUE(wait_for_button_highlighted(""));
 
     // Toggle it back off.
     LeftClickExtensionButton(web_contents, "");
@@ -2875,6 +2973,9 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewInteractiveUiTest,
 
     EXPECT_TRUE(base::test::RunUntil(
         [&]() { return container->context_menu_ != nullptr; }));
+
+    // Verify button becomes highlighted.
+    EXPECT_TRUE(wait_for_button_highlighted(extension_id));
   }
 }
 
@@ -2964,7 +3065,7 @@ class WebUIToolbarFullyEnabledInteractiveUiTest
     return content::EvalJs(GetWebUIWebContents(), R"(
       (async () => {
         const {AnimationTracker} =
-            await import('chrome://webui-toolbar.top-chrome/app.js');
+            await import('chrome://webui-toolbar.top-chrome/webui_toolbar.js');
         AnimationTracker.showAnimations = false;
         return true;
       })()

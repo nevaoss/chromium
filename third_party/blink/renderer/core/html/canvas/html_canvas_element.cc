@@ -98,7 +98,6 @@
 #include "third_party/blink/renderer/core/input_type_names.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/keywords.h"
-#include "third_party/blink/renderer/core/layout/hit_test_canvas_result.h"
 #include "third_party/blink/renderer/core/layout/layout_html_canvas.h"
 #include "third_party/blink/renderer/core/layout/layout_object_inlines.h"
 #include "third_party/blink/renderer/core/layout/layout_replaced.h"
@@ -285,14 +284,11 @@ bool HTMLCanvasElement::PrepareTransferableResource(
 
   DoDeferredPaintInvalidation();
 
-  scoped_refptr<CanvasResource> frame =
+  scoped_refptr<ExportedCanvasResource> exported_resource =
       RenderingContext()->PaintRenderingResultsToResource(kBackBuffer, reason);
-  if (!frame) {
+  if (!exported_resource) {
     return false;
   }
-
-  auto exported_resource =
-      base::MakeRefCounted<ExportedCanvasResource>(std::move(frame));
 
   CHECK_DEREF(out_resource) = exported_resource->PrepareTransferableResource();
 
@@ -556,10 +552,21 @@ CanvasRenderingContext* HTMLCanvasElement::GetCanvasRenderingContextInternal(
         CanvasContextCreationAttributesCore::PowerPreference::kLowPower;
   }
 
-  context_ = factory->Create(execution_context, this, recomputed_attributes);
-  if (!context_)
+  // Do not assign `context_` directly: `factory->Create()` can synchronously
+  // dispatch events (such as `webglcontextcreationerror`), allowing an event
+  // listener to reentrantly call `getContext()` or
+  // `transferControlToOffscreen()` while `Create()` is still on the stack.
+  CanvasRenderingContext* context =
+      factory->Create(execution_context, this, recomputed_attributes);
+  if (!context) {
     return nullptr;
+  }
+  if (context_ || IsOffscreenCanvasRegistered() || disposing_) {
+    context->Dispose();
+    return nullptr;
+  }
 
+  context_ = context;
   context_->RecordUKMCanvasRenderingAPI();
   context_->RecordUMACanvasRenderingAPI();
 
@@ -713,12 +720,10 @@ void HTMLCanvasElement::PostFinalizeFrame(FlushReason reason) {
   // context types, setting the attribute is a no-op).
   if (LowLatencyEnabled() && (IsWebGL() || IsRenderingContext2D()) &&
       frame_dispatcher_ && !dirty_rect_.IsEmpty()) {
-    if (scoped_refptr<CanvasResource> canvas_resource =
+    if (scoped_refptr<ExportedCanvasResource> exported_resource =
             context_->PaintRenderingResultsToResource(kBackBuffer, reason)) {
       const gfx::Rect src_rect(Size());
       dirty_rect_.Intersect(src_rect);
-      auto exported_resource = base::MakeRefCounted<ExportedCanvasResource>(
-          std::move(canvas_resource));
       frame_dispatcher_->DispatchFrame(std::move(exported_resource),
                                        dirty_rect_, IsOpaque());
       dirty_rect_ = gfx::Rect();
@@ -881,49 +886,23 @@ void HTMLCanvasElement::OnWidthOrHeightAssigned() {
   canvas_is_clear_ = true;
   gfx::Size old_size = Size();
   gfx::Size new_size(w, h);
+  size_ = new_size;
 
   if (frame_dispatcher_) {
     frame_dispatcher_->Reshape(new_size);
   }
 
-  if (IsRenderingContext2D()) {
-    context_->Reset();
-    origin_clean_ = true;
+  if (context_) {
+    context_->Reshape(old_size, new_size);
+  } else {
+    UpdateMemoryUsage();
+  }
 
-    // For Canvas2D, reuse any existing backing buffer rather than dropping and
-    // recreating it. Doing this optimization for WebGL and WebGPU would require
-    // investigation to make sure that it's spec-compliant (including adding any
-    // operations as necessary to get it compliant).
+  if (IsRenderingContext2D()) {
+    origin_clean_ = true;
     if (old_size == new_size) {
       return;
     }
-
-    size_ = new_size;
-    RenderingContext()->SizeChanged();
-
-    ResetLayer();
-    UpdateMemoryUsage();
-    dirty_rect_ = gfx::Rect();
-    if (context_->isContextLost()) {
-      context_->RestoreFromInvalidSizeIfNeeded();
-    }
-  } else if (IsWebGL()) {
-    size_ = new_size;
-    context_->Reshape(old_size, new_size);
-  } else if (IsWebGPU()) {
-    size_ = new_size;
-    RenderingContext()->SizeChanged();
-    UpdateMemoryUsage();
-    context_->Reshape(old_size, new_size);
-  } else if (IsImageBitmapRenderingContext()) {
-    size_ = new_size;
-    RenderingContext()->SizeChanged();
-    UpdateMemoryUsage();
-  } else {
-    size_ = new_size;
-    UpdateMemoryUsage();
-
-    CHECK(!context_);
   }
 
   if (LayoutObject* layout_object = GetLayoutObject()) {
@@ -948,6 +927,10 @@ void HTMLCanvasElement::OnWidthOrHeightAssigned() {
   if (accessibility_manager_) {
     accessibility_manager_->OnResize();
   }
+}
+
+void HTMLCanvasElement::ClearDirtyRect() {
+  dirty_rect_ = gfx::Rect();
 }
 
 void HTMLCanvasElement::ResetLayer() {
@@ -1405,6 +1388,9 @@ UkmParameters HTMLCanvasElement::GetUkmParameters() {
 }
 
 const AtomicString HTMLCanvasElement::ImageSourceURL() const {
+  if (!OriginClean()) {
+    return AtomicString();
+  }
   return AtomicString(ToDataURLInternal(
       ImageEncoderUtils::kDefaultRequestedMimeType, 0, kFrontBuffer));
 }
@@ -1793,7 +1779,14 @@ void HTMLCanvasElement::SetNeedsPushProperties() {
 }
 
 void HTMLCanvasElement::DiscardResources() {
-  ResetLayer();
+  if (auto* host = cc_layer_ ? cc_layer_->layer_tree_host() : nullptr;
+      host && host->in_will_commit()) {
+    host->ScheduleLayerForPostCommitDisposal(cc_layer_);
+    cc_layer_->ClearClient();
+    cc_layer_ = nullptr;
+  } else {
+    ResetLayer();
+  }
   UpdateMemoryUsage();
   dirty_rect_ = gfx::Rect();
 }
@@ -2205,16 +2198,26 @@ void HTMLCanvasElement::OnAxObjectIgnoredStateChanged(bool is_ignored) {
 // TODO(crbug.com/475512055): Remove this function once UKM collection is
 // not needed anymore.
 bool HTMLCanvasElement::GetNeedsAccessibilitySupportHeuristic() {
-  bool is_ignored = false;
-  if (accessibility_manager_ &&
-      accessibility_manager_->GetIsIgnored().has_value()) {
-    is_ignored = *accessibility_manager_->GetIsIgnored();
-  } else if (last_ax_ignored_state_.has_value()) {
-    is_ignored = *last_ax_ignored_state_;
-  } else {
-    // Estimate is_ignored when accessibility is not enabled.
-    // True "is_ignored" needs AXObjectCache, so we approximate here by
-    // checking display/visibility and lack of aria-hidden="true".
+  std::optional<bool> is_ignored;
+  // If kAccessibilityCanvas is enabled, use the true accessibility ignored
+  // state from AXObjectCache if available. When kAccessibilityCanvas is
+  // disabled (e.g. during standalone UKM telemetry studies), AXObjectCache
+  // marks all unlabeled canvases as ignored; using that state would cause
+  // false negatives for users with assistive technologies enabled.
+  if (base::FeatureList::IsEnabled(::features::kAccessibilityCanvas)) {
+    if (accessibility_manager_ &&
+        accessibility_manager_->GetIsIgnored().has_value()) {
+      is_ignored = accessibility_manager_->GetIsIgnored();
+    } else if (last_ax_ignored_state_.has_value()) {
+      is_ignored = last_ax_ignored_state_;
+    }
+  }
+
+  if (!is_ignored.has_value()) {
+    // Estimate is_ignored when accessibility is not enabled or when
+    // kAccessibilityCanvas is disabled. True "is_ignored" needs AXObjectCache,
+    // so approximate here by checking display/visibility and lack of
+    // aria-hidden="true".
     bool is_visible = IsDisplayed();
     bool has_aria_hidden = EqualIgnoringAsciiCase(
         FastGetAttribute(html_names::kAriaHiddenAttr), "true");
@@ -2222,7 +2225,7 @@ bool HTMLCanvasElement::GetNeedsAccessibilitySupportHeuristic() {
   }
 
   return HTMLCanvasAccessibilityManager::ComputeHeuristicResult(*this,
-                                                                is_ignored) ==
+                                                                *is_ignored) ==
          HTMLCanvasAccessibilityManager::HeuristicResult::kNeedsA11ySupport;
 }
 

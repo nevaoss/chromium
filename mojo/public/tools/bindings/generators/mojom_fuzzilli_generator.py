@@ -129,6 +129,7 @@ class Generator(generator.Generator):
 
     return {
       "module": self.module,
+      "mojo_scripts_page_path": self._GetMojoScriptsPagePath(),
       "primary": self.primary_interface,
       "interface_remotes": list(self.interface_remotes.values()),
       "interface_receivers": list(self.interface_receivers.values()),
@@ -425,6 +426,9 @@ class Generator(generator.Generator):
     self.Write(self._GenerateMojoScriptsPage(), self._GetMojoScriptsPagePath())
 
     primary_interface_name = args.fuzzilli_primary_interface_name
+    # GN doesn't provide primary interface when generating Mojo scripts page.
+    if not primary_interface_name:
+      return
     self.primary_interface = next(
       (
         i

@@ -79,6 +79,7 @@ chromium-metrics-reviews@google.com.
   <variant name="AiModeCreateNewThread"
       summary="the Start New Thread with AI Mode command"/>
   <variant name="AiModeShare" summary="the Share with AI Mode command"/>
+  <variant name="AiModeUnshare" summary="the Unshare with AI Mode command"/>
   <variant name="ArrangeSplit" summary="the Arrange Split command"/>
   <variant name="CloseAllTabs" summary="the Close All Tabs command"/>
   <variant name="CloseOtherTabs" summary="the Close Other Tabs command"/>
@@ -495,6 +496,20 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records the SnackbarIdentifier of a tab-closure-related undo snackbar when
     the user actively clicks the Undo action.
+  </summary>
+</histogram>
+
+<histogram name="Tab.CloseUndoBar.UndoneExternally" enum="SnackbarIdentifier"
+    expires_after="2027-07-01">
+  <owner>hitarthkothari@google.com</owner>
+  <owner>ckitagawa@chromium.org</owner>
+  <owner>clank-tab-dev@chromium.org</owner>
+  <summary>
+    Recorded when an undo snackbar for closed tabs is dismissed because all of
+    its tabs were undone or committed outside of the snackbar (e.g. from the tab
+    group row or Recent Tabs) and at least one of them was undone. The value is
+    the snackbar's UMA type (Snackbar.UMA_*). Complements
+    Tab.CloseUndoBar.Undone and Tab.CloseUndoBar.Dismissed.
   </summary>
 </histogram>
 
@@ -3167,7 +3182,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tabs.TabSearch.Mojo.TabUpdated" units="ms"
-    expires_after="2026-09-09">
+    expires_after="2027-02-28">
   <owner>kerenzhu@chromium.org</owner>
   <owner>romanarora@chromium.org</owner>
   <owner>yuhengh@chromium.org</owner>
@@ -3181,7 +3196,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tabs.TabSearch.Mojo.TabUpdated.IsOverlap" enum="Boolean"
-    expires_after="2026-09-09">
+    expires_after="2027-02-28">
   <owner>kerenzhu@chromium.org</owner>
   <owner>romanarora@chromium.org</owner>
   <owner>yuhengh@chromium.org</owner>

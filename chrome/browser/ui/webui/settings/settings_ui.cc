@@ -28,6 +28,7 @@
 #include "chrome/browser/dictation/features.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
+#include "chrome/browser/glic/public/glic_fre_store.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_provider_spec.h"
 #include "chrome/browser/history_embeddings/history_embeddings_utils.h"
@@ -83,6 +84,7 @@
 #include "chrome/browser/ui/webui/settings/reset_settings_handler.h"
 #include "chrome/browser/ui/webui/settings/safety_hub_handler.h"
 #include "chrome/browser/ui/webui/settings/saved_info_handler.h"
+#include "chrome/browser/ui/webui/settings/search/settings_search_handler.h"
 #include "chrome/browser/ui/webui/settings/search_engines_handler.h"
 #include "chrome/browser/ui/webui/settings/security_settings_provider.h"
 #include "chrome/browser/ui/webui/settings/settings_clear_browsing_data_handler.h"
@@ -226,6 +228,26 @@ namespace settings {
 
 using optimization_guide::UserVisibleFeatureKey;
 
+namespace {
+
+// Returns true if the Gemini Enterprise settings section should be shown. With
+// `features::kGeicFre`, the section stays hidden until the GEiC FRE is
+// completed.
+// TODO(crbug.com/571928442): Remove when AI settings page visibility is
+// derived in one place. `ShouldShowSettingsPage()` already requires FRE consent
+// from the active provider's store, so this helper can go away then.
+bool ShouldShowGeicSettings(glic::GlicKeyedService* glic_service) {
+  return glic_service &&
+         glic_service->provider_spec().GetSettingsSection() ==
+             glic::GlicSettingsSection::kGeminiEnterprise &&
+         (!glic_service->provider_spec()
+               .GetFreStore()
+               .HidesSettingsUntilCompleted() ||
+          glic_service->enabling().HasConsented());
+}
+
+}  // namespace
+
 // static
 void SettingsUI::RegisterProfilePrefs(
     user_prefs::PrefRegistrySyncable* registry) {
@@ -359,8 +381,9 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
   regional_capabilities::RegionalCapabilitiesService* regional_capabilties =
       regional_capabilities::RegionalCapabilitiesServiceFactory::GetForProfile(
           profile);
-  html_source->AddBoolean("isEeaChoiceCountry",
-                          regional_capabilties->IsInEeaCountry());
+  html_source->AddBoolean(
+      "mayShowLinkedGoogleServicesSetting",
+      regional_capabilties->MayShowLinkedGoogleServicesSetting());
 
 #if BUILDFLAG(IS_CHROMEOS)
   html_source->AddBoolean(
@@ -567,9 +590,7 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
 
   // AI
   auto* glic_service = glic::GlicKeyedService::Get(profile);
-  const bool show_geic_section =
-      glic_service && glic_service->provider_spec().GetSettingsSection() ==
-                          glic::GlicSettingsSection::kGeminiEnterprise;
+  const bool show_geic_section = ShouldShowGeicSettings(glic_service);
   bool show_glic_section = false;
   bool glic_disallowed_by_admin = false;
 
@@ -918,6 +939,36 @@ void SettingsUI::BindInterface(
       std::move(pending_receiver));
 }
 
+void SettingsUI::BindInterface(
+    mojo::PendingReceiver<settings_search::mojom::SettingsSearchHandlerFactory>
+        pending_receiver) {
+  if (!features::IsSettingsSearch2026Enabled()) {
+    return;
+  }
+  settings_search_handler_.reset();
+  settings_search_handler_factory_receiver_.reset();
+  settings_search_handler_factory_receiver_.Bind(std::move(pending_receiver));
+}
+
+void SettingsUI::CreateSettingsSearchHandler(
+    mojo::PendingReceiver<settings_search::mojom::SettingsSearchHandler>
+        handler) {
+  if (!features::IsSettingsSearch2026Enabled()) {
+    return;
+  }
+  if (settings_search_handler_) {
+    settings_search_handler_factory_receiver_.ReportBadMessage(
+        "CreateSettingsSearchHandler called more than once.");
+    return;
+  }
+  // TODO(b/571663356): Populate from the SettingsSearchRegistry once it
+  // exists. Until then the handler is bound but has nothing to search.
+  settings_search_handler_ =
+      std::make_unique<settings_search::SettingsSearchHandler>(
+          std::move(handler),
+          std::vector<std::unique_ptr<settings_search::SettingsSearchItem>>());
+}
+
 void SettingsUI::UpdateShowGlicState() {
   // The visibility of the Glic page can change based on the user accepting the
   // FRE. Propagate this state to the WebUI value used to display the settings
@@ -931,11 +982,16 @@ void SettingsUI::UpdateShowGlicState() {
       enablement.ShouldShowSettingsPage() &&
       (!glic_service || glic_service->provider_spec().GetSettingsSection() ==
                             glic::GlicSettingsSection::kGemini);
+  // Like `show_glic`, only takes effect on the next page load (e.g. a
+  // refresh, which reuses this controller), since `loadTimeData` is read once
+  // at startup.
+  const bool show_geic = ShouldShowGeicSettings(glic_service);
 
   base::DictValue update;
   update.Set("showGlicSettings", show_glic);
+  update.Set("showGeicSettings", show_geic);
   update.Set("glicDisallowedByAdmin", enablement.DisallowedByAdmin());
-  if (show_glic) {
+  if (show_glic || show_geic) {
     update.Set("showAiPage", true);
   }
 

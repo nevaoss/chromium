@@ -40,6 +40,8 @@ public class AwWebSurface {
     }
 
     private final EventListener mEventListener;
+    private final AwWebContent.SurfaceBindingListener mSurfaceBindingListener;
+    @Nullable private AwWebContent mWebContent;
     @Nullable private AwContents mAwContents;
     private int mWidth;
     private int mHeight;
@@ -47,6 +49,26 @@ public class AwWebSurface {
     public AwWebSurface(EventListener eventListener) {
         assert eventListener != null : "EventListener cannot be null.";
         mEventListener = eventListener;
+        mSurfaceBindingListener =
+                awContents -> {
+                    if (awContents == null) {
+                        mWebContent = null;
+                    }
+                    setAwContents(awContents);
+                };
+    }
+
+    public void setWebContent(@Nullable AwWebContent webContent) {
+        if (mWebContent == webContent) {
+            return;
+        }
+        if (mWebContent != null) {
+            mWebContent.bindSurface(null);
+        }
+        if (webContent != null) {
+            webContent.bindSurface(mSurfaceBindingListener);
+            mWebContent = webContent;
+        }
     }
 
     public void setAwContents(@Nullable AwContents awContents) {
@@ -54,6 +76,10 @@ public class AwWebSurface {
             mAwContents.setWebSurface(null);
             mAwContents.setInvalidateListener(null);
             mAwContents.getSettings().setForceFullscreenUnsupported(false);
+            AwDisplayCutoutController cutoutController = mAwContents.getDisplayCutoutController();
+            if (cutoutController != null) {
+                cutoutController.setInsetViewportBelowWindow(true);
+            }
             WebContents webContents = mAwContents.getWebContents();
             if (webContents != null) {
                 AwWebSurfaceJni.get().setForWebContents(webContents, null);
@@ -64,6 +90,13 @@ public class AwWebSurface {
             mAwContents.setWebSurface(this);
             mAwContents.setInvalidateListener(mEventListener::onInvalidate);
             mAwContents.getSettings().setForceFullscreenUnsupported(true);
+            // Don't shrink the page's viewport when the surface extends off the bottom of the
+            // screen (e.g. inside a LazyColumn), so the page hits its bottom edge and overscrolls
+            // to let the parent scroll the surface into view.
+            AwDisplayCutoutController cutoutController = mAwContents.getDisplayCutoutController();
+            if (cutoutController != null) {
+                cutoutController.setInsetViewportBelowWindow(false);
+            }
             mAwContents.setOverScrollMode(View.OVER_SCROLL_NEVER);
             onWebContentsChanged();
             if (mWidth > 0 && mHeight > 0) {
@@ -109,6 +142,10 @@ public class AwWebSurface {
     public boolean onTouchEvent(MotionEvent event) {
         if (mAwContents == null) return false;
         return mAwContents.getViewMethods().onTouchEvent(event);
+    }
+
+    public void destroy() {
+        setWebContent(null);
     }
 
     @CalledByNative

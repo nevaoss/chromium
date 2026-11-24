@@ -34,14 +34,7 @@ ConversationImpl::~ConversationImpl() {
 
 void ConversationImpl::Start() {
   audio_controller_observation_.Observe(audio_controller_.get());
-  audio_controller_->StartCapture(/*device_id=*/"");
-
   backend_->Connect(this);
-
-  // TODO(b/562979451): This needs to be called once we've received a reply.
-  // Also audio playback/capture should be started only then too. Make this
-  // change once backend is reliably hooked up.
-  session_controller_->OnSessionInitialized();
 }
 
 void ConversationImpl::Stop() {
@@ -77,6 +70,11 @@ void ConversationImpl::OnCapturedAudio(base::span<const int16_t> pcm_data,
   session_controller_->UserAudioLevelUpdate(energy);
 }
 
+void ConversationImpl::OnModelAudioEnvelopeReady(
+    const AudioEnvelope& envelope) {
+  session_controller_->OnModelAudioEnvelopeReady(envelope);
+}
+
 void ConversationImpl::OnPlaybackCompleted(int64_t sequence_number) {
   backend_->ReportPlaybackStatus(sequence_number);
 }
@@ -86,8 +84,14 @@ void ConversationImpl::OnAudioError(ErrorCode error) {
 }
 
 void ConversationImpl::OnBackendInitialized() {
+  if (session_controller_->GetSessionLifecycle() ==
+      SessionLifecycle::kFinished) {
+    return;
+  }
   backend_->SendToolSetUpdate(session_controller_->GetToolDefinitions());
   session_controller_->SetSessionLifecycle(SessionLifecycle::kLive);
+  audio_controller_->StartCapture(/*device_id=*/"");
+  session_controller_->OnSessionInitialized();
 }
 
 void ConversationImpl::OnBackendClosed() {

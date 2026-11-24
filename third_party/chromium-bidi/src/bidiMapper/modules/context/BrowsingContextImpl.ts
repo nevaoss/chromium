@@ -619,7 +619,14 @@ export class BrowsingContextImpl {
                   ChromiumBidi.BrowsingContext.EventNames.DomContentLoaded,
                 params: {
                   context: this.id,
-                  navigation: this.#navigationTracker.currentNavigationId,
+                  // The event belongs to the document of `params.loaderId`.
+                  // It must not use the ID of a pending navigation, which
+                  // has not committed yet (e.g. after a failed navigation,
+                  // the error page can fire lifecycle events after the next
+                  // navigation starts).
+                  navigation: this.#navigationTracker.navigationIdForLoaderId(
+                    params.loaderId,
+                  ),
                   timestamp: getTimestamp(),
                   url: this.#navigationTracker.url,
                   userContext: this.userContext,
@@ -640,7 +647,14 @@ export class BrowsingContextImpl {
                 method: ChromiumBidi.BrowsingContext.EventNames.Load,
                 params: {
                   context: this.id,
-                  navigation: this.#navigationTracker.currentNavigationId,
+                  // The event belongs to the document of `params.loaderId`.
+                  // It must not use the ID of a pending navigation, which
+                  // has not committed yet (e.g. after a failed navigation,
+                  // the error page can fire lifecycle events after the next
+                  // navigation starts).
+                  navigation: this.#navigationTracker.navigationIdForLoaderId(
+                    params.loaderId,
+                  ),
                   timestamp: getTimestamp(),
                   url: this.#navigationTracker.url,
                   userContext: this.userContext,
@@ -2099,6 +2113,14 @@ export class BrowsingContextImpl {
     );
   }
 
+  async setBypassCSP(bypassCSP: true | null): Promise<void> {
+    await Promise.all(
+      this.#getAllRelatedCdpTargets().map(
+        async (cdpTarget) => await cdpTarget.setBypassCSP(bypassCSP),
+      ),
+    );
+  }
+
   async setScriptingEnabled(scriptingEnabled: false | null): Promise<void> {
     await Promise.all(
       this.#getAllRelatedCdpTargets().map(
@@ -2145,13 +2167,17 @@ export class BrowsingContextImpl {
     );
   }
 
-  async setMediaFeaturesOverride(
+  async setEmulatedMedia(
     mediaFeatures: Emulation.MediaFeatures | null,
+    forcedColorsModeTheme: Emulation.ForcedColorsModeTheme | null,
   ): Promise<void> {
     await Promise.all(
       this.#getAllRelatedCdpTargets().map(
         async (cdpTarget) =>
-          await cdpTarget.setMediaFeaturesOverride(mediaFeatures),
+          await cdpTarget.setEmulatedMedia(
+            mediaFeatures,
+            forcedColorsModeTheme,
+          ),
       ),
     );
   }

@@ -103,6 +103,7 @@
 #include "chrome/browser/ui/tabs/tab_drag_api/desktop_tab_drag_impl/tab_drag_window_adapter_impl.h"
 #include "chrome/browser/ui/tabs/tab_drag_api/tab_drag_service_feature.h"
 #include "chrome/browser/ui/tabs/tab_group_deletion_dialog_controller.h"
+#include "chrome/browser/ui/tabs/tab_group_focus_iph_controller.h"
 #include "chrome/browser/ui/tabs/tab_list_bridge.h"
 #include "chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.h"
 #include "chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_injector_impl.h"
@@ -146,7 +147,6 @@
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_closer.h"
 #include "chrome/browser/ui/views/profiles/profile_customization_bubble_sync_controller.h"
 #include "chrome/browser/ui/views/profiles/profile_menu_coordinator.h"
-#include "chrome/browser/ui/views/qrcode_generator/qrcode_window_controller.h"
 #include "chrome/browser/ui/views/sharing/sharing_window_controller.h"
 #include "chrome/browser/ui/views/side_panel/bookmarks/bookmarks_side_panel_coordinator.h"
 #include "chrome/browser/ui/views/side_panel/comments/comments_side_panel_coordinator.h"
@@ -1060,11 +1060,6 @@ void BrowserWindowFeatures::InitPostWindowConstruction(
               *browser_, browser_);
     }
 
-    qrcode_window_controller_ =
-        GetUserDataFactory()
-            .CreateInstance<qrcode_generator::QRCodeWindowController>(*browser,
-                                                                      browser);
-
     if (browser->GetTabStripModel()->SupportsTabGroups() &&
         tab_groups::SavedTabGroupUtils::SupportsSharedTabGroups() &&
         tab_groups::TabGroupSyncServiceFactory::GetForProfile(profile)) {
@@ -1127,6 +1122,12 @@ void BrowserWindowFeatures::InitPostWindowConstruction(
               .CreateInstance<send_tab_to_self::SendTabToSelfIphController>(
                   *browser, browser);
     }
+
+    if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing)) {
+      tab_group_focus_iph_controller_ =
+          GetUserDataFactory().CreateInstance<TabGroupFocusIphController>(
+              *browser, browser);
+    }
   }
 
   // Initialize post-window dependent embedder features last.
@@ -1157,6 +1158,7 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
   // InitPostWindowConstruction (reverse).
 
   // TYPE_NORMAL members.
+  tab_group_focus_iph_controller_.reset();
   send_tab_to_self_iph_controller_.reset();
   vertical_tab_iph_controller_.reset();
   ttc_entrypoint_controller_.reset();
@@ -1168,7 +1170,6 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
   if (shared_tab_group_feedback_controller_) {
     shared_tab_group_feedback_controller_->TearDown();
   }
-  qrcode_window_controller_.reset();
   memory_saver_opt_in_iph_controller_.reset();
   ios_promo_controller_.reset();
   if (chrome_labs_coordinator_) {

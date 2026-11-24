@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'chrome://webui-toolbar.top-chrome/app.js';
+import 'chrome://webui-toolbar.top-chrome/webui_toolbar.js';
 
 import {assertEquals, assertFalse, assertGE, assertLE, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestSearchboxBrowserProxy} from 'chrome://webui-test/cr_components/searchbox/test_searchbox_browser_proxy.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
-import {BrowserProxyImpl, OmniboxTextColor, SearchboxBrowserProxy} from 'chrome://webui-toolbar.top-chrome/app.js';
-import type {ReadonlyOmniboxElement} from 'chrome://webui-toolbar.top-chrome/app.js';
+import {BrowserProxyImpl, OmniboxTextColor, SearchboxBrowserProxy} from 'chrome://webui-toolbar.top-chrome/webui_toolbar.js';
+import type {ReadonlyOmniboxElement} from 'chrome://webui-toolbar.top-chrome/webui_toolbar.js';
 
 import {TestToolbarBrowserProxy} from './test_toolbar_browser_proxy.js';
 import type {TestToolbarUiHandler} from './test_toolbar_browser_proxy.js';
@@ -1559,4 +1559,89 @@ suite('ReadonlyOmnibox', function() {
     assertTrue(!!args[0].dropText);
     assertEquals('dropped text', args[0].dropText.text);
   });
+
+  // Like the native omnibox, dragging text out asks the browser to close the
+  // suggestions popup, so that it does not cover the drop target.
+  test('Dragging text notifies the browser', async () => {
+    const input = getTextInput();
+    input.focus();
+    input.value = 'hello world';
+    input.setSelectionRange(0, input.value.length);
+    omnibox.adjustedCopyResult = {
+      adjustedText: 'hello world',
+      adjustedUrl: null,
+      pageTitle: null,
+    };
+    await microtasksFinished();
+
+    uiHandler.reset();
+    omnibox.dispatchEvent(new DragEvent('dragstart', {
+      bubbles: true,
+      cancelable: true,
+      dataTransfer: new DataTransfer(),
+    }));
+    await microtasksFinished();
+
+    assertEquals(1, uiHandler.getCallCount('onOmniboxAction'));
+    const args = uiHandler.getArgs('onOmniboxAction');
+    assertTrue(!!args[0].dragStart);
+  });
+
+  // The adjusted copy result is fetched asynchronously, so a drag can start
+  // before it is set. The selected text is still dragged, so the browser is
+  // still notified.
+  test(
+      'Dragging text before the adjusted copy result is set notifies the ' +
+          'browser',
+      async () => {
+        const input = getTextInput();
+        input.focus();
+        input.value = 'hello world';
+        input.setSelectionRange(0, input.value.length);
+        // Let the selection change trigger its own copy result refresh first,
+        // so that it does not overwrite the result cleared below.
+        await uiHandler.whenCalled('adjustOmniboxTextForCopy');
+        await microtasksFinished();
+        omnibox.adjustedCopyResult = null;
+        await microtasksFinished();
+
+        uiHandler.reset();
+        omnibox.dispatchEvent(new DragEvent('dragstart', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: new DataTransfer(),
+        }));
+        await microtasksFinished();
+
+        assertEquals(1, uiHandler.getCallCount('onOmniboxAction'));
+        const args = uiHandler.getArgs('onOmniboxAction');
+        assertTrue(!!args[0].dragStart);
+      });
+
+  // A drag without selected text carries no text, so it does not notify the
+  // browser.
+  test(
+      'Dragging without selected text does not notify the browser',
+      async () => {
+        const input = getTextInput();
+        input.focus();
+        input.value = 'hello world';
+        input.setSelectionRange(0, 0);
+        omnibox.adjustedCopyResult = {
+          adjustedText: '',
+          adjustedUrl: null,
+          pageTitle: null,
+        };
+        await microtasksFinished();
+
+        uiHandler.reset();
+        omnibox.dispatchEvent(new DragEvent('dragstart', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: new DataTransfer(),
+        }));
+        await microtasksFinished();
+
+        assertEquals(0, uiHandler.getCallCount('onOmniboxAction'));
+      });
 });

@@ -44,10 +44,9 @@ import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.omnibox.FuseboxSessionState;
 import org.chromium.chrome.browser.omnibox.R;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentModelList.FuseboxAttachmentChangeListener;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.PopupState;
+import org.chromium.chrome.browser.omnibox.fusebox.Fusebox.FuseboxLayoutMode;
+import org.chromium.chrome.browser.omnibox.fusebox.Fusebox.FuseboxState;
+import org.chromium.chrome.browser.omnibox.fusebox.Fusebox.PopupState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.AiModeActivationSource;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.FuseboxAttachmentButtonType;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.MobileFuseboxPickerOutcome;
@@ -95,6 +94,7 @@ import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modelutil.ListObservable;
 import org.chromium.ui.modelutil.ListObservable.ListObserver;
 import org.chromium.ui.modelutil.PropertyModel;
+import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
 import org.chromium.ui.permissions.AndroidPermissionDelegate;
 
 import java.io.ByteArrayOutputStream;
@@ -106,7 +106,7 @@ import java.util.function.Supplier;
 
 /** Mediator for the Fusebox component. */
 @NullMarked
-/* package */ class FuseboxMediator implements FuseboxAttachmentChangeListener, BackPressHandler {
+class FuseboxMediator implements BackPressHandler {
 
     /* package */ static final @IconResourceIds int UNSPECIFIED_ICON_RESOURCE_ID =
             IconResourceIds.PLACE_WHITE;
@@ -342,8 +342,12 @@ import java.util.function.Supplier;
 
         if (mModelList != null) {
             mModelList.removeObserver(mListObserver);
-            mModelList.removeAttachmentChangeListener(this);
             mModelList.setAttachmentUploadFailedListener(null);
+        }
+
+        SimpleRecyclerViewAdapter oldAdapter = mModel.get(FuseboxProperties.ADAPTER);
+        if (oldAdapter != null) {
+            oldAdapter.destroy();
         }
 
         mModelList = modelList;
@@ -353,7 +357,6 @@ import java.util.function.Supplier;
             mModel.set(FuseboxProperties.ADAPTER, adapter);
             mModelList.setAttachmentUploadFailedListener(this::onAttachmentUploadFailed);
             mModelList.updateVisualsForState(mBrandedColorScheme);
-            mModelList.addAttachmentChangeListener(this);
             mModelList.addObserver(mListObserver);
             mSelectionController = new AttachmentsSelectionController(mModelList);
             onAttachmentsChanged();

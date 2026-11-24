@@ -85,8 +85,6 @@ import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.IntentHandler;
-import org.chromium.chrome.browser.RecentlyClosedEntriesManagerTracker;
-import org.chromium.chrome.browser.RecentlyClosedEntriesManagerTrackerFactory;
 import org.chromium.chrome.browser.app.tabmodel.TabModelOrchestrator;
 import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -102,6 +100,8 @@ import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.SessionStart
 import org.chromium.chrome.browser.multiwindow.UiUtils.NameWindowDialogSource;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileProvider;
+import org.chromium.chrome.browser.recent_tabs.RecentlyClosedEntriesManagerTracker;
+import org.chromium.chrome.browser.recent_tabs.RecentlyClosedEntriesManagerTrackerFactory;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncFeatures;
 import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncFeaturesJni;
@@ -2355,7 +2355,7 @@ public class MultiInstanceManagerApi31UnitTest {
 
     @Test
     public void testShowNameWindowDialog_UsesCustomTitle() {
-        Activity realActivity = Robolectric.setupActivity(Activity.class);
+        Activity realActivity = Robolectric.buildActivity(Activity.class).setup().get();
         var manager = createTestMultiInstanceManager(realActivity);
         manager.initialize(INSTANCE_ID_1, TASK_ID_56, SupportedProfileType.MIXED);
 
@@ -2378,7 +2378,7 @@ public class MultiInstanceManagerApi31UnitTest {
 
     @Test
     public void testShowNameWindowDialog_UsesRegularTitleAsFallback() {
-        Activity realActivity = Robolectric.setupActivity(Activity.class);
+        Activity realActivity = Robolectric.buildActivity(Activity.class).setup().get();
         var manager = createTestMultiInstanceManager(realActivity);
         manager.initialize(INSTANCE_ID_1, TASK_ID_56, SupportedProfileType.MIXED);
 
@@ -2400,7 +2400,7 @@ public class MultiInstanceManagerApi31UnitTest {
 
     @Test
     public void testShowNameWindowDialog_DialogCallbackUpdatesTitle() {
-        Activity realActivity = Robolectric.setupActivity(Activity.class);
+        Activity realActivity = Robolectric.buildActivity(Activity.class).setup().get();
         var manager = createTestMultiInstanceManager(realActivity);
         manager.initialize(INSTANCE_ID_1, TASK_ID_56, SupportedProfileType.MIXED);
         final String defaultTitle = "Default Title";
@@ -2426,7 +2426,7 @@ public class MultiInstanceManagerApi31UnitTest {
 
     @Test
     public void testShowNameWindowDialog_DialogCallbackIgnoresDefaultTitle() {
-        Activity realActivity = Robolectric.setupActivity(Activity.class);
+        Activity realActivity = Robolectric.buildActivity(Activity.class).setup().get();
         var manager = createTestMultiInstanceManager(realActivity);
         manager.initialize(INSTANCE_ID_1, TASK_ID_56, SupportedProfileType.MIXED);
         final String defaultTitle = "Default Title";

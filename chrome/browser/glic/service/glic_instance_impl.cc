@@ -90,7 +90,7 @@
 #endif
 
 #if BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/actor/android/offscreen_rendering_manager_android.h"
+#include "chrome/browser/actor/android/background_tabs/offscreen_rendering_manager_android.h"
 #include "chrome/browser/glic/host/context/glic_empty_pinned_tab_manager.h"
 #include "chrome/browser/glic/widget/conversions.h"
 #include "chrome/browser/glic/widget/glic_floating_ui_android.h"
@@ -485,8 +485,6 @@ void GlicInstanceImpl::Show(ShowOptions options) {
 
   EmbedderKey new_key = GetEmbedderKey(options);
 
-  GlicUiEmbedder* embedder_to_show = nullptr;
-
   if (IsActiveEmbedder(new_key)) {
     if (!options.reinitialize_if_already_active) {
       // The panel is already up, so there is nothing to re-show. Unless this
@@ -500,23 +498,28 @@ void GlicInstanceImpl::Show(ShowOptions options) {
         host_.NotifyWindowIntentToShow();
       }
       return;
-    } else {
-      embedder_to_show = GetActiveEmbedder();
     }
   } else {
     DeactivateCurrentEmbedder();
     // Ensure that there is a WebContents for the embedder to use.
     EnsureHostAwake();
     StopOffscreenRendering();
-    embedder_to_show = CreateActiveEmbedder(options);
-    CHECK(embedder_to_show);
-    host_.SetDelegate(embedder_to_show->GetHostEmbedderDelegate());
+    GlicUiEmbedder* embedder = CreateActiveEmbedder(options);
+    CHECK(embedder);
+    host_.SetDelegate(embedder->GetHostEmbedderDelegate());
     SetActiveEmbedderAndNotifyVisibilityChange(new_key);
   }
 
   MaybeWarmZeroStateSuggestions(options.invocation_source);
 
-  MaybeShowHostUi(embedder_to_show, options.invocation_source,
+  // Re-fetch the active embedder rather than caching a raw pointer across
+  // synchronous notifications that may deactivate or destroy the embedder.
+  GlicUiEmbedder* embedder_to_show = GetActiveEmbedderForKey(new_key);
+  if (!embedder_to_show) {
+    return;
+  }
+
+  MaybeShowHostUi(*embedder_to_show, options.invocation_source,
                   options.prompt_suggestion, options.fre_override);
 
   if (instance_metrics().MarkShownAndCheckIfFirstTime(new_key)) {
@@ -533,12 +536,19 @@ void GlicInstanceImpl::Show(ShowOptions options) {
     }
   }
 
+  // MaybeShowHostUi() or OnInvoked() may also deactivate or destroy the
+  // embedder, so re-fetch before calling Show().
+  embedder_to_show = GetActiveEmbedderForKey(new_key);
+  if (!embedder_to_show) {
+    return;
+  }
+
   embedder_to_show->Show(options);
   host_.SetWebContentsVisibilityOverride(std::nullopt);
   // WARNING: Show() may result in deleting the embedder! Check if the embedder
   // is still active before calling Focus().
-  if (options.focus_on_show && IsActiveEmbedder(new_key)) {
-    if (auto* active_embedder = GetActiveEmbedder()) {
+  if (options.focus_on_show) {
+    if (auto* active_embedder = GetActiveEmbedderForKey(new_key)) {
       active_embedder->Focus();
     }
   }
@@ -973,7 +983,9 @@ void GlicInstanceImpl::UpdateOffscreenRenderingState() {
 
   if (should_render_offscreen) {
     EnsureHostAwake();
-    if (content::WebContents* contents = host_.webui_contents()) {
+    // TODO(b/572001459): Re-attach offscreen rendering when the host contents
+    // are recreated (e.g. Host::Reload()) while offscreen rendering is active.
+    if (content::WebContents* contents = GetOffscreenRenderingContents()) {
       actor::StartOffscreenRenderingForWebContents(contents);
       is_offscreen_rendering_active_ = true;
     }
@@ -983,10 +995,19 @@ void GlicInstanceImpl::UpdateOffscreenRenderingState() {
 #endif
 }
 
+// Returns the WebContents to render offscreen: the WebUI contents in webview
+// mode, or the guest contents that hosts the web client in NoWebview mode.
+// TODO(b/534807813): Remove this helper once webview is deleted and have
+// callers use host_.web_client_contents() directly.
+content::WebContents* GlicInstanceImpl::GetOffscreenRenderingContents() const {
+  return service_->IsNoWebviewEnabled() ? host_.web_client_contents()
+                                        : host_.webui_contents();
+}
+
 void GlicInstanceImpl::StopOffscreenRendering() {
 #if BUILDFLAG(IS_ANDROID)
   if (is_offscreen_rendering_active_) {
-    if (content::WebContents* contents = host_.webui_contents()) {
+    if (content::WebContents* contents = GetOffscreenRenderingContents()) {
       actor::StopOffscreenRenderingForWebContents(contents);
     }
     is_offscreen_rendering_active_ = false;
@@ -1146,6 +1167,13 @@ GlicUiEmbedder* GlicInstanceImpl::GetActiveEmbedder() {
     return it->second.embedder.get();
   }
   return nullptr;
+}
+
+GlicUiEmbedder* GlicInstanceImpl::GetActiveEmbedderForKey(EmbedderKey key) {
+  if (!IsActiveEmbedder(key)) {
+    return nullptr;
+  }
+  return GetActiveEmbedder();
 }
 
 void GlicInstanceImpl::DeactivateCurrentEmbedder() {
@@ -1322,11 +1350,11 @@ void GlicInstanceImpl::UpdateFloatingPanelCanAttach() {
 }
 
 void GlicInstanceImpl::MaybeShowHostUi(
-    GlicUiEmbedder* embedder,
+    GlicUiEmbedder& embedder,
     mojom::InvocationSource invocation_source,
     std::optional<std::string> prompt_suggestion,
     mojom::FreOverride fre_override) {
-  Host::EmbedderDelegate* delegate = embedder->GetHostEmbedderDelegate();
+  Host::EmbedderDelegate* delegate = embedder.GetHostEmbedderDelegate();
   if (!delegate) {
     return;
   }
@@ -1612,6 +1640,7 @@ void GlicInstanceImpl::MaybeInitializeHiddenClient(
     EnsureHostAwake();
   }
 
+  host_.NotifyWindowIntentToShow();
   NotifyPanelWillOpen(invocation_source, std::nullopt, fre_override);
 }
 

@@ -9,7 +9,6 @@
 
 #include <array>
 
-#include "base/notreached.h"
 #include "media/base/media_export.h"
 #include "media/cdm/api/content_decryption_module.h"
 #if defined(USE_NEVA_CDM)
@@ -38,6 +37,7 @@ struct SupportedVersion {
   bool enabled;
 };
 
+<<<<<<< HEAD
 #if defined(USE_NEVA_CDM)
 inline constexpr std::array<SupportedVersion, 4>
     kSupportedCdmInterfaceVersions = {{
@@ -56,11 +56,19 @@ inline constexpr std::array<SupportedVersion, 3>
         {12, false},
     }};
 #endif  // defined(USE_NEVA_CDM)
+=======
+constexpr std::array<SupportedVersion, 3> kSupportedCdmInterfaceVersions = {{
+    {10, true},
+    {11, true},
+    {12, false},
+}};
+>>>>>>> 158.0.8127.0~1
 
 // In most cases CdmInterface::kVersion == CdmInterface::Host::kVersion. However
 // this is not guaranteed. For example, a newer CDM interface may use an
 // existing CDM host. So we keep CDM host support separate from CDM interface
 // support. In CdmInterfaceTraits we also static assert that for supported CDM
+<<<<<<< HEAD
 // interface, CdmInterface::Host::kVersion must also be supported. The exception
 // is CDM_10, whose Host_10 is no longer supported; CDM_10 remains listed only
 // for manifest compatibility while shipped manifests list
@@ -71,6 +79,11 @@ inline constexpr int kMinSupportedCdmHostVersion = 8;
 inline constexpr int kMinSupportedCdmHostVersion = 11;
 #endif  // defined(USE_NEVA_CDM)
 inline constexpr int kMaxSupportedCdmHostVersion = 12;
+=======
+// interface, CdmInterface::Host::kVersion must also be supported.
+constexpr int kMinSupportedCdmHostVersion = 10;
+constexpr int kMaxSupportedCdmHostVersion = 12;
+>>>>>>> 158.0.8127.0~1
 
 constexpr bool IsSupportedCdmModuleVersion(int version) {
   return version == CDM_MODULE_VERSION;
@@ -108,21 +121,6 @@ constexpr bool IsCdmInterfaceVersionEnabledByDefault(int version) {
 // Returns whether the CDM interface of |version| is supported in the
 // implementation and enabled at runtime.
 MEDIA_EXPORT bool IsSupportedAndEnabledCdmInterfaceVersion(int version);
-
-// Returns the minimum CDM interface version enabled by default.
-constexpr int GetMinEnabledCdmInterfaceVersion() {
-  for (const auto& entry : kSupportedCdmInterfaceVersions) {
-    if (entry.enabled) {
-      return entry.version;
-    }
-  }
-  NOTREACHED();
-}
-
-// Returns the minimum supported CDM host interface version.
-constexpr int GetMinSupportedCdmHostVersion() {
-  return kMinSupportedCdmHostVersion;
-}
 
 typedef bool (*VersionCheckFunc)(int version);
 
@@ -177,11 +175,8 @@ template <>
 struct CdmInterfaceTraits<10> {
   using CdmInterface = cdm::ContentDecryptionModule_10;
   static_assert(CdmInterface::kVersion == 10, "CDM interface version mismatch");
-  // CdmInterface::Host is Host_10, which is no longer supported, so there is no
-  // host check here. CDM_10 remains listed only for manifest compatibility
-  // while shipped manifests list x-cdm-interface-versions=10 alongside Host_11.
-  // TODO(b/425796122): Remove CDM_10 once shipped CDM manifests also list 11 in
-  // x-cdm-interface-versions.
+  static_assert(IsSupportedCdmHostVersion(CdmInterface::Host::kVersion),
+                "Host not supported");
   static_assert(
       CdmInterface::kIsStable ||
           !IsCdmInterfaceVersionEnabledByDefault(CdmInterface::kVersion),

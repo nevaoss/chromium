@@ -60,8 +60,13 @@ chromium-metrics-reviews@google.com.
                their home screen (using a text bubble)"/>
   <variant name="IPH_AimActivationHint"
       summary="A hint to activate AI Mode on Android Desktop via keystrokes."/>
+  <variant name="IPH_AndroidBottomBarAddressBar"
+      summary="Nudges the user to move the top address bar to the bottom in
+               the Android bottom bar education flow."/>
   <variant name="IPH_AndroidBottomBarEducation"
       summary="Education onboarding and IPHs for the Android bottom bar."/>
+  <variant name="IPH_AndroidBottomBarEducationTooltips"
+      summary="Education tooltips for the Android bottom bar."/>
   <variant name="IPH_AndroidBottomBarGlic"
       summary="Describes the GLIC button added in the bottom bar."/>
   <variant name="IPH_AndroidBottomBarNewTab"
@@ -101,7 +106,7 @@ chromium-metrics-reviews@google.com.
                Google Wallet passses"/>
   <variant name="IPH_AutofillAmbientAutofillSpiiDisclaimer"
       summary="educating users about verifying sensitive personal context
-               suggestions filled via Ambient Autofill on Android"/>
+               suggestions filled via Ambient Autofill"/>
   <variant name="IPH_AutofillAtMemory"
       summary="message shown when users copy/paste a value from another tab
                educating them that they can use the Autofill AtMemory feature
@@ -216,6 +221,8 @@ chromium-metrics-reviews@google.com.
       summary="contextual search for users who use web search"/>
   <variant name="IPH_ContextualTasksEphemeralToolbarButton"
       summary="contextual tasks ephemeral toolbar button"/>
+  <variant name="IPH_ContextualTasksPinnedIconChanged"
+      summary="contextual tasks pinned toolbar button icon change toast"/>
   <variant name="IPH_CriticalActionAppMenu"
       summary="educating users on the Chrome app menu where to view Gemini
                key browsing actions in history."/>
@@ -246,6 +253,8 @@ chromium-metrics-reviews@google.com.
       summary="Desktop NTP contextual search"/>
   <variant name="IPH_DesktopSharedHighlighting"
       summary="Sharing links with highlighted text"/>
+  <variant name="IPH_Dictation"
+      summary="Dictation IPH shown next to a focused text field"/>
   <variant name="IPH_DiscardRing" summary="Discard ring for tabs"/>
   <variant name="IPH_DownloadEsbPromo" summary="download ESB promo"/>
   <variant name="IPH_DownloadHome" summary="download home"/>
@@ -374,6 +383,8 @@ chromium-metrics-reviews@google.com.
   <variant name="IPH_iOSBackgroundNewBadge"
       summary="showing the new badge on a background tile in the home
                customization menu"/>
+  <variant name="IPH_iOSBottomOmniboxFeature"
+      summary="showing the IPH to move the omnibox to the bottom on iOS"/>
   <variant name="IPH_iOSBWGPromo" summary="shows users a promo for BWG"/>
   <variant name="IPH_iOSChoiceScreenFeature"
       summary="(obsolete) showing the Choice screen on iOS"/>
@@ -786,6 +797,8 @@ chromium-metrics-reviews@google.com.
                teaching the user about tab group sync and save functionality"/>
   <variant name="IPH_TabGroupsDragAndDrop"
       summary="educating user to drop one tab on another tab to create group"/>
+  <variant name="IPH_TabGroupsFocusingFeature"
+      summary="educating user on how to focus on a tab group"/>
   <variant name="IPH_TabGroupSharedNotificationBubbleOnStrip"
       summary="For tab group share notification bubble on tablet tab strip."/>
   <variant name="IPH_TabGroupShareNotice"
@@ -815,6 +828,8 @@ chromium-metrics-reviews@google.com.
                the GTS"/>
   <variant name="IPH_TabGroupsTapToSeeAnotherTab"
       summary="(obsolete) tab strip"/>
+  <variant name="IPH_TabGroupsUnfocusingFeature"
+      summary="pointing out the Unfocus button when focusing on a tab group"/>
   <variant name="IPH_TabGroupSyncOnStrip"
       summary="For tab group sync on tablet tab strip."/>
   <variant name="IPH_TabGroupsYourTabsTogether"

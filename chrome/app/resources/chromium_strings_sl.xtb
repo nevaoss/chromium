@@ -258,7 +258,6 @@ Nekatere funkcije morda niso na voljo in spremembe nastavitev ne bodo shranjene.
 <translation id="3531741627422851418">Koda QR za prenos brskalnika Chromium v mobilnih napravah</translation>
 <translation id="354621070532799440">Opomnik: Googlove najboljše varnostne funkcije v vašem žepu</translation>
 <translation id="3561853857681580870">Če želite deliti zaslon, v sistemskih nastavitvah omogočite snemanje zaslona za Chromium.</translation>
-<translation id="3588112919289558122">Izboljšana zaščita izklopi optimizacijo JavaScripta za spletna mesta, ki jih Chromium ne prepozna</translation>
 <translation id="3597003331831379823">Nastavitve s povečanimi pravicami ni bilo mogoče izvesti. <ph name="METAINSTALLER_ERROR" /></translation>
 <translation id="3600428265489994557">Prijava v Chromium</translation>
 <translation id="3639635944603682591">Podatki brskanja te osebe bodo izbrisani iz te naprave. Če želite podatke obnoviti, se prijavite v Chromium kot <ph name="USER_EMAIL" />.</translation>
@@ -297,7 +296,6 @@ Nekatere funkcije morda niso na voljo in spremembe nastavitev ne bodo shranjene.
 <translation id="3971865010372729242">Ko vnašate v naslovno vrstico ali iskalno polje, Chromium vaše vnose pošlje v orodja za iskanje, orodja z umetno inteligenco in agentska orodja organizacije zaradi prejemanja predlogov.</translation>
 <translation id="3975724895399328945">O različici &amp;Google Chrome for Testing</translation>
 <translation id="3997429360543082038">O sistemu Chromium OS</translation>
-<translation id="4010059961270896984">Ko obišete spletno mesto, Chromium prek strežnika za zasebnost, ki skrije vaš naslov IP, <ph name="BEGIN_LINK" />Google Varnemu brskanju<ph name="END_LINK" /> pošlje zakriti del URL-jev. Če spletno mesto naredi kaj sumljivega, se pošljejo tudi celotni URL-ji in delčki vsebine strani.</translation>
 <translation id="4016217212818346953">Poskrbite za svojo varnost z upraviteljem gesel</translation>
 <translation id="4019629340646866719">Chromium OS omogoča dodatna <ph name="BEGIN_LINK_CROS_OSS" />odprtokodna programska oprema<ph name="END_LINK_CROS_OSS" />, enako kot <ph name="BEGIN_LINK_LINUX_OSS" />razvojno okolje Linux<ph name="END_LINK_LINUX_OSS" />.</translation>
 <translation id="4022972681110646219">Prevedi zaslon</translation>
@@ -375,6 +373,7 @@ Nekatere funkcije morda niso na voljo in spremembe nastavitev ne bodo shranjene.
 <translation id="4786083865378785874">Če je Gemini v Chromiumu odprt, stransko podokno ostane odprto pri ustvarjanju novih zavihkov</translation>
 <translation id="479167709087336770">Uporabljeno je isto preverjanje črkovanja kot v Iskanju Google. Besedilo, ki ga vnesete v brskalniku, je poslano Googlu. To lahko kadar koli spremenite v nastavitvah.</translation>
 <translation id="4814736265800133385">Uporaba Chromiuma brez računa</translation>
+<translation id="4839733921943823254">Pripni bližnjico</translation>
 <translation id="4888717733111232871">Pravilo za dohodni promet za Chromium, ki omogoča promet mDNS.</translation>
 <translation id="4893347770495441059">Znova zaženite, če želite posodobiti &amp;Chromium</translation>
 <translation id="4918086044614829423">Sprejmi</translation>
@@ -458,7 +457,6 @@ Nekatere funkcije morda niso na voljo in spremembe nastavitev ne bodo shranjene.
 <translation id="5821520528363214608">Če želite v računu Google uporabljati in shranjevati podatke iz Chromiuma, posodobite Chromium</translation>
 <translation id="5824893331272123205">Tega podokna ni bilo mogoče naložiti. Poskusite znova.</translation>
 <translation id="5862307444128926510">Pozdravljeni v Chromiumu</translation>
-<translation id="5867606647614813312">Vklopi dodatne funkcije, ki zagotavljajo Chromiumovo najmočnejšo zaščito</translation>
 <translation id="5871205389137001634">Kliknite, če želite zapreti slikovno iskanje</translation>
 <translation id="5883558403894052917">Chromium je ugotovil, da ti elementi vsebujejo zlonamerno programsko opremo:</translation>
 <translation id="5889361821821684993">Chromium redno preverja, ali so v brskalniku na voljo najvarnejše nastavitve Če boste morali kaj pregledati, vam bomo sporočili.</translation>
@@ -760,13 +758,13 @@ Chromium ne more obnoviti vaših nastavitev.</translation>
 <translation id="8522801943730206384">Chromium lahko preveri gesla, če jih shranite</translation>
 <translation id="8525579356836940628">Namestitev je prekinjena</translation>
 <translation id="8545729292258443488">Z aplikacijo Chromium v napravi <ph name="DEVICE_TYPE" /> vzemite gesla, zavihke in drugo s seboj na pot</translation>
-<translation id="8548787790260785208">Prejmite opozorilo, če Chromium v javni podatkovni kršitvi najde katero od vaših gesel</translation>
 <translation id="8555465886620020932">Napaka storitve: <ph name="SERVICE_ERROR" />.</translation>
 <translation id="8556055872671007529">Nekatere funkcije in razširitve Chromiuma imajo bližnjice. Lahko jih znova vklopite.</translation>
 <translation id="8556420416730706394">Slikovno iskanje lahko pripnete za preprost dostop. Kliknite gumb za pripenjanje na vrhu stranskega podokna.</translation>
 <translation id="856656450041460113">Iskanje po seznamu jezikov</translation>
 <translation id="8576826849825683917">Chromium upravlja več organizacij</translation>
 <translation id="8586442755830160949">Copyright <ph name="YEAR" /> Ustvarjalci Chromiuma. Vse pravice pridržane.</translation>
+<translation id="8590782867495422699">Vnovično odpiranje načina umetne inteligence v Iskanju Google</translation>
 <translation id="8619360774459241877">Zagon Chromiuma …</translation>
 <translation id="8624541899164515475">Nastavitve, odpre se na novem zavihku.</translation>
 <translation id="8648201657708811153">Brskalnika Google Chrome for Testing ni mogoče nastaviti kot privzetega brskalnika.</translation>
@@ -817,6 +815,7 @@ Chromium ne more obnoviti vaših nastavitev.</translation>
 <translation id="9056398481763999048">Z aplikacijo Chromium v telefonu uporabljajte Googlova najboljša orodja z umetno inteligenco</translation>
 <translation id="9057625473949801035">Če želite dostopati do gesel in drugega v napravi <ph name="DEVICE" />, se prijavite v Chromium</translation>
 <translation id="9062666675513499497">Prijavite se v Chromium, ko se prijavite v druge Googlove storitve</translation>
+<translation id="9074041031320636790">Uspelo je. Z načinom umetne inteligence v Iskanju Google lahko med brskanjem preprosto postavljate vprašanja</translation>
 <translation id="9078733879136747090">Chromium se je samodejno zaprl</translation>
 <translation id="9089354809943900324">Chromium je zastarel</translation>
 <translation id="9093206154853821181">{0,plural, =1{Chromium se bo znova zagnal čez eno uro}one{Chromium se bo znova zagnal čez # uro}two{Chromium se bo znova zagnal čez # uri}few{Chromium se bo znova zagnal čez # ure}other{Chromium se bo znova zagnal čez # ur}}</translation>

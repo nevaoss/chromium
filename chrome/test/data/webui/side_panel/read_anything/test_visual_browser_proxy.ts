@@ -10,6 +10,7 @@ export class TestVisualBrowserProxy extends TestBrowserProxy implements
     VisualBrowserProxy {
   onPinStateReceived = new FakeChromeEvent();
   onPresentationStateReceived = new FakeChromeEvent();
+  onAwaitingTranslationChanged = new FakeChromeEvent();
   restoreSettingsFromPrefs = new FakeChromeEvent();
 
   inSidePanelPresentationState: number = 1;
@@ -55,6 +56,7 @@ export class TestVisualBrowserProxy extends TestBrowserProxy implements
   lineFocusLastNonDisabledValue: number = 50;
   activePresentationState: number = 1;
   pdf: boolean = false;
+  awaitingTranslation: boolean = false;
   originalPageMetrics: OriginalPageMetrics = {
     hasMathML: false,
     maybeHasKeyPoints: false,
@@ -64,6 +66,7 @@ export class TestVisualBrowserProxy extends TestBrowserProxy implements
   letterSpacing: number = 0;
   colorTheme: number = 0;
   translateEntryPointEnabled: boolean = false;
+  sendFeedbackEnabled: boolean = false;
   experimentalPlaybackUiEnabled: boolean = false;
   imagesEnabled: boolean = true;
   linksEnabled: boolean = true;
@@ -123,6 +126,7 @@ export class TestVisualBrowserProxy extends TestBrowserProxy implements
       'onFontSizeReset',
       'isReadAnythingTranslateEntryPointEnabled',
       'onTranslationRequested',
+      'isReadAnythingSendFeedbackEnabled',
       'togglePresentation',
       'togglePinState',
       'sendPinStateRequest',
@@ -136,6 +140,7 @@ export class TestVisualBrowserProxy extends TestBrowserProxy implements
       'isLinksEnabled',
       'getActivePresentationState',
       'isPdf',
+      'isAwaitingTranslation',
       'getMaxLineWidth',
       'getOriginalPageMetrics',
       'getKeyPointsRegex',
@@ -394,6 +399,11 @@ export class TestVisualBrowserProxy extends TestBrowserProxy implements
     return this.pdf;
   }
 
+  isAwaitingTranslation(): boolean {
+    this.methodCalled('isAwaitingTranslation');
+    return this.awaitingTranslation;
+  }
+
   getOriginalPageMetrics(): OriginalPageMetrics {
     this.methodCalled('getOriginalPageMetrics');
     return this.originalPageMetrics;
@@ -444,6 +454,11 @@ export class TestVisualBrowserProxy extends TestBrowserProxy implements
 
   onTranslationRequested(): void {
     this.methodCalled('onTranslationRequested');
+  }
+
+  isReadAnythingSendFeedbackEnabled(): boolean {
+    this.methodCalled('isReadAnythingSendFeedbackEnabled');
+    return this.sendFeedbackEnabled;
   }
 
   onLinksEnabledToggled(): void {

@@ -512,8 +512,10 @@ void NetworkService::Initialize(mojom::NetworkServiceParamsPtr params,
 
   dns_config_change_manager_ = std::make_unique<DnsConfigChangeManager>();
 
+  net::HostResolver::ManagerOptions host_resolver_options;
+  host_resolver_options.insecure_dns_mode = params->initial_insecure_dns_mode;
   host_resolver_manager_ = std::make_unique<net::HostResolverManager>(
-      net::HostResolver::ManagerOptions(),
+      std::move(host_resolver_options),
       net::NetworkChangeNotifier::GetSystemDnsConfigNotifier(), net_log_);
   host_resolver_factory_ = std::make_unique<net::HostResolver::Factory>();
 
@@ -1038,7 +1040,8 @@ void NetworkService::SetCtEnforcementEnabled(
 
 #if BUILDFLAG(CHROME_KEY_PINNING_SUPPORTED)
 void NetworkService::UpdateKeyPinsList(mojom::PinListPtr pin_list,
-                                       base::Time update_time) {
+                                       base::Time update_time,
+                                       UpdateKeyPinsListCallback callback) {
   pins_list_updated_ = true;
   pinsets_.clear();
   host_pins_.clear();
@@ -1058,6 +1061,8 @@ void NetworkService::UpdateKeyPinsList(mojom::PinListPtr pin_list,
       state->UpdatePinList(pinsets_, host_pins_, pins_list_update_time_);
     }
   }
+
+  std::move(callback).Run();
 }
 #endif  // BUILDFLAG(CHROME_KEY_PINNING_SUPPORTED)
 

@@ -2,13 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'chrome://webui-toolbar.top-chrome/app.js';
+import 'chrome://webui-toolbar.top-chrome/webui_toolbar.js';
 
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
-import {AnimationTracker, BrowserProxyImpl, TrackedElementManager} from 'chrome://webui-toolbar.top-chrome/app.js';
-import type {ExtensionsElement} from 'chrome://webui-toolbar.top-chrome/app.js';
-import type {ExtensionActionInfo} from 'chrome://webui-toolbar.top-chrome/shared/extensions_bar_data_model.mojom-webui.js';
+import {AnimationTracker, BrowserProxyImpl, TrackedElementManager} from 'chrome://webui-toolbar.top-chrome/webui_toolbar.js';
+import type {ExtensionActionInfo, ExtensionsElement} from 'chrome://webui-toolbar.top-chrome/webui_toolbar.js';
 
 suite('Extensions', function() {
   let container: ExtensionsElement;
@@ -91,6 +90,7 @@ suite('Extensions', function() {
         forceVisible: false,
         icon: {handleId: 1n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
       {
         id: 'action-2',
@@ -100,6 +100,7 @@ suite('Extensions', function() {
         forceVisible: false,
         icon: {handleId: 2n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
       {
         id: '',
@@ -109,6 +110,7 @@ suite('Extensions', function() {
         forceVisible: true,
         icon: {handleId: 3n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
     ];
     await container.updateComplete;
@@ -130,10 +132,10 @@ suite('Extensions', function() {
     firstAction.focus();
     assertEquals(
         firstAction.shadowRoot.activeElement,
-        firstAction.shadowRoot.querySelector('cr-button'));
+        firstAction.shadowRoot.querySelector('toolbar-chip-button'));
 
     // Trigger keyboard reorder (Ctrl+ArrowRight)
-    const button = firstAction.shadowRoot.querySelector('cr-button')!;
+    const button = firstAction.shadowRoot.querySelector('toolbar-chip-button')!;
     button.dispatchEvent(new KeyboardEvent('keydown', {
       key: 'ArrowRight',
       ctrlKey: true,
@@ -156,6 +158,7 @@ suite('Extensions', function() {
         forceVisible: false,
         icon: {handleId: 2n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
       {
         id: 'action-1',
@@ -165,6 +168,7 @@ suite('Extensions', function() {
         forceVisible: false,
         icon: {handleId: 1n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
       {
         id: 'extensions_button',
@@ -174,6 +178,7 @@ suite('Extensions', function() {
         forceVisible: true,
         icon: {handleId: 3n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
     ];
     await microtasksFinished();
@@ -187,7 +192,7 @@ suite('Extensions', function() {
         'action-1', newSecondAction.state.id);  // Verify it is indeed Action 1
     assertEquals(
         newSecondAction.shadowRoot.activeElement,
-        newSecondAction.shadowRoot.querySelector('cr-button'));
+        newSecondAction.shadowRoot.querySelector('toolbar-chip-button'));
   });
 
   test('Cross-window dragover identifies action from broadcast', () => {
@@ -574,7 +579,7 @@ suite('Extensions', function() {
         container.shadowRoot.querySelectorAll('webui-toolbar-extension');
     const firstAction = actionElements[0]!;
     assertTrue(firstAction.isDraggable());
-    const button = firstAction.shadowRoot.querySelector('cr-button')!;
+    const button = firstAction.shadowRoot.querySelector('toolbar-chip-button')!;
     assertEquals('true', button.getAttribute('draggable'));
   });
 
@@ -582,7 +587,7 @@ suite('Extensions', function() {
     const actionElements =
         container.shadowRoot.querySelectorAll('webui-toolbar-extension');
     const firstAction = actionElements[0]!;
-    const button = firstAction.shadowRoot.querySelector('cr-button')!;
+    const button = firstAction.shadowRoot.querySelector('toolbar-chip-button')!;
 
     const dragStartEvent = new DragEvent('dragstart', {
       bubbles: true,
@@ -631,6 +636,7 @@ suite('Extensions', function() {
         forceVisible: false,
         icon: {handleId: 1n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
       {
         id: 'action-2',
@@ -640,6 +646,7 @@ suite('Extensions', function() {
         forceVisible: false,
         icon: {handleId: 2n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
       {
         id: 'action-3',
@@ -649,6 +656,7 @@ suite('Extensions', function() {
         forceVisible: false,
         icon: {handleId: 4n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
       {
         id: '',
@@ -658,6 +666,7 @@ suite('Extensions', function() {
         forceVisible: true,
         icon: {handleId: 3n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
     ];
 
@@ -675,7 +684,8 @@ suite('Extensions', function() {
         const actionElements =
             container.shadowRoot.querySelectorAll('webui-toolbar-extension');
         const firstAction = actionElements[0]!;
-        const button = firstAction.shadowRoot.querySelector('cr-button')!;
+        const button =
+            firstAction.shadowRoot.querySelector('toolbar-chip-button')!;
 
         // 1. Start drag
         const dragStartEvent = new DragEvent('dragstart', {
@@ -703,6 +713,7 @@ suite('Extensions', function() {
             forceVisible: false,
             icon: {handleId: 1n},
             isPinnedByDefaultIphAnchor: false,
+            highlighted: false,
           },
           {
             id: 'action-2',
@@ -712,6 +723,7 @@ suite('Extensions', function() {
             forceVisible: false,
             icon: {handleId: 2n},
             isPinnedByDefaultIphAnchor: false,
+            highlighted: false,
           },
           {
             id: 'action-3',
@@ -721,6 +733,7 @@ suite('Extensions', function() {
             forceVisible: false,
             icon: {handleId: 4n},
             isPinnedByDefaultIphAnchor: false,
+            highlighted: false,
           },
           {
             id: '',
@@ -730,6 +743,7 @@ suite('Extensions', function() {
             forceVisible: true,
             icon: {handleId: 3n},
             isPinnedByDefaultIphAnchor: false,
+            highlighted: false,
           },
         ];
 
@@ -788,6 +802,7 @@ suite('Extensions', function() {
             forceVisible: false,
             icon: {handleId: 1n},
             isPinnedByDefaultIphAnchor: false,
+            highlighted: false,
           },
           {
             id: 'action-2',
@@ -797,6 +812,7 @@ suite('Extensions', function() {
             forceVisible: false,
             icon: {handleId: 2n},
             isPinnedByDefaultIphAnchor: false,
+            highlighted: false,
           },
           {
             id: '',
@@ -806,6 +822,7 @@ suite('Extensions', function() {
             forceVisible: true,
             icon: {handleId: 3n},
             isPinnedByDefaultIphAnchor: false,
+            highlighted: false,
           },
         ];
 
@@ -820,7 +837,7 @@ suite('Extensions', function() {
     const actionElements =
         container.shadowRoot.querySelectorAll('webui-toolbar-extension');
     const firstAction = actionElements[0]!;
-    const button = firstAction.shadowRoot.querySelector('cr-button')!;
+    const button = firstAction.shadowRoot.querySelector('toolbar-chip-button')!;
 
     // 1. Start drag
     const dragStartEvent = new DragEvent('dragstart', {
@@ -846,6 +863,7 @@ suite('Extensions', function() {
         forceVisible: false,
         icon: {handleId: 1n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
       {
         id: 'action-2',
@@ -855,6 +873,7 @@ suite('Extensions', function() {
         forceVisible: false,
         icon: {handleId: 2n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
       {
         id: '',
@@ -864,6 +883,7 @@ suite('Extensions', function() {
         forceVisible: true,
         icon: {handleId: 3n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
     ];
 
@@ -894,7 +914,8 @@ suite('Extensions', function() {
         const actionElements =
             container.shadowRoot.querySelectorAll('webui-toolbar-extension');
         const firstAction = actionElements[0]!;
-        const button = firstAction.shadowRoot.querySelector('cr-button')!;
+        const button =
+            firstAction.shadowRoot.querySelector('toolbar-chip-button')!;
 
         // 1. Start drag
         const dragStartEvent = new DragEvent('dragstart', {
@@ -922,6 +943,7 @@ suite('Extensions', function() {
             forceVisible: false,
             icon: {handleId: 2n},
             isPinnedByDefaultIphAnchor: false,
+            highlighted: false,
           },
           {
             id: 'action-1',
@@ -931,6 +953,7 @@ suite('Extensions', function() {
             forceVisible: false,
             icon: {handleId: 1n},
             isPinnedByDefaultIphAnchor: false,
+            highlighted: false,
           },
           {
             id: '',
@@ -940,6 +963,7 @@ suite('Extensions', function() {
             forceVisible: true,
             icon: {handleId: 3n},
             isPinnedByDefaultIphAnchor: false,
+            highlighted: false,
           },
         ];
 
@@ -982,7 +1006,7 @@ suite('Extensions', function() {
     const actionElements =
         container.shadowRoot.querySelectorAll('webui-toolbar-extension');
     const firstAction = actionElements[0]!;
-    const button = firstAction.shadowRoot.querySelector('cr-button')!;
+    const button = firstAction.shadowRoot.querySelector('toolbar-chip-button')!;
 
     // 1. Start drag
     const dragStartEvent = new DragEvent('dragstart', {
@@ -1010,6 +1034,7 @@ suite('Extensions', function() {
         forceVisible: false,
         icon: {handleId: 2n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
       {
         id: '',
@@ -1019,6 +1044,7 @@ suite('Extensions', function() {
         forceVisible: true,
         icon: {handleId: 3n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
     ];
 
@@ -1042,6 +1068,7 @@ suite('Extensions', function() {
         forceVisible: false,
         icon: {handleId: 1n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
       ...container.states,
     ];
@@ -1066,7 +1093,7 @@ suite('Extensions', function() {
     // Verify it returns false for isDraggable
     assertTrue(!menuButton.isDraggable());
 
-    const button = menuButton.shadowRoot.querySelector('cr-button')!;
+    const button = menuButton.shadowRoot.querySelector('toolbar-chip-button')!;
     assertEquals('false', button.getAttribute('draggable'));
 
     // Try to trigger dragstart
@@ -1248,7 +1275,7 @@ suite('Extensions', function() {
     const actionElements =
         container.shadowRoot.querySelectorAll('webui-toolbar-extension');
     const firstAction = actionElements[0]!;
-    const button = firstAction.shadowRoot.querySelector('cr-button')!;
+    const button = firstAction.shadowRoot.querySelector('toolbar-chip-button')!;
 
     const dispatchMouseClick = () => {
       button.dispatchEvent(new PointerEvent(
@@ -1295,8 +1322,9 @@ suite('Extensions', function() {
     assertEquals(3, actionElements.length);
 
     for (const element of actionElements) {
-      const button = element.shadowRoot.querySelector('cr-button')!;
-      assertEquals('menu', button.getAttribute('aria-haspopup'));
+      const button = element.shadowRoot.querySelector('toolbar-chip-button')!;
+      assertEquals('menu', button.ariaHasPopup);
+      assertEquals('menu', button.$.button.getAttribute('aria-haspopup'));
     }
   });
 
@@ -1310,6 +1338,7 @@ suite('Extensions', function() {
         forceVisible: false,
         icon: {handleId: 1n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
       {
         id: '',
@@ -1319,6 +1348,7 @@ suite('Extensions', function() {
         forceVisible: true,
         icon: {handleId: 3n},
         isPinnedByDefaultIphAnchor: false,
+        highlighted: false,
       },
     ];
   }

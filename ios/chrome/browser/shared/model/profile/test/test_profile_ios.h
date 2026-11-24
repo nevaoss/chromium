@@ -39,10 +39,18 @@ class TestProfileIOS final : public ProfileIOS {
   // AddTestingFactories(). See example call in the method's comment.
   struct TestingFactory {
     TestingFactory(ProfileKeyedServiceFactoryIOS* service_factory,
-                   KeyedServiceTestingFactoryIOS testing_factory);
+                   KeyedServiceTestingFactoryIOSByPtr testing_factory);
 
-    TestingFactory(RefcountedProfileKeyedServiceFactoryIOS* service_factory,
-                   RefcountedKeyedServiceTestingFactoryIOS testing_factory);
+    TestingFactory(ProfileKeyedServiceFactoryIOS* service_factory,
+                   KeyedServiceTestingFactoryIOSByRef testing_factory);
+
+    TestingFactory(
+        RefcountedProfileKeyedServiceFactoryIOS* service_factory,
+        RefcountedKeyedServiceTestingFactoryIOSByPtr testing_factory);
+
+    TestingFactory(
+        RefcountedProfileKeyedServiceFactoryIOS* service_factory,
+        RefcountedKeyedServiceTestingFactoryIOSByRef testing_factory);
 
     TestingFactory(TestingFactory&&);
     TestingFactory& operator=(TestingFactory&&);
@@ -50,9 +58,13 @@ class TestProfileIOS final : public ProfileIOS {
     ~TestingFactory();
 
     std::variant<std::pair<ProfileKeyedServiceFactoryIOS*,
-                           KeyedServiceTestingFactoryIOS>,
+                           KeyedServiceTestingFactoryIOSByPtr>,
+                 std::pair<ProfileKeyedServiceFactoryIOS*,
+                           KeyedServiceTestingFactoryIOSByRef>,
                  std::pair<RefcountedProfileKeyedServiceFactoryIOS*,
-                           RefcountedKeyedServiceTestingFactoryIOS>>
+                           RefcountedKeyedServiceTestingFactoryIOSByPtr>,
+                 std::pair<RefcountedProfileKeyedServiceFactoryIOS*,
+                           RefcountedKeyedServiceTestingFactoryIOSByRef>>
         service_factory_and_testing_factory;
   };
 
@@ -155,11 +167,18 @@ class TestProfileIOS final : public ProfileIOS {
 
     // Adds a testing factory to the TestProfileIOS. These testing factories
     // are installed before the Profile's KeyedServices are created.
-    Builder& AddTestingFactory(ProfileKeyedServiceFactoryIOS* service_factory,
-                               KeyedServiceTestingFactoryIOS testing_factory);
+    Builder& AddTestingFactory(
+        ProfileKeyedServiceFactoryIOS* service_factory,
+        KeyedServiceTestingFactoryIOSByPtr testing_factory);
+    Builder& AddTestingFactory(
+        ProfileKeyedServiceFactoryIOS* service_factory,
+        KeyedServiceTestingFactoryIOSByRef testing_factory);
     Builder& AddTestingFactory(
         RefcountedProfileKeyedServiceFactoryIOS* service_factory,
-        RefcountedKeyedServiceTestingFactoryIOS testing_factory);
+        RefcountedKeyedServiceTestingFactoryIOSByPtr testing_factory);
+    Builder& AddTestingFactory(
+        RefcountedProfileKeyedServiceFactoryIOS* service_factory,
+        RefcountedKeyedServiceTestingFactoryIOSByRef testing_factory);
 
     // Adds multiple testing factories to TestProfileIOS. These testing
     // factories are installed before the Profile's KeyedServices are created.
@@ -176,10 +195,6 @@ class TestProfileIOS final : public ProfileIOS {
     //      }});
     Builder& AddTestingFactories(TestingFactories testing_factories);
 
-    // Sets the name of the ProfileIOS. If not set, the profile will use an
-    // arbitrary name.
-    Builder& SetName(const std::string& name);
-
     // Sets the PrefService to be used by the ProfileIOS.
     Builder& SetPrefService(
         std::unique_ptr<sync_preferences::PrefServiceSyncable> prefs);
@@ -195,10 +210,6 @@ class TestProfileIOS final : public ProfileIOS {
     // Sets the Webkit storage identifier for test.
     Builder& SetWebkitStorageId(const base::Uuid& webkit_storage_id);
 
-    // Returns the name passed to `SetName()`, or if that was not called, an
-    // arbitrary fallback value.
-    std::string GetEffectiveName() const;
-
     // Creates the TestProfileIOS using previously-set settings.
     std::unique_ptr<TestProfileIOS> Build() &&;
 
@@ -207,8 +218,14 @@ class TestProfileIOS final : public ProfileIOS {
     std::unique_ptr<TestProfileIOS> Build(const base::FilePath& data_dir) &&;
 
    private:
+    friend class TestProfileManagerIOS;
+
+    // Creates the TestProfileIOS with `profile_name` using `data_dir` as base
+    // directory for the storage, and other previously-set settings.
+    std::unique_ptr<TestProfileIOS> Build(const base::FilePath& data_dir,
+                                          std::string_view profile_name) &&;
+
     // Various staging variables where values are held until Build() is invoked.
-    std::string profile_name_;
     std::unique_ptr<sync_preferences::PrefServiceSyncable> pref_service_;
     base::Uuid webkit_storage_id_;
 

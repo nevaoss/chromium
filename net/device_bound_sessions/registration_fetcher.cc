@@ -46,6 +46,7 @@
 #include "net/device_bound_sessions/session_service.h"
 #include "net/device_bound_sessions/url_fetcher.h"
 #include "net/http/http_request_headers.h"
+#include "net/http/http_status_code.h"
 #include "net/log/net_log_event_type.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
 #include "net/url_request/redirect_info.h"
@@ -549,10 +550,17 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
                        registration_params.TakeAuthorization()));
 
     if (aik_required) {
+      base::WeakPtr<RegistrationFetcherImpl> weak_this = GetWeakPtr();
       key_service_->GenerateAttestationKeySlowlyAsync(
           supported_algos, priority_,
           base::BindOnce(&RegistrationFetcherImpl::OnAttestationKeyGenerated,
-                         GetWeakPtr(), barrier_closure));
+                         weak_this, barrier_closure));
+      // The key service can fail synchronously, e.g. when its Mojo pipe is
+      // disconnected. That runs `callback_`, which may delete `this`. If it
+      // doesn't, the fetch has already failed, so skip the signing key.
+      if (!weak_this || !callback_) {
+        return;
+      }
     }
 
     key_service_->GenerateSigningKeySlowlyAsync(
@@ -985,14 +993,18 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
           SessionError(SessionError::kPersistentHttpError)));
       // `this` may be deleted.
       return;
+    } else if (response_code == HTTP_TOO_MANY_REQUESTS ||
+               response_code >= 500) {
+      // The server is rate limiting or temporarily failing. Keep the session
+      // and back off on refresh, see
+      // https://w3c.github.io/webappsec-dbsc/#algo-session-request.
+      RunCallback(CreateErrorRegistrationResult(
+          SessionError(SessionError::kTransientHttpError)));
+      // `this` may be deleted.
+      return;
     } else if (300 <= response_code && response_code < 500) {
       RunCallback(CreateErrorRegistrationResult(
           SessionError(SessionError::kPersistentHttpError)));
-      // `this` may be deleted.
-      return;
-    } else if (response_code >= 500) {
-      RunCallback(CreateErrorRegistrationResult(
-          SessionError(SessionError::kTransientHttpError)));
       // `this` may be deleted.
       return;
     }
