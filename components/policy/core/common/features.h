@@ -29,6 +29,11 @@ POLICY_EXPORT BASE_DECLARE_FEATURE(kEnhancedSecurityEventFields);
 // Controls if we can use the cec flag in PolicyData.
 POLICY_EXPORT BASE_DECLARE_FEATURE(kUseCECFlagInPolicyData);
 
+// When enabled, increases the maximum cloud policy cache size limit read from
+// disk (for both user and machine level caches) from 1 MB to 2 MB to
+// accommodate large enterprise policy sets.
+POLICY_EXPORT BASE_DECLARE_FEATURE(kUserPolicyCacheSizeLimit2MB);
+
 #if BUILDFLAG(IS_ANDROID)
 // Enables policy initialization for signed-in users in new entry points.
 POLICY_EXPORT BASE_DECLARE_FEATURE(
@@ -109,6 +114,11 @@ POLICY_EXPORT extern const base::FeatureParam<base::TimeDelta>
 
 // Returns true if `kMigrateSecureConnectApiToDmServer` is enabled.
 POLICY_EXPORT bool IsMigrateSecureConnectApiToDmServerEnabled();
+
+// When enabled, UserInfoFetcher will use
+// CredentialsMode::kOmitBug_775438_Workaround instead of CredentialsMode::kOmit
+// for user info requests.
+POLICY_EXPORT BASE_DECLARE_FEATURE(kPolicyUserInfoFetcherUseOmitBugWorkaround);
 
 }  // namespace policy::features
 

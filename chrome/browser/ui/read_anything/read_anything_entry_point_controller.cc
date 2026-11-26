@@ -154,7 +154,7 @@ void OnReadabilityDecision(base::OnceCallback<void(bool)> result_callback,
 void RunReadabilityHeuristic(content::WebContents* contents,
                              base::OnceCallback<void(bool)> result_callback) {
   CHECK(contents);
-  RunReadabilityHeuristicsOnWebContents(
+  RunHeuristicsOnWebContents(
       contents,
       base::BindOnce(&OnReadabilityDecision, std::move(result_callback)));
 }
@@ -259,7 +259,8 @@ void ReadAnythingEntryPointController::InvokePageAction(
 // static
 void ReadAnythingEntryPointController::ShowUI(
     BrowserWindowInterface* bwi,
-    ReadAnythingOpenTrigger open_trigger) {
+    ReadAnythingOpenTrigger open_trigger,
+    Presentation presentation) {
   if (!bwi) {
     return;
   }
@@ -271,8 +272,30 @@ void ReadAnythingEntryPointController::ShowUI(
   if (tabs::TabInterface* tab = bwi->GetActiveTabInterface()) {
     auto* controller = ReadAnythingController::From(tab);
     CHECK(controller);
-    controller->ShowInPreferredUI(
-        base::PassKey<ReadAnythingEntryPointController>(), open_trigger);
+    switch (presentation) {
+      case Presentation::kPreferred:
+        controller->ShowInPreferredUI(
+            base::PassKey<ReadAnythingEntryPointController>(), open_trigger);
+        break;
+      case Presentation::kSidePanel:
+        controller->ShowInSidePanel(
+            base::PassKey<ReadAnythingEntryPointController>(), open_trigger);
+        break;
+    }
+  }
+}
+
+// static
+void ReadAnythingEntryPointController::CloseUI(BrowserWindowInterface* bwi,
+                                               ReadAnythingCloseReason reason) {
+  if (!bwi) {
+    return;
+  }
+  if (tabs::TabInterface* tab = bwi->GetActiveTabInterface()) {
+    auto* controller = ReadAnythingController::From(tab);
+    CHECK(controller);
+    controller->CloseUI(base::PassKey<ReadAnythingEntryPointController>(),
+                        reason);
   }
 }
 

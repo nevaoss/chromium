@@ -195,6 +195,58 @@ void RecordToggleFocusGroupMetrics(bool is_unfocus,
   }
 }
 
+bool ShouldActivateWindowForContextMenuCommand(
+    TabStripModel::ContextMenuCommand command_id) {
+  switch (command_id) {
+    case TabStripModel::CommandCloseTab:
+    case TabStripModel::CommandCloseOtherTabs:
+    case TabStripModel::CommandCloseTabsToRight:
+    case TabStripModel::CommandCloseAllTabs:
+      return false;
+    case TabStripModel::CommandNewTabToRight:
+    case TabStripModel::CommandReload:
+    case TabStripModel::CommandDuplicate:
+    case TabStripModel::CommandTogglePinned:
+    case TabStripModel::CommandToggleGrouped:
+    case TabStripModel::CommandToggleSiteMuted:
+    case TabStripModel::CommandSendTabToSelf:
+    case TabStripModel::CommandAddToReadLater:
+    case TabStripModel::CommandAddToNewGroup:
+    case TabStripModel::CommandAddToExistingGroup:
+    case TabStripModel::CommandAddToNewGroupFromMenuItem:
+    case TabStripModel::CommandAddToSplit:
+    case TabStripModel::CommandSwapWithActiveSplit:
+    case TabStripModel::CommandArrangeSplit:
+    case TabStripModel::CommandRemoveFromGroup:
+    case TabStripModel::CommandMoveToExistingWindow:
+    case TabStripModel::CommandMoveTabsToNewWindow:
+    case TabStripModel::CommandCopyURL:
+    case TabStripModel::CommandGoBack:
+    case TabStripModel::CommandToggleVertical:
+    case TabStripModel::CommandGlicShare:
+    case TabStripModel::CommandGlicCreateNewChat:
+    case TabStripModel::CommandGlicSwitchToRecentConversation:
+    case TabStripModel::CommandGlicUnshare:
+    case TabStripModel::CommandAiModeShare:
+    case TabStripModel::CommandAiModeCreateNewThread:
+    case TabStripModel::CommandAiModeUnshare:
+    case TabStripModel::CommandToggleFocusGroup:
+      return true;
+  }
+}
+
+void MaybeActivateBrowserWindow(TabStripModelDelegate* delegate) {
+  BrowserWindowInterface* const browser = delegate->GetBrowserWindowInterface();
+  if (!browser) {
+    return;
+  }
+
+  ui::BaseWindow* const window = browser->GetWindow();
+  if (window && !window->IsActive()) {
+    window->Activate();
+  }
+}
+
 }  // namespace
 
 TabGroupModelFactory::TabGroupModelFactory() {
@@ -2860,6 +2912,9 @@ void TabStripModel::ExecuteContextMenuCommand(int context_index,
   if (!ContainsIndex(context_index)) {
     return;
   }
+  if (ShouldActivateWindowForContextMenuCommand(command_id)) {
+    MaybeActivateBrowserWindow(delegate());
+  }
   tabs::TabHandle context_tab = GetTabAtIndex(context_index)->GetHandle();
   switch (command_id) {
     case CommandNewTabToRight: {
@@ -2978,7 +3033,7 @@ void TabStripModel::ExecuteContextMenuCommand(int context_index,
           GetGroupsDestroyedFromRemovingIndices(indices);
       MarkTabGroupsForClosing(groups_to_delete);
 
-      bool pin = WillContextMenuPin(context_index);
+      bool pin = WillContextMenuPin(context_tab);
 
       // If there are groups that will be deleted by closing tabs from the
       // context menu, confirm the group deletion first, and then perform the
@@ -3012,7 +3067,7 @@ void TabStripModel::ExecuteContextMenuCommand(int context_index,
       }
 
       std::vector<int> indices = GetIndicesForCommand(context_index);
-      if (WillContextMenuGroup(context_index)) {
+      if (WillContextMenuGroup(context_tab)) {
         std::optional<tab_groups::TabGroupId> new_group_id =
             AddToNewGroup(indices);
         if (new_group_id.has_value()) {
@@ -3366,6 +3421,7 @@ void TabStripModel::ExecuteAddToExistingGroupCommand(
   if (!ContainsIndex(context_index)) {
     return;
   }
+  MaybeActivateBrowserWindow(delegate());
 
   std::vector<int> indices = GetIndicesForCommand(context_index);
   CHECK(!indices.empty());
@@ -3422,6 +3478,7 @@ void TabStripModel::ExecuteAddToExistingWindowCommand(int context_index,
 void TabStripModel::ExecuteAddToNewSplitCommand(
     int context_index,
     split_tabs::SplitTabLayout layout) {
+  MaybeActivateBrowserWindow(delegate());
   base::UmaHistogramCounts1000("Tab.ContextMenu.AddToSplit.SelectedTabsCount",
                                selection_model_.size());
 
@@ -3569,36 +3626,33 @@ bool TabStripModel::WillContextMenuMuteSites(int index) {
   return !AreAllSitesMuted(*this, GetIndicesForCommand(index));
 }
 
-bool TabStripModel::WillContextMenuPin(int index) {
-  std::vector<int> indices = GetIndicesForCommand(index);
-  // If all tabs are pinned, then we unpin, otherwise we pin.
-  bool all_pinned = true;
-  for (size_t i = 0; i < indices.size() && all_pinned; ++i) {
-    all_pinned = IsTabPinned(indices[i]);
-  }
-  return !all_pinned;
-}
-
-bool TabStripModel::WillContextMenuGroup(int index) {
-  if (!group_model_) {
+bool TabStripModel::WillContextMenuPin(tabs::TabHandle context_tab) {
+  std::vector<tabs::TabHandle> tabs = GetTabsForCommand(context_tab);
+  if (tabs.empty()) {
     return false;
   }
-
-  std::vector<int> indices = GetIndicesForCommand(index);
-  CHECK(!indices.empty(), base::NotFatalUntil::M162);
-
-  // If all tabs are in the same group, then we ungroup, otherwise we group.
-  std::optional<tab_groups::TabGroupId> group = GetTabGroupForTab(indices[0]);
-  if (!group.has_value()) {
-    return true;
-  }
-
-  for (size_t i = 1; i < indices.size(); ++i) {
-    if (GetTabGroupForTab(indices[i]) != group) {
+  // If all tabs are pinned, then we unpin, otherwise we pin.
+  for (tabs::TabHandle tab : tabs) {
+    tabs::TabInterface* tab_ptr = tab.Get();
+    if (tab_ptr && !tab_ptr->IsPinned()) {
       return true;
     }
   }
   return false;
+}
+
+bool TabStripModel::WillContextMenuGroup(tabs::TabHandle context_tab) {
+  if (!group_model_) {
+    return false;
+  }
+
+  std::vector<tabs::TabHandle> tabs = GetTabsForCommand(context_tab);
+  if (tabs.empty()) {
+    return false;
+  }
+
+  // If all tabs are in the same group, then we ungroup, otherwise we group.
+  return !GetCommonGroupForTabs(tabs).has_value();
 }
 
 std::optional<tab_groups::TabGroupId> TabStripModel::GetCommonGroupForTabs(
@@ -4213,10 +4267,25 @@ bool TabStripModel::CloseWebContentses(
     }
   }
 
-  // We only try the fast shutdown path if the whole browser process is *not*
-  // shutting down. Fast shutdown during browser termination is handled in
-  // browser_shutdown::OnShutdownStarting.
-  if (!browser_shutdown::HasShutdownStarted()) {
+  if (browser_shutdown::ShouldFastShutdownRenderers()) {
+    // Fast-kill any renderer process that was still launching when
+    // browser_shutdown::OnShutdownStarting ran.
+    for (content::WebContents* contents : items) {
+      content::RenderProcessHost* process =
+          contents->GetPrimaryMainFrame()->GetProcess();
+      if (!process->FastShutdownStarted()) {
+        process->FastShutdownIfPossible(/*page_count=*/0,
+                                        /*skip_unload_handlers=*/true,
+                                        /*ignore_workers=*/true,
+                                        /*ignore_keep_alive=*/true,
+                                        /*ignore_pending_reuse=*/true);
+      }
+    }
+  } else if (!browser_shutdown::HasShutdownStarted()) {
+    // We only try the fast shutdown path if the whole browser process is *not*
+    // shutting down. Fast shutdown during browser termination is handled in
+    // browser_shutdown::OnShutdownStarting.
+    //
     // Construct a map of processes to the number of associated tabs that are
     // closing.
     base::flat_map<content::RenderProcessHost*, size_t> processes;
@@ -4413,8 +4482,9 @@ void TabStripModel::SelectRelativeTab(TabRelativeDirection direction,
 
   // Ensure the active tab is not in a collapsed group so the while loop can
   // fallback on activating the active tab.
-  CHECK(!start_group.has_value() || !IsGroupCollapsed(start_group.value()),
-        base::NotFatalUntil::M162);
+  // TODO(crbug.com/577979740): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(!start_group.has_value() || !IsGroupCollapsed(start_group.value()));
 
   std::optional<tab_groups::TabGroupId> focused_group = GetFocusedGroup();
   const int delta = direction == TabRelativeDirection::kNext ? 1 : -1;

@@ -1609,7 +1609,13 @@ final class ChromeAndroidTaskImpl
                 }
                 break;
             case WindowShowState.MAXIMIZED:
-                if (VERSION.SDK_INT >= VERSION_CODES.R) {
+                // Normal windows are launched with the source display's maximized bounds (see
+                // ChromeAndroidTaskTrackerImpl#getStartActivityOptions), so they are usually
+                // already maximized here and no further OS call is needed. Otherwise (e.g. the OS
+                // placed the window on another display, or this is a popup, which has no
+                // launch-bounds input), maximize the window now.
+                if (VERSION.SDK_INT >= VERSION_CODES.R
+                        && mWindowStateManager.getWindowState() != WindowState.MAXIMIZED) {
                     maximizeInternal(topActivityScopedObjects);
                 }
                 break;
@@ -1791,20 +1797,26 @@ final class ChromeAndroidTaskImpl
         var appTask = AndroidTaskUtils.getAppTaskFromId(activity, getTaskId(activity));
         assert appTask != null : "use canResizeInternal() to prevent null values";
 
+        // Settles the pending bounds-related actions once the OS has accepted or rejected the
+        // move. Local so that nothing other than the promise below can invoke it.
+        Callback<@Nullable Exception> onMoveTaskSettled =
+                (exception) -> {
+                    // A late completion (e.g. after destroy()) must not touch this Task.
+                    if (mState != State.PENDING_UPDATE) return;
+
+                    if (exception != null) {
+                        Log.w(TAG, "Fail to move task to bounds: %s", exception.getMessage());
+                    }
+                    var actions =
+                            mPendingActionManager.getAndClearTargetPendingActions(
+                                    PendingAction.MAXIMIZE,
+                                    PendingAction.SET_BOUNDS,
+                                    PendingAction.RESTORE);
+                    maybeSetStateIdle(actions);
+                };
+
         AndroidTaskUtils.moveTaskToWithPromise(appTask, displayId, boundsInPx)
-                .then(
-                        (pair) -> {
-                            var actions =
-                                    mPendingActionManager.getAndClearTargetPendingActions(
-                                            PendingAction.MAXIMIZE,
-                                            PendingAction.SET_BOUNDS,
-                                            PendingAction.RESTORE);
-                            maybeSetStateIdle(actions);
-                        },
-                        (e) -> {
-                            if (e == null) return;
-                            Log.w(TAG, "Fail to move task to bounds: %s", e.getMessage());
-                        });
+                .then((displayIdAndBounds) -> onMoveTaskSettled.onResult(null), onMoveTaskSettled);
     }
 
     private void showInternal(TopActivityScopedObjects topActivityScopedObjects) {

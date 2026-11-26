@@ -66,6 +66,7 @@
 #include "chrome/test/base/search_test_utils.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
+#include "chrome/test/user_education/mock_browser_user_education_interface.h"
 #include "components/autofill/content/browser/test_autofill_client_injector.h"
 #include "components/autofill/content/browser/test_autofill_driver_injector.h"
 #include "components/autofill/content/browser/test_autofill_manager_injector.h"
@@ -80,6 +81,7 @@
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/custom_handlers/protocol_handler_registry.h"
+#include "components/feature_engagement/public/feature_constants.h"
 #include "components/lens/buildflags.h"
 #include "components/lens/lens_features.h"
 #include "components/password_manager/core/browser/features/password_features.h"
@@ -1536,15 +1538,61 @@ TEST_F(RenderViewContextMenuPrefsTest, GlicShareImageEligibility) {
   }
 
   {
-    // Case 3: Helper returns eligible -> visible.
+    // Case 3: Helper returns eligible -> visible with "Ask Gemini" label,
+    // preceding image search by default.
     EXPECT_CALL(*mock_helper, IsPageContextEligible())
         .WillRepeatedly(testing::Return(
             optimization_guide::PageContextEligibilityStatus::kEligible));
+    SetUserSelectedDefaultSearchProvider("https://www.google.com",
+                                         /*supports_image_search=*/true);
     TestRenderViewContextMenu menu(*web_contents()->GetPrimaryMainFrame(),
                                    params);
     menu.SetBrowser(GetBrowser());
     menu.Init();
     EXPECT_TRUE(menu.IsItemPresent(IDC_CONTENT_CONTEXT_GLICSHAREIMAGE));
+    auto glic_index =
+        menu.GetMenuModelAndItemIndex(IDC_CONTENT_CONTEXT_GLICSHAREIMAGE);
+    ASSERT_TRUE(glic_index.has_value());
+    EXPECT_EQ(
+        glic_index->first->GetLabelAt(glic_index->second),
+        l10n_util::GetStringUTF16(IDS_GLIC_BUTTON_ENTRYPOINT_ASK_GEMINI_LABEL));
+    auto search_index =
+        menu.GetMenuModelAndItemIndex(IDC_CONTENT_CONTEXT_SEARCHLENSFORIMAGE);
+    ASSERT_TRUE(search_index.has_value());
+    EXPECT_EQ(glic_index->first, search_index->first);
+    EXPECT_LT(glic_index->second, search_index->second);
+  }
+
+  {
+    // Case 4: When kGlicContextMenuBelowSearch is enabled, the item follows
+    // image search.
+    base::test::ScopedFeatureList below_search_feature;
+    below_search_feature.InitAndEnableFeature(
+        features::kGlicContextMenuBelowSearch);
+    TestRenderViewContextMenu menu(*web_contents()->GetPrimaryMainFrame(),
+                                   params);
+    menu.SetBrowser(GetBrowser());
+    menu.Init();
+    auto glic_index =
+        menu.GetMenuModelAndItemIndex(IDC_CONTENT_CONTEXT_GLICSHAREIMAGE);
+    auto search_index =
+        menu.GetMenuModelAndItemIndex(IDC_CONTENT_CONTEXT_SEARCHLENSFORIMAGE);
+    ASSERT_TRUE(glic_index.has_value());
+    ASSERT_TRUE(search_index.has_value());
+    EXPECT_EQ(glic_index->first, search_index->first);
+    EXPECT_GT(glic_index->second, search_index->second);
+  }
+
+  {
+    // Case 5: When text is also selected, IDC_CONTENT_CONTEXT_GLICSHAREIMAGE is
+    // omitted so it does not duplicate IDC_CONTENT_CONTEXT_GLIC.
+    content::ContextMenuParams selection_image_params = params;
+    selection_image_params.selection_text = u"selected text";
+    TestRenderViewContextMenu menu(*web_contents()->GetPrimaryMainFrame(),
+                                   selection_image_params);
+    menu.SetBrowser(GetBrowser());
+    menu.Init();
+    EXPECT_FALSE(menu.IsItemPresent(IDC_CONTENT_CONTEXT_GLICSHAREIMAGE));
   }
 }
 
@@ -1685,6 +1733,15 @@ TEST_F(RenderViewContextMenuPrefsTest,
     histogram_tester.ExpectUniqueSample(
         "Indigo.PageAction.ShownEntryPoint",
         indigo::IndigoPageActionEntryPoint::kContextMenu, 1);
+
+    testing::NiceMock<MockBrowserUserEducationInterface> mock_user_education(
+        GetBrowser());
+    EXPECT_CALL(
+        mock_user_education,
+        NotifyFeaturePromoFeatureUsed(
+            testing::Ref(feature_engagement::kIPHIndigoContextMenuToastFeature),
+            FeaturePromoFeatureUsedAction::kClosePromoIfPresent))
+        .Times(2);
 
     image_menu.ExecuteCommand(IDC_CONTENT_CONTEXT_INDIGO, 0);
     histogram_tester.ExpectUniqueSample(

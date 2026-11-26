@@ -396,6 +396,10 @@ SigninSectionInfo ComputeSigninSectionInfo(Profile* profile) {
           // For this specific error (as opposed to all others), there is no
           // error UI in the menu.
           return info;
+        case syncer::SyncService::UserActionableError::kPasskeysLocked:
+          // TODO(crbug.com/470338958): Show passkey unlock error UI in the app
+          // menu.
+          return info;
       }
       CHECK_NE(info.command_id, 0);
       return info;
@@ -2237,7 +2241,8 @@ void AppMenuModel::Build() {
         kHistoryMenuItem);
 
     if (base::FeatureList::IsEnabled(syncer::kCrossDeviceTabsInAppMenu)) {
-      sub_menus_.push_back(std::make_unique<OtherDeviceTabsSubMenuModel>());
+      sub_menus_.push_back(
+          std::make_unique<OtherDeviceTabsSubMenuModel>(browser_));
       AddSubMenuWithStringIdAndVectorIcon(
           this, kOtherDeviceTabsMenuPlaceholder, IDS_OTHER_DEVICE_TABS_MENU,
           sub_menus_.back().get(),
@@ -2516,8 +2521,7 @@ void AppMenuModel::Build() {
     SetAccessibleNameAt(GetIndexOfCommandId(IDC_SHOW_MANAGEMENT_PAGE).value(),
                         GetManagedUiMenuItemTooltip(browser_->GetProfile()));
 #if BUILDFLAG(IS_LINUX)
-    if (enterprise_util::IsBrowserManaged(browser_->GetProfile()) &&
-        base::FeatureList::IsEnabled(features::kEnterpriseReleaseNotes)) {
+    if (enterprise_util::IsBrowserManaged(browser_->GetProfile())) {
       AddItemWithStringIdAndVectorIcon(
           this, IDC_CHROME_ENTERPRISE_RELEASE_NOTES,
           IDS_CHROME_ENTERPRISE_RELEASE_NOTES, omnibox::kChromeProductIcon);

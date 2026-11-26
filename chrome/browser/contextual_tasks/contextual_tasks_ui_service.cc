@@ -1030,6 +1030,9 @@ void ContextualTasksUiService::OnThreadLinkClicked(
     tabs::TabInterface* active_tab = tab_list->GetActiveTab();
     if (contextual_tasks::IsContextualTasksClobberActiveTabEnabled() &&
         active_tab && active_tab->GetContents()) {
+      if (task_id.is_valid()) {
+        AssociateWebContentsToTask(active_tab->GetContents(), task_id);
+      }
       OMNIBOX_LOG("nav_trace")
           << "ContextualTasks navigation trace: OnThreadLinkClicked "
              "clobbering active tab: "
@@ -1823,6 +1826,9 @@ bool ContextualTasksUiService::HandleCitationClick(
   // enabled, load the URL into the active tab.
   if (contextual_tasks::IsContextualTasksClobberActiveTabEnabled() &&
       active_tab && active_tab->GetContents()) {
+    if (task_id.is_valid()) {
+      AssociateWebContentsToTask(active_tab->GetContents(), task_id);
+    }
     OMNIBOX_LOG("nav_trace")
         << "ContextualTasks HandleCitationClick: clobbering active tab: "
         << url;
@@ -2167,11 +2173,20 @@ void ContextualTasksUiService::OpenUrl(
         browser ? TabListInterface::From(browser) : nullptr;
     tabs::TabInterface* active_tab =
         tab_list ? tab_list->GetActiveTab() : nullptr;
-    if (active_tab && active_tab->GetContents()) {
+    if (active_tab && active_tab->GetContents() &&
+        !IsContextualTasksUrl(
+            active_tab->GetContents()->GetLastCommittedURL())) {
+      if (auto* controller = ContextualTasksPanelController::From(browser)) {
+        if (auto current_task = controller->GetCurrentTask()) {
+          AssociateWebContentsToTask(active_tab->GetContents(),
+                                     current_task->GetTaskId());
+        }
+      }
       OMNIBOX_LOG("nav_trace") << "ContextualTasks navigation trace: OpenUrl "
                                   "clobbering active tab: "
                                << url;
       content::NavigationController::LoadURLParams load_params(url_params);
+      load_params.frame_tree_node_id = content::FrameTreeNodeId();
       load_params.override_user_agent =
           content::NavigationController::UA_OVERRIDE_TRUE;
       load_params.transition_type = ::ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
@@ -3096,19 +3111,8 @@ void ContextualTasksUiService::OnVoiceTranscribed(const std::string& query) {
     return;
   }
 
-  content::WebUI* web_ui = web_contents->GetWebUI();
-  if (!web_ui) {
-    LOG(WARNING) << "WebUI is null.";
-    return;
-  }
-
-  auto* controller = web_ui->GetController();
-  if (!controller) {
-    LOG(WARNING) << "WebUI controller is null.";
-    return;
-  }
-
-  auto* contextual_tasks_ui = static_cast<ContextualTasksUI*>(controller);
+  ContextualTasksUIInterface* contextual_tasks_ui =
+      GetWebUiInterface(web_contents.get());
   if (!contextual_tasks_ui) {
     LOG(WARNING) << "ContextualTasksUi is null.";
     return;
@@ -3829,15 +3833,6 @@ void ContextualTasksUiService::StartTaskUiInSidePanelWithErrorPage(
 }
 
 bool ContextualTasksUiService::IsAiUrl(const GURL& url) {
-  if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS()) {
-    return false;
-  }
-
-  // TODO(crbug.com/543997783): Have the PEC API return this as an AIM URL
-  // instead of hardcoding it here.
-  if (url.host() == "g.ai" || url.host() == "www.g.ai") {
-    return true;
-  }
   return aim_eligibility_service_ &&
          aim_eligibility_service_->IsAimUrl(url, GetForcedEmbeddedPageHost());
 }

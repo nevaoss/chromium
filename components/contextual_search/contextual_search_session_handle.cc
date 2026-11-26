@@ -57,6 +57,17 @@ bool TabContextState::operator==(const TabContextState& other) const {
          deselected == other.deselected;
 }
 
+bool TabContextState::ContainsTab(SessionID tab_id) const {
+  if (!tab_id.is_valid()) {
+    return false;
+  }
+  const auto has_tab_id = [tab_id](const TabInfo& tab) {
+    return tab.tab_id == tab_id.id();
+  };
+  return std::ranges::any_of(attached, has_tab_id) ||
+         std::ranges::any_of(restored, has_tab_id);
+}
+
 namespace {
 
 std::vector<FileInfo> TokensToFileInfos(
@@ -96,16 +107,22 @@ FileInfo* MarkFileSuperceded(ContextualSearchContextController* controller,
 }
 
 // Appends `request_id` to `request_ids` unless an equal request ID is already
-// present.
-void AppendUniqueRequestId(std::vector<lens::LensOverlayRequestId>& request_ids,
+// present. Returns true if `request_id` was appended.
+bool AppendUniqueRequestId(std::vector<lens::LensOverlayRequestId>& request_ids,
                            const lens::LensOverlayRequestId& request_id) {
   const std::string serialized = request_id.SerializeAsString();
   for (const auto& existing : request_ids) {
     if (existing.SerializeAsString() == serialized) {
-      return;
+      return false;
     }
   }
   request_ids.push_back(request_id);
+  return true;
+}
+
+void LogRemoveContextReason(ContextualTasksRemovedContextReason reason) {
+  base::UmaHistogramEnumeration("ContextualTasks.RemovedContext.Reason",
+                                reason);
 }
 
 // Returns whether the web identity for this session matches the browser
@@ -159,6 +176,29 @@ bool IsTabDeselectionEnabled() {
   return omnibox::IsTabDeselectionInComposeboxEnabled() ||
          contextual_tasks::IsContextualTasksRearchitectureEnabled() ||
          contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled();
+}
+
+bool IsImplicitInitialQueryUpload(const FileInfo& info) {
+  return info.input_data &&
+         (info.is_implicit_upload || info.input_data->is_implicit_upload) &&
+         info.input_data->upload_type ==
+             lens::LensOverlayContextualInputUploadType::
+                 CONTEXTUAL_INPUT_UPLOAD_TYPE_CONTEXTUAL_SEARCHBOX_INITIAL_QUERY;
+}
+
+bool IsPdfFileInfo(const FileInfo& info) {
+  if (IsImplicitInitialQueryUpload(info)) {
+    return false;
+  }
+  if (info.mime_type == lens::MimeType::kPdf) {
+    return true;
+  }
+  if (info.mime_type_string.has_value() &&
+      info.mime_type_string->find("pdf") != std::string::npos) {
+    return true;
+  }
+  return info.input_data && info.input_data->mime_type_string.has_value() &&
+         info.input_data->mime_type_string->find("pdf") != std::string::npos;
 }
 
 }  // namespace
@@ -701,6 +741,12 @@ void ContextualSearchSessionHandle::CreateSearchUrl(
 
   if (!search_url_request_info->file_tokens.empty()) {
     has_submitted_context_ = true;
+    if (std::ranges::any_of(
+            TokensToFileInfos(context_controller,
+                              search_url_request_info->file_tokens),
+            IsPdfFileInfo)) {
+      has_submitted_pdf_context_ = true;
+    }
   }
 
   // Copy the tokens from this request to the list of all submitted tokens.
@@ -788,6 +834,7 @@ void ContextualSearchSessionHandle::OnSmartTabSharingToggled(bool active) {
       ClearAllPersistedTabs();
       submitted_context_tokens_.clear();
       uploaded_context_tokens_.clear();
+      has_submitted_pdf_context_ = false;
     } else {
       auto is_smart_or_implicit_tab = [&](const base::UnguessableToken& token) {
         if (!context_controller) {
@@ -884,7 +931,10 @@ ContextualSearchSessionHandle::TakeRemovedContexts() {
   if (smart_tab_sharing_toggled_since_last_turn_ ||
       !sts_toggled_removed_contexts_.empty()) {
     for (const auto& req_id : sts_toggled_removed_contexts_) {
-      AppendUniqueRequestId(removed_contexts, req_id);
+      if (AppendUniqueRequestId(removed_contexts, req_id)) {
+        LogRemoveContextReason(
+            ContextualTasksRemovedContextReason::kSmartTabSharingDisabled);
+      }
     }
     sts_toggled_removed_contexts_.clear();
     smart_tab_sharing_toggled_since_last_turn_ = false;
@@ -994,17 +1044,19 @@ ContextualSearchSessionHandle::TakeRemovedContexts() {
     }
 
     // Add tab `request_id` to server for tab removal on the server.
+    bool added_removed_context = false;
     if (tab.request_id.has_value()) {
-      AppendUniqueRequestId(removed_contexts, tab.request_id.value());
+      added_removed_context =
+          AppendUniqueRequestId(removed_contexts, tab.request_id.value());
     }
     MarkFileSuperceded(context_controller, persisted_token);
 
-    // Check if tab is still open.
-    bool tab_still_open = false;
+    // Check if there is a valid active (potentially new) token for this tab.
+    // If so, the tab navigated to a new URL that has a valid replacement token,
+    // so only the expired `persisted_token` should be removed below.
+    bool has_valid_active_token = false;
     base::UnguessableToken active_token = GetActiveTokenForTab(session_id);
     if (tab_validator) {
-      // If there is an active (potentially new) token for this tab, check if
-      // it is valid. If it is valid, the tab is still open (navigated).
       base::UnguessableToken validated_token =
           context_management_enabled ? active_token : persisted_token;
       // If context management is enabled, always validate the active token
@@ -1017,13 +1069,13 @@ ContextualSearchSessionHandle::TakeRemovedContexts() {
             context_controller->GetFileInfo(active_token);
         if (active_file_info &&
             tab_validator->IsTabValidAndPointingToUrl(*active_file_info)) {
-          tab_still_open = true;
+          has_valid_active_token = true;
         }
       }
     } else if (is_displaced) {
       // Without a `tab_validator`, a displaced tab that has been re-attached
       // with a new token is still open at its new URL.
-      tab_still_open =
+      has_valid_active_token =
           (!active_token.is_empty() && active_token != persisted_token) ||
           std::ranges::any_of(
               tab_context_.attached, [&](const TabInfo& attached_tab) {
@@ -1032,8 +1084,23 @@ ContextualSearchSessionHandle::TakeRemovedContexts() {
               });
     }
 
-    if (!tab_still_open) {
-      // If closed, remove all tab tokens associated with this tab session id.
+    if (added_removed_context) {
+      if (tab_context_.deselected.contains(session_id)) {
+        LogRemoveContextReason(
+            ContextualTasksRemovedContextReason::kUserDeselected);
+      } else if (has_valid_active_token ||
+                 (tab_validator && tab_validator->IsTabOpen(session_id))) {
+        LogRemoveContextReason(
+            ContextualTasksRemovedContextReason::kBrowserTabNavigated);
+      } else {
+        LogRemoveContextReason(
+            ContextualTasksRemovedContextReason::kBrowserTabClosed);
+      }
+    }
+
+    if (!has_valid_active_token) {
+      // If closed or no valid active replacement token exists, remove all tab
+      // tokens associated with this tab session id.
       // `isTabToken()` is not needed here to verify contexts are a tab
       // because successfully matching session id's with a valid `session_id`
       // means that the context must be a tab.
@@ -1069,6 +1136,10 @@ ContextualSearchSessionHandle::TakeRemovedContexts() {
     tab_context_dirty_ = true;
   }
   MaybeNotifyTabContextSubscribers();
+
+  base::UmaHistogramCounts100("ContextualTasks.RemovedContext.CountPerQuery",
+                              removed_contexts.size());
+
   return removed_contexts;
 }
 
@@ -1087,8 +1158,19 @@ ContextualSearchSessionHandle::MarkQuerySubmitted(
   // turn/submission into `tab_context_.attached`.
   ClearFiles(/*query_submitted=*/true);
 
+  // Record the total number of persisted tabs attached to the session for this
+  // turn (after `TakeRemovedContexts()` pruned any removed tabs and
+  // `ClearFiles(/*query_submitted=*/true)` promoted newly submitted tabs).
+  base::UmaHistogramCounts100(
+      "ContextualTasks.RemovedContext.RemainingTabsCount",
+      GetPersistedTabs().size());
+
   if (!file_tokens.empty()) {
     has_submitted_context_ = true;
+    if (std::ranges::any_of(TokensToFileInfos(GetController(), file_tokens),
+                            IsPdfFileInfo)) {
+      has_submitted_pdf_context_ = true;
+    }
   }
 
   // Copy the tokens from this request to the list of all submitted tokens.
@@ -1175,6 +1257,11 @@ ContextualSearchSessionHandle::GetSubmittedContextTabTitles() const {
 }
 
 void ContextualSearchSessionHandle::ClearSubmittedContextTokens() {
+  if (std::ranges::any_of(
+          TokensToFileInfos(GetController(), submitted_context_tokens_),
+          IsPdfFileInfo)) {
+    has_submitted_pdf_context_ = true;
+  }
   submitted_context_tokens_.clear();
 }
 
@@ -1182,6 +1269,10 @@ void ContextualSearchSessionHandle::SetSubmittedContextTokens(
     const std::vector<base::UnguessableToken>& tokens) {
   if (!tokens.empty()) {
     has_submitted_context_ = true;
+    if (std::ranges::any_of(TokensToFileInfos(GetController(), tokens),
+                            IsPdfFileInfo)) {
+      has_submitted_pdf_context_ = true;
+    }
   }
   submitted_context_tokens_ = tokens;
 }
@@ -1730,6 +1821,9 @@ void ContextualSearchSessionHandle::AddAttachedTab(TabInfo tab) {
   } else if (*it == tab) {
     return;
   } else {
+    if (it->submitted) {
+      tab.uploaded = tab.uploaded || it->uploaded;
+    }
     if (it->submitted && it->context_token != tab.context_token) {
       displaced_submitted_tabs_.push_back(std::move(*it));
     }
@@ -1789,6 +1883,12 @@ bool ContextualSearchSessionHandle::IsTabInContext(SessionID session_id) const {
     }
   }
   return false;
+}
+
+bool ContextualSearchSessionHandle::HasPdfContext() const {
+  return has_submitted_pdf_context_ ||
+         std::ranges::any_of(GetSubmittedContextFileInfos(), IsPdfFileInfo) ||
+         std::ranges::any_of(GetUploadedContextFileInfos(), IsPdfFileInfo);
 }
 
 bool ContextualSearchSessionHandle::IsTabToken(
@@ -1872,7 +1972,7 @@ void ContextualSearchSessionHandle::MarkTabAckByServer(
   if (file_info->tab_title.has_value()) {
     tab->title = *file_info->tab_title;
   }
-  tab->uploaded = !file_info->is_implicit_upload;
+  tab->uploaded = tab->uploaded || !file_info->is_implicit_upload;
   tab->submitted = true;
   tab_context_dirty_ = true;
 }

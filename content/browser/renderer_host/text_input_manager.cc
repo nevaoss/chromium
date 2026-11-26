@@ -364,6 +364,7 @@ void TextInputManager::UpdateTextInputState(
       }
     }
     active_view_ = view;
+    changed = true;
   }
 
   // If the state for |active_view_| is none, or if |active_view_| is no longer
@@ -372,6 +373,7 @@ void TextInputManager::UpdateTextInputState(
       (text_input_state.type == ui::TEXT_INPUT_TYPE_NONE ||
        !IsViewFocused(view))) {
     active_view_ = nullptr;
+    changed = true;
   }
 
   NotifyObserversAboutInputStateUpdate(view, changed);

@@ -86,8 +86,6 @@ crbug.com/545123760 [ iPad Simulator ] TabGroupsTestCase/testReopenGroupFromAnot
 crbug.com/545122908 [ iPad Simulator ] MailtoHandlerTestCase/testDefaultAppsInMultiWindow [ Pass Failure ]
 
 # Gardening suppression 2026-08-12
-crbug.com/437843552 [ Simulator ] HistorySystemTestCase/testSearchSyncedHistory [ Pass Failure ]
-crbug.com/545634498 [ iPad Device ] HistorySystemTestCase/testSearchSyncedHistory [ Pass Failure ]
 crbug.com/545633687 [ Simulator ] TabGroupsTestCase/testReopenGroupFromAnotherWindow [ Pass Failure ]
 crbug.com/545633687 [ iPad Device ] TabGroupsTestCase/testReopenGroupFromAnotherWindow [ Pass Failure ]
 
@@ -241,10 +239,10 @@ crbug.com/573993705 AssistantAIMTestCase/testInputPlateHiddenOnPlusMenu [ Pass F
 crbug.com/575489890 AutofillProfileSettingsTestCase/testCountrySelection [ Pass Failure ]
 crbug.com/575489325 [ Device ] NewTabPageTestCase/testPremiumAvatarRingWithDynamicTierChange [ Pass Failure ]
 crbug.com/575489612 [ iPhone Simulator ] AutofillAIEGTest/testSavePassportForm [ Pass Failure ]
-crbug.com/575489509 [ Simulator ] SharedTabGroupsSigninTestCase/testJoinGroupNotSynced [ Pass Failure ]
 
 # Gardening suppression 2026-10-22
 crbug.com/575489890 AutofillProfileSettingsTestCase/testDoneButtonByRequirementsOfCountries [ Pass Failure ]
 
 # Gardening suppression 2026-10-26
 crbug.com/556601479 [ iPhone Simulator ] PolicyUIMojoEnabledTestCase/testPolicyPageManagedWithCBCM [ Pass Failure ]
+crbug.com/578110413 SaveCardInfobarEGTest/testSaveCardBottomSheetShowsLoadingAndConfirmationAfterAcceptPushed [ Pass Failure ]

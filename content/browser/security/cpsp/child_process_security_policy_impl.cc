@@ -250,26 +250,6 @@ enum ChildProcessSecurityGrants {
   DELETE_FILE_GRANT = DELETE_FILE_PERMISSION,
 };
 
-// https://crbug.com/646278 Valid blob URLs should contain canonically
-// serialized origins.
-bool IsMalformedBlobUrl(const GURL& url) {
-  if (!url.SchemeIsBlob()) {
-    return false;
-  }
-
-  // If the part after blob: survives a roundtrip through url::Origin, then
-  // it's a normal blob URL.
-  std::string canonical_origin = url::Origin::Create(url).Serialize();
-  canonical_origin.append(1, '/');
-  if (base::StartsWith(url.GetContentPiece(), canonical_origin,
-                       base::CompareCase::INSENSITIVE_ASCII)) {
-    return false;
-  }
-
-  // This is a malformed blob URL.
-  return true;
-}
-
 // Helper function that checks to make sure calls on
 // CanAccessDataForOrigin() are only made on valid threads.
 // TODO(acolwell): Expand the usage of this check to other
@@ -385,12 +365,6 @@ void LogCanAccessDataForOriginCrashKeys(
   base::debug::SetCrashKeyString(GetCommittedOriginsKey(),
                                  committed_origin_list);
   base::debug::SetCrashKeyString(GetAccessTypeKey(), access_type);
-}
-
-void LogCanCommitUrlFailureReason(std::string_view failure_reason) {
-  static auto* const failure_reason_key = base::debug::AllocateCrashKeyString(
-      "cpspi_can_commit_url_failure_reason", base::debug::CrashKeySize::Size64);
-  base::debug::SetCrashKeyString(failure_reason_key, failure_reason);
 }
 
 // If a ChildProcessSecurityPolicy query is unable to find the ProcessState,
@@ -1760,6 +1734,7 @@ void ChildProcessSecurityPolicyImpl::GrantCommitOrigin(
   if (IsRustEnabled(GetRustPolicy(CpspRustFeature::kProcessState))) {
     rust::child_process_security_policy::grant_commit_origin(
         ChildProcessId::FromUnsafeValue(child_id),
+        // Make a copy for Rust to own.
         std::make_unique<url::Origin>(origin));
   }
 
@@ -1789,6 +1764,7 @@ void ChildProcessSecurityPolicyImpl::GrantRequestOrigin(
   if (IsRustEnabled(GetRustPolicy(CpspRustFeature::kProcessState))) {
     rust::child_process_security_policy::grant_request_origin(
         ChildProcessId::FromUnsafeValue(child_id),
+        // Make a copy for Rust to own.
         std::make_unique<url::Origin>(origin));
   }
 
@@ -1890,7 +1866,9 @@ void ChildProcessSecurityPolicyImpl::GrantOriginCheckExemptionForWebView(
   RUST_CPP_PROCESS_STATE_VOID_FUNCTION(
       rust::child_process_security_policy::
           grant_origin_check_exemption_for_webview(
-              child_id, std::make_unique<url::Origin>(origin)),
+              child_id,
+              // Make a copy for Rust to own.
+              std::make_unique<url::Origin>(origin)),
       GrantOriginCheckExemptionForWebView_Cpp(child_id, origin));
 }
 
@@ -1910,7 +1888,9 @@ bool ChildProcessSecurityPolicyImpl::HasOriginCheckExemptionForWebView(
   RUST_CPP_PROCESS_STATE_RETURN_FUNCTION(
       rust::child_process_security_policy::
           has_origin_check_exemption_for_webview(
-              child_id, std::make_unique<url::Origin>(origin)),
+              child_id,
+              // Make a copy for Rust to own.
+              std::make_unique<url::Origin>(origin)),
       HasOriginCheckExemptionForWebView_Cpp(child_id, origin));
 }
 
@@ -2154,6 +2134,33 @@ bool ChildProcessSecurityPolicyImpl::CanCommitURL(ChildProcessId child_id,
     }
     return can_commit;
   }
+}
+
+// static
+bool ChildProcessSecurityPolicyImpl::IsMalformedBlobUrl(const GURL& url) {
+  if (!url.SchemeIsBlob()) {
+    return false;
+  }
+
+  // If the part after blob: survives a roundtrip through url::Origin, then
+  // it's a normal blob URL.
+  std::string canonical_origin = url::Origin::Create(url).Serialize();
+  canonical_origin.append(1, '/');
+  if (base::StartsWith(url.GetContentPiece(), canonical_origin,
+                       base::CompareCase::INSENSITIVE_ASCII)) {
+    return false;
+  }
+
+  // This is a malformed blob URL.
+  return true;
+}
+
+// static
+void ChildProcessSecurityPolicyImpl::LogCanCommitUrlFailureReason(
+    std::string_view failure_reason) {
+  static auto* const failure_reason_key = base::debug::AllocateCrashKeyString(
+      "cpspi_can_commit_url_failure_reason", base::debug::CrashKeySize::Size64);
+  base::debug::SetCrashKeyString(failure_reason_key, failure_reason);
 }
 
 bool ChildProcessSecurityPolicyImpl::CanReadFile(ChildProcessId child_id,
@@ -4240,6 +4247,7 @@ void ChildProcessSecurityPolicyImpl::RemoveIsolatedOriginForTesting(
     const url::Origin& origin) {
   RUST_CPP_VOID_FUNCTION(
       rust::child_process_security_policy::remove_isolated_origin_for_testing(
+          // Make a copy for Rust to own.
           std::make_unique<url::Origin>(origin)),
       RemoveIsolatedOriginForTesting_Cpp(origin));
 }
@@ -4273,6 +4281,7 @@ int ChildProcessSecurityPolicyImpl::GetIsolatedOriginEntryCountForTesting(
     const url::Origin& origin) {
   RUST_CPP_RETURN_FUNCTION(rust::child_process_security_policy::
                                get_isolated_origin_entry_count_for_testing(
+                                   // Make a copy for Rust to own.
                                    std::make_unique<url::Origin>(origin)),
                            GetIsolatedOriginEntryCountForTesting_Cpp(origin));
 }

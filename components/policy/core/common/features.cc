@@ -28,6 +28,8 @@ BASE_FEATURE(kEnhancedSecurityEventFields,
 
 BASE_FEATURE(kUseCECFlagInPolicyData, base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kUserPolicyCacheSizeLimit2MB, base::FEATURE_ENABLED_BY_DEFAULT);
+
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kInitializePoliciesForSignedInUserInNewEntryPoints,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -106,5 +108,8 @@ const base::FeatureParam<base::TimeDelta>
 bool IsMigrateSecureConnectApiToDmServerEnabled() {
   return base::FeatureList::IsEnabled(kMigrateSecureConnectApiToDmServer);
 }
+
+BASE_FEATURE(kPolicyUserInfoFetcherUseOmitBugWorkaround,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 }  // namespace policy::features

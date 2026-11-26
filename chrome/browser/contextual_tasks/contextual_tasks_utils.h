@@ -6,6 +6,7 @@
 #define CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_UTILS_H_
 
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "base/functional/callback.h"
@@ -23,7 +24,12 @@
 class Profile;
 class BrowserWindowInterface;
 
+namespace base {
+class Uuid;
+}  // namespace base
+
 namespace content {
+class NavigationHandle;
 class WebContents;
 }  // namespace content
 
@@ -47,6 +53,7 @@ class Page;
 }  // namespace mojom
 
 class ContextualTasksUIInterface;
+class ContextualTasksService;
 class AimMessagePoster;
 struct SiteExclusionDetail;
 
@@ -72,6 +79,12 @@ void RecordErrorPageShown(contextual_search::ContextualSearchSource source);
 // Records the HTTP response code of the inner frame contents.
 void RecordInnerFrameContentsHttpResponseCode(int http_status_code,
                                               bool is_zero_state);
+
+// Records navigation HTTP response code and net error code metrics for
+// Contextual Tasks side panel navigations.
+void RecordContextualTasksNavigationMetrics(
+    content::NavigationHandle* navigation_handle,
+    bool is_zero_state);
 
 // Returns true if tab sharing and tab input capabilities are supported
 // for the given profile (checking AIM and Fusebox eligibility).
@@ -181,6 +194,17 @@ bool IsAndroidDesktopFormFactor();
 // Returns whether the provided URL is to a contextual tasks WebUI page.
 bool IsContextualTasksUrl(const GURL& url);
 
+// Returns the AI Mode thread id of `url` (its `mtid` param), or `std::nullopt`
+// if `url` has none.
+std::optional<std::string> GetAiModeThreadId(const GURL& url);
+
+// Adds the AI Mode thread `thread_id` to `task_id`, along with the thread's
+// latest turn (`mstk`) and title (`q`) from `url`, the thread's AI Mode URL.
+void UpdateAiModeThreadForTask(ContextualTasksService& service,
+                               const base::Uuid& task_id,
+                               const std::string& thread_id,
+                               const GURL& url);
+
 // Returns true if the given URL is valid for sharing as tab context with AI
 // Mode (matches the composebox '+' menu tab picker eligibility).
 bool IsUrlValidForContextSharing(const GURL& url);
@@ -211,6 +235,48 @@ lens::ClientToAimMessage GetHandshakeMessageProto();
 // Returns the serialized ClientToAimMessage containing the HandshakePing
 // with supported capabilities.
 std::vector<uint8_t> GetSerializedHandshakeMessage();
+
+// LINT.IfChange(ContextualTasksExtensionHandshakeStatus)
+// Terminal outcome of one Contextual Tasks extension Service Worker port
+// handshake with the Search Web page.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class ExtensionHandshakeStatus {
+  kSuccess = 0,
+  kHostOriginRejected = 1,
+  kFrameDetached = 2,
+  kMojoRequestFailed = 3,
+  kInvalidDocumentId = 4,
+  kMaxValue = kInvalidDocumentId,
+};
+// LINT.ThenChange(
+//   //chrome/browser/resources/contextual_tasks/extension/background.ts:ContextualTasksExtensionHandshakeStatus,
+//   //tools/metrics/histograms/metadata/contextual_tasks/enums.xml:ContextualTasksExtensionHandshakeStatus
+// )
+
+// LINT.IfChange(ContextualTasksExtensionPostMessageError)
+// Reason a message between the Contextual Tasks extension and Search Web was
+// dropped.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class ExtensionPostMessageError {
+  kUntrustedOrigin = 0,
+  kUnexpectedDataType = 1,
+  kMessageTooLarge = 2,
+  kInvalidDocumentId = 3,
+  kProtoParseFailed = 4,
+  kMojoPipeClosed = 5,
+  kMaxValue = kMojoPipeClosed,
+};
+// LINT.ThenChange(
+//   //chrome/browser/resources/contextual_tasks/extension/background.ts:ContextualTasksExtensionPostMessageError,
+//   //tools/metrics/histograms/metadata/contextual_tasks/enums.xml:ContextualTasksExtensionPostMessageError
+// )
+
+void RecordExtensionHandshakeStatus(ExtensionHandshakeStatus status);
+void RecordExtensionHandshakeLatency(base::TimeDelta latency);
+void RecordExtensionPostMessageError(ExtensionPostMessageError error);
+void RecordExtensionQueuedSearchMessagesDropped(size_t count);
 
 }  // namespace contextual_tasks
 

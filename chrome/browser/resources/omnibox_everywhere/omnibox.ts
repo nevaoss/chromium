@@ -291,6 +291,22 @@ export class OmniboxEverywhereOmniboxElement extends
       this.callbackRouter_.removeListener(this.screenshotMenuClosedListenerId_);
       this.screenshotMenuClosedListenerId_ = null;
     }
+    this.removeAttribute('has-expanded');
+  }
+
+  override willUpdate(changedProperties: PropertyValues<this>) {
+    super.willUpdate(changedProperties);
+    // `has-expanded` marks that the omnibox has been expanded at least once in
+    // the current session so collapsing back to `!dropdownIsVisible &&
+    // !hasUserInput_` plays the collapse animation on `#bottomControls`
+    // (whereas initial mount does not). `willUpdate()` re-applies
+    // `has-expanded` on every subsequent expansion after it is cleared by
+    // voice search or `onBottomControlsAnimationEnd_()`.
+    if (this.inVoiceSearchMode) {
+      this.removeAttribute('has-expanded');
+    } else if (this.dropdownIsVisible || this.hasUserInput_) {
+      this.toggleAttribute('has-expanded', true);
+    }
   }
 
   override firstUpdated(changedProperties: PropertyValues<this>) {
@@ -511,6 +527,7 @@ export class OmniboxEverywhereOmniboxElement extends
         'kOmniboxEverywhereLensButtonElementId');
     this.hideHelpBubble('kOmniboxEverywhereLensButtonElementId');
     this.isScreenshotMenuOpen = true;
+    this.finishAnimations_();
     const anchor = e.currentTarget as HTMLElement;
     const rect = anchor.getBoundingClientRect();
     this.pageHandler_.showScreenshotMenu({
@@ -535,6 +552,17 @@ export class OmniboxEverywhereOmniboxElement extends
   // Mode is available and policy allows sharing context with search.
   protected canAddFileContext_(): boolean {
     return this.fileContextEnabled_ && this.isFuseboxEnabled;
+  }
+
+  protected onInputWrapperDragover_(e: DragEvent) {
+    this.dragAndDropHandler.handleDragOver(e);
+    // Keep calling preventDefault() via `handleDragOver` so Blink treats the
+    // drag as handled by the page (instead of navigating the WebContents on
+    // drop), and set `dropEffect = 'none'` when file context cannot be added so
+    // the OS shows the no-drop cursor instead of the copy (+) cursor.
+    if (!this.canAddFileContext_() && e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'none';
+    }
   }
 
   // The drag-and-drop handler stays enabled when AI Mode is unavailable, so it
@@ -613,6 +641,7 @@ export class OmniboxEverywhereOmniboxElement extends
   }>) {
     this.pageHandler().activateMetricsFunnel('PlusButton');
     this.isContextMenuOpen = true;
+    this.finishAnimations_();
     // `anchorRect` is in WebUI viewport coordinates (CSS DIPs). Forward the
     // full bounding box so C++ can translate it to screen coordinates and
     // position the native context menu.
@@ -627,6 +656,24 @@ export class OmniboxEverywhereOmniboxElement extends
             height: Math.round(rect.height),
           });
     }
+  }
+
+  // `#bottomControls` animates on both expand (`loomniboxBottomControlsExpand`)
+  // and collapse (`loomniboxTopControlsEnter`). Clear `has-expanded` only when
+  // the collapse animation finishes (`!dropdownIsVisible && !hasUserInput_`) so
+  // the 1-line pill is back at rest until the next expansion.
+  protected onBottomControlsAnimationEnd_(e: AnimationEvent) {
+    if (e.target === e.currentTarget &&
+        e.animationName === 'loomniboxTopControlsEnter' &&
+        !this.dropdownIsVisible && !this.hasUserInput_) {
+      this.removeAttribute('has-expanded');
+    }
+  }
+
+  // Fast-forwards active shadow root animations so native menu anchor rects are
+  // sampled at their final resting positions.
+  private finishAnimations_() {
+    this.shadowRoot?.getAnimations().forEach(a => a.finish());
   }
 
   onContextMenuClosed() {

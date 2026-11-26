@@ -35,10 +35,11 @@
 #if !BUILDFLAG(IS_CHROMEOS)
 #include "remoting/host/chromoting_host_services_client.h"
 #include "remoting/host/mojom/chromoting_host_services.mojom.h"
-#include "remoting/proto/control.pb.h"
+#include "remoting/proto/terminal.pb.h"
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_LINUX)
+#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -236,9 +237,9 @@ MainRoutineFn SelectMainRoutine(const std::string& process_type) {
 constexpr base::TimeDelta kAgentStatusTimeout = base::Seconds(5);
 
 int SendAgentStatusMain(const base::CommandLine* command_line) {
-  std::optional<protocol::TerminalControl::AgentInfo> status =
+  auto parsed_args =
       ChromotingHostServicesClient::ParseAgentStatusArgs(command_line);
-  if (!status.has_value()) {
+  if (!parsed_args.has_value()) {
     Usage(command_line->GetProgram());
     return kInvalidCommandLineExitCode;
   }
@@ -264,12 +265,13 @@ int SendAgentStatusMain(const base::CommandLine* command_line) {
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, run_loop.QuitClosure(), kAgentStatusTimeout);
   session_services->SetAgentStatus(
-      *status, base::BindOnce(
-                   [](bool* succeeded, base::OnceClosure quit_closure) {
-                     *succeeded = true;
-                     std::move(quit_closure).Run();
-                   },
-                   &succeeded, run_loop.QuitClosure()));
+      parsed_args->terminal_id, std::move(parsed_args->status),
+      base::BindOnce(
+          [](bool* succeeded, base::OnceClosure quit_closure) {
+            *succeeded = true;
+            std::move(quit_closure).Run();
+          },
+          &succeeded, run_loop.QuitClosure()));
   run_loop.Run();
 
   return succeeded ? kSuccessExitCode : kInitializationFailed;
@@ -314,6 +316,21 @@ int HostMain(int argc, char** argv) {
   if (command_line->HasSwitch(kProcessTypeSwitchName)) {
     process_type = command_line->GetSwitchValueASCII(kProcessTypeSwitchName);
   }
+
+#if BUILDFLAG(IS_LINUX)
+  if (process_type == kProcessTypePeerConnection) {
+    // The peer connection process handles untrusted network traffic, and all
+    // peer connection processes run as the same user. Make this process
+    // non-dumpable as early as possible in HostMain(), so that other processes
+    // running as the same user cannot inspect or modify it via ptrace or
+    // procfs. Note that execve() resets the dumpable flag, so this process is
+    // briefly dumpable before reaching this point; the sandbox restrictions
+    // applied to every peer connection process prevent them from exploiting
+    // that window. The Crashpad handler is launched by the root daemon process
+    // and keeps CAP_SYS_PTRACE, so it can still collect crash dumps.
+    PCHECK(prctl(PR_SET_DUMPABLE, 0) == 0) << "prctl(PR_SET_DUMPABLE) failed";
+  }
+#endif  // BUILDFLAG(IS_LINUX)
 
   if (process_type == kProcessTypeEvaluateCapability) {
     if (command_line->HasSwitch(kEvaluateCapabilitySwitchName)) {
@@ -370,6 +387,12 @@ int HostMain(int argc, char** argv) {
       } else {
         LOG(ERROR) << "Invalid Crashpad handler socket switch values.";
       }
+    } else if (process_type == kProcessTypePeerConnection) {
+      // Never spawn a Crashpad handler from the peer connection process. The
+      // handler would run unsandboxed as the same user as other peer
+      // connection processes, and would outlive this process.
+      LOG(WARNING) << "Crashpad handler socket not provided. Crash reporting "
+                   << "is disabled for the peer connection process.";
     } else {
       InitializeCrashpadReporting();
     }

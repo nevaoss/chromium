@@ -138,6 +138,7 @@ generate_jni("jni_headers") {
     "java/src/org/chromium/chrome/browser/ui/side_panel/SidePanelCoordinatorAndroidBridge.java",
     "java/src/org/chromium/chrome/browser/ui/side_panel/WindowScopedSidePanelRegistryBridge.java",
   ]
+  deps = [ "//chrome/browser/ui/browser_window/public/android:jni" ]
 }
 
 # The Java build target for side panel dev features.
@@ -178,6 +179,7 @@ generate_jni("dev_jni_headers") {
     "java/src/org/chromium/chrome/browser/ui/side_panel/dev/SidePanelTabScopedDevFeatureImpl.java",
     "java/src/org/chromium/chrome/browser/ui/side_panel/dev/SidePanelWindowScopedDevFeatureImpl.java",
   ]
+  deps = [ "//chrome/browser/ui/browser_window/public/android:jni" ]
 }
 
 source_set("unit_tests") {
@@ -258,6 +260,7 @@ android_library("javatests") {
     "//components/browser_ui/styles/android:java",
     "//components/browser_ui/widget/android:test_support_java",
     "//content/public/android:content_full_java",
+    "//content/public/test/android:content_java_test_support",
     "//net/android:net_java_test_support",
     "//third_party/androidx:androidx_annotation_annotation_java",
     "//third_party/androidx:androidx_core_core_java",

@@ -740,7 +740,6 @@ template("test_runner_script") {
       output_conversion = "json"
       outputs = [ _install_artifacts_json ]
       data_keys = [ "install_artifacts" ]
-      walk_keys = [ "install_artifacts_barrier" ]
       rebase = root_build_dir
     }
   }
@@ -2525,12 +2524,6 @@ if (enable_java_templates) {
             invoker.expected_android_manifest_version_code_offset,
           ]
         }
-        if (defined(invoker.expected_android_manifest_library_version_offset)) {
-          args += [
-            "--verification-library-version-offset",
-            invoker.expected_android_manifest_library_version_offset,
-          ]
-        }
         if (fail_on_android_expectations) {
           args += [ "--fail-on-expectations" ]
         }
@@ -3279,12 +3272,11 @@ if (enable_java_templates) {
         invoker.output_jar_path,
         invoker.output_interface_jar_path,
       ]
-      inputs = kotlinc_paths_for_inputs + java_paths_for_inputs +
-               invoker.source_files + _java_srcjars +
-               [
-                 _build_config,
-                 invoker.target_sources_file,
-               ]
+      inputs =
+          kotlinc_paths_for_inputs + invoker.source_files + _java_srcjars + [
+            _build_config,
+            invoker.target_sources_file,
+          ]
 
       _rebased_build_config = rebase_path(_build_config, root_build_dir)
       _rebased_output_jar_path =

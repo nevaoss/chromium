@@ -601,6 +601,22 @@ void ReadAnythingController::ShowInPreferredUI(
   }
 }
 
+void ReadAnythingController::ShowInSidePanel(
+    base::PassKey<read_anything::ReadAnythingEntryPointController>,
+    ReadAnythingOpenTrigger trigger) {
+  ShowSidePanelUI(read_anything::ReadAnythingToSidePanelOpenTrigger(trigger));
+}
+
+void ReadAnythingController::CloseUI(
+    base::PassKey<read_anything::ReadAnythingEntryPointController>,
+    ReadAnythingCloseReason reason) {
+  if (GetPresentationState() == PresentationState::kInImmersiveOverlay) {
+    CloseImmersiveUI(reason);
+  } else if (GetPresentationState() == PresentationState::kInSidePanel) {
+    CloseSidePanelUI(reason);
+  }
+}
+
 void ReadAnythingController::ToggleUI(
     base::PassKey<read_anything::ReadAnythingEntryPointController>,
     ReadAnythingOpenTrigger trigger) {

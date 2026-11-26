@@ -513,16 +513,16 @@ targets.variant(
 )
 
 targets.variant(
-    name = "SIM_IPHONE_DUO_27_1",
-    identifier = "iPhone Duo 27.1",
+    name = "SIM_IPHONE_DUO_27_2",
+    identifier = "iPhone Duo 27.2",
     mixins = [
-        "ios_runtime_cache_27_1",
+        "ios_runtime_cache_27_2_iphone19_4",
     ],
     args = [
         "--platform",
         "iPhone Duo",
         "--version",
-        "27.1",
+        "27.2-iphone19-4",
     ],
 )
 
@@ -656,24 +656,6 @@ targets.variant(
         "iPhone SE (3rd generation)",
         "--version",
         "27.2",
-    ],
-)
-
-targets.variant(
-    name = "WEBVIEW_FULL_CTS_TESTS",
-    identifier = "full_mode",
-    swarming = targets.swarming(
-        shards = 2,
-    ),
-)
-
-targets.variant(
-    name = "WEBVIEW_INSTANT_CTS_TESTS",
-    identifier = "instant_mode",
-    args = [
-        "--exclude-annotation",
-        "AppModeFull",
-        "--test-apk-as-instant",
     ],
 )
 

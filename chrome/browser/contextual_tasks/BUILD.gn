@@ -29,6 +29,7 @@ source_set("contextual_tasks") {
     "contextual_tasks_context_service.h",
     "contextual_tasks_context_service_factory.h",
     "contextual_tasks_eligibility_manager.h",
+    "contextual_tasks_panel_controller.cc",
     "contextual_tasks_panel_controller.h",
     "contextual_tasks_panel_host.h",
     "contextual_tasks_service_factory.h",
@@ -435,6 +436,8 @@ source_set("ui_impl") {
     "contextual_tasks_internals_page_handler.cc",
     "contextual_tasks_navigation_throttle.cc",
     "contextual_tasks_page_handler.cc",
+    "contextual_tasks_panel_thread_observer.cc",
+    "contextual_tasks_panel_thread_observer.h",
     "contextual_tasks_permission_controller.cc",
     "contextual_tasks_side_panel_coordinator.cc",
     "contextual_tasks_ui.cc",
@@ -681,6 +684,7 @@ if (!is_android) {
       "contextual_tasks_extension_handler_browsertest.cc",
       "contextual_tasks_ghost_loader_pixel_test.cc",
       "contextual_tasks_page_handler_browsertest.cc",
+      "contextual_tasks_panel_thread_observer_browsertest.cc",
       "contextual_tasks_tab_navigation_observer_browsertest.cc",
       "contextual_tasks_ui_browsertest.cc",
       "contextual_tasks_ui_service_browsertest.cc",
@@ -744,6 +748,7 @@ if (!is_android) {
       "//google_apis",
       "//testing/gmock",
       "//testing/gtest",
+      "//third_party/lens_server_proto:lens_overlay_proto",
       "//ui/base/interaction:test_support",
       "//ui/webui/tracked_element",
     ]
@@ -995,6 +1000,7 @@ source_set("interactive_ui_tests") {
       ":ui",
       ":user_data",
       "//chrome/browser/extensions",
+      "//chrome/browser/ui/omnibox",
 
       # TabUnderlineView currently resides under glic/browser_ui.
       "//chrome/browser/glic/browser_ui:glow",
@@ -1007,8 +1013,10 @@ source_set("interactive_ui_tests") {
       "//chrome/browser/ui/lens",
       "//chrome/browser/ui/lens:test_support",
       "//chrome/browser/ui/toolbar/pinned_toolbar",
+      "//chrome/browser/ui/views/contextual_tasks:onboarding_bubble",
       "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/views/toolbar",
+      "//chrome/browser/ui/views/toolbar:test_support",
       "//chrome/browser/ui/webui/new_tab_page/composebox/variations",
       "//chrome/browser/ui/webui/searchbox:searchbox_test_utils",
       "//components/contextual_search:test_support",
@@ -1016,6 +1024,8 @@ source_set("interactive_ui_tests") {
       "//components/strings:components_strings",
       "//extensions/common",
       "//third_party/lens_server_proto:lens_overlay_proto",
+      "//ui/base/interaction:test_support",
+      "//ui/views",
     ]
   }
 

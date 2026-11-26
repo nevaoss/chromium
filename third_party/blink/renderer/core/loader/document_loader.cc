@@ -1693,7 +1693,12 @@ DocumentPolicy::ParsedDocumentPolicy DocumentLoader::CreateDocumentPolicy() {
 void DocumentLoader::HandleResponse() {
   DCHECK(frame_);
 
-  if (response_.IsHTTP() &&
+  // Non-2xx HTTP responses in <object> frames are intercepted by browser-side
+  // navigation to render fallback content. Static data commits (e.g.
+  // javascript: URLs after document.open(), MHTML subframes, or synthetic test
+  // responses) can have an HTTP(S) URL with status code 0 without going through
+  // browser-side HTTP response handling.
+  if (!is_static_data_ && response_.IsHTTP() &&
       !network::IsSuccessfulStatus(response_.HttpStatusCode())) {
     DCHECK(!IsA<HTMLObjectElement>(frame_->Owner()));
   }
@@ -3804,7 +3809,7 @@ void DocumentLoader::RecordUseCountersForCommit() {
   }
 
   FrameClientHintsPreferencesContext hints_context(frame_);
-  for (const auto& elem : network::GetClientHintToNameMap()) {
+  for (const auto& elem : network::kClientHintToNameMap) {
     const auto& type = elem.first;
     if (client_hints_preferences_.ShouldSend(type)) {
       hints_context.CountClientHints(type);

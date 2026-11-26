@@ -507,6 +507,8 @@ uploading your change for review.  These are checked by presubmit scripts.
   <int value="3" label="kIAMF_BASE"/>
 </enum>
 
+<!-- LINT.IfChange(AudioDecoderType) -->
+
 <enum name="AudioDecoderType">
   <int value="0" label="kUnknown"/>
   <int value="1" label="kFFmpeg"/>
@@ -519,7 +521,11 @@ uploading your change for review.  These are checked by presubmit scripts.
   <int value="8" label="kMediaFoundation"/>
   <int value="9" label="kPassthroughDTS"/>
   <int value="10" label="kSymphonia"/>
+  <int value="11" label="kOpus"/>
+  <int value="12" label="kIamf"/>
 </enum>
+
+<!-- LINT.ThenChange(//media/base/decoder.h:AudioDecoderType) -->
 
 <enum name="AudioEffectType">
   <int value="0" label="None"/>
@@ -8111,6 +8117,7 @@ from previous Chrome versions.
   <int value="-2053098867" label="AutofillEnableCvcStorageAndFilling:enabled"/>
   <int value="-2053062676" label="EnableNeuralPalmAdaptiveHold:enabled"/>
   <int value="-2052783936" label="EnablePixPaymentsInLandscapeMode:enabled"/>
+  <int value="-2051570480" label="OmniboxEarlyInflation:disabled"/>
   <int value="-2051121685" label="EnablePixPayments:enabled"/>
   <int value="-2050829390" label="LensRegionSearchStaticPage:enabled"/>
   <int value="-2050382220"
@@ -10818,6 +10825,7 @@ from previous Chrome versions.
   <int value="-1256747007"
       label="OminboxUIExperimentUseGenericSearchEngineIcon:disabled"/>
   <int value="-1256187739" label="ClientStorageAccessContextAuditing:disabled"/>
+  <int value="-1255696110" label="OmniboxVoicePlateIntent:disabled"/>
   <int value="-1255571408"
       label="UsernameFirstFlowWithIntermediateValues:enabled"/>
   <int value="-1255427595" label="HomePageButtonForceEnabled:enabled"/>
@@ -11140,6 +11148,7 @@ from previous Chrome versions.
   <int value="-1164012332" label="SysUiShouldHoldbackForest:enabled"/>
   <int value="-1163777157" label="ContextualSearchSimplifiedServer:disabled"/>
   <int value="-1163718295" label="AndroidHubFloatingActionButton:enabled"/>
+  <int value="-1163707150" label="LensSendDriveTabUrlsInComposeboxes:enabled"/>
   <int value="-1163430139" label="PageColorsSettings:enabled"/>
   <int value="-1162944097" label="enable-color-correct-rendering"/>
   <int value="-1162636562" label="ReduceHorizontalFlingVelocity:disabled"/>
@@ -11232,6 +11241,7 @@ from previous Chrome versions.
   <int value="-1139057843" label="ActorStepProgressNotification:disabled"/>
   <int value="-1138851579" label="QuerySearchBurnInPeriod:disabled"/>
   <int value="-1138146296" label="CriticalActionHistory:enabled"/>
+  <int value="-1138140585" label="LensSendDriveTabUrlsInComposeboxes:disabled"/>
   <int value="-1137745598" label="PhoneHubNudge:disabled"/>
   <int value="-1137696948" label="enable-chromeos-account-manager"/>
   <int value="-1137470863" label="FedCmWebIdentitySubdomain:enabled"/>
@@ -11670,6 +11680,7 @@ from previous Chrome versions.
       label="HoldingSpaceWallpaperNudgeForceEligibility:enabled"/>
   <int value="-1002391016" label="LensOverlayOptimizationFilter:disabled"/>
   <int value="-1001837588" label="EnableAppReinstallZeroState:enabled"/>
+  <int value="-1000784424" label="BrowsingHistoryFilterByDomain:disabled"/>
   <int value="-1000695123"
       label="AccessibilitySelectToSpeakPageMigration:disabled"/>
   <int value="-1000671573" label="TemporaryUnexpireFlagsM80:enabled"/>
@@ -11863,6 +11874,7 @@ from previous Chrome versions.
   <int value="-948684341" label="OmniboxBlurWithEscape:enabled"/>
   <int value="-948678625" label="NtpMvcRefactor:enabled"/>
   <int value="-948256052" label="EnableInputInDiagnosticsApp:enabled"/>
+  <int value="-948249426" label="ContextualTasksSidePanelTabState:disabled"/>
   <int value="-948067160" label="AXTreeFixing:disabled"/>
   <int value="-947943345" label="ChildProcessSecurityPolicyRust:enabled"/>
   <int value="-947643308" label="EnableTouchscreensInDiagnosticsApp:disabled"/>
@@ -12177,6 +12189,7 @@ from previous Chrome versions.
       label="WebViewSynthesizePageLoadOnlyOnInitialMainDocumentAccess:disabled"/>
   <int value="-852474116" label="(Obsolete) CrOSSuspendToDisk:disabled"/>
   <int value="-851924474" label="FastPairDebugMetadata:disabled"/>
+  <int value="-851855394" label="ContextualTasksSidePanelTabState:enabled"/>
   <int value="-851708732" label="CSSMasonryLayout:disabled"/>
   <int value="-851413329" label="AnnotatorMode:disabled"/>
   <int value="-850821337" label="WebContentsForceDark:enabled"/>
@@ -13087,6 +13100,7 @@ from previous Chrome versions.
   <int value="-575081438"
       label="OmniboxMostVisitedTilesFadingOnTablet:disabled"/>
   <int value="-574965003" label="LauncherLacrosIntegration:disabled"/>
+  <int value="-574847253" label="OmniboxVoicePlateIntent:enabled"/>
   <int value="-574564494" label="AndroidHubSearchTabGroups:disabled"/>
   <int value="-574447752" label="LongScreenshotsNoMemoryCheck:enabled"/>
   <int value="-574354898" label="PostQuantumCECPQ2:enabled"/>
@@ -15021,6 +15035,7 @@ from previous Chrome versions.
   <int value="3058782" label="EnableGamepadMultitouch:enabled"/>
   <int value="3354018" label="BrowserActuator:enabled"/>
   <int value="3428212" label="OmniboxAggregateShortcuts:disabled"/>
+  <int value="3491127" label="BrowsingHistoryFilterByDomain:enabled"/>
   <int value="3807825" label="MobilePromoOnDesktopWithQRCode:disabled"/>
   <int value="3826348" label="DarkenWebsitesCheckboxInThemesSetting:disabled"/>
   <int value="4277967" label="SideSearchStatePerTab:disabled"/>
@@ -19922,6 +19937,7 @@ from previous Chrome versions.
   <int value="1467494310" label="JavaScriptExperimentalSharedMemory:enabled"/>
   <int value="1467583815" label="AVIF:disabled"/>
   <int value="1467956567" label="GlicWarming:disabled"/>
+  <int value="1468444796" label="OmniboxEarlyInflation:enabled"/>
   <int value="1469407485" label="disable-accelerated-2d-canvas"/>
   <int value="1470134259" label="NtpTabResumptionModule:disabled"/>
   <int value="1470925301"
@@ -23390,7 +23406,7 @@ Called by update_net_error_codes.py.-->
   <int value="113" label="Security Token"/>
   <int value="114" label="Crostini Export Import"/>
   <int value="115" label="(deprecated) Lacros Cannot Launch"/>
-  <int value="116" label="Request File System"/>
+  <int value="116" label="(deprecated) Request File System"/>
   <int value="117" label="Network Portal Detector"/>
   <int value="118" label="Crostini Package"/>
   <int value="119" label="Crostini Upgrade Available"/>
@@ -23841,12 +23857,16 @@ Called by update_net_error_codes.py.-->
 
 <!-- LINT.ThenChange(//ash/webui/eche_app_ui/apps_access_manager.h:OnboardingUserActionMetric) -->
 
+<!-- LINT.IfChange(OpenDownloadDialogEvent) -->
+
 <enum name="OpenDownloadDialogEvent">
   <int value="0" label="Dialog shown"/>
   <int value="1" label="Always open clicked"/>
   <int value="2" label="Just once clicked"/>
   <int value="3" label="Dialog dismissed"/>
 </enum>
+
+<!-- LINT.ThenChange(//chrome/browser/download/android/java/src/org/chromium/chrome/browser/download/dialogs/OpenDownloadDialog.java:OpenDownloadDialogEvent) -->
 
 <enum name="OptimizationGuideOptimizationGuideDecision">
   <int value="0" label="Unknown">

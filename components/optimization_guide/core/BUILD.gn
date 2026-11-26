@@ -74,7 +74,6 @@ component("features") {
     "model_execution/on_device_features.h",
 
     # TODO(crbug.com/514743962): These should all be broken up and removed.
-    "optimization_guide_enums.h",
     "optimization_guide_features.cc",
     "optimization_guide_features.h",
   ]
@@ -182,10 +181,6 @@ source_set("core_util") {
     "//ui/accessibility:ax_base",
     "//ui/accessibility:ax_enums_mojo",
     "//url",
-  ]
-  visibility = [
-    "./*",
-    "//services/on_device_model/android/*",
   ]
 }
 
@@ -681,6 +676,8 @@ if (build_with_model_execution) {
     ]
     if (is_android) {
       sources += [
+        "model_execution/test/fake_android_manifest_asset.cc",
+        "model_execution/test/fake_android_manifest_asset.h",
         "model_execution/test/fake_model_broker_android.cc",
         "model_execution/test/fake_model_broker_android.h",
       ]
@@ -706,17 +703,6 @@ group("test_support") {
       ":manifest_broker_test_support",
       ":ondevice_test_support",
       "//components/optimization_guide/core/model_execution/configs:substitution_builders",
-    ]
-  }
-}
-
-if (is_ios) {
-  source_set("eg_test_support+eg2") {
-    testonly = true
-    sources = [ "optimization_guide_enums.h" ]
-    public_deps = [
-      ":core_util",
-      ":hints_test_support",
     ]
   }
 }
@@ -928,7 +914,10 @@ if (build_with_model_execution && !is_chrome_for_testing) {
       "//third_party/tflite:buildflags",
     ]
     if (is_android) {
-      sources += [ "model_execution/android/model_broker_android_unittest.cc" ]
+      sources += [
+        "model_execution/android/android_manifest_unittest.cc",
+        "model_execution/android/model_broker_android_unittest.cc",
+      ]
       deps += [
         "//services/on_device_model/android",
         "//services/on_device_model/android:test_support",

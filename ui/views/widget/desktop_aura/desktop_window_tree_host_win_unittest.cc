@@ -17,6 +17,7 @@
 #include "base/functional/function_ref.h"
 #include "base/memory/weak_ptr.h"
 #include "base/run_loop.h"
+#include "base/scoped_observation.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
@@ -33,6 +34,8 @@
 #include "ui/aura/window_tree_host.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/events/test/event_generator.h"
+#include "ui/gfx/geometry/rect.h"
+#include "ui/gfx/geometry/size.h"
 #include "ui/gfx/geometry/vector2d.h"
 #include "ui/views/focus/focus_manager.h"
 #include "ui/views/test/desktop_window_tree_host_win_test_api.h"
@@ -41,6 +44,7 @@
 #include "ui/views/views_features.h"
 #include "ui/views/widget/desktop_aura/desktop_native_widget_aura.h"
 #include "ui/views/widget/widget.h"
+#include "ui/views/widget/widget_observer.h"
 #include "ui/views/win/hwnd_message_handler.h"
 
 namespace views {
@@ -125,6 +129,89 @@ TEST_F(DesktopWindowTreeHostWinTest, RunMoveLoopClearsMousePressedHandler) {
   ASSERT_EQ(dispatcher, widget.GetNativeWindow()->GetHost()->dispatcher());
 
   EXPECT_FALSE(dispatcher->mouse_pressed_handler());
+}
+
+// Verifies that SetBounds() and SetSize() take effect immediately after
+// exiting fullscreen or restoring from maximized, without waiting for the
+// posted StopIgnoringPosChanges() task to run.
+TEST_F(DesktopWindowTreeHostWinTest, SetBoundsAfterFullscreenOrMaximize) {
+  Widget widget;
+  Widget::InitParams params = CreateParams(
+      Widget::InitParams::CLIENT_OWNS_WIDGET, Widget::InitParams::TYPE_WINDOW);
+  params.bounds = gfx::Rect(100, 100, 200, 200);
+  widget.Init(std::move(params));
+  widget.Show();
+
+  HWNDMessageHandler* handler =
+      DesktopWindowTreeHostWinTestApi(static_cast<DesktopWindowTreeHostWin*>(
+                                          widget.GetNativeWindow()->GetHost()))
+          .GetHwndMessageHandler();
+  EXPECT_FALSE(handler->ignore_window_pos_changes_for_testing());
+
+  widget.SetFullscreen(true);
+  ASSERT_TRUE(widget.IsFullscreen());
+  EXPECT_TRUE(handler->ignore_window_pos_changes_for_testing());
+  widget.SetFullscreen(false);
+  ASSERT_FALSE(widget.IsFullscreen());
+  EXPECT_FALSE(handler->ignore_window_pos_changes_for_testing());
+
+  // SetBounds() immediately after exiting fullscreen should not be ignored.
+  const gfx::Rect bounds_after_fullscreen(120, 120, 250, 250);
+  widget.SetBounds(bounds_after_fullscreen);
+  EXPECT_EQ(bounds_after_fullscreen, widget.GetWindowBoundsInScreen());
+
+  widget.Maximize();
+  ASSERT_TRUE(widget.IsMaximized());
+  EXPECT_TRUE(handler->ignore_window_pos_changes_for_testing());
+  widget.Restore();
+  ASSERT_FALSE(widget.IsMaximized());
+  EXPECT_FALSE(handler->ignore_window_pos_changes_for_testing());
+
+  // SetBounds() immediately after restoring from maximized should not be
+  // ignored.
+  const gfx::Rect bounds_after_maximize(140, 140, 300, 300);
+  widget.SetBounds(bounds_after_maximize);
+  EXPECT_EQ(bounds_after_maximize, widget.GetWindowBoundsInScreen());
+
+  widget.SetFullscreen(true);
+  ASSERT_TRUE(widget.IsFullscreen());
+  EXPECT_TRUE(handler->ignore_window_pos_changes_for_testing());
+  widget.SetFullscreen(false);
+  ASSERT_FALSE(widget.IsFullscreen());
+  EXPECT_FALSE(handler->ignore_window_pos_changes_for_testing());
+
+  // SetSize() immediately after exiting fullscreen should not be ignored.
+  const gfx::Size size_after_fullscreen(350, 350);
+  widget.SetSize(size_after_fullscreen);
+  EXPECT_EQ(size_after_fullscreen, widget.GetWindowBoundsInScreen().size());
+
+  // Restoring from maximized via the OS (bypassing HWNDMessageHandler::Restore,
+  // e.g. a title-bar double-click) leaves `ignore_window_pos_changes_` true on
+  // entry to SetBounds() and SetSize().
+  HWND hwnd = widget.GetNativeWindow()->GetHost()->GetAcceleratedWidget();
+  widget.Maximize();
+  ASSERT_TRUE(widget.IsMaximized());
+  EXPECT_TRUE(handler->ignore_window_pos_changes_for_testing());
+  ::ShowWindow(hwnd, SW_RESTORE);
+  ASSERT_FALSE(widget.IsMaximized());
+  EXPECT_TRUE(handler->ignore_window_pos_changes_for_testing());
+
+  const gfx::Rect bounds_after_os_restore(160, 160, 280, 280);
+  widget.SetBounds(bounds_after_os_restore);
+  EXPECT_FALSE(handler->ignore_window_pos_changes_for_testing());
+  EXPECT_EQ(bounds_after_os_restore, widget.GetWindowBoundsInScreen());
+
+  widget.Maximize();
+  ASSERT_TRUE(widget.IsMaximized());
+  EXPECT_TRUE(handler->ignore_window_pos_changes_for_testing());
+  ::ShowWindow(hwnd, SW_RESTORE);
+  ASSERT_FALSE(widget.IsMaximized());
+  EXPECT_TRUE(handler->ignore_window_pos_changes_for_testing());
+
+  const gfx::Size size_after_os_restore(320, 320);
+  widget.SetSize(size_after_os_restore);
+  EXPECT_FALSE(handler->ignore_window_pos_changes_for_testing());
+  EXPECT_EQ(size_after_os_restore, widget.GetWindowBoundsInScreen().size());
 }
 
 TEST_F(DesktopWindowTreeHostWinTest, SetAllowScreenshots) {
@@ -1182,6 +1269,91 @@ TEST_F(DesktopWindowTreeHostWinTest,
   ::SendMessage(widget->GetNativeWindow()->GetHost()->GetAcceleratedWidget(),
                 WM_CANCELMODE, 0, 0);
   EXPECT_FALSE(cursor_client->IsCursorVisible());
+}
+
+namespace {
+
+class ShowStateChangeCounter : public WidgetObserver {
+ public:
+  explicit ShowStateChangeCounter(Widget* widget) {
+    observation_.Observe(widget);
+  }
+
+  // WidgetObserver:
+  void OnWidgetShowStateChanged(Widget* widget) override { ++count_; }
+
+  int count() const { return count_; }
+
+ private:
+  int count_ = 0;
+  base::ScopedObservation<Widget, WidgetObserver> observation_{this};
+};
+
+}  // namespace
+
+// Verifies that observers are notified of a show state change that doesn't
+// change the client area size, e.g. when maximizing a window whose client area
+// already has the maximized size. Widget detects show state changes when it is
+// notified of a client area size change.
+TEST_F(DesktopWindowTreeHostWinTest, ShowStateChangeWithoutClientSizeChange) {
+  Widget widget;
+  Widget::InitParams params = CreateParams(
+      Widget::InitParams::CLIENT_OWNS_WIDGET, Widget::InitParams::TYPE_WINDOW);
+  params.bounds = gfx::Rect(100, 100, 200, 200);
+  HWND hwnd = InitTestWidget(widget, std::move(params));
+  HWNDMessageHandler* handler =
+      DesktopWindowTreeHostWinTestApi(static_cast<DesktopWindowTreeHostWin*>(
+                                          widget.GetNativeWindow()->GetHost()))
+          .GetHwndMessageHandler();
+
+  widget.Maximize();
+  ASSERT_TRUE(widget.IsMaximized());
+  const gfx::Size maximized_client_size = handler->GetClientAreaBounds().size();
+  widget.Restore();
+  ASSERT_FALSE(widget.IsMaximized());
+
+  // Resize the restored window so that its client area has the maximized size.
+  const gfx::Size restored_client_size = handler->GetClientAreaBounds().size();
+  RECT window_rect;
+  ASSERT_TRUE(::GetWindowRect(hwnd, &window_rect));
+  ::SetWindowPos(
+      hwnd, nullptr, window_rect.left, window_rect.top,
+      window_rect.right - window_rect.left + maximized_client_size.width() -
+          restored_client_size.width(),
+      window_rect.bottom - window_rect.top + maximized_client_size.height() -
+          restored_client_size.height(),
+      SWP_NOZORDER | SWP_NOACTIVATE);
+  ASSERT_FALSE(widget.IsMaximized());
+  ASSERT_EQ(handler->GetClientAreaBounds().size(), maximized_client_size);
+
+  // Maximize the widget. Its client area size doesn't change, since it already
+  // has the maximized size. Verify that observers are notified of the show
+  // state change.
+  ShowStateChangeCounter show_state_change_counter(&widget);
+  widget.Maximize();
+  ASSERT_TRUE(widget.IsMaximized());
+  ASSERT_EQ(handler->GetClientAreaBounds().size(), maximized_client_size);
+  EXPECT_EQ(show_state_change_counter.count(), 1);
+
+  // Minimize and restore a frameless widget whose client area is already empty.
+  // Verify that observers are notified of the show state changes even though
+  // the client area size remains 0x0.
+  Widget frameless_widget;
+  Widget::InitParams frameless_params =
+      CreateParams(Widget::InitParams::CLIENT_OWNS_WIDGET,
+                   Widget::InitParams::TYPE_WINDOW_FRAMELESS);
+  frameless_params.bounds = gfx::Rect(100, 100, 0, 0);
+  InitTestWidget(frameless_widget, std::move(frameless_params));
+  ASSERT_TRUE(frameless_widget.GetClientAreaBoundsInScreen().size().IsEmpty());
+
+  ShowStateChangeCounter frameless_show_state_counter(&frameless_widget);
+  frameless_widget.Minimize();
+  ASSERT_TRUE(frameless_widget.IsMinimized());
+  EXPECT_EQ(frameless_show_state_counter.count(), 1);
+
+  frameless_widget.Restore();
+  ASSERT_FALSE(frameless_widget.IsMinimized());
+  EXPECT_EQ(frameless_show_state_counter.count(), 2);
 }
 
 }  // namespace test

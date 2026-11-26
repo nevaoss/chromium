@@ -2713,6 +2713,8 @@ void FragmentPaintPropertyTreeBuilder::UpdateFilter() {
   DCHECK(properties_);
   bool was_tainted = properties_->Filter() && properties_->Filter()->Filter() &&
                      properties_->Filter()->Filter()->OriginTainted();
+  bool had_reference_filter =
+      properties_->Filter() && properties_->Filter()->HasReferenceFilter();
   if (NeedsPaintPropertyUpdate()) {
     if (NeedsFilter(object_, full_context_)) {
       EffectPaintPropertyNode::State state;
@@ -2791,8 +2793,10 @@ void FragmentPaintPropertyTreeBuilder::UpdateFilter() {
   }
 
   bool is_tainted = false;
+  bool has_reference_filter = false;
   if (properties_->Filter()) {
     context_.current_effect = properties_->Filter();
+    has_reference_filter = properties_->Filter()->HasReferenceFilter();
     if (const auto* input_clip = properties_->PixelMovingFilterClipExpander()) {
       context_.current.clip = input_clip;
     }
@@ -2805,7 +2809,8 @@ void FragmentPaintPropertyTreeBuilder::UpdateFilter() {
   } else {
     DCHECK(!properties_->PixelMovingFilterClipExpander());
   }
-  if (was_tainted != is_tainted) {
+  if (was_tainted != is_tainted ||
+      had_reference_filter != has_reference_filter) {
     full_context_.force_subtree_update_reasons |=
         PaintPropertyTreeBuilderContext::kSubtreeUpdateIsolationPiercing;
   }
@@ -4664,8 +4669,10 @@ void PaintPropertyTreeBuilder::InitPaintProperties() {
                            PaintPropertyChangeType::kNodeAddedOrRemoved);
     }
     if (properties->HasNode<EffectPaintPropertyNodeOrAlias>()) {
-      if (properties->Effect() &&
-          properties->Effect()->HasCanvasDrawableState()) {
+      if ((properties->Effect() &&
+           properties->Effect()->HasCanvasDrawableState()) ||
+          (properties->Filter() && properties->Filter()->Filter() &&
+           properties->Filter()->Filter()->OriginTainted())) {
         context_.force_subtree_update_reasons |=
             PaintPropertyTreeBuilderContext::kSubtreeUpdateIsolationPiercing;
       }
@@ -4683,7 +4690,11 @@ void PaintPropertyTreeBuilder::InitPaintProperties() {
     // SVG resources are painted within one or more other locations in the
     // SVG during paint, and hence have their own independent paint property
     // trees, paint offset, etc.
+    bool is_in_drawable_canvas_subtree =
+        context_.fragment_context.is_in_drawable_canvas_subtree;
     context_.fragment_context = PaintPropertyTreeBuilderFragmentContext();
+    context_.fragment_context.is_in_drawable_canvas_subtree =
+        is_in_drawable_canvas_subtree;
     context_.has_svg_hidden_container_ancestor = true;
 
     PaintPropertyTreeBuilderFragmentContext& fragment_context =

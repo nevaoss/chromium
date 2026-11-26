@@ -287,7 +287,9 @@ DownloadManager* DownloadsListTracker::GetOriginalNotifierManager() const {
 
 void DownloadsListTracker::OnDownloadCreated(DownloadManager* manager,
                                              DownloadItem* download_item) {
-  CHECK_EQ(0u, sorted_items_.count(download_item), base::NotFatalUntil::M162);
+  // TODO(crbug.com/576994215): CHECK-exclusion: Convert to a CHECK once we
+  // are confident it won't be triggered.
+  DCHECK_EQ(0u, sorted_items_.count(download_item));
   if (should_show_.Run(*download_item)) {
     InsertItem(sorted_items_.insert(download_item).first);
   }
@@ -455,7 +457,9 @@ downloads::mojom::DataPtr DownloadsListTracker::CreateDownloadData(
       break;
 
     case download::DownloadItem::COMPLETE:
-      CHECK(!download_item->IsDangerous(), base::NotFatalUntil::M162);
+      // TODO(crbug.com/577213141): CHECK-exclusion: Convert to a CHECK once we
+      // are confident it won't be triggered.
+      DCHECK(!download_item->IsDangerous());
       state = downloads::mojom::State::kComplete;
       break;
 

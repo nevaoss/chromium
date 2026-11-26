@@ -104,19 +104,13 @@ class ToolbarMediatorTest : public PlatformTest,
         AuthenticationServiceFactory::GetDefaultFactory());
     builder.AddTestingFactory(SyncServiceFactory::GetInstance(),
                               base::BindRepeating(&CreateTestSyncService));
-    builder.AddTestingFactory(GeminiServiceFactory::GetInstance(),
-                              GeminiServiceFactory::GetDefaultFactory());
     builder.AddTestingFactory(
         OptimizationGuideServiceFactory::GetInstance(),
         OptimizationGuideServiceFactory::GetDefaultFactory());
     profile_ = std::move(builder).Build();
 
     auth_service_ = AuthenticationServiceFactory::GetForProfile(profile_.get());
-    gemini_service_ptr_ = std::make_unique<GeminiServiceImpl>(
-        profile_.get(), auth_service_,
-        IdentityManagerFactory::GetForProfile(profile_.get()),
-        profile_->GetPrefs(),
-        OptimizationGuideServiceFactory::GetForProfile(profile_.get()));
+    gemini_service_ = GeminiServiceFactory::GetForProfile(profile_.get());
 
     browser_ = std::make_unique<TestBrowser>(profile_.get());
     WebNavigationBrowserAgent::CreateForBrowser(browser_.get());
@@ -160,7 +154,7 @@ class ToolbarMediatorTest : public PlatformTest,
                          topPosition:GetParam()
         defaultBrowserBannerAppAgent:GetParam() ? mock_app_agent_ : nil
                authenticationService:auth_service_
-                       geminiService:gemini_service_ptr_.get()
+                       geminiService:gemini_service_.get()
                   geminiBrowserAgent:gemini_browser_agent_];
     mediator_.navigationBrowserAgent =
         WebNavigationBrowserAgent::FromBrowser(browser_.get());
@@ -257,7 +251,7 @@ class ToolbarMediatorTest : public PlatformTest,
   id settings_handler_;
   raw_ptr<AuthenticationService> auth_service_;
   raw_ptr<GeminiBrowserAgent> gemini_browser_agent_;
-  std::unique_ptr<GeminiService> gemini_service_ptr_;
+  raw_ptr<GeminiService> gemini_service_;
   raw_ptr<web::FakeNavigationManager> fake_navigation_manager_;
 };
 
@@ -781,7 +775,7 @@ TEST_P(ToolbarMediatorTest, TestAssistantButtonTappedInIncognito) {
                        topPosition:GetParam()
       defaultBrowserBannerAppAgent:GetParam() ? mock_app_agent_ : nil
              authenticationService:auth_service_
-                     geminiService:gemini_service_ptr_.get()
+                     geminiService:gemini_service_.get()
                 geminiBrowserAgent:gemini_browser_agent_];
   id mock_delegate = OCMProtocolMock(@protocol(ToolbarMediatorDelegate));
   incognito_mediator.delegate = mock_delegate;

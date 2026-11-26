@@ -120,6 +120,9 @@ BASE_DECLARE_FEATURE(kApiProxyOverrideRulesPrivate);
 // runtime.getPlatformInfo() API.
 BASE_DECLARE_FEATURE(kApiRuntimeGetPlatformInfoNaClArch);
 
+// Controls the availability of the runtime.getDocumentId() API.
+BASE_DECLARE_FEATURE(kApiRuntimeGetDocumentId);
+
 // Controls the availability of runtime.sendNativeMessage and
 // runtime.connectNative on Desktop Android.
 BASE_DECLARE_FEATURE(kApiDesktopAndroidNativeMessaging);
@@ -265,6 +268,11 @@ BASE_DECLARE_FEATURE(kExperimentalOmniboxLabs);
 // out of the allowlist.
 BASE_DECLARE_FEATURE(kSafeBrowsingCrxAllowlistAutoDisable);
 
+// When enabled, `WebRequestProxyingURLLoaderFactory` binds
+// `TrustedHeaderClient` and cloned `URLLoaderFactory` receivers to
+// `navigation_response_task_runner_`.
+BASE_DECLARE_FEATURE(kWebRequestProxyNavigationResponseTaskRunner);
+
 // Controls whether the component webstore hosted app is loaded.
 BASE_DECLARE_FEATURE(kWebstoreHostedApp);
 
@@ -384,6 +392,16 @@ BASE_DECLARE_FEATURE(kUseSha256ForExtensionHashes);
 // must be explicitly listed to be web accessible, and the generated background
 // page is never web accessible.
 BASE_DECLARE_FEATURE(kRestrictGeneratedPathsInWebAccessibleResources);
+
+// If enabled, `ExtensionMessagePort` only registers a frame as a message
+// receiver for an extension if the frame's process may act for that extension:
+// a process in `ProcessMap` for the extension, or a process that has run a
+// content script or user script from the extension. If disabled, every live
+// frame is registered.
+// TODO(crbug.com/564956871): Before enabling this by default, make Chrome App
+// messages still reach the app's own webview-accessible resources shown in a
+// `<webview>`.
+BASE_DECLARE_FEATURE(kRestrictMessagingReceiverFramesToExtensionProcesses);
 
 }  // namespace extensions_features
 

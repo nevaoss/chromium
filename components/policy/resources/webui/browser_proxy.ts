@@ -148,6 +148,28 @@ export class BrowserProxy {
     }
   }
 
+  // Triggers a policy refresh. The refreshed policies are delivered through
+  // `listenForPoliciesUpdated()`.
+  static reloadPolicies() {
+    if (policyPageMojoMigrationEnabled) {
+      this.getInstance().handler.reloadPolicies();
+    } else {
+      chrome.send('reloadPolicies');
+    }
+  }
+
+  // <if expr="not is_chromeos">
+  // Uploads the enterprise browser and profile reports. The returned promise
+  // resolves once the uploads have completed, successfully or not.
+  static uploadReport(): Promise<void> {
+    if (policyPageMojoMigrationEnabled) {
+      return this.getInstance().handler.uploadReport();
+    } else {
+      return sendWithPromise('uploadReport');
+    }
+  }
+  // </if>
+
   static listenForStatusUpdated(
       callback: (status: Record<string, Status>) => void) {
     if (policyPageMojoMigrationEnabled) {

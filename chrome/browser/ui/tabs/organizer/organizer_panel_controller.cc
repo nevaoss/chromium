@@ -236,14 +236,10 @@ void OrganizerPanelController::SetOrganizerVisible(bool visible,
 #endif
   if (immediate) {
     BrowserAnimationController::From(&*browser_window_)
-        ->Reset(OrganizerPanelAnimations::kOrganizerPanel,
-                is_visible_ ? OrganizerPanelAnimations::kShow
-                            : OrganizerPanelAnimations::kHide);
+        ->Reset(OrganizerPanelAnimations::kOrganizerPanel, GetTargetMotion());
   } else {
     BrowserAnimationController::From(&*browser_window_)
-        ->Start(OrganizerPanelAnimations::kOrganizerPanel,
-                is_visible_ ? OrganizerPanelAnimations::kShow
-                            : OrganizerPanelAnimations::kHide);
+        ->Start(OrganizerPanelAnimations::kOrganizerPanel, GetTargetMotion());
   }
 
   NotifyStateChanged();
@@ -252,6 +248,25 @@ void OrganizerPanelController::SetOrganizerVisible(bool visible,
 OrganizerPanelLocation
 OrganizerPanelController::GetCurrentOrganizerPanelLocation() const {
   return panel_view_manager_->current_location();
+}
+
+BrowserAnimationMotion OrganizerPanelController::GetTargetMotion() const {
+  bool vts_enabled = false;
+  if (auto* const vts_controller =
+          tabs::VerticalTabStripStateController::From(&*browser_window_)) {
+    vts_enabled = vts_controller->ShouldDisplayVerticalTabs();
+  }
+  if (vts_enabled) {
+    if (panel_view_manager_->current_location() ==
+        OrganizerPanelLocation::kVerticalTabStrip) {
+      return is_visible_ ? OrganizerPanelAnimations::kShowInVerticalTabs
+                         : OrganizerPanelAnimations::kHideInVerticalTabs;
+    }
+    return is_visible_ ? OrganizerPanelAnimations::kShowExpandFromVerticalTabs
+                       : OrganizerPanelAnimations::kHideExpandFromVerticalTabs;
+  }
+  return is_visible_ ? OrganizerPanelAnimations::kShowInTray
+                     : OrganizerPanelAnimations::kHideInTray;
 }
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)

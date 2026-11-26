@@ -31,7 +31,7 @@ source_set("geic_enabling") {
 }
 
 # Gemini Enterprise host allowlist, shared by GEiC guest URL resolution and the
-# GeminiEnterpriseUrl and GeminiEnterpriseSettings policy handlers.
+# GeminiEnterpriseUrl policy handler.
 source_set("url_allowlist") {
   sources = [
     "geic_url_allowlist.cc",
@@ -75,6 +75,7 @@ source_set("geic_fre") {
     "//chrome/browser/profiles:profile",
     "//chrome/common:constants",
     "//components/prefs",
+    "//net",
     "//url",
   ]
 }
@@ -111,6 +112,7 @@ source_set("unit_tests") {
   sources = [
     "geic_enabling_unittest.cc",
     "geic_fre_unittest.cc",
+    "geic_url_allowlist_unittest.cc",
     "glic_gemini_enterprise_manager_unittest.cc",
   ]
 
@@ -119,19 +121,23 @@ source_set("unit_tests") {
     ":geic_fre",
     ":geic_pref_names",
     ":gemini_enterprise",
+    ":url_allowlist",
     "//base",
     "//base/test:test_support",
     "//chrome/browser/glic",
     "//chrome/browser/glic:mojo_bindings",
     "//chrome/browser/glic/public:features",
+    "//chrome/browser/glic/public:provider",
     "//chrome/browser/metrics",
     "//chrome/common:constants",
     "//chrome/test:test_support",
+    "//chrome/test/base:testing_browser_process",
     "//components/prefs",
     "//components/variations",
     "//components/variations/service",
     "//content/test:test_support",
     "//mojo/public/cpp/bindings",
+    "//net",
     "//testing/gtest",
     "//url",
   ]

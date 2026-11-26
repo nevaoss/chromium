@@ -1297,6 +1297,8 @@ chromium-metrics-reviews@google.com.
   <int value="18" label="Plus Button"/>
   <int value="19" label="Standalone AIM Module"/>
   <int value="20" label="AIM in Most Visited"/>
+  <int value="21" label="AIM Image Generation Quick Action"/>
+  <int value="22" label="AIM Attach Image Quick Action"/>
 </enum>
 
 <!-- LINT.IfChange(IOSHomeCustomizationBackgroundStyle) -->
@@ -2121,6 +2123,16 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(/ios/chrome/browser/cobrowse/shared/metrics/assistant_aim_metrics_constants.h:AssistantAimEntrypoint) -->
 
+<!-- LINT.IfChange(IOSSicBottomSheetFRENoticeAction) -->
+
+<enum name="IOSSicBottomSheetFRENoticeAction">
+  <int value="0" label="Shown"/>
+  <int value="1" label="Accepted"/>
+  <int value="2" label="Learn more tapped"/>
+</enum>
+
+<!-- LINT.ThenChange(/ios/chrome/browser/cobrowse/shared/metrics/assistant_aim_metrics_constants.h:AssistantAimFRENoticeAction) -->
+
 <!-- LINT.IfChange(IOSSicBottomSheetHeaderAction) -->
 
 <enum name="IOSSicBottomSheetHeaderAction">
@@ -2471,6 +2483,26 @@ chromium-metrics-reviews@google.com.
   <int value="2" label="CLD3 (TFLite model disabled)"/>
   <int value="3" label="CLD3 (TFLite model run but is ignored) (deprecated)"/>
 </enum>
+
+<!-- LINT.IfChange(LevelUpTaskType) -->
+
+<enum name="LevelUpTaskType">
+  <int value="0" label="Unknown"/>
+  <int value="1" label="TabGroups"/>
+  <int value="2" label="Autofill"/>
+  <int value="3" label="PinTabs"/>
+  <int value="4" label="Gemini"/>
+  <int value="5" label="PaymentMethods"/>
+  <int value="6" label="ClearBrowsingData"/>
+  <int value="7" label="SafeBrowsing"/>
+  <int value="8" label="Incognito"/>
+  <int value="9" label="PasswordCheckup"/>
+  <int value="10" label="LensWebsiteSearch"/>
+  <int value="11" label="AISearch"/>
+  <int value="12" label="LensCameraSearch"/>
+</enum>
+
+<!-- LINT.ThenChange(//ios/chrome/browser/level_up/model/task_types.h:LevelUpTaskType) -->
 
 <enum name="LinkToTextShouldOfferResult">
   <int value="0" label="Success"/>

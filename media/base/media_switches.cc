@@ -831,9 +831,6 @@ BASE_FEATURE(kMediaEngagementBypassAutoplayPolicies,
 
 BASE_FEATURE(kMediaEngagementHTTPSOnly, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Allows per-site special processing for media links.
-BASE_FEATURE(kMediaLinkHelpers, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enables sending MediaLog to the log stream, which is useful for easier
 // development by ensuring logs can be seen without a remote desktop session.
 // Only affects builds when DCHECK is on for non-ERROR logs (ERROR logs are
@@ -1086,11 +1083,6 @@ BASE_FEATURE(kVaapiVideoMinResolutionForPerformance,
 // Validates that the EncryptionPattern parameters are within the bounds
 // specified by ISO/IEC 23001-7:2016.
 BASE_FEATURE(kValidateEncryptionPatternSize, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Inform video blitter of video color space.
-BASE_FEATURE(kVideoBlitColorAccuracy,
-             "video-blit-color-accuracy",
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether to pre-dispatch more decode tasks when pending decodes is
 // smaller than maximum supported decodes as advertiszed by decoder.

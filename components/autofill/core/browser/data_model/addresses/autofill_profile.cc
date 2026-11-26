@@ -22,6 +22,7 @@
 #include "base/check_op.h"
 #include "base/containers/span.h"
 #include "base/feature_list.h"
+#include "base/i18n/language_tag.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
@@ -78,7 +79,8 @@ namespace autofill {
 
 namespace {
 
-constexpr char kAddressComponentsDefaultLocality[] = "en-US";
+constexpr base::i18n::LanguageTag kAddressComponentsDefaultLocality =
+    base::i18n::GetKnownLanguageTag("en-US");
 
 // Returns `NAME_FULL` for first, middle, and last name field types, and groups
 // phone number types similarly.
@@ -302,10 +304,10 @@ base::android::ScopedJavaLocalRef<jobject> AutofillProfile::CreateJavaObject(
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedJavaLocalRef<jobject> jprofile =
       Java_AutofillProfile_Constructor(
-          env, guid(), static_cast<int32_t>(record_type()), language_code());
+          env, guid(), std::to_underlying(record_type()), language_code());
 
   for (FieldType type : AutofillProfile::kDatabaseStoredTypes) {
-    auto status = static_cast<int32_t>(GetVerificationStatus(type));
+    auto status = std::to_underlying(GetVerificationStatus(type));
     // TODO(crbug.com/40278253): Reconcile usage of GetInfo and GetRawInfo
     // below.
     if (type == NAME_FULL) {

@@ -439,16 +439,16 @@ bool GlicInstanceImpl::IsLiveMode() const {
 
 bool GlicInstanceImpl::ShouldShowInactiveSidePanel(
     const SidePanelShowOptions& options) const {
+  EmbedderKey key = SidePanelEmbedderKey(options.tab);
+  if (IsActiveEmbedder(key)) {
+    return false;
+  }
+
   if (!options.tab->IsActivated()) {
     return true;
   }
 
   if (!options.prefer_peek) {
-    return false;
-  }
-
-  EmbedderKey key = SidePanelEmbedderKey(options.tab);
-  if (IsActiveEmbedder(key)) {
     return false;
   }
 
@@ -1650,18 +1650,17 @@ void GlicInstanceImpl::DidCloseFor(EmbedderKey key,
   // Must be called early to avoid use-after-free if instance is deleted.
   if (reason == EmbedderCloseReason::kExplicitlyClosed) {
     OnEmbedderClosed(key);
-    // The user dismissed the UI this instance was showing before the client
-    // became usable, so an invocation that only came to show that UI is
-    // abandoned rather than left to time out. Only the active embedder
-    // counts: closing an inactive one, or the old embedder while moving the
-    // conversation to another surface (detach/attach), does not take the UI
-    // away. Invocations that will send something to the client keep running,
-    // as the client may still act on them (and keep the instance alive, see
-    // MaybeRemoveBlankInstanceOnClose()).
-    if (IsActiveEmbedder(key) &&
-        host_.client_load_state() != ClientLoadState::kReady &&
-        coordinator_delegate_) {
-      coordinator_delegate_->CancelShowOnlyInvokes(
+    // The user dismissed the UI this instance was showing before the
+    // invocation could finish, so an invocation that only came to show that UI
+    // before the client became usable, or any invocation still waiting on FRE
+    // completion in that UI, is abandoned rather than left to time out. Only
+    // the active embedder counts: closing an inactive one, or the old embedder
+    // while moving the conversation to another surface (detach/attach), does
+    // not take the UI away. Invocations that will send something to a
+    // consented client keep running, as the client may still act on them (and
+    // keep the instance alive, see MaybeRemoveBlankInstanceOnClose()).
+    if (IsActiveEmbedder(key) && coordinator_delegate_) {
+      coordinator_delegate_->CancelInvokesOnPanelClose(
           this, GlicInvokeError::kPanelClosed);
     }
   }

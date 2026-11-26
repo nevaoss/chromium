@@ -17,7 +17,6 @@
 namespace omnibox {
 namespace {
 constexpr bool IS_ANDROID = !!BUILDFLAG(IS_ANDROID);
-constexpr bool IS_CHROMEOS = !!BUILDFLAG(IS_CHROMEOS);
 constexpr bool IS_IOS = !!BUILDFLAG(IS_IOS);
 
 constexpr base::FeatureState DISABLED = base::FEATURE_DISABLED_BY_DEFAULT;
@@ -240,15 +239,13 @@ BASE_FEATURE(kOmniboxAimDeferShowUntilVisualStateReadyWithFullWebUI, DISABLED);
 // its WebContents and renderer) while the browser window is built. It creates
 // it after the browser window's first presentation, or earlier if the popup is
 // shown or another caller needs the AIM WebContents. See
-// `OmniboxPopupAimPresenter`. Enabled on ChromeOS, where session restore at
-// login creates every restored window at once.
-BASE_FEATURE(kOmniboxAimPopupDeferCreation, enable_if(IS_CHROMEOS));
+// `OmniboxPopupAimPresenter`.
+BASE_FEATURE(kOmniboxAimPopupDeferCreation, DISABLED);
 // When enabled, the WebUI omnibox popup that shows suggestions does not create
 // its WebUI content (and so its WebContents and renderer) while the browser
 // window is built. It creates it after the browser window's first
 // presentation, or earlier if the popup is shown. See `OmniboxPopupPresenter`.
-// Enabled on ChromeOS, like `kOmniboxAimPopupDeferCreation`.
-BASE_FEATURE(kOmniboxWebUIPopupDeferCreation, enable_if(IS_CHROMEOS));
+BASE_FEATURE(kOmniboxWebUIPopupDeferCreation, DISABLED);
 // When enabled, the Omnibox WebUI popup will defer showing until the WebUI has
 // painted a clean frame, avoiding the issue of the popup being shown with a
 // stale frame.
@@ -477,6 +474,11 @@ BASE_FEATURE(kTruncateSearchUrlQ, DISABLED);
 // Enable asynchronous Fusebox view inflation.
 BASE_FEATURE(kOmniboxFuseboxAsyncInflation, DISABLED);
 
+// When enabled, the Android omnibox suggestions container starts inflating on a
+// background thread as soon as AutocompleteCoordinator is created (rather than
+// on native initialization), and is never inflated synchronously as a fallback.
+BASE_FEATURE(kOmniboxEarlyInflation, DISABLED);
+
 // When enabled, AIM image attachments will be downscaled on load before
 // reaching the C++ side.
 BASE_FEATURE(kOmniboxAimImageDownscaling, ENABLED);
@@ -687,6 +689,12 @@ BASE_FEATURE(kSuppressStatusIconDuringHttpNavigation, ENABLED);
 // redirects on Android.
 BASE_FEATURE(kOmniboxAndroidIntranetRedirect, DISABLED);
 
+// If enabled, the Omnibox, New Tab Page and toolbar mic buttons delegate voice
+// capture and transcription to the Android Google App Voice Plate (via an
+// explicit activity intent), and navigate directly upon receiving the
+// transcription.
+BASE_FEATURE(kOmniboxVoicePlateIntent, DISABLED);
+
 namespace android {
 static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
   static const base::Feature* const kFeaturesExposedToJava[] = {
@@ -695,6 +703,7 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kOmniboxTouchDownTriggerForPrefetch,
       &kOmniboxPrefetchSelectedSuggestionsOmtAndroid,
       &kOmniboxFuseboxAsyncInflation,
+      &kOmniboxEarlyInflation,
       &kRichAutocompletion,
       &kUrlBarWithoutLigatures,
       &kPostDelayedTaskFocusTab,
@@ -723,7 +732,8 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kOmniboxSessionlessVoiceSearch,
       &kSuppressStatusIconDuringHttpNavigation,
       &kZeroSuggestPrefetchOnPageLoadAndTabSwitch,
-      &kAndroidTabSearchCloseTabButton};
+      &kAndroidTabSearchCloseTabButton,
+      &kOmniboxVoicePlateIntent};
   static base::NoDestructor<base::android::FeatureMap> kFeatureMap(
       kFeaturesExposedToJava);
   return reinterpret_cast<int64_t>(kFeatureMap.get());
@@ -791,9 +801,6 @@ const base::FeatureParam<bool> kAskGShowFirstDescription{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGShowFirstDescription", false};
 const base::FeatureParam<bool> kAskGComposeboxLensChip{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGComposeboxLensChip", false};
-const base::FeatureParam<bool> kAskGBlockAutoTabZeroStateSuggestions{
-    &kWebUIOmniboxAskGAboutThisPage,
-    "Omnibox_AskGBlockAutoTabZeroStateSuggestions", false};
 const base::FeatureParam<bool> kAskGComposeboxPlaceholder{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGComposeboxPlaceholder", false};
 const base::FeatureParam<bool> kAskGBypassPrivacyNotice{

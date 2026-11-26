@@ -294,15 +294,15 @@ class PagePopupChromeClient final : public EmptyChromeClient {
   }
 
   const display::ScreenInfo& GetScreenInfo(LocalFrame&) const override {
-    // LocalFrame is ignored since there is only 1 frame in a popup.
     CHECK(popup_);
+    // LocalFrame is ignored since there is only 1 frame in a popup.
     return popup_->GetScreenInfo();
   }
 
   const display::ScreenInfos& GetScreenInfos(LocalFrame&) const override {
     CHECK(popup_);
     // LocalFrame is ignored since there is only 1 frame in a popup.
-    return popup_->GetScreenInfos();
+    return popup_->widget_base_->screen_infos();
   }
 
   gfx::Size MinimumWindowSize() const override { return gfx::Size(0, 0); }
@@ -589,15 +589,7 @@ void WebPagePopupImpl::ApplyVisualProperties(
   widget_base_->UpdateVisualProperties(visual_properties);
 }
 
-const display::ScreenInfo& WebPagePopupImpl::GetScreenInfo() {
-  return widget_base_->GetScreenInfo();
-}
-
-const display::ScreenInfos& WebPagePopupImpl::GetScreenInfos() {
-  return widget_base_->screen_infos();
-}
-
-const display::ScreenInfo& WebPagePopupImpl::GetOriginalScreenInfo() {
+const display::ScreenInfo& WebPagePopupImpl::GetScreenInfo() const {
   return widget_base_->GetScreenInfo();
 }
 
@@ -779,6 +771,12 @@ WebInputEventResult WebPagePopupImpl::HandleKeyEvent(
       suppress_next_keypress_event_ = true;
     }
   }
+  // TODO(crbug.com/40091540): Remove user activation notification for all
+  // non-keydown events. Apparently this notification was added without the
+  // understanding that a single user key "click" fires down/up/char events.
+  // While sending 3 notifications for a single user action is not terrible
+  // (because we only ever track a _single_ user activation per Window), this
+  // allows opportunistic "in-between" consumptions by the popup client.
   LocalFrame::NotifyUserActivation(
       popup_client_->OwnerElement().GetDocument().GetFrame(),
       mojom::blink::UserActivationNotificationType::kInteraction);

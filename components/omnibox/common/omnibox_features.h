@@ -196,6 +196,7 @@ inline constexpr base::FeatureParam<int> kTruncateSearchUrlQLength{
     &kTruncateSearchUrlQ, "truncate_search_url_q_length", 2048};
 
 BASE_DECLARE_FEATURE(kOmniboxFuseboxAsyncInflation);
+BASE_DECLARE_FEATURE(kOmniboxEarlyInflation);
 
 BASE_DECLARE_FEATURE(kOmniboxMobileParityUpdate);
 BASE_DECLARE_FEATURE(kOmniboxMobileParityUpdateV2);
@@ -288,6 +289,9 @@ BASE_DECLARE_FEATURE(kResetSuggestionsScroll);
 BASE_DECLARE_FEATURE(kOmniboxSessionlessVoiceSearch);
 BASE_DECLARE_FEATURE(kSuppressStatusIconDuringHttpNavigation);
 BASE_DECLARE_FEATURE(kOmniboxAndroidIntranetRedirect);
+// If enabled, the Omnibox, New Tab Page and toolbar mic buttons delegate voice
+// capture and transcription to the Android Google App Voice Plate.
+BASE_DECLARE_FEATURE(kOmniboxVoicePlateIntent);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 // If enabled, X-Geo headers are sent for all search navigations on all
@@ -339,10 +343,6 @@ extern const base::FeatureParam<bool> kAskGLensSearchHintText;
 extern const base::FeatureParam<bool> kAskGShowFirstDescription;
 // Whether to show the lens chip in omnibox composebox.
 extern const base::FeatureParam<bool> kAskGComposeboxLensChip;
-// Whether to block initial zero state suggestions in omnibox composebox
-// when we have auto added tabs so we can show the user contextual suggestions
-// from the auto added tabs instead.
-extern const base::FeatureParam<bool> kAskGBlockAutoTabZeroStateSuggestions;
 // Whether to use "Ask about this page" placeholder text in omnibox composebox.
 extern const base::FeatureParam<bool> kAskGComposeboxPlaceholder;
 // Whether to bypass the Lens privacy notice.

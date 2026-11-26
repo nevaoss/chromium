@@ -214,7 +214,7 @@ void SafeBrowsingNavigationObserver::DidOpenRequestedURL(
     content::RenderFrameHost* source_render_frame_host,
     const GURL& url,
     const content::Referrer& referrer,
-    WindowOpenDisposition disposition,
+    ui::mojom::WindowOpenDisposition disposition,
     ui::PageTransition transition,
     bool started_from_context_menu,
     bool renderer_initiated) {
@@ -256,7 +256,12 @@ void SafeBrowsingNavigationObserver::
   if (!navigation_handle->IsRendererInitiated()) {
     nav_event->navigation_initiation = ReferrerChainEntry::BROWSER_INITIATED;
   } else if (GetObserverManager()->HasUnexpiredUserGesture(web_contents()) ||
-             navigation_handle->HasUserGesture()) {
+             navigation_handle->HasUserGesture() ||
+             // HasUserGesture() is filtered out for proxy navigations (e.g., a
+             // cross-origin subframe navigating the top frame via
+             // target="_top"). StartedWithTransientActivation() provides the
+             // unfiltered initiator state for renderer-initiated navigations.
+             navigation_handle->StartedWithTransientActivation()) {
     nav_event->navigation_initiation =
         ReferrerChainEntry::RENDERER_INITIATED_WITH_USER_GESTURE;
   } else {

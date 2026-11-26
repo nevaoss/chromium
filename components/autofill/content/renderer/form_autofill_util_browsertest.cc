@@ -25,6 +25,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
+#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/with_feature_override.h"
 #include "base/types/optional_util.h"
@@ -902,6 +903,31 @@ TEST_F(FormAutofillUtilsTest, GetButtonTitles_NoForm) {
   EXPECT_EQ(GetButtonTitles(form, /*button_titles_cache=*/nullptr).size(), 0u);
 }
 
+TEST_F(FormAutofillUtilsTest,
+       GetButtonTitles_ButtonFeaturesWithNonAsciiAttributes) {
+  constexpr char kHtml[] =
+      "<form id='target'>"
+      "  <a id='é-Submit-按钮' value='Create account'>Ignored text</a>"
+      "  <div name='Ñoño_BTN'> Join </div>"
+      "  <span class='icono 🚀 Boton'> Start </span>"
+      "  <div class='button_🔥'> Continue </div>"
+      "  <span class='botón'> Ignored accented o </span>"
+      "  <div id='unrelated-ñ'> Ignored </div>"
+      "</form>";
+
+  LoadHTML(kHtml);
+  const WebFormElement form_target =
+      GetFormElementById(GetDocument(), "target");
+  const ButtonTitleList actual =
+      GetButtonTitles(form_target, /*button_titles_cache=*/nullptr);
+
+  EXPECT_THAT(actual,
+              ElementsAre(Pair(u"Create account", ButtonTitleType::HYPERLINK),
+                          Pair(u"Join", ButtonTitleType::DIV),
+                          Pair(u"Continue", ButtonTitleType::DIV),
+                          Pair(u"Start", ButtonTitleType::SPAN)));
+}
+
 TEST_F(FormAutofillUtilsTest, IsEnabled) {
   LoadHTML(
       "<input type='text' id='name1'>"
@@ -1304,8 +1330,10 @@ TEST_F(FormAutofillUtilsTest,
     obj.offsetTop;
     // Switch `obj` to an invalid image data URL while it has no LayoutObject,
     // then mark it display:block without forcing layout. The next layout
-    // (triggered by BoundsInWidget()) will invoke CustomStyleForLayoutObject ->
-    // HTMLImageLoader -> RenderFallbackContent -> DisconnectContentFrame.
+    // (triggered by BoundsInWidget()) will invoke CustomStyleForLayoutObject,
+    // which schedules an image load task (crbug.com/575053155) that
+    // subsequently invokes HTMLImageLoader -> RenderFallbackContent ->
+    // DisconnectContentFrame.
     obj.data = 'data:image/png;base64,invalid';
     obj.style.display = 'block';
   )");
@@ -1315,7 +1343,7 @@ TEST_F(FormAutofillUtilsTest,
   ASSERT_NE(child_doc.GetFrame(), nullptr);
 
   EXPECT_NE(FindFormAndFieldForFormControlElement(input), std::nullopt);
-  EXPECT_EQ(child_doc.GetFrame(), nullptr);
+  EXPECT_TRUE(base::test::RunUntil([&] { return !child_doc.GetFrame(); }));
 }
 
 // Tests that Autofill form ownership follows Blink form's association, which,

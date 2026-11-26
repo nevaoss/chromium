@@ -89,6 +89,7 @@
 #include "chrome/browser/preloading/prefetch/no_state_prefetch/no_state_prefetch_manager_factory.h"
 #include "chrome/browser/preloading/prefetch/no_state_prefetch/no_state_prefetch_tab_helper.h"
 #include "chrome/browser/preloading/prefetch/zero_suggest_prefetch/zero_suggest_prefetch_tab_helper.h"
+#include "chrome/browser/preloading/prerender/prewarm_tab_helper.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_key.h"
 #include "chrome/browser/resource_coordinator/tab_helper.h"
@@ -835,18 +836,6 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
   security_state_event_observer_ =
       std::make_unique<SecurityStateEventObserver>(tab.GetContents());
 
-  sync_sessions_router_ =
-      std::make_unique<sync_sessions::SyncSessionsRouterTabHelper>(
-          tab.GetContents(),
-          sync_sessions::SyncSessionsWebContentsRouterFactory::GetForProfile(
-              profile),
-          ChromeTranslateClient::FromWebContents(tab.GetContents()),
-          favicon::ContentFaviconDriver::FromWebContents(tab.GetContents()));
-
-  browser_synced_tab_delegate_ =
-      GetUserDataFactory().CreateInstance<BrowserSyncedTabDelegate>(
-          tab, tab, tab.GetContents());
-
   focus_tab_after_navigation_helper_ =
       std::make_unique<FocusTabAfterNavigationHelper>(tab.GetContents());
 
@@ -863,6 +852,8 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
 
   zero_suggest_prefetch_tab_helper_ =
       std::make_unique<ZeroSuggestPrefetchTabHelper>(tab.GetContents());
+
+  prewarm_tab_helper_ = PrewarmTabHelper::MaybeCreate(tab.GetContents());
 
   if (SearchEngineChoiceTabHelper::IsHelperNeeded()) {
     search_engine_choice_tab_helper_ =
@@ -1226,9 +1217,7 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
   if (g_browser_process->safe_browsing_service()) {
     safe_browsing::AsyncCheckTracker::CreateForWebContents(
         tab.GetContents(),
-        g_browser_process->safe_browsing_service()->ui_manager(),
-        safe_browsing::AsyncCheckTracker::
-            IsPlatformEligibleForSyncCheckerCheckAllowlist());
+        g_browser_process->safe_browsing_service()->ui_manager());
   }
   if (autofill::ContentAutofillClient::FromWebContents(tab.GetContents())) {
     ChromePasswordReuseDetectionManagerClient::CreateForWebContents(
@@ -1318,6 +1307,19 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
             tab, tab, tab.GetContents());
   }
 #endif
+
+  browser_synced_tab_delegate_ =
+      GetUserDataFactory().CreateInstance<BrowserSyncedTabDelegate>(
+          tab, tab, tab.GetContents(), task_tab_helper_.get(),
+          supervised_user_navigation_observer_.get());
+
+  sync_sessions_router_ =
+      std::make_unique<sync_sessions::SyncSessionsRouterTabHelper>(
+          tab.GetContents(),
+          sync_sessions::SyncSessionsWebContentsRouterFactory::GetForProfile(
+              profile),
+          ChromeTranslateClient::FromWebContents(tab.GetContents()),
+          favicon::ContentFaviconDriver::FromWebContents(tab.GetContents()));
 
 #if BUILDFLAG(ENABLE_OFFLINE_PAGES)
   offline_page_tab_helper_ =
@@ -1631,6 +1633,8 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
   zero_suggest_prefetch_tab_helper_ =
       std::make_unique<ZeroSuggestPrefetchTabHelper>(new_contents);
 
+  prewarm_tab_helper_ = PrewarmTabHelper::MaybeCreate(new_contents);
+
   security_state_event_observer_ =
       std::make_unique<SecurityStateEventObserver>(new_contents);
 
@@ -1686,23 +1690,6 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
         contextual_cueing::ContextualCueingWebContentsObserver>(
         new_contents, contextual_cueing_service);
   }
-
-  sync_sessions_router_.reset();
-  sync_sessions_router_ =
-      std::make_unique<sync_sessions::SyncSessionsRouterTabHelper>(
-          new_contents,
-          sync_sessions::SyncSessionsWebContentsRouterFactory::GetForProfile(
-              profile),
-          ChromeTranslateClient::FromWebContents(new_contents),
-          favicon::ContentFaviconDriver::FromWebContents(new_contents));
-
-  // The reset() must happen first so that the old instance deregisters
-  // itself from the UnownedUserDataHost before the new instance registers
-  // itself.
-  browser_synced_tab_delegate_.reset();
-  browser_synced_tab_delegate_ =
-      GetUserDataFactory().CreateInstance<BrowserSyncedTabDelegate>(
-          *tab, *tab, new_contents);
 
   if (permission_indicators_tab_data_) {
     permission_indicators_tab_data_ =
@@ -1920,9 +1907,7 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
       enterprise_connectors::IsReferrerChainNeededForEnterprise(profile));
   if (g_browser_process->safe_browsing_service()) {
     safe_browsing::AsyncCheckTracker::CreateForWebContents(
-        new_contents, g_browser_process->safe_browsing_service()->ui_manager(),
-        safe_browsing::AsyncCheckTracker::
-            IsPlatformEligibleForSyncCheckerCheckAllowlist());
+        new_contents, g_browser_process->safe_browsing_service()->ui_manager());
   }
   safe_browsing_tab_observer_.reset();
   if (autofill::ContentAutofillClient::FromWebContents(new_contents)) {
@@ -1962,6 +1947,12 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
   sound_content_setting_observer_ =
       GetUserDataFactory().CreateInstance<SoundContentSettingObserver>(
           *tab, *tab, new_contents);
+
+  // Reset `sync_sessions_router_` and `browser_synced_tab_delegate_` before
+  // resetting `task_tab_helper_` and `supervised_user_navigation_observer_` so
+  // `browser_synced_tab_delegate_` never holds dangling pointers to them.
+  sync_sessions_router_.reset();
+  browser_synced_tab_delegate_.reset();
 
   task_tab_helper_.reset();
   task_tab_helper_ = GetUserDataFactory().CreateInstance<tasks::TaskTabHelper>(
@@ -2010,6 +2001,19 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
         GetUserDataFactory().CreateInstance<SupervisedUserNavigationObserver>(
             *tab, *tab, new_contents);
   }
+
+  browser_synced_tab_delegate_ =
+      GetUserDataFactory().CreateInstance<BrowserSyncedTabDelegate>(
+          *tab, *tab, new_contents, task_tab_helper_.get(),
+          supervised_user_navigation_observer_.get());
+
+  sync_sessions_router_ =
+      std::make_unique<sync_sessions::SyncSessionsRouterTabHelper>(
+          new_contents,
+          sync_sessions::SyncSessionsWebContentsRouterFactory::GetForProfile(
+              profile),
+          ChromeTranslateClient::FromWebContents(new_contents),
+          favicon::ContentFaviconDriver::FromWebContents(new_contents));
 
 #if BUILDFLAG(ENABLE_OFFLINE_PAGES)
   offline_page_tab_helper_.reset();

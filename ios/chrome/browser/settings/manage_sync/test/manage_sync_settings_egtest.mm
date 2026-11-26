@@ -66,14 +66,11 @@ void SignInWithPromoFromAccountSettings(FakeSystemIdentity* fake_identity,
       selectElementWithMatcher:chrome_test_util::IdentityCellMatcherForEmail(
                                    fake_identity.userEmail)]
       performAction:grey_tap()];
-  [[EarlGrey
-      selectElementWithMatcher:
-          grey_allOf(
-              chrome_test_util::StaticTextWithAccessibilityLabel(
-                  l10n_util::GetNSStringF(
-                      IDS_IOS_FIRST_RUN_SIGNIN_CONTINUE_AS,
-                      base::SysNSStringToUTF16(fake_identity.userGivenName))),
-              grey_sufficientlyVisible(), nil)] performAction:grey_tap()];
+  [ChromeEarlGrey
+      waitForMatcher:chrome_test_util::ConsistencySigninPrimaryButtonMatcher()];
+  [[EarlGrey selectElementWithMatcher:
+                 chrome_test_util::ConsistencySigninPrimaryButtonMatcher()]
+      performAction:grey_tap()];
 
   [SigninEarlGreyUI dismissSigninConfirmationSnackbarForIdentity:fake_identity
                                                    assertVisible:NO];
@@ -162,8 +159,7 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
 }
 
 // Tests that Sync settings is dismissed when the primary account is removed.
-// TODO(crbug.com/512422445): Test is flaky.
-- (void)FLAKY_testSignoutWhileManageSyncSettingsOpened {
+- (void)testSignoutWhileManageSyncSettingsOpened {
   FakeSystemIdentity* fakeIdentity = [FakeSystemIdentity fakeIdentity1];
   [SigninEarlGreyUI signinWithFakeIdentity:fakeIdentity];
   [ChromeEarlGreyUI openSettingsMenu];
@@ -201,8 +197,7 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
 }
 
 // Tests sign out from the unified account settings page.
-// TODO(crbug.com/512422445): Test is flaky.
-- (void)FLAKY_testSignOutFromUnifiedAccountSettings {
+- (void)testSignOutFromUnifiedAccountSettings {
   FakeSystemIdentity* fakeIdentity = [FakeSystemIdentity fakeIdentity1];
   [SigninEarlGrey addFakeIdentity:fakeIdentity];
 
@@ -370,8 +365,7 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
 }
 
 // Tests that data type settings carry over signing out.
-// TODO(crbug.com/512422367): Test is flaky.
-- (void)FLAKY_testDataTypeSettingsCarryOverSignOut {
+- (void)testDataTypeSettingsCarryOverSignOut {
   FakeSystemIdentity* fakeIdentity = [FakeSystemIdentity fakeIdentity1];
   [SigninEarlGrey addFakeIdentity:fakeIdentity];
 
@@ -907,8 +901,7 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
 
 // Tests that the batch upload button description in the account settings
 // contains the correct string for passwords and other data type.
-// TODO(crbug.com/512422445): Test is flaky.
-- (void)FLAKY_testBulkUploadDescriptionTextForPasswordsAndOthers {
+- (void)testBulkUploadDescriptionTextForPasswordsAndOthers {
   // Add local data.
   password_manager_test_utils::SavePasswordFormToProfileStore(
       @"password", @"user", @"https://example.com");
@@ -937,8 +930,7 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
 // - Passwords
 // - Bookmarks
 // - Reading list
-// TODO(crbug.com/512422445): Test is flaky.
-- (void)FLAKY_testBulkUploadPageForAllDataTypes {
+- (void)testBulkUploadPageForAllDataTypes {
   // Add local data.
   password_manager_test_utils::SavePasswordFormToProfileStore(
       @"password", @"user", @"https://example.com");
@@ -967,10 +959,9 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
   [ChromeEarlGreyUI waitForAppToIdle];
 
   // Verify the bulk upload view is popped.
-  [[EarlGrey
-      selectElementWithMatcher:grey_accessibilityID(
-                                   kBulkUploadTableViewAccessibilityIdentifier)]
-      assertWithMatcher:grey_sufficientlyVisible()];
+  [ChromeEarlGrey
+      waitForSufficientlyVisibleElementWithMatcher:
+          grey_accessibilityID(kBulkUploadTableViewAccessibilityIdentifier)];
 
   // Verify that only rows for the correct data types exist.
   [[EarlGrey selectElementWithMatcher:
@@ -989,8 +980,7 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
 
 // Tests that the batch upload page contains the correct listed data types:
 // - Passwords
-// TODO(crbug.com/512422445): Test is flaky.
-- (void)FLAKY_testBulkUploadPageForPasswordsOnly {
+- (void)testBulkUploadPageForPasswordsOnly {
   // Add local data.
   password_manager_test_utils::SavePasswordFormToProfileStore(
       @"password", @"user", @"https://example.com");
@@ -1016,10 +1006,9 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
   [ChromeEarlGreyUI waitForAppToIdle];
 
   // Verify the bulk upload view is popped.
-  [[EarlGrey
-      selectElementWithMatcher:grey_accessibilityID(
-                                   kBulkUploadTableViewAccessibilityIdentifier)]
-      assertWithMatcher:grey_sufficientlyVisible()];
+  [ChromeEarlGrey
+      waitForSufficientlyVisibleElementWithMatcher:
+          grey_accessibilityID(kBulkUploadTableViewAccessibilityIdentifier)];
 
   // Verify that only rows for the correct data types exist.
   [[EarlGrey selectElementWithMatcher:
@@ -1039,8 +1028,7 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
 // Tests that the batch upload page contains the correct listed data types:
 // - Passwords
 // - Bookmarks
-// TODO(crbug.com/512422445): Test is flaky.
-- (void)FLAKY_testBulkUploadPageForPasswordsAndBookmarks {
+- (void)testBulkUploadPageForPasswordsAndBookmarks {
   // Add local data.
   password_manager_test_utils::SavePasswordFormToProfileStore(
       @"password", @"user", @"https://example.com");
@@ -1067,10 +1055,9 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
   [ChromeEarlGreyUI waitForAppToIdle];
 
   // Verify the bulk upload view is popped.
-  [[EarlGrey
-      selectElementWithMatcher:grey_accessibilityID(
-                                   kBulkUploadTableViewAccessibilityIdentifier)]
-      assertWithMatcher:grey_sufficientlyVisible()];
+  [ChromeEarlGrey
+      waitForSufficientlyVisibleElementWithMatcher:
+          grey_accessibilityID(kBulkUploadTableViewAccessibilityIdentifier)];
 
   // Verify that only rows for the correct data types exist.
   [[EarlGrey selectElementWithMatcher:
@@ -1089,8 +1076,7 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
 
 // Tests that bulk upload moves the following data types to account:
 // - Passwords
-// TODO(crbug.com/407020882): Remove FLAKY_ from this test.
-- (void)FLAKY_testBulkUploadForPasswords {
+- (void)testBulkUploadForPasswords {
   // Add local data.
   password_manager_test_utils::SavePasswordFormToProfileStore(
       @"password", @"user", @"https://example.com");
@@ -1119,10 +1105,9 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
   [ChromeEarlGreyUI waitForAppToIdle];
 
   // Verify the bulk upload view is shown.
-  [[EarlGrey
-      selectElementWithMatcher:grey_accessibilityID(
-                                   kBulkUploadTableViewAccessibilityIdentifier)]
-      assertWithMatcher:grey_sufficientlyVisible()];
+  [ChromeEarlGrey
+      waitForSufficientlyVisibleElementWithMatcher:
+          grey_accessibilityID(kBulkUploadTableViewAccessibilityIdentifier)];
 
   // Verify that switches for Passwords is ON.
   [[EarlGrey selectElementWithMatcher:
@@ -1174,9 +1159,7 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
 // Tests that bulk upload moves the following data types to account:
 // - Bookmarks
 // - Reading List
-//
-// TODO(crbug.com/468296957): This test is flaky.
-- (void)FLAKY_testBulkUploadForBookmarksAndReadingList {
+- (void)testBulkUploadForBookmarksAndReadingList {
   // Add local data.
   password_manager_test_utils::SavePasswordFormToProfileStore(
       @"password", @"user", @"https://example.com");
@@ -1205,10 +1188,9 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
   [ChromeEarlGreyUI waitForAppToIdle];
 
   // Verify the bulk upload view is popped.
-  [[EarlGrey
-      selectElementWithMatcher:grey_accessibilityID(
-                                   kBulkUploadTableViewAccessibilityIdentifier)]
-      assertWithMatcher:grey_sufficientlyVisible()];
+  [ChromeEarlGrey
+      waitForSufficientlyVisibleElementWithMatcher:
+          grey_accessibilityID(kBulkUploadTableViewAccessibilityIdentifier)];
 
   // Verify that switches for Bookmarks and Reading List are ON.
   [[EarlGrey selectElementWithMatcher:
@@ -1258,8 +1240,7 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
 // - Passwords
 // - Bookmarks
 // - Reading List
-// TODO(crbug.com/512422445): Test is flaky.
-- (void)FLAKY_testBulkUploadForAllDataTypes {
+- (void)testBulkUploadForAllDataTypes {
   // Add local data.
   password_manager_test_utils::SavePasswordFormToProfileStore(
       @"password", @"user", @"https://example.com");
@@ -1288,10 +1269,9 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
   [ChromeEarlGreyUI waitForAppToIdle];
 
   // Verify the bulk upload view is popped.
-  [[EarlGrey
-      selectElementWithMatcher:grey_accessibilityID(
-                                   kBulkUploadTableViewAccessibilityIdentifier)]
-      assertWithMatcher:grey_sufficientlyVisible()];
+  [ChromeEarlGrey
+      waitForSufficientlyVisibleElementWithMatcher:
+          grey_accessibilityID(kBulkUploadTableViewAccessibilityIdentifier)];
 
   // Verify that switches for all data types are ON.
   [[EarlGrey selectElementWithMatcher:
@@ -1357,8 +1337,7 @@ void ExpectBatchUploadConfirmationSnackbar(int count, NSString* email) {
 // Tests that the batch upload card in account settings can be displayed without
 // crashing when the passwords data type is disabled. Regression test for
 // crbug.com/360304897.
-// TODO(crbug.com/512423981): This test is flaky.
-- (void)FLAKY_testBulkUploadCardWhenPasswordsDisabled {
+- (void)testBulkUploadCardWhenPasswordsDisabled {
   SaveBookmark(@"foo", @"https://www.foo.com");
   SaveBookmark(@"bar", @"https://www.bar.com");
   FakeSystemIdentity* fakeIdentity = [FakeSystemIdentity fakeIdentity1];

@@ -216,10 +216,10 @@ void VerifySharedTabs(NSArray<NSString*>* expectedTitles,
     }
 
     if (dismissAfterVerification) {
-      id<GREYMatcher> sharedTabsCloseButton =
-          grey_allOf(grey_accessibilityLabel(@"Close"),
-                     grey_ancestor(grey_kindOfClassName(@"UINavigationBar")),
-                     grey_sufficientlyVisible(), nil);
+      id<GREYMatcher> sharedTabsCloseButton = grey_allOf(
+          grey_accessibilityID(
+              kComposeboxSharedTabsCloseButtonAccessibilityIdentifier),
+          grey_sufficientlyVisible(), nil);
       [ChromeEarlGrey
           waitForUIElementToAppearWithMatcher:sharedTabsCloseButton];
       [[EarlGrey selectElementWithMatcher:sharedTabsCloseButton]
@@ -277,8 +277,8 @@ void RemoveSharedTab(NSString* title) {
     [ChromeEarlGrey waitForUIElementToDisappearWithMatcher:removeActionMatcher];
     [ChromeEarlGrey waitForUIElementToDisappearWithMatcher:cellMatcher];
     id<GREYMatcher> sharedTabsCloseButton =
-        grey_allOf(grey_accessibilityLabel(@"Close"),
-                   grey_ancestor(grey_kindOfClassName(@"UINavigationBar")),
+        grey_allOf(grey_accessibilityID(
+                       kComposeboxSharedTabsCloseButtonAccessibilityIdentifier),
                    grey_sufficientlyVisible(), nil);
     [ChromeEarlGrey waitForUIElementToAppearWithMatcher:sharedTabsCloseButton];
     [[EarlGrey selectElementWithMatcher:sharedTabsCloseButton]
@@ -1096,7 +1096,7 @@ void RemoveSharedTab(NSString* title) {
 // triggered and not in other windows on iPad.
 - (void)testAssistantOnlyInTriggeringWindowOniPad {
   if (![ChromeEarlGrey areMultipleWindowsSupported]) {
-    EARL_GREY_TEST_DISABLED(@"Multiple windows can't be opened.");
+    EARL_GREY_TEST_SKIPPED(@"Multiple windows can't be opened.");
   }
 
   OpenCoBrowse(_defaultURL);

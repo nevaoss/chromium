@@ -50,7 +50,7 @@ constexpr int kVp8MinimumTargetBitrateKbpsPerMegapixel = 2500;
 
 // Default values for the encoder speed of the supported codecs.
 constexpr int kVp9LosslessEncodeSpeed = 5;
-constexpr int kVp9DefaultEncoderSpeed = 6;
+constexpr int kVp9DefaultEncoderSpeed = 9;
 constexpr int kVp9MaxEncoderSpeed = 9;
 
 void SetCommonCodecParameters(vpx_codec_enc_cfg_t* config,
@@ -253,8 +253,13 @@ void WebrtcVideoEncoderVpx::Encode(std::unique_ptr<webrtc::DesktopFrame> frame,
       active_map_data_.Clear();
     }
 
-    // VPX codecs do not use an active map for keyframes so skip in that case.
-    if (!params.key_frame) {
+    // VPX codecs do not use an active map for keyframes, but we still populate
+    // |active_map_data_| with the full frame so subsequent top-off frames (with
+    // clear_active_map = false) can top off the keyframe.
+    if (params.key_frame) {
+      active_map_data_.Update(
+          webrtc::DesktopRegion(webrtc::DesktopRect::MakeSize(frame_size)));
+    } else {
       active_map_data_.Update(updated_region);
       if (vpx_codec_control(codec_.get(), VP8E_SET_ACTIVEMAP, &active_map_)) {
         LOG(ERROR) << "Unable to apply active map";
@@ -262,9 +267,13 @@ void WebrtcVideoEncoderVpx::Encode(std::unique_ptr<webrtc::DesktopFrame> frame,
     }
   }
 
+  auto duration_ms = params.duration.InMilliseconds();
+  DCHECK_GT(duration_ms, 0);
   vpx_codec_err_t ret = vpx_codec_encode(
-      codec_.get(), image_.get(), 0, params.duration.InMicroseconds(),
-      (params.key_frame) ? VPX_EFLAG_FORCE_KF : 0, VPX_DL_REALTIME);
+      codec_.get(), image_.get(), artificial_timestamp_.InMilliseconds(),
+      duration_ms, (params.key_frame) ? VPX_EFLAG_FORCE_KF : 0,
+      VPX_DL_REALTIME);
+  artificial_timestamp_ += params.duration;
   if (ret != VPX_CODEC_OK) {
     const char* error_detail = vpx_codec_error_detail(codec_.get());
     LOG(ERROR) << "Encoding error: " << vpx_codec_err_to_string(ret) << "\n  "

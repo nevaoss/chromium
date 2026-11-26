@@ -958,7 +958,11 @@ IN_PROC_BROWSER_TEST_P(
         controller->Close();
       }),
       WaitForContextualPanelAndLensToClose(),
-      WaitForShow(kContextualTasksEphemeralToolbarButtonElementId));
+      GetParam() == contextual_tasks::UserVariation::kIncognito
+          ? Steps(EnsureNotPresent(
+                kContextualTasksEphemeralToolbarButtonElementId))
+          : Steps(
+                WaitForShow(kContextualTasksEphemeralToolbarButtonElementId)));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1916,8 +1920,7 @@ class ContextualTasksLensRegionChipInteractiveUiTest
   InteractiveTestApi::MultiStep OpenContextualTasksSidePanelViaToolbarButton(
       ui::ElementIdentifier side_panel_contents_id) {
     return Steps(
-        EnsurePresent(
-            kPinnedToolbarActionShowSidePanelContextualTasksElementId),
+        WaitForShow(kPinnedToolbarActionShowSidePanelContextualTasksElementId),
         PressButton(kPinnedToolbarActionShowSidePanelContextualTasksElementId),
         WaitForShow(kContextualTasksSidePanelWebViewElementId),
         NameViewRelative(

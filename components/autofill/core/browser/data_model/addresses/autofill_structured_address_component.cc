@@ -89,8 +89,7 @@ bool IsLessSignificantVerificationStatus(VerificationStatus left,
 
   // In all other cases, it is sufficient to compare the underlying integer
   // values.
-  return static_cast<std::underlying_type_t<VerificationStatus>>(left) <
-         static_cast<std::underlying_type_t<VerificationStatus>>(right);
+  return std::to_underlying(left) < std::to_underlying(right);
 }
 
 VerificationStatus GetMoreSignificantVerificationStatus(

@@ -153,16 +153,8 @@ class CastContentBrowserClient
   // on browser startup.
   virtual bool EnableRemoteDebuggingImmediately();
 
-  // Note: These were originally part of ContentBrowserClient, but have been
-  // lifted into this class as they're now only used by Chromecast. This is a
-  // transitional step to avoid breakage in the internal downstream repository.
-  virtual void RunServiceInstance(
-      const service_manager::Identity& identity,
-      mojo::PendingReceiver<service_manager::mojom::Service>* receiver);
   virtual std::optional<service_manager::Manifest> GetServiceManifestOverlay(
       std::string_view service_name);
-  std::vector<service_manager::Manifest> GetExtraServiceManifests();
-  std::vector<std::string> GetStartupServices();
 
   // content::ContentBrowserClient implementation:
   std::unique_ptr<content::BrowserMainParts> CreateBrowserMainParts(
@@ -175,7 +167,7 @@ class CastContentBrowserClient
   void OverrideWebPreferences(content::WebContents* web_contents,
                               content::SiteInstance& main_frame_site,
                               blink::web_pref::WebPreferences* prefs) override;
-  std::string GetApplicationLocale() override;
+  base::i18n::LanguageTag GetApplicationLocale() override;
   void AllowCertificateError(
       content::WebContents* web_contents,
       int cert_error,

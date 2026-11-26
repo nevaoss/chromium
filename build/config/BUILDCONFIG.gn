@@ -645,9 +645,6 @@ foreach(_target_type,
       }
 
       # Consumed by the unsafe-buffers plugin during compile.
-      #
-      # TODO(crbug.com/326584510): Reclient doesn't respect this variable, see
-      # rbe_bug_326584510_missing_inputs in //build/config/clang/clang.gni
       _uses_cflags = false
       if (defined(sources)) {
         foreach(f, sources) {
@@ -701,9 +698,6 @@ foreach(_target_type,
       }
 
       # Consumed by the unsafe-buffers plugin during compile.
-      #
-      # TODO(crbug.com/326584510): Reclient doesn't respect this variable, see
-      # rbe_bug_326584510_missing_inputs in //build/config/clang/clang.gni
       _uses_cflags = false
       if (defined(sources)) {
         foreach(f, sources) {

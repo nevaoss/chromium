@@ -157,8 +157,34 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
           "thread')");
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, App_Composebox_BasicMode) {
-  RunTest("contextual_tasks/app_composebox_basic_mode_test.js", "mocha.run();");
+// Run each BasicMode nested suite as a separate test so each group has its own
+// per-test time budget.
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       App_Composebox_BasicMode_ZOrderAndHistory) {
+  RunTest("contextual_tasks/app_composebox_basic_mode_test.js",
+          "runMochaSuite('ContextualTasksAppComposeboxBasicModeTest "
+          "ZOrderAndHistory')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       App_Composebox_BasicMode_NavigationFromAiPage) {
+  RunTest("contextual_tasks/app_composebox_basic_mode_test.js",
+          "runMochaSuite('ContextualTasksAppComposeboxBasicModeTest "
+          "NavigationFromAiPage')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       App_Composebox_BasicMode_PendingBasicMode) {
+  RunTest("contextual_tasks/app_composebox_basic_mode_test.js",
+          "runMochaSuite('ContextualTasksAppComposeboxBasicModeTest "
+          "PendingBasicMode')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       App_Composebox_BasicMode_NlmAndOnboardingTooltip) {
+  RunTest("contextual_tasks/app_composebox_basic_mode_test.js",
+          "runMochaSuite('ContextualTasksAppComposeboxBasicModeTest "
+          "NlmAndOnboardingTooltip')");
 }
 
 // TODO(crbug.com/480689282): Re-enable the test.
@@ -230,19 +256,18 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
           "ChipCreationAndMismatch')");
 }
 
-// TODO(crbug.com/556296442): Flaky on Linux.
-#if BUILDFLAG(IS_LINUX)
-#define MAYBE_Composebox_AutoTab_DeletionSemantics \
-  DISABLED_Composebox_AutoTab_DeletionSemantics
-#else
-#define MAYBE_Composebox_AutoTab_DeletionSemantics \
-  Composebox_AutoTab_DeletionSemantics
-#endif
 IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
-                       MAYBE_Composebox_AutoTab_DeletionSemantics) {
+                       Composebox_AutoTab_DeletionSemantics) {
   RunTest("contextual_tasks/composebox_files_test.js",
           "runMochaSuite('ContextualTasksComposeboxForkAutoTabTest "
           "DeletionSemantics')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       Composebox_AutoTab_AskGDeletionSemantics) {
+  RunTest("contextual_tasks/composebox_files_test.js",
+          "runMochaSuite('ContextualTasksComposeboxForkAutoTabTest "
+          "AskGDeletionSemantics')");
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
@@ -282,12 +307,6 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, Composebox_ErrorScrim) {
 }
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
-                       ExtensionPostMessageHandler) {
-  RunTest("contextual_tasks/extension_post_message_handler_test.js",
-          "mocha.run();");
-}
-
 IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, LensButton) {
   RunTest("contextual_tasks/lens_button_test.js", "mocha.run();");
 }
@@ -672,6 +691,13 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
   RunTest("contextual_tasks/composebox_test.js",
           "runMochaSuite('ContextualTasksComposeboxForkVoiceTest "
           "\\\\(coherence = true\\\\) CoherenceControlsFilesAndLifecycle')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       Composebox_Voice_CoherenceCarouselAndToolChips) {
+  RunTest("contextual_tasks/composebox_test.js",
+          "runMochaSuite('ContextualTasksComposeboxForkVoiceTest "
+          "\\\\(coherence = true\\\\) CoherenceCarouselAndToolChips')");
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 

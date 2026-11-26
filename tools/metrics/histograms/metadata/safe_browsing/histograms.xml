@@ -1623,8 +1623,8 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.GetReferringAppInfo.WithWebApk.Duration"
-    units="ms" expires_after="2026-12-06">
-  <owner>chlily@chromium.org</owner>
+    units="ms" expires_after="2027-06-06">
+  <owner>yawfrempong@google.com</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
     Records the elapsed time in GetReferringAppInfo() when requesting WebAPK
@@ -1634,8 +1634,8 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.GetReferringAppInfo.WithWebApk.FoundWebApk"
-    enum="BooleanFound" expires_after="2026-12-06">
-  <owner>chlily@chromium.org</owner>
+    enum="BooleanFound" expires_after="2027-06-06">
+  <owner>yawfrempong@google.com</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
     Records whether GetReferringAppInfo(), when requesting WebAPK info to be
@@ -2618,7 +2618,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.Pref.JsOptimizerSetting"
-    enum="SafeBrowsingJsOptimizerSetting" expires_after="2027-02-21">
+    enum="SafeBrowsingJsOptimizerSetting" expires_after="2027-04-25">
   <owner>tiffanysong@google.com</owner>
   <owner>jacastro@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
@@ -2968,7 +2968,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.RT.HasTokenInRequest{UserCategory}"
-    enum="BooleanHasToken" expires_after="2027-02-07">
+    enum="BooleanHasToken" expires_after="2027-04-25">
   <owner>xinghuilu@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -3311,7 +3311,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.SiteFamiliarity.Verdict{FrameType}"
-    enum="SiteFamiliarity" expires_after="2027-02-21">
+    enum="SiteFamiliarity" expires_after="2027-04-25">
   <owner>jacastro@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>

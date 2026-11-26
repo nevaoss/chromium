@@ -20,6 +20,7 @@
 #include "chrome/browser/contextual_tasks/active_task_context_provider.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_eligibility_manager.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_panel_thread_observer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_permission_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_tab_restore_data.h"
@@ -68,6 +69,7 @@
 #include "content/public/test/web_contents_tester.h"
 #include "extensions/buildflags/buildflags.h"
 #include "net/base/url_util.h"
+#include "net/http/http_response_headers.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/test/test_url_loader_factory.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -922,6 +924,36 @@ TEST_F(ContextualTasksSidePanelCoordinatorTest,
 }
 
 TEST_F(ContextualTasksSidePanelCoordinatorTest,
+       CloseZeroStateTaskDisassociatesTabInIncognitoWhenEphemeralBranded) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      kContextualTasksEphemeralBrandedEntryPoint,
+      {{"ContextualTasksEntryPoint", "toolbar-ephemeral-branded"}});
+
+  Profile* otr_profile =
+      profile_->GetPrimaryOTRProfile(/*create_if_needed=*/true);
+  ON_CALL(*browser_window_, GetProfile()).WillByDefault(Return(otr_profile));
+
+  ContextualTask zero_state_task(base::Uuid::GenerateRandomV4());
+  tabs::TabInterface* active_tab = tab_list_->GetActiveTab();
+  SessionID active_tab_id =
+      sessions::SessionTabHelper::IdForTab(active_tab->GetContents());
+
+  EXPECT_CALL(*mock_controller_, GetContextualTaskForTab(active_tab_id))
+      .WillRepeatedly(Return(zero_state_task));
+  EXPECT_CALL(*mock_controller_,
+              GetTabsAssociatedWithTask(zero_state_task.GetTaskId()))
+      .WillRepeatedly(Return(std::vector<SessionID>{active_tab_id}));
+
+  EXPECT_CALL(
+      *mock_controller_,
+      DisassociateTabFromTask(zero_state_task.GetTaskId(), active_tab_id))
+      .Times(1);
+
+  coordinator_->Close();
+}
+
+TEST_F(ContextualTasksSidePanelCoordinatorTest,
        CloseZeroStateTaskDisassociatesTabWhenNotEphemeralBranded) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeatureWithParameters(
@@ -1096,6 +1128,44 @@ TEST_F(ContextualTasksSidePanelCoordinatorTest,
                                       1);
   histogram_tester.ExpectTotalCount(
       "ContextualTasks.Session.Duration.EphemeralToolbarButton", 1);
+}
+
+TEST_F(
+    ContextualTasksSidePanelCoordinatorTest,
+    Close_ScopedToTab_ClosedOnAllTabs_KeepsPanelClosedForNewlyAssociatedTab) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeaturesAndParameters(
+      {{kContextualTasksSidePanelTabState, {}},
+       {kContextualTasksEphemeralBrandedEntryPoint,
+        {{"ContextualTasksEntryPoint", "toolbar-ephemeral-branded"}}}},
+      {});
+
+  ContextualTask task(base::Uuid::GenerateRandomV4());
+  tabs::TabInterface* tab_a = tab_list_->GetActiveTab();
+  tabs::TabInterface* tab_b = CreateMockTab();
+  SessionID tab_a_id =
+      sessions::SessionTabHelper::IdForTab(tab_a->GetContents());
+  SessionID tab_b_id =
+      sessions::SessionTabHelper::IdForTab(tab_b->GetContents());
+
+  ON_CALL(*mock_controller_, GetContextualTaskForTab(_))
+      .WillByDefault(Return(task));
+  ON_CALL(*mock_controller_, GetTabsAssociatedWithTask(task.GetTaskId()))
+      .WillByDefault(Return(std::vector<SessionID>{tab_a_id}));
+  CreateCachedWebContentsForTesting(task.GetTaskId(), /*is_open=*/true);
+  SetActiveTab(tab_a);
+  UpdateWebContentsForActiveTab();
+
+  // Close the panel on the only associated tab of the task.
+  coordinator_->Close();
+  EXPECT_FALSE(ShouldBeOpen());
+
+  // If a second tab is later associated with the task while no tab has an open
+  // panel, switching to that second tab should keep the panel closed.
+  ON_CALL(*mock_controller_, GetTabsAssociatedWithTask(task.GetTaskId()))
+      .WillByDefault(Return(std::vector<SessionID>{tab_a_id, tab_b_id}));
+  SetActiveTab(tab_b);
+  EXPECT_FALSE(ShouldBeOpen());
 }
 
 TEST_F(ContextualTasksSidePanelCoordinatorTest,
@@ -1288,6 +1358,8 @@ TEST_F(ContextualTasksSidePanelCoordinatorTest,
       GetWebContentsForTaskForTesting(old_task.GetTaskId());
   ASSERT_TRUE(rebuilt_contents);
   EXPECT_NE(panel_contents, rebuilt_contents);
+  EXPECT_TRUE(
+      ContextualTasksPanelThreadObserver::FromWebContents(rebuilt_contents));
   std::string thread_id;
   EXPECT_TRUE(net::GetValueForKeyInQuery(rebuilt_contents->GetVisibleURL(),
                                          "mtid", &thread_id));
@@ -2585,6 +2657,75 @@ TEST_F(ContextualTasksSidePanelCoordinatorTest,
   EXPECT_EQ(cached_wc->GetVisibleURL(), expected_url);
 }
 
+TEST_F(ContextualTasksSidePanelCoordinatorTest,
+       PanelThreadObserver_AttachedAndRemovedOnDetach_WithRearchitectureFlag) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndEnableFeature(
+      kContextualTasksSidePanelRearchitecture);
+
+  auto* mock_ui_service = static_cast<MockContextualTasksUiService*>(
+      ContextualTasksUiServiceFactory::GetForBrowserContext(profile_.get()));
+  ContextualTask task(base::Uuid::GenerateRandomV4());
+  ON_CALL(*mock_controller_, GetContextualTaskForTab(_))
+      .WillByDefault(Return(task));
+  ON_CALL(*mock_ui_service, GetInitialUrlForTask(task.GetTaskId()))
+      .WillByDefault(
+          Return(GURL("https://www.google.com/search?udm=50&q=test")));
+
+  coordinator_->Show(
+      /*transition_from_tab=*/false,
+      omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT,
+      /*use_no_animation=*/true);
+
+  content::WebContents* cached_wc =
+      GetWebContentsForTaskForTesting(task.GetTaskId());
+  ASSERT_TRUE(cached_wc);
+  EXPECT_TRUE(ContextualTasksPanelThreadObserver::FromWebContents(cached_wc));
+
+  // Moving the `WebContents` to a tab removes the observer.
+  std::unique_ptr<content::WebContents> detached_wc =
+      coordinator_->DetachWebContentsForTask(task.GetTaskId());
+  ASSERT_EQ(detached_wc.get(), cached_wc);
+  EXPECT_FALSE(
+      ContextualTasksPanelThreadObserver::FromWebContents(detached_wc.get()));
+}
+
+// Post-rearchitecture, a panel `WebContents` reporting its own task change
+// (see `ContextualTasksPanelThreadObserver`) is re-keyed, even if it isn't the
+// active panel `WebContents`.
+TEST_F(ContextualTasksSidePanelCoordinatorTest,
+       OnTaskChanged_RekeysReportingWebContents_WithRearchitectureFlag) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndEnableFeature(
+      kContextualTasksSidePanelRearchitecture);
+
+  tabs::TabInterface* active_tab = tab_list_->GetActiveTab();
+  base::Uuid active_task_id = base::Uuid::GenerateRandomV4();
+  ON_CALL(*mock_controller_,
+          GetContextualTaskForTab(
+              sessions::SessionTabHelper::IdForTab(active_tab->GetContents())))
+      .WillByDefault(Return(ContextualTask(active_task_id)));
+  CreateCachedWebContentsForTesting(active_task_id, /*is_open=*/true);
+  base::Uuid other_task_id = base::Uuid::GenerateRandomV4();
+  CreateCachedWebContentsForTesting(other_task_id, /*is_open=*/false);
+  UpdateWebContentsForActiveTab();
+
+  content::WebContents* active_wc =
+      GetWebContentsForTaskForTesting(active_task_id);
+  content::WebContents* other_wc =
+      GetWebContentsForTaskForTesting(other_task_id);
+  ASSERT_TRUE(active_wc);
+  ASSERT_TRUE(other_wc);
+  ASSERT_EQ(coordinator_->GetActiveWebContents(), active_wc);
+
+  base::Uuid new_task_id = base::Uuid::GenerateRandomV4();
+  coordinator_->OnTaskChanged(other_wc, new_task_id);
+
+  EXPECT_EQ(GetWebContentsForTaskForTesting(new_task_id), other_wc);
+  EXPECT_EQ(GetWebContentsForTaskForTesting(active_task_id), active_wc);
+  EXPECT_FALSE(GetWebContentsForTaskForTesting(other_task_id));
+}
+
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 // The extensions menu dereferences extensions::TabHelper::FromWebContents()
 // without a null check, so the side panel's WebContents must have one attached
@@ -2846,6 +2987,7 @@ TEST_F(
 
   base::Uuid existing_task_id = base::Uuid::GenerateRandomV4();
   ContextualTask existing_task(existing_task_id);
+  CreateCachedWebContentsForTesting(existing_task_id, /*is_open=*/true);
   ON_CALL(*tab_list_, GetActiveTab()).WillByDefault(Return(active_tab));
   ON_CALL(*mock_panel_host_, IsPanelOpenForContextualTask())
       .WillByDefault(Return(true));
@@ -3442,6 +3584,7 @@ TEST_F(ContextualTasksSidePanelCoordinatorTest, IsShowingResults) {
   ON_CALL(*mock_panel_host_, IsPanelOpenForContextualTask())
       .WillByDefault(Return(false));
   EXPECT_FALSE(coordinator_->IsShowingResults());
+  EXPECT_FALSE(coordinator_->HasResults());
   EXPECT_FALSE(IsShowingLensResults());
   EXPECT_FALSE(IsShowingAimResults());
 
@@ -3453,20 +3596,37 @@ TEST_F(ContextualTasksSidePanelCoordinatorTest, IsShowingResults) {
   content::WebContents* zero_state_wc =
       GetWebContentsForTaskForTesting(zero_state_id);
   mock_panel_host_->SetWebContents(zero_state_wc);
+  ON_CALL(*mock_controller_, GetContextualTaskForTab(_))
+      .WillByDefault(Return(ContextualTask(zero_state_id)));
   ON_CALL(*mock_panel_host_, IsPanelOpenForContextualTask())
       .WillByDefault(Return(true));
   EXPECT_FALSE(coordinator_->IsShowingResults());
+  EXPECT_FALSE(coordinator_->HasResults());
   EXPECT_FALSE(IsShowingLensResults());
   EXPECT_FALSE(IsShowingAimResults());
+
+  // 1b. While a navigation to AIM results is still in progress (before commit),
+  // HasResults() and IsShowingResults() are already true.
+  auto pending_aim_nav = content::NavigationSimulator::CreateBrowserInitiated(
+      GURL("https://www.google.com/search?udm=50&mtid=1&q=hello"),
+      zero_state_wc);
+  pending_aim_nav->Start();
+  EXPECT_TRUE(coordinator_->IsShowingResults());
+  EXPECT_TRUE(coordinator_->HasResults());
+  EXPECT_FALSE(IsShowingLensResults());
+  EXPECT_TRUE(IsShowingAimResults());
 
   // 2. Open panel in non-zero-state AIM thread -> true (showing AIM results).
   base::Uuid active_thread_id = base::Uuid::GenerateRandomV4();
   CreateCachedWebContentsWithUrlForTesting(
       active_thread_id, /*is_open=*/true,
       GURL("https://www.google.com/search?udm=50&mtid=1&q=hello"));
+  ON_CALL(*mock_controller_, GetContextualTaskForTab(_))
+      .WillByDefault(Return(ContextualTask(active_thread_id)));
   mock_panel_host_->SetWebContents(
       GetWebContentsForTaskForTesting(active_thread_id));
   EXPECT_TRUE(coordinator_->IsShowingResults());
+  EXPECT_TRUE(coordinator_->HasResults());
   EXPECT_FALSE(IsShowingLensResults());
   EXPECT_TRUE(IsShowingAimResults());
 
@@ -3475,16 +3635,56 @@ TEST_F(ContextualTasksSidePanelCoordinatorTest, IsShowingResults) {
   CreateCachedWebContentsWithUrlForTesting(
       lens_srp_id, /*is_open=*/true,
       GURL("https://www.google.com/search?lns_mode=un&vsrid=123"));
+  ON_CALL(*mock_controller_, GetContextualTaskForTab(_))
+      .WillByDefault(Return(ContextualTask(lens_srp_id)));
   mock_panel_host_->SetWebContents(
       GetWebContentsForTaskForTesting(lens_srp_id));
   EXPECT_TRUE(coordinator_->IsShowingResults());
+  EXPECT_TRUE(coordinator_->HasResults());
   EXPECT_TRUE(IsShowingLensResults());
   EXPECT_FALSE(IsShowingAimResults());
 
-  // 4. Closed panel with an active thread -> false.
+  // 3b. Open panel from Lens Overlay entry point before inner frame commits ->
+  // true (showing Lens results).
+  base::Uuid lens_overlay_id = base::Uuid::GenerateRandomV4();
+  CreateCachedWebContentsWithUrlForTesting(
+      lens_overlay_id, /*is_open=*/true, GURL("chrome://contextual-tasks"));
+  SetCacheItemEntrySourceForTesting(
+      lens_overlay_id, ContextualTasksPanelController::EntrySource::kLensOverlay,
+      base::TimeTicks::Now());
+  ON_CALL(*mock_controller_, GetContextualTaskForTab(_))
+      .WillByDefault(Return(ContextualTask(lens_overlay_id)));
+  mock_panel_host_->SetWebContents(
+      GetWebContentsForTaskForTesting(lens_overlay_id));
+  EXPECT_TRUE(coordinator_->IsShowingResults());
+  EXPECT_TRUE(coordinator_->HasResults());
+  EXPECT_TRUE(IsShowingLensResults());
+  EXPECT_FALSE(IsShowingAimResults());
+
+  // 4. Closed panel with an active thread preserved on the active tab (even
+  // when the cached WebContents URL is non-HTTP) -> IsShowingResults() is
+  // false, while HasResults() and IsShowingAimResults() remain true.
+  base::Uuid closed_thread_id = base::Uuid::GenerateRandomV4();
+  CreateCachedWebContentsWithUrlForTesting(
+      closed_thread_id, /*is_open=*/false, GURL("chrome://contextual-tasks"));
+  ContextualTask closed_thread_task(closed_thread_id);
+  closed_thread_task.AddThread(
+      Thread(ThreadType::kAiMode, "thread_1", "Title", 1000));
   ON_CALL(*mock_panel_host_, IsPanelOpenForContextualTask())
       .WillByDefault(Return(false));
+  mock_panel_host_->SetWebContents(nullptr);
+  ON_CALL(*mock_controller_, GetContextualTaskForTab(_))
+      .WillByDefault(Return(closed_thread_task));
   EXPECT_FALSE(coordinator_->IsShowingResults());
+  EXPECT_TRUE(coordinator_->HasResults());
+  EXPECT_FALSE(IsShowingLensResults());
+  EXPECT_TRUE(IsShowingAimResults());
+
+  // 5. Closed panel when the active tab has no associated task -> both false.
+  ON_CALL(*mock_controller_, GetContextualTaskForTab(_))
+      .WillByDefault(Return(std::nullopt));
+  EXPECT_FALSE(coordinator_->IsShowingResults());
+  EXPECT_FALSE(coordinator_->HasResults());
   EXPECT_FALSE(IsShowingLensResults());
   EXPECT_FALSE(IsShowingAimResults());
 }
@@ -3576,6 +3776,13 @@ TEST_F(ContextualTasksSidePanelCoordinatorTest,
 
   ON_CALL(*session_handle_ptr, GetController())
       .WillByDefault(Return(&mock_context_controller));
+  ON_CALL(*session_handle_ptr, CreateContextToken())
+      .WillByDefault([session_handle_ptr]() {
+        auto token = base::UnguessableToken::Create();
+        session_handle_ptr->GetUploadedContextTokensForTesting().push_back(
+            token);
+        return token;
+      });
   ON_CALL(mock_context_controller, GetFileInfo(token2))
       .WillByDefault(Return(&submitted_file2));
   ON_CALL(mock_context_controller, GetFileInfo(token3))
@@ -4010,6 +4217,147 @@ TEST_F(ContextualTasksSidePanelCoordinatorTest,
   webui::SetBrowserWindowInterface(ai_tab->GetContents(), nullptr);
   ON_CALL(*full_tab_session_ptr, GetController())
       .WillByDefault(Return(nullptr));
+}
+
+TEST_F(ContextualTasksSidePanelCoordinatorTest,
+       NavigationMetrics_RecordsResponseCodesAndNetError) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndEnableFeature(
+      kContextualTasksSidePanelRearchitecture);
+
+  base::HistogramTester histogram_tester;
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+  CreateCachedWebContentsForTesting(task_id, /*is_open=*/true);
+  content::WebContents* web_contents = GetWebContentsForTaskForTesting(task_id);
+  ASSERT_TRUE(web_contents);
+
+  // 1. Successful commit with HTTP 200 on non-zero-state URL.
+  auto sim = content::NavigationSimulator::CreateRendererInitiated(
+      GURL("https://www.google.com/search?q=test"),
+      web_contents->GetPrimaryMainFrame());
+  sim->SetResponseHeaders(
+      net::HttpResponseHeaders::TryToCreate("HTTP/1.1 200 OK\r\n\r\n"));
+  sim->Commit();
+
+  histogram_tester.ExpectUniqueSample(
+      "ContextualTasks.Navigation.HttpResponseCode", 200, 1);
+  histogram_tester.ExpectUniqueSample(
+      "ContextualTasks.Navigation.HttpResponseCode.ExcludeZeroStateLoads", 200,
+      1);
+  histogram_tester.ExpectUniqueSample("ContextualTasks.Navigation.NetErrorCode",
+                                      0, 1);
+}
+
+TEST_F(ContextualTasksSidePanelCoordinatorTest,
+       NavigationMetrics_ZeroStateExcludeZeroStateLoads) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndEnableFeature(
+      kContextualTasksSidePanelRearchitecture);
+
+  base::HistogramTester histogram_tester;
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+  CreateCachedWebContentsForTesting(task_id, /*is_open=*/true);
+  content::WebContents* web_contents = GetWebContentsForTaskForTesting(task_id);
+  ASSERT_TRUE(web_contents);
+
+  // Navigation to zero-state URL (https://g.ai/).
+  auto sim = content::NavigationSimulator::CreateRendererInitiated(
+      GURL("https://g.ai/"), web_contents->GetPrimaryMainFrame());
+  sim->SetResponseHeaders(
+      net::HttpResponseHeaders::TryToCreate("HTTP/1.1 200 OK\r\n\r\n"));
+  sim->Commit();
+
+  histogram_tester.ExpectUniqueSample(
+      "ContextualTasks.Navigation.HttpResponseCode", 200, 1);
+  histogram_tester.ExpectTotalCount(
+      "ContextualTasks.Navigation.HttpResponseCode.ExcludeZeroStateLoads", 0);
+  histogram_tester.ExpectUniqueSample("ContextualTasks.Navigation.NetErrorCode",
+                                      0, 1);
+}
+
+TEST_F(ContextualTasksSidePanelCoordinatorTest,
+       NavigationMetrics_NetErrorCodeOnFailure) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndEnableFeature(
+      kContextualTasksSidePanelRearchitecture);
+
+  base::HistogramTester histogram_tester;
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+  CreateCachedWebContentsForTesting(task_id, /*is_open=*/true);
+  content::WebContents* web_contents = GetWebContentsForTaskForTesting(task_id);
+  ASSERT_TRUE(web_contents);
+
+  auto sim = content::NavigationSimulator::CreateRendererInitiated(
+      GURL("https://www.google.com/search?q=test"),
+      web_contents->GetPrimaryMainFrame());
+  sim->Fail(net::ERR_TIMED_OUT);
+  sim->CommitErrorPage();
+
+  histogram_tester.ExpectBucketCount("ContextualTasks.Navigation.NetErrorCode",
+                                     std::abs(net::ERR_TIMED_OUT), 1);
+  histogram_tester.ExpectTotalCount(
+      "ContextualTasks.Navigation.HttpResponseCode", 0);
+}
+
+TEST_F(ContextualTasksSidePanelCoordinatorTest,
+       NavigationMetrics_RecordedAfterTransferWebContentsFromTab) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndEnableFeature(
+      kContextualTasksSidePanelRearchitecture);
+
+  base::HistogramTester histogram_tester;
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+
+  // Create an existing cached WebContents so TransferWebContentsFromTab
+  // replaces it.
+  CreateCachedWebContentsForTesting(task_id, /*is_open=*/true);
+
+  auto transferred_wc = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), nullptr);
+  content::WebContents* transferred_wc_ptr = transferred_wc.get();
+  coordinator_->TransferWebContentsFromTab(task_id, std::move(transferred_wc));
+
+  auto sim = content::NavigationSimulator::CreateRendererInitiated(
+      GURL("https://www.google.com/search?q=test"),
+      transferred_wc_ptr->GetPrimaryMainFrame());
+  sim->SetResponseHeaders(
+      net::HttpResponseHeaders::TryToCreate("HTTP/1.1 200 OK\r\n\r\n"));
+  sim->Commit();
+
+  histogram_tester.ExpectUniqueSample(
+      "ContextualTasks.Navigation.HttpResponseCode", 200, 1);
+  histogram_tester.ExpectUniqueSample(
+      "ContextualTasks.Navigation.HttpResponseCode.ExcludeZeroStateLoads", 200,
+      1);
+  histogram_tester.ExpectUniqueSample("ContextualTasks.Navigation.NetErrorCode",
+                                      0, 1);
+}
+
+TEST_F(ContextualTasksSidePanelCoordinatorTest,
+       NavigationMetrics_NotRecordedWhenRearchitectureDisabled) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndDisableFeature(
+      kContextualTasksSidePanelRearchitecture);
+
+  base::HistogramTester histogram_tester;
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+  CreateCachedWebContentsForTesting(task_id, /*is_open=*/true);
+  content::WebContents* web_contents = GetWebContentsForTaskForTesting(task_id);
+  ASSERT_TRUE(web_contents);
+
+  auto sim = content::NavigationSimulator::CreateRendererInitiated(
+      GURL("https://www.google.com/search?q=test"),
+      web_contents->GetPrimaryMainFrame());
+  sim->SetResponseHeaders(
+      net::HttpResponseHeaders::TryToCreate("HTTP/1.1 200 OK\r\n\r\n"));
+  sim->Commit();
+
+  histogram_tester.ExpectTotalCount(
+      "ContextualTasks.Navigation.HttpResponseCode", 0);
+  histogram_tester.ExpectTotalCount(
+      "ContextualTasks.Navigation.HttpResponseCode.ExcludeZeroStateLoads", 0);
+  histogram_tester.ExpectTotalCount("ContextualTasks.Navigation.NetErrorCode",
+                                    0);
 }
 
 }  // namespace contextual_tasks

@@ -281,14 +281,6 @@
     "expiry_milestone": -1
   },
   {
-    "name": "allow-apn-modification-policy",
-    "owners": [
-      "hsuregan@google.com",
-      "cros-device-enablement@google.com"
-    ],
-    "expiry_milestone": 138
-  },
-  {
     "name": "allow-cross-device-feature-suite",
     "owners": [ "chromeos-cross-device-eng@google.com", "cclem@chromium.org" ],
     // Used by developers to enable Cross-Device for testing on platforms where
@@ -970,6 +962,11 @@
     "expiry_milestone": 175
   },
   {
+    "name": "audio-selection-improvement",
+    "owners": [ "zhangwenyu@google.com", "cros-device-enablement@google.com" ],
+    "expiry_milestone": 151
+  },
+  {
     "name": "auto-framing-override",
     "owners": [ "kamesan@chromium.org", "chromeos-camera-eng@google.com" ],
     "expiry_milestone": 116
@@ -1240,11 +1237,6 @@
     "name": "autofill-enable-omnibox-autofill",
     "owners": [ "osaul@google.com", "ferny@google.com", "payments-autofill-team@google.com" ],
     "expiry_milestone": 160
-  },
-  {
-    "name": "autofill-enable-omnibox-gpay-button",
-    "owners": [ "ferny@google.com", "payments-autofill-team@google.com" ],
-    "expiry_milestone": 165
   },
   {
     "name": "autofill-enable-pay-now-pay-later-tabs",
@@ -1697,6 +1689,15 @@
     "owners": [
       "rainhard@google.com",
       "aisulu@google.com",
+      "chrome-browser-privacy-team@google.com"
+    ],
+    "expiry_milestone": 160
+  },
+  {
+    "name": "browsing-history-filter-by-domain",
+    "owners": [
+      "dullweber@chromium.org",
+      "rainhard@google.com",
       "chrome-browser-privacy-team@google.com"
     ],
     "expiry_milestone": 160
@@ -2545,6 +2546,11 @@
     "expiry_milestone": 161
   },
   {
+    "name": "contextual-tasks-side-panel-tab-state",
+    "owners": [ "juanmojica@google.com", "chrome-contextual-tasks-eng@google.com" ],
+    "expiry_milestone": 165
+  },
+  {
     "name": "contextual-tasks-suggestions-enabled",
     "owners": ["dianaou@google.com", "chrome-contextual-tasks-eng@google.com"],
     "expiry_milestone": 159
@@ -2960,11 +2966,6 @@
     // The schedule for unload events being fully removed is unknown. We expect
     // it to take several years. This milestone is a placeholder and may be revisted.
     "expiry_milestone": 160
-  },
-  {
-    "name": "deprecated-external-picker-function",
-    "owners": [ "finnur@chromium.org", "tedchoc@chromium.org"],
-    "expiry_milestone": 140
   },
   {
     "name": "desktop-android-file-picker-for-media",
@@ -3589,7 +3590,7 @@
   {
     "name": "enable-android-side-panel-logs",
     "owners": ["mschillaci@google.com", "linyuh@google.com", "sinansahin@google.com"],
-    "expiry_milestone": 158
+    "expiry_milestone": 165
   },
   {
     "name": "enable-android-side-panel-manual-resizing",
@@ -4366,11 +4367,6 @@
     "name": "enable-media-foundation-video-capture",
     "owners": [ "agpalak@chromium.org", "herre@chromium.org", "rtc-meet-in-chrome@google.com" ],
     "expiry_milestone": 160
-  },
-  {
-    "name": "enable-media-link-helpers",
-    "owners": [ "liberato@chromium.org", "media-dev@chromium.org" ],
-    "expiry_milestone": 145
   },
   {
     "name": "enable-missive-storage-config",
@@ -6783,6 +6779,11 @@
     "expiry_milestone": 152
   },
   {
+    "name": "lens-send-drive-tab-urls-in-composeboxes",
+    "owners": ["hujasonx@google.com", "lens-chrome@google.com"],
+    "expiry_milestone": 165
+  },
+  {
     "name": "lens-stream-service-web-channel-transport-enabled",
     "owners": ["cmyang@google.com", "brandonli@google.com"],
     "expiry_milestone": 165
@@ -7132,11 +7133,6 @@
     "name": "mute-notification-snooze-action",
     "owners": [ "knollr@chromium.org", "peter@chromium.org" ],
     "expiry_milestone": 96
-  },
-  {
-    "name": "native-view-host-manages-layers",
-    "owners": [ "oshima@chromium.org", "tluk@chromium.org" ],
-    "expiry_milestone": 165
   },
   {
     "name": "nearby-ble-v2",
@@ -7619,6 +7615,11 @@
     "expiry_milestone": 120
   },
   {
+    "name": "omnibox-early-inflation",
+    "owners": ["peterkang@google.com", "ender@google.com", "chrome-mobile-search@google.com"],
+    "expiry_milestone": 160
+  },
+  {
     "name": "omnibox-enterprise-search-aggregator",
     "owners": [ "ftirelo@chromium.org", "jdonnelly@chromium.org", "mahmadi@chromium.org", "chrome-desktop-search@google.com"],
     "expiry_milestone": 145
@@ -7876,6 +7877,11 @@
     "name": "omnibox-url-suggestions-on-focus",
     "owners": ["niharm@google.com", "khalidpeer@chromium.org",  "mahmadi@chromium.org", "chrome-desktop-search@google.com" ],
     "expiry_milestone": 150
+  },
+  {
+    "name": "omnibox-voice-plate-intent",
+    "owners": [ "ender@google.com", "chrome-mobile-search@google.com" ],
+    "expiry_milestone": 166
   },
   {
     "name": "omnibox-zero-suggest-prefetch-debouncing",
@@ -8493,7 +8499,7 @@
   {
     "name": "profiles-reordering",
     "owners": ["rsult@google.com", "chrome-signin-team@google.com"],
-    "expiry_milestone": 146
+    "expiry_milestone": 170
   },
   {
     "name": "prompt-api",
@@ -8809,7 +8815,7 @@
       "thefrog@chromium.org",
       "chrome-counter-abuse-alerts@google.com"
     ],
-    "expiry_milestone": 159
+    "expiry_milestone": 161
   },
   {
     "name": "safe-browsing-no-protection-suppress-warnings",
@@ -8826,14 +8832,6 @@
       "chrome-counter-abuse-alerts@google.com"
     ],
     "expiry_milestone": 160
-  },
-  {
-    "name": "safe-browsing-sync-checker-check-allowlist",
-    "owners": [
-      "xinghuilu@chromium.org",
-      "chrome-counter-abuse-alerts@google.com"
-    ],
-    "expiry_milestone": 135
   },
   {
     "name": "safe-browsing-trusted-url",
@@ -9744,7 +9742,7 @@
   {
     "name": "toolbar-progress-bar-refactor",
     "owners": ["mschillaci@google.com", "clank-app-team@google.com"],
-    "expiry_milestone": 159
+    "expiry_milestone": 165
   },
   {
     "name": "toolbar-snapshot-refactor",
@@ -9863,7 +9861,7 @@
   {
     "name": "universal-keyboard-handling",
     "owners": ["mschillaci@google.com", "clank-app-team@google.com"],
-    "expiry_milestone": 159
+    "expiry_milestone": 165
   },
   {
     "name": "universal-opt-out",

@@ -266,12 +266,6 @@ should be able to be added at any place in this file.
                bottom bar."/>
   <variant name="_AndroidBottomBarEducationTooltips"
       summary="For the education tooltips for the Android bottom bar."/>
-  <variant name="_AndroidBottomBarGlic"
-      summary="Describes the GLIC button added in the bottom bar."/>
-  <variant name="_AndroidBottomBarNewTab"
-      summary="Describes the new tab button moved down in the bottom bar."/>
-  <variant name="_AndroidBottomBarPromoDialog"
-      summary="For the promo dialog shown to introduce the bottom bar."/>
   <variant name="_AndroidTabDeclutter" summary="For archived tabs on android."/>
   <variant name="_AndroidTipsOptInPromo"
       summary="For the Android Tips Notifications opt-in bottom sheet promo."/>
@@ -562,6 +556,8 @@ should be able to be added at any place in this file.
   <variant name="_IncognitoIndicatorCloseAllWindows"
       summary="For the Incognito indicator close all windows IPH."/>
   <variant name="_IncognitoWindow" summary="For IncognitoWindow feature."/>
+  <variant name="_IndigoContextMenuToast"
+      summary="For Indigo context menu discovery toast after transformation."/>
   <variant name="_InstanceSwitcher" summary="For Instance switcher feature."/>
   <variant name="_IntentChip"
       summary="In product help for opening a webpage in an app using the
@@ -10358,13 +10354,41 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
-<action name="ContextualTasks.EphemeralToolbarButton.Shown">
+<action name="ContextualTasks.EphemeralToolbarButton.Shown{PanelState}">
   <owner>dianaou@chromium.org</owner>
   <owner>chrome-contextual-tasks-eng@google.com</owner>
   <description>
     Recorded when the ephemeral contextual tasks toolbar button becomes visible
-    in the browser toolbar.
+    in the browser toolbar. {PanelState}
   </description>
+  <token key="PanelState">
+    <variant name="" summary="Recorded for all states combined."/>
+    <variant name=".ActivePanelCollapsed"
+        summary="Recorded when the button is shown in its collapsed
+                 (ephemeral thread) state while the side panel is closed."/>
+    <variant name=".ActivePanelOpen"
+        summary="Recorded when the button is shown in its active state while
+                 the side panel is open."/>
+  </token>
+</action>
+
+<action
+    name="ContextualTasks.EphemeralToolbarButton.UserAction.OpenContextMenu{CloseSidePanelOptionState}">
+  <owner>dianaou@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when the user opens the context menu on the ephemeral contextual
+    tasks toolbar button. {CloseSidePanelOptionState}
+  </description>
+  <token key="CloseSidePanelOptionState">
+    <variant name="" summary="Recorded for all context menu opens combined."/>
+    <variant name=".CloseSidePanelOptionHidden"
+        summary="Recorded when the Close/Hide side panel (or Remove) option
+                 is not visible in the context menu."/>
+    <variant name=".CloseSidePanelOptionVisible"
+        summary="Recorded when the Close/Hide side panel (or Remove) option
+                 is visible in the context menu."/>
+  </token>
 </action>
 
 <action
@@ -13847,6 +13871,15 @@ should be able to be added at any place in this file.
   <description>
     Logged when a Glic instance is hidden from the user (e.g., the side panel is
     closed, the tab is backgrounded, or the floaty is dismissed).
+  </description>
+</action>
+
+<action name="Glic.Instance.InputFocused">
+  <owner>dewittj@chromium.org</owner>
+  <owner>glic-dev@google.com</owner>
+  <description>
+    Logged when the Glic web client reports that its main prompt input field
+    received focus.
   </description>
 </action>
 
@@ -21963,6 +21996,14 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileMenuDeleteGroup">
+  <owner>mfiaz@google.com</owner>
+  <owner>clank-tabs-dev@google.com</owner>
+  <description>
+    User pressed 'Delete group' in the tab group submenu.
+  </description>
+</action>
+
 <action name="MobileMenuDevTools">
   <owner>massan@google.com</owner>
   <description>User pressed 'Developer tools' in the app menu.</description>
@@ -22197,6 +22238,20 @@ should be able to be added at any place in this file.
 <action name="MobileMenuOpenBookmark">
   <owner>massan@google.com</owner>
   <description>User pressed a bookmark in the app menu to open it.</description>
+</action>
+
+<action name="MobileMenuOpenGroup">
+  <owner>mfiaz@google.com</owner>
+  <owner>clank-tabs-dev@google.com</owner>
+  <description>User pressed 'Open group' in the tab group submenu.</description>
+</action>
+
+<action name="MobileMenuOpenGroupInNewWindow">
+  <owner>mfiaz@google.com</owner>
+  <owner>clank-tabs-dev@google.com</owner>
+  <description>
+    User pressed 'Open group in new window' in the tab group submenu.
+  </description>
 </action>
 
 <action name="MobileMenuOpenWebApk">
@@ -22722,6 +22777,24 @@ should be able to be added at any place in this file.
   <description>
     Android: User navigated back to the NTP after reading an opened (clicked)
     snippet card.
+  </description>
+</action>
+
+<action name="MobileNTPAIMAttachImageButtonTapped">
+  <owner>ericekey@google.com</owner>
+  <owner>bling-pandamonium@google.com</owner>
+  <description>
+    Recorded when the user taps on the AIM attach image button in the quick
+    actions row on the NTP. iOS only.
+  </description>
+</action>
+
+<action name="MobileNTPAIMImageGenerationButtonTapped">
+  <owner>ericekey@google.com</owner>
+  <owner>bling-pandamonium@google.com</owner>
+  <description>
+    Recorded when the user taps on the AIM image generation button in the quick
+    actions row on the NTP. iOS only.
   </description>
 </action>
 
@@ -34301,6 +34374,13 @@ should be able to be added at any place in this file.
   <description>
     The user clicked the &quot;Extensions&quot; external link in the settings
     menu (drawer).
+  </description>
+</action>
+
+<action name="SettingsMenu_GeneralClicked">
+  <owner>mickeyburks@google.com</owner>
+  <description>
+    The user clicked the &quot;General&quot; item in the settings menu.
   </description>
 </action>
 

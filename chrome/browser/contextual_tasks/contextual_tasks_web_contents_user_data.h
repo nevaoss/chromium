@@ -31,6 +31,7 @@
 #include "components/contextual_tasks/public/contextual_tasks_service.h"
 #include "components/sessions/core/session_id.h"
 #include "components/tabs/public/tab_interface.h"
+#include "content/public/browser/web_contents_observer.h"
 #include "content/public/browser/web_contents_user_data.h"
 #include "url/gurl.h"
 
@@ -65,14 +66,23 @@ class QueryContextualizer;
 
 class ContextualTasksWebContentsUserData
     : public content::WebContentsUserData<ContextualTasksWebContentsUserData>,
+      public content::WebContentsObserver,
       public contextual_search::ContextualSearchContextController::
           ContextUploadStatusObserver,
       public ContextualTasksService::Observer {
  public:
-  enum class InjectedInputType {
-    kContextLibrary,
-    kLensChip,
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  // LINT.IfChange(ContextualTasksThreadContextLibraryUpdateOutcome)
+  enum class ThreadContextLibraryUpdateOutcome {
+    kSuccessWithTaskId = 0,
+    kSuccessWithoutTaskId = 1,
+    kFeatureDisabled = 2,
+    kNoSessionHandle = 3,
+    kEmptyConvertedContext = 4,
+    kMaxValue = kEmptyConvertedContext,
   };
+  // LINT.ThenChange(//tools/metrics/histograms/metadata/contextual_tasks/enums.xml:ContextualTasksThreadContextLibraryUpdateOutcome)
 
   struct ExtensionFrameInfo {
     ExtensionFrameInfo();
@@ -123,6 +133,12 @@ class ContextualTasksWebContentsUserData
   // `ContextualTasksTabNavigationObserver`).
   std::optional<base::Uuid> GetEffectiveTaskId() const;
 
+  // Registers `callback` to run when the AI Mode page reports zero state
+  // (`OnPageChanged`), before the input state is updated for it. See
+  // `ContextualTasksPanelThreadObserver`.
+  base::CallbackListSubscription RegisterZeroStateCallback(
+      base::RepeatingClosure callback);
+
   void RegisterExtensionFrame(const void* handler_id);
   void UpdateExtensionFrameBound(
       const void* handler_id,
@@ -156,9 +172,6 @@ class ContextualTasksWebContentsUserData
   // back to the primary bound extension iframe.
   void PostSearchMessage(const lens::ClientToSearchMessage& message);
 
-  void SendInjectChromeInput(InjectedInputType type, bool is_active);
-  void SendMountContextLibrary();
-  void UpdateContextLibraryInputState();
   void OnTabContextUploadStarted(const base::UnguessableToken& context_token);
   void OnTabContextRemoved(const base::UnguessableToken& context_token);
 
@@ -176,6 +189,11 @@ class ContextualTasksWebContentsUserData
                                   SessionID tab_id) override;
   void OnWillBeDestroyed() override;
 
+  // content::WebContentsObserver:
+  void RenderFrameHostChanged(content::RenderFrameHost* old_host,
+                              content::RenderFrameHost* new_host) override;
+  void RenderFrameDeleted(content::RenderFrameHost* render_frame_host) override;
+
   void HandleOnSubmitQueryRequest();
   void HandleOpenLinkInSidePanelMode(std::string_view url);
   // Syncs this thread's context library from AIM Search Web's tab history
@@ -186,6 +204,8 @@ class ContextualTasksWebContentsUserData
   void OnLensThumbnailCreated(const std::string& thumbnail_uri);
   void RemoveLensCrop();
 
+  contextual_search::ContextualSearchSessionHandle*
+  GetExistingContextualSessionHandle();
   contextual_search::ContextualSearchSessionHandle*
   GetOrCreateContextualSessionHandle();
   std::optional<base::UnguessableToken> GetLensOverlayToken();
@@ -201,6 +221,9 @@ class ContextualTasksWebContentsUserData
   std::vector<contextual_search::TabInfo> GetSelectedTabs();
   void DeleteContext(const base::UnguessableToken& file_token);
   void DeleteTabContext(int32_t tab_id);
+  bool OnBrowserTabClosedOrNavigated(SessionID tab_session_id,
+                                     std::optional<GURL> current_url,
+                                     std::optional<std::string> current_title);
   void ClearFiles(bool should_block_auto_suggested_tabs = false);
   void ClearInputPlateState();
 
@@ -252,6 +275,10 @@ class ContextualTasksWebContentsUserData
       std::optional<base::UnguessableToken> overlay_token);
 
  private:
+  enum class InjectedInputType {
+    kContextLibrary,
+    kLensChip,
+  };
   enum class ContextState {
     kNone,
     kUploading,
@@ -262,9 +289,17 @@ class ContextualTasksWebContentsUserData
   explicit ContextualTasksWebContentsUserData(content::WebContents* contents);
   friend class content::WebContentsUserData<ContextualTasksWebContentsUserData>;
 
+  void SendInjectChromeInput(InjectedInputType type, bool is_active);
+  void SendMountContextLibrary();
+  void UpdateContextLibraryInputState();
   void SubscribeToInputStateModel(
       base::WeakPtr<contextual_search::InputStateModel> model);
   void OnInputStateChanged(const omnibox::InputState& state);
+  void OnSessionChanged(
+      contextual_search::ContextualSearchSessionHandle* session_handle);
+  bool MaybeRefreshTabContextSubscription(
+      contextual_search::ContextualSearchSessionHandle* session_handle);
+  void OnTabContextUpdated(const contextual_search::TabContextState& state);
   void ObserveContextController(
       contextual_search::ContextualSearchContextController* controller);
   ContextState ComputeContextState();
@@ -310,6 +345,7 @@ class ContextualTasksWebContentsUserData
   std::optional<ImplicitTab> implicit_tab_;
   base::flat_set<GURL> dismissed_implicit_urls_;
   bool preserve_prestaged_context_ = false;
+  base::RepeatingClosureList zero_state_callbacks_;
 
   base::flat_map<base::UnguessableToken,
                  std::unique_ptr<contextual_search::InputStateModel>>
@@ -317,6 +353,10 @@ class ContextualTasksWebContentsUserData
   base::WeakPtr<contextual_search::InputStateModel> last_active_model_;
   base::WeakPtr<contextual_search::InputStateModel> subscribed_model_;
   base::CallbackListSubscription input_state_subscription_;
+  base::CallbackListSubscription session_changed_subscription_;
+  base::WeakPtr<contextual_search::ContextualSearchSessionHandle>
+      subscribed_session_handle_;
+  base::CallbackListSubscription tab_context_subscription_;
   base::WeakPtr<contextual_search::ContextualSearchContextController>
       observed_controller_;
 

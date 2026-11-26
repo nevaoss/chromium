@@ -755,7 +755,7 @@ public class ToolbarManager
      * @param controlsSizer The {@link BrowserControlsSizer} for the activity.
      * @param fullscreenManager The {@link FullscreenManager} for the activity.
      * @param edgeToEdgeControllerSupplier Supplies an {@link EdgeToEdgeController} needed for
-     *     Bottom Controls Toolbar.
+     *     Bottom Controls Toolbar and top inset adjustments in {@link ToolbarPositionController}.
      * @param controlContainer The container of the toolbar.
      * @param compositorViewHolder Class that holds a {@link CompositorView}.
      * @param urlFocusChangedCallback The callback to be notified when the URL focus changes.
@@ -1498,8 +1498,8 @@ public class ToolbarManager
                         if (mLocationBarModel.getTab() == null) return;
 
                         assert tab == mLocationBarModel.getTab();
+                        mLocationBarModel.notifyUrlChanged(/* isTabChanging= */ false);
                         mLocationBarModel.notifySecurityStateChanged();
-                        mLocationBarModel.notifyUrlChanged(false);
                     }
 
                     @Override
@@ -2143,6 +2143,7 @@ public class ToolbarManager
                         controlContainerTranslationSupplier,
                         controlContainerHeightSupplier,
                         mTopInsetProvider,
+                        mEdgeToEdgeControllerSupplier,
                         new Handler(Looper.getMainLooper()),
                         mActivity,
                         mToolbarPositionSupplier,
@@ -2577,8 +2578,8 @@ public class ToolbarManager
     }
 
     /**
-     * Shows the bottom bar's startup promo, if any: the bottom bar's own promo when the bar is on,
-     * or the opt-in education dialog when it is off.
+     * Shows the bottom bar's startup promo, if any: the education bubble when the bar is on, or the
+     * opt-in education dialog when it is off.
      *
      * @param profile The profile to check the promo's eligibility against.
      * @return Whether a promo is showing or has claimed the startup promo slot.
@@ -2586,7 +2587,7 @@ public class ToolbarManager
     public boolean maybeShowBottomBarPromo(Profile profile) {
         // The host manager is only created when the bottom bar is on.
         if (mBottomBarHostManager != null) {
-            return mBottomBarHostManager.maybeShowPromoDialog(profile);
+            return mBottomBarHostManager.maybeShowBottomBarPromo(profile);
         }
         return mBottomBarEducationDialogCoordinator != null
                 && mBottomBarEducationDialogCoordinator.maybeShow(profile);
@@ -2670,7 +2671,6 @@ public class ToolbarManager
                         mHomepageEnabledSupplier,
                         mProfileSupplier,
                         mOmniboxFocusStateSupplier,
-                        mModalDialogManagerSupplier,
                         mAppMenuCoordinatorSupplier,
                         mLayoutManager,
                         mToolbarPositionSupplier,
@@ -2769,12 +2769,6 @@ public class ToolbarManager
             newTabModel.set(
                     ActionProperties.ON_PRESS_CALLBACK,
                     v -> {
-                        Tab currentTab = mActivityTabProvider.get();
-                        if (currentTab != null
-                                && BottomBarConfigUtils.isBottomBarEnabled(mActivity)) {
-                            TrackerFactory.getTrackerForProfile(currentTab.getProfile())
-                                    .notifyEvent(EventConstants.ANDROID_BOTTOM_BAR_NEW_TAB_USED);
-                        }
                         TabCreatorUtil.launchNtp(
                                 mTabCreatorManager.getTabCreator(
                                         tabModelSelector.isIncognitoSelected()));
@@ -3869,12 +3863,12 @@ public class ToolbarManager
     private void updateTabLoadingState(boolean updateUrl) {
         if (mIsDestroyed) return;
 
-        mLocationBarModel.notifySecurityStateChanged();
         if (updateUrl) {
             mLocationBarModel.notifyUrlChanged(false);
             updateButtonStatus();
             checkIfNtpShowingWithNoPendingLoad();
         }
+        mLocationBarModel.notifySecurityStateChanged();
     }
 
     /**

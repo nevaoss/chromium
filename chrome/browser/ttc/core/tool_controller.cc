@@ -54,7 +54,10 @@
 #include "components/page_content_annotations/content/page_context_fetcher.h"
 #include "components/sessions/core/session_id.h"
 #include "components/tabs/public/tab_interface.h"
+#include "content/public/browser/navigation_controller.h"
+#include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/page.h"
+#include "content/public/browser/reload_type.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/visibility.h"
 #include "content/public/browser/web_contents.h"
@@ -757,6 +760,25 @@ void ToolController::PromptGeminiPanel(const base::DictValue& arguments,
 }
 
 void ToolController::ReloadPage(ToolResponseCallback callback) {
+  // The actor rejects every action on a crashed tab, including reloading it,
+  // and leaves recovering the tab to its client (see
+  // ExecutionEngine::KickOffNextAction()), so reload a crashed tab directly.
+  content::WebContents* contents =
+      session_controller_->GetVoiceFocusedWebContents();
+  if (contents && contents->IsCrashed() && !crashed_tab_reload_callback_) {
+    crashed_tab_reload_callback_ = std::move(callback);
+    Observe(contents);
+    contents->GetController().Reload(content::ReloadType::NORMAL,
+                                     /*check_for_repost=*/true);
+    // Reload() doesn't start a navigation if it asks the user to confirm
+    // resubmitting a form.
+    if (crashed_tab_reload_callback_ &&
+        !contents->GetController().GetPendingEntry()) {
+      FinishCrashedTabReload();
+    }
+    return;
+  }
+
   PerformActionOnTrackedContents(
       [](actor::ActorSurfaceHandle actor_surface_handle)
           -> std::unique_ptr<actor::ToolRequest> {
@@ -764,6 +786,19 @@ void ToolController::ReloadPage(ToolResponseCallback callback) {
             actor_surface_handle);
       },
       std::move(callback));
+}
+
+void ToolController::FinishCrashedTabReload() {
+  Observe(nullptr);
+  std::move(crashed_tab_reload_callback_).Run(ToolResponse::Success());
+}
+
+void ToolController::DidFinishNavigation(
+    content::NavigationHandle* navigation_handle) {
+  if (navigation_handle->IsInPrimaryMainFrame() &&
+      !navigation_handle->IsSameDocument()) {
+    FinishCrashedTabReload();
+  }
 }
 
 void ToolController::ScrollPage(const base::DictValue& arguments,
@@ -957,8 +992,6 @@ void ToolController::PerformActionOnTrackedContents(
     ToolResponseCallback callback) {
   // Resolved via the session's VoiceFocusedContentsTracker rather than a
   // TabStripModel, which Android doesn't have.
-  // TODO(crbug.com/570587982): The Android tracker and the tools routed
-  // through it here are only covered by tests on desktop.
   content::WebContents* contents =
       session_controller_->GetVoiceFocusedWebContents();
   tabs::TabInterface* active_tab =

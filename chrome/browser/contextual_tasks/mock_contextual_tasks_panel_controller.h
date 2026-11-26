@@ -67,10 +67,12 @@ class MockContextualTasksPanelController
               (override));
   MOCK_METHOD(bool, IsPanelOpenForContextualTask, (), (const, override));
   MOCK_METHOD(bool, IsShowingResults, (), (const, override));
+  MOCK_METHOD(bool, HasResults, (), (const, override));
   MOCK_METHOD(ContextualTasksPanelController::EntrySource,
               GetActiveEntrySource,
               (),
               (const, override));
+  MOCK_METHOD(bool, IsOnboardingTooltipVisible, (), (const, override));
   MOCK_METHOD(std::optional<tabs::TabHandle>,
               GetAutoSuggestedTabHandle,
               (),
@@ -124,6 +126,10 @@ class MockContextualTasksPanelController
               (bool is_pointer_interaction),
               (override));
   MOCK_METHOD(void, OnLogoPointerDown, (), (override));
+  MOCK_METHOD(ContextualTasksPermissionController*,
+              permission_controller,
+              (),
+              (override));
   MOCK_METHOD(void,
               RecordTimeToHandshakeComplete,
               (content::WebContents*),

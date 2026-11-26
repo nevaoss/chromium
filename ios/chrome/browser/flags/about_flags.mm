@@ -51,7 +51,6 @@
 #import "components/history/core/browser/features.h"
 #import "components/lens/lens_features.h"
 #import "components/metrics/metrics_features.h"
-#import "components/ntp_tiles/features.h"
 #import "components/ntp_tiles/switches.h"
 #import "components/omnibox/browser/aim_eligibility_service_features.h"
 #import "components/omnibox/browser/omnibox_field_trial.h"
@@ -685,6 +684,24 @@ constexpr FeatureEntry::FeatureVariation
         {" - with Show Me How", kAnimatedDBPInFREWithShowMeHow, nullptr},
         {" - with Instructions", kAnimatedDBPInFREWithInstructions, nullptr}};
 
+constexpr FeatureEntry::FeatureParam
+    kAndroidSwitcherDBPInFRESegmentationSignal[] = {
+        {first_run::kAndroidSwitcherDefaultBrowserPromoInFREParam,
+         first_run::
+             kAndroidSwitcherDefaultBrowserPromoInFREParamSegmentationSignal}};
+constexpr FeatureEntry::FeatureParam
+    kAndroidSwitcherDBPInFRESwitcherInfoSignal[] = {
+        {first_run::kAndroidSwitcherDefaultBrowserPromoInFREParam,
+         first_run::
+             kAndroidSwitcherDefaultBrowserPromoInFREParamSwitcherInfoSignal}};
+
+constexpr FeatureEntry::FeatureVariation
+    kAndroidSwitcherDefaultBrowserPromoInFREVariations[] = {
+        {" - Segmentation Signal", kAndroidSwitcherDBPInFRESegmentationSignal,
+         nullptr},
+        {" - Switcher Info Signal", kAndroidSwitcherDBPInFRESwitcherInfoSignal,
+         nullptr}};
+
 constexpr FeatureEntry::FeatureParam kBestFeaturesScreenInFirstRunArm2[] = {
     {first_run::kBestFeaturesScreenInFirstRunParam, "2"}};
 constexpr FeatureEntry::FeatureParam kBestFeaturesScreenInFirstRunArm3[] = {
@@ -1202,19 +1219,19 @@ constexpr FeatureEntry::FeatureVariation kAim3pEntrypointVariations[] = {
 
 constexpr FeatureEntry::FeatureParam
     kAimButtonRefactorFocusComposeboxAimQuickAction[] = {
-        {ntp_tiles::kAimButtonRefactorArmParam, "1"}};
+        {kAimButtonRefactorArmParam, "1"}};
 constexpr FeatureEntry::FeatureParam
     kAimButtonRefactorImageGenerationQuickAction[] = {
-        {ntp_tiles::kAimButtonRefactorArmParam, "2"}};
+        {kAimButtonRefactorArmParam, "2"}};
 constexpr FeatureEntry::FeatureParam
     kAimButtonRefactorAttachImageQuickAction[] = {
-        {ntp_tiles::kAimButtonRefactorArmParam, "3"}};
+        {kAimButtonRefactorArmParam, "3"}};
 constexpr FeatureEntry::FeatureParam kAimButtonRefactorAimAsModule[] = {
-    {ntp_tiles::kAimButtonRefactorArmParam, "4"}};
+    {kAimButtonRefactorArmParam, "4"}};
 constexpr FeatureEntry::FeatureParam kAimButtonRefactorAimAsMvt[] = {
-    {ntp_tiles::kAimButtonRefactorArmParam, "5"}};
+    {kAimButtonRefactorArmParam, "5"}};
 constexpr FeatureEntry::FeatureParam kAimButtonRefactorNoChips[] = {
-    {ntp_tiles::kAimButtonRefactorArmParam, "6"}};
+    {kAimButtonRefactorArmParam, "6"}};
 
 constexpr FeatureEntry::FeatureVariation kAimButtonRefactorVariations[] = {
     {" - Focus Composebox AIM Quick Action",
@@ -2186,6 +2203,11 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(
          lens::features::kLensUseSeparateRequestIdForViewportImages)},
+    {"lens-send-drive-tab-urls-in-composeboxes",
+     flag_descriptions::kLensSendDriveTabUrlsInComposeboxesName,
+     flag_descriptions::kLensSendDriveTabUrlsInComposeboxesDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(lens::features::kLensSendDriveTabUrlsInComposeboxes)},
     // LINT.IfChange(DataSharingVersioning)
     {"shared-data-types-kill-switch",
      flag_descriptions::kDataSharingVersioningStatesName,
@@ -2911,7 +2933,7 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
                                     "Aim3pEntrypoint")},
     {"aim-button-refactor", flag_descriptions::kAimButtonRefactorName,
      flag_descriptions::kAimButtonRefactorDescription, flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(ntp_tiles::kAimButtonRefactor,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(kAimButtonRefactor,
                                     kAimButtonRefactorVariations,
                                     "AimButtonRefactor")},
     {"enable-cobrowse-on-aim-srp-tap",
@@ -3090,7 +3112,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kAndroidSwitcherDefaultBrowserPromoInFREName,
      flag_descriptions::kAndroidSwitcherDefaultBrowserPromoInFREDescription,
      flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(first_run::kAndroidSwitcherDefaultBrowserPromoInFRE)},
+     FEATURE_WITH_PARAMS_VALUE_TYPE(
+         first_run::kAndroidSwitcherDefaultBrowserPromoInFRE,
+         kAndroidSwitcherDefaultBrowserPromoInFREVariations,
+         "AndroidSwitcherDefaultBrowserPromoInFRE")},
     {"magic-stack-ntp-theme-tip-ios",
      flag_descriptions::kMagicStackNTPThemeTipIosName,
      flag_descriptions::kMagicStackNTPThemeTipIosDescription, flags_ui::kOsIos,

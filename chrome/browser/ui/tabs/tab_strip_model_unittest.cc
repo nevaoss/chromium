@@ -73,6 +73,12 @@
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/models/list_selection_model.h"
 #include "ui/base/page_transition_types.h"
+#include "ui/base/test/mock_base_window.h"
+
+#if BUILDFLAG(IS_CHROMEOS)
+#include "base/auto_reset.h"
+#include "chrome/browser/lifetime/browser_shutdown.h"  // nogncheck
+#endif                                                 // BUILDFLAG(IS_CHROMEOS)
 
 using content::WebContents;
 
@@ -4358,6 +4364,92 @@ TEST_F(TabStripModelTest, AreAllUngrouped) {
   tabstrip()->CloseAllTabs();
 }
 
+TEST_F(TabStripModelTest, WillContextMenuPin) {
+  EXPECT_FALSE(tabstrip()->WillContextMenuPin(tabs::TabHandle::Null()));
+
+  tabstrip()->AppendWebContents(CreateWebContents(), true);
+  tabs::TabHandle tab0 = tabstrip()->GetTabAtIndex(0)->GetHandle();
+  // Unpinned tab: will pin.
+  EXPECT_TRUE(tabstrip()->WillContextMenuPin(tab0));
+
+  tabstrip()->SetTabPinned(0, true);
+  // Pinned tab: will unpin (so WillContextMenuPin returns false).
+  EXPECT_FALSE(tabstrip()->WillContextMenuPin(tab0));
+
+  // Add a second (unpinned) tab and select both tabs.
+  tabstrip()->AppendWebContents(CreateWebContents(), true);
+  tabs::TabHandle tab1 = tabstrip()->GetTabAtIndex(1)->GetHandle();
+  tabstrip()->SelectTabAt(0);
+  tabstrip()->SelectTabAt(1);
+  // Mixed selection (tab0 pinned, tab1 unpinned): will pin all selected tabs.
+  EXPECT_TRUE(tabstrip()->WillContextMenuPin(tab0));
+  EXPECT_TRUE(tabstrip()->WillContextMenuPin(tab1));
+
+  // Pin tab1 as well so all selected tabs are pinned: will unpin.
+  tabstrip()->SetTabPinned(1, true);
+  tabstrip()->SelectTabAt(0);
+  tabstrip()->SelectTabAt(1);
+  EXPECT_FALSE(tabstrip()->WillContextMenuPin(tab0));
+  EXPECT_FALSE(tabstrip()->WillContextMenuPin(tab1));
+
+  // Unpin both tabs so all selected tabs are unpinned: will pin.
+  tabstrip()->SetTabPinned(0, false);
+  tabstrip()->SetTabPinned(1, false);
+  tabstrip()->SelectTabAt(0);
+  tabstrip()->SelectTabAt(1);
+  EXPECT_TRUE(tabstrip()->WillContextMenuPin(tab0));
+  EXPECT_TRUE(tabstrip()->WillContextMenuPin(tab1));
+
+  tabstrip()->CloseAllTabs();
+}
+
+TEST_F(TabStripModelTest, WillContextMenuGroup) {
+  EXPECT_FALSE(tabstrip()->WillContextMenuGroup(tabs::TabHandle::Null()));
+
+  tabstrip()->AppendWebContents(CreateWebContents(), true);
+  tabs::TabHandle tab0 = tabstrip()->GetTabAtIndex(0)->GetHandle();
+  // Ungrouped tab: will group.
+  EXPECT_TRUE(tabstrip()->WillContextMenuGroup(tab0));
+
+  tab_groups::TabGroupId group1 = tabstrip()->AddToNewGroup({0});
+  // Grouped tab: will ungroup (so WillContextMenuGroup returns false).
+  EXPECT_FALSE(tabstrip()->WillContextMenuGroup(tab0));
+
+  // Add a second (ungrouped) tab and select both tabs.
+  tabstrip()->AppendWebContents(CreateWebContents(), true);
+  tabs::TabHandle tab1 = tabstrip()->GetTabAtIndex(1)->GetHandle();
+  tabstrip()->SelectTabAt(0);
+  tabstrip()->SelectTabAt(1);
+  // Mixed selection (tab0 grouped, tab1 ungrouped): will group.
+  EXPECT_TRUE(tabstrip()->WillContextMenuGroup(tab0));
+  EXPECT_TRUE(tabstrip()->WillContextMenuGroup(tab1));
+
+  // Put tab1 into a different group while both are selected: will group into a
+  // single group.
+  tabstrip()->AddToNewGroup({1});
+  tabstrip()->SelectTabAt(0);
+  tabstrip()->SelectTabAt(1);
+  EXPECT_TRUE(tabstrip()->WillContextMenuGroup(tab0));
+  EXPECT_TRUE(tabstrip()->WillContextMenuGroup(tab1));
+
+  // Move tab1 into group1 so all selected tabs share the same group: will
+  // ungroup.
+  tabstrip()->AddToExistingGroup({1}, group1);
+  tabstrip()->SelectTabAt(0);
+  tabstrip()->SelectTabAt(1);
+  EXPECT_FALSE(tabstrip()->WillContextMenuGroup(tab0));
+  EXPECT_FALSE(tabstrip()->WillContextMenuGroup(tab1));
+
+  // Remove both from group so all selected tabs are ungrouped: will group.
+  tabstrip()->RemoveFromGroup({0, 1});
+  tabstrip()->SelectTabAt(0);
+  tabstrip()->SelectTabAt(1);
+  EXPECT_TRUE(tabstrip()->WillContextMenuGroup(tab0));
+  EXPECT_TRUE(tabstrip()->WillContextMenuGroup(tab1));
+
+  tabstrip()->CloseAllTabs();
+}
+
 // Tests whether or not WebContentses are inserted in the correct position
 // using this "smart" function with a simulated middle click action on a series
 // of links on the home page.
@@ -4993,6 +5085,13 @@ class UnloadListenerTabStripModelDelegate : public TestTabStripModelDelegate {
   ~UnloadListenerTabStripModelDelegate() override = default;
 
   void set_run_unload_listener(bool value) { run_unload_ = value; }
+  void set_should_run_unload_listener(bool value) {
+    should_run_unload_ = value;
+  }
+
+  bool ShouldRunUnloadListenerBeforeClosing(WebContents* contents) override {
+    return should_run_unload_;
+  }
 
   bool RunUnloadListenerBeforeClosing(WebContents* contents) override {
     return run_unload_;
@@ -5000,6 +5099,7 @@ class UnloadListenerTabStripModelDelegate : public TestTabStripModelDelegate {
 
  private:
   // Whether to report that we need to run an unload listener before closing.
+  bool should_run_unload_ = false;
   bool run_unload_ = false;
 };
 
@@ -5070,6 +5170,34 @@ TEST_F(TabStripModelTest, FastShutdown) {
     EXPECT_TRUE(tabstrip.empty());
   }
 }
+
+#if BUILDFLAG(IS_CHROMEOS)
+TEST_F(TabStripModelTest, FastShutdownOnSessionEnd) {
+  for (browser_shutdown::ShutdownType type :
+       {browser_shutdown::ShutdownType::kEndSession,
+        browser_shutdown::ShutdownType::kBrowserExit}) {
+    UnloadListenerTabStripModelDelegate delegate;
+    TabStripModel tabstrip(&delegate, profile());
+
+    std::unique_ptr<WebContents> contents1 = CreateWebContents();
+    content::RenderProcessHost* rph =
+        contents1->GetPrimaryMainFrame()->GetProcess();
+    std::unique_ptr<WebContents> contents2 =
+        CreateWebContentsWithSharedRPH(contents1.get());
+
+    tabstrip.AppendWebContents(std::move(contents1), true);
+    tabstrip.AppendWebContents(std::move(contents2), true);
+    delegate.set_should_run_unload_listener(true);
+
+    base::AutoReset<browser_shutdown::ShutdownType> shutdown_type =
+        browser_shutdown::SetShutdownTypeForTesting(type);
+
+    tabstrip.CloseAllTabs();
+    EXPECT_TRUE(rph->FastShutdownStarted());
+    EXPECT_TRUE(tabstrip.empty());
+  }
+}
+#endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Tests that close_types are preserved when unload listeners are triggered.
 TEST_F(TabStripModelTest, CloseTypesPreservedAfterUnload) {
@@ -8712,4 +8840,62 @@ TEST_F(TabStripModelTest, CloseWebContents) {
   EXPECT_EQ(2, tabstrip()->count());
   EXPECT_EQ(TabStripModel::kNoTab,
             tabstrip()->GetIndexOfWebContents(contents_to_close));
+}
+
+TEST_F(TabStripModelTest, ContextMenuCommandWindowActivation) {
+  testing::NiceMock<MockBrowserWindowInterface> bwi;
+  testing::NiceMock<ui::MockBaseWindow> base_window;
+  ON_CALL(bwi, GetWindow()).WillByDefault(::testing::Return(&base_window));
+  ON_CALL(bwi, GetTabStripModel()).WillByDefault(::testing::Return(tabstrip()));
+  delegate()->SetBrowserWindowInterface(&bwi);
+
+  PrepareTabstripForSelectionTest(tabstrip(), /*tab_count=*/5,
+                                  /*pinned_count=*/0,
+                                  /*selected_tabs=*/{0});
+
+  // Executing a non-close context menu command on an inactive window should
+  // activate it.
+  ON_CALL(base_window, IsActive()).WillByDefault(::testing::Return(false));
+  EXPECT_CALL(base_window, Activate()).Times(1);
+  tabstrip()->ExecuteContextMenuCommand(0, TabStripModel::CommandNewTabToRight);
+  testing::Mock::VerifyAndClearExpectations(&base_window);
+
+  // Executing a context menu command when the window is already active should
+  // not call Activate() again.
+  ON_CALL(base_window, IsActive()).WillByDefault(::testing::Return(true));
+  EXPECT_CALL(base_window, Activate()).Times(0);
+  tabstrip()->ExecuteContextMenuCommand(0, TabStripModel::CommandTogglePinned);
+  testing::Mock::VerifyAndClearExpectations(&base_window);
+
+  // Unpinning while inactive should activate the window.
+  ON_CALL(base_window, IsActive()).WillByDefault(::testing::Return(false));
+  EXPECT_CALL(base_window, Activate()).Times(1);
+  tabstrip()->ExecuteContextMenuCommand(0, TabStripModel::CommandTogglePinned);
+  testing::Mock::VerifyAndClearExpectations(&base_window);
+
+  // Submenu commands should also activate an inactive window.
+  const tab_groups::TabGroupId group_id = tabstrip()->AddToNewGroup({0});
+  ON_CALL(base_window, IsActive()).WillByDefault(::testing::Return(false));
+  EXPECT_CALL(base_window, Activate()).Times(1);
+  tabstrip()->ExecuteAddToExistingGroupCommand(1, group_id);
+  testing::Mock::VerifyAndClearExpectations(&base_window);
+
+  ON_CALL(base_window, IsActive()).WillByDefault(::testing::Return(false));
+  EXPECT_CALL(base_window, Activate()).Times(1);
+  tabstrip()->ExecuteAddToNewSplitCommand(
+      1, split_tabs::SplitTabLayout::kSideBySide);
+  testing::Mock::VerifyAndClearExpectations(&base_window);
+
+  // Close commands should not activate an inactive window.
+  ON_CALL(base_window, IsActive()).WillByDefault(::testing::Return(false));
+  EXPECT_CALL(base_window, Activate()).Times(0);
+  tabstrip()->ExecuteContextMenuCommand(4, TabStripModel::CommandCloseTab);
+  tabstrip()->ExecuteContextMenuCommand(2,
+                                        TabStripModel::CommandCloseTabsToRight);
+  tabstrip()->ExecuteContextMenuCommand(0,
+                                        TabStripModel::CommandCloseOtherTabs);
+  testing::Mock::VerifyAndClearExpectations(&base_window);
+
+  delegate()->SetBrowserWindowInterface(nullptr);
+  tabstrip()->CloseAllTabs();
 }

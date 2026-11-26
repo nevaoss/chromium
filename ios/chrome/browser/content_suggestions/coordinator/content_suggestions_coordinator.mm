@@ -22,7 +22,6 @@
 #import "components/commerce/core/shopping_service.h"
 #import "components/feed/core/v2/public/ios/pref_names.h"
 #import "components/image_fetcher/core/image_data_fetcher.h"
-#import "components/ntp_tiles/features.h"
 #import "components/ntp_tiles/most_visited_sites.h"
 #import "components/ntp_tiles/pref_names.h"
 #import "components/password_manager/core/browser/ui/credential_ui_entry.h"
@@ -40,7 +39,8 @@
 #import "ios/chrome/app/application_delegate/app_state.h"
 #import "ios/chrome/app/profile/profile_state.h"
 #import "ios/chrome/app/tests_hook.h"
-#import "ios/chrome/browser/aim/model/ios_chrome_aim_eligibility_service_factory.h"
+#import "ios/chrome/browser/aim/model/ai_mode_button_service_ios.h"
+#import "ios/chrome/browser/aim/model/ai_mode_button_service_ios_factory.h"
 #import "ios/chrome/browser/app_store_bundle/model/app_store_bundle_service_factory.h"
 #import "ios/chrome/browser/authentication/ui_bundled/signin/signin_constants.h"
 #import "ios/chrome/browser/authentication/ui_bundled/signin/signin_coordinator.h"
@@ -338,12 +338,10 @@ using segmentation_platform::TipIdentifier;
   NSMutableArray* moduleMediators = [NSMutableArray array];
 
   if (!IsNTPRedesignEnabled()) {
-    AimEligibilityService* aimEligibilityService =
-        ntp_tiles::GetAimButtonRefactorArm() ==
-                ntp_tiles::AimButtonRefactorArm::kAimAsMvt
-            ? IOSChromeAimEligibilityServiceFactory::GetForProfile(profile)
-            : nullptr;
-
+    AIModeButtonServiceIOS* aimButtonService =
+        GetAimButtonRefactorArm() == AimButtonRefactorArm::kAimAsMvt
+            ? AIModeButtonServiceIOSFactory::GetForProfile(profile)
+            : nil;
     _mostVisitedTilesMediator = [[MostVisitedTilesMediator alloc]
         initWithMostVisitedSite:std::move(mostVisitedFactory)
                  historyService:historyService
@@ -355,7 +353,7 @@ using segmentation_platform::TipIdentifier;
           accountManagerService:accountManagerService
               engagementTracker:engagementTracker
               layoutGuideCenter:LayoutGuideCenterForBrowser(self.browser)
-          aimEligibilityService:aimEligibilityService];
+            aiModeButtonService:aimButtonService];
     _mostVisitedTilesMediator.contentSuggestionsDelegate = self.delegate;
     _mostVisitedTilesMediator.actionFactory = [[BrowserActionFactory alloc]
         initWithBrowser:self.browser
@@ -745,8 +743,7 @@ using segmentation_platform::TipIdentifier;
 }
 
 - (void)didTapAIMModule {
-  CHECK_EQ(ntp_tiles::GetAimButtonRefactorArm(),
-           ntp_tiles::AimButtonRefactorArm::kAimAsModule);
+  CHECK_EQ(GetAimButtonRefactorArm(), AimButtonRefactorArm::kAimAsModule);
   [self.NTPActionsDelegate standaloneAIMModuleOpened];
 }
 

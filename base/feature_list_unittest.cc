@@ -186,7 +186,7 @@ class FeatureListTest : public testing::Test {
   static_assert(sizeof(Feature) == (sizeof(void*) == 8 ? 16 : 12));
   static_assert(alignof(Feature) == alignof(void*));
   static_assert(offsetof(Feature, name) == 0);
-  static_assert(offsetof(Feature, default_state) == sizeof(void*));
+  static_assert(offsetof(Feature, default_state_) == sizeof(void*));
   static_assert(offsetof(Feature, cached_value) == sizeof(void*) + 4);
   // LINT.ThenChange(feature.rs:FeatureStruct)
 
@@ -271,16 +271,16 @@ TEST_F(FeatureListTest, TwoArgMacro) {
 
 TEST_F(FeatureListTest, CountryRestrictedFeatures) {
   EXPECT_EQ(FEATURE_ENABLED_FOR_COUNTRIES,
-            kCountryEnabledEuropeFeature.default_state);
+            kCountryEnabledEuropeFeature.GetDefaultState());
   EXPECT_THAT(kCountryEnabledEuropeFeature.countries, ElementsAre("de", "gb"));
 
   EXPECT_EQ(FEATURE_DISABLED_FOR_COUNTRIES,
-            kCountryDisabledNorthAmericaFeature.default_state);
+            kCountryDisabledNorthAmericaFeature.GetDefaultState());
   EXPECT_THAT(kCountryDisabledNorthAmericaFeature.countries,
               ElementsAre("us", "ca", "mx"));
 
   EXPECT_EQ(FEATURE_ENABLED_FOR_COUNTRIES,
-            kCountryEnabledAsiaFeature.default_state);
+            kCountryEnabledAsiaFeature.GetDefaultState());
   EXPECT_THAT(kCountryEnabledAsiaFeature.countries,
               ElementsAre("jp", "kr", "cn", "in"));
 }

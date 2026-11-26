@@ -6,11 +6,14 @@
 
 #include "base/scoped_observation.h"
 #include "base/strings/stringprintf.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/version_info/version_info.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_eligibility_manager.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_web_contents_user_data.h"
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service.h"
 #include "chrome/browser/extensions/component_loader.h"
@@ -24,6 +27,7 @@
 #include "content/public/test/browser_test_utils.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/common/extension_features.h"
+#include "net/base/filename_util.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "net/test/embedded_test_server/http_request.h"
 #include "net/test/embedded_test_server/http_response.h"
@@ -76,7 +80,8 @@ class ContextualTasksExtensionMessagingTest : public ExtensionApiTest {
     UseHttpsTestServer();
 
     net::EmbeddedTestServer::ServerCertificateConfig cert_config;
-    cert_config.dns_names = {"google.com", "www.google.com", "example.com"};
+    cert_config.dns_names = {"google.com", "www.google.com", "sub.google.com",
+                             "test.c.googlers.com", "example.com"};
     embedded_test_server()->SetSSLConfig(cert_config);
     embedded_test_server()->RegisterRequestHandler(base::BindRepeating(
         [](const net::test_server::HttpRequest& request)
@@ -101,7 +106,7 @@ class ContextualTasksExtensionMessagingTest : public ExtensionApiTest {
     int port = embedded_test_server()->port();
     command_line->AppendSwitchASCII(
         network::switches::kHostResolverRules,
-        base::StringPrintf("MAP * 127.0.0.1:%d", port));
+        base::StringPrintf("MAP * 127.0.0.1:%d, EXCLUDE localhost", port));
     ExtensionApiTest::SetUpCommandLine(command_line);
   }
 
@@ -178,8 +183,8 @@ class ContextualTasksExtensionMessagingTest : public ExtensionApiTest {
 };
 
 // Tests that the Contextual Tasks component extension's background script
-// correctly allows external messages from allowed origins (google.com) and
-// blocks unauthorized origins (example.com).
+// correctly allows external messages from allowed origins and blocks
+// unauthorized origins.
 IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionMessagingTest,
                        ExternalConnectableAllowlist) {
   // Verify that the component extension is loaded.
@@ -188,17 +193,34 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionMessagingTest,
           extension_misc::kContextualTasksExtensionId);
   ASSERT_TRUE(extension);
 
+  net::EmbeddedTestServer http_server;
+  http_server.ServeFilesFromSourceDirectory("chrome/test/data");
+  ASSERT_TRUE(http_server.Start());
+
+  constexpr bool kAllowDebugOrigins = !version_info::IsOfficialBuild();
+
   struct {
     const std::string host_and_path;
     bool expected_to_connect;
   } test_cases[] = {
       // example.com is not allowed.
       {"https://example.com/search?q=foo", false},
-      // google.com/search matches manifest and allowlist.
+      // google.com/search and *.google.com/search match manifest and allowlist.
       {"https://google.com/search?q=foo", true},
+      {"https://sub.google.com/search?q=foo", true},
+      // *.googlers.com/search matches manifest and allowlist.
+      {"https://test.c.googlers.com/search?q=foo", true},
+      // http://localhost and file:/// are allowed only in non-official builds.
+      {http_server.GetURL("localhost", "/title1.html").spec(),
+       kAllowDebugOrigins},
+      {net::FilePathToFileURL(
+           test_data_dir_.DirName().DirName().AppendASCII("title1.html"))
+           .spec(),
+       kAllowDebugOrigins},
   };
 
   for (const auto& test_case : test_cases) {
+    SCOPED_TRACE(test_case.host_and_path);
     ASSERT_TRUE(
         NavigateToURL(GetActiveWebContents(), GURL(test_case.host_and_path)));
 
@@ -214,6 +236,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionMessagingTest,
                 '%s', {type: 'contextualTasksPrivate.getState'}, (response) => {
                   if (chrome.runtime.lastError) {
                     resolve(chrome.runtime.lastError.message);
+                  } else if (response && response.error) {
+                    resolve('error: ' + response.error);
                   } else {
                     resolve('success');
                   }
@@ -227,9 +251,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionMessagingTest,
         content::EvalJs(GetActiveWebContents(), script);
     std::string result_string = result.ExtractString();
 
-    // This test is only verifying that the correct pages have access to
-    // extension functions rather than the actual result of
-    // `contextualTasksPrivate.getState`.
+    // This test verifies that only allowlisted pages have access to external
+    // messaging and pass the origin check in `background.ts`.
     if (test_case.expected_to_connect) {
       EXPECT_EQ("success", result_string);
     } else {
@@ -430,6 +453,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionMessagingOnlyApiPrivateTest,
 IN_PROC_BROWSER_TEST_F(
     ContextualTasksExtensionMessagingTest,
     ServiceWorkerPortHandshakeAndBidirectionalSearchMessage) {
+  base::HistogramTester histogram_tester;
   const Extension* extension =
       ExtensionRegistry::Get(profile())->enabled_extensions().GetByID(
           extension_misc::kContextualTasksExtensionId);
@@ -494,6 +518,25 @@ IN_PROC_BROWSER_TEST_F(
   ASSERT_NE(user_data->GetOrCreateContextualSessionHandle(), nullptr);
   EXPECT_EQ(2u,
             user_data->GetOrCreateContextualSessionHandle()->auth_user_index());
+  histogram_tester.ExpectUniqueSample(
+      "ContextualTasks.ExtensionHandshake.Status",
+      contextual_tasks::ExtensionHandshakeStatus::kSuccess, 1);
+  histogram_tester.ExpectTotalCount(
+      "ContextualTasks.ExtensionHandshake.Latency", 1);
+
+  // Send a malformed message over the Service Worker Port and verify that the
+  // Service Worker records kUnexpectedDataType via chrome.metricsPrivate.
+  std::string invalid_message_script = R"(
+    (() => {
+      window.__aimSearchPort.postMessage({
+        type: 'chrome-search-channel',
+        payload: 'not-an-array'
+      });
+      return 'sent_invalid';
+    })()
+  )";
+  EXPECT_EQ("sent_invalid",
+            content::EvalJs(GetActiveWebContents(), invalid_message_script));
 
   // Verify AIM -> Chrome SearchToClientMessage.OnSubmitQueryRequest over the
   // Service Worker Port returns ClientToSearchMessage.OnSubmitQueryResponse
@@ -523,6 +566,9 @@ IN_PROC_BROWSER_TEST_F(
                               blink::WebMouseEvent::Button::kLeft);
   EXPECT_EQ("got_submit_response",
             content::EvalJs(GetActiveWebContents(), submit_query_script));
+  histogram_tester.ExpectBucketCount(
+      "ContextualTasks.ExtensionPostMessage.Error",
+      contextual_tasks::ExtensionPostMessageError::kUnexpectedDataType, 1);
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionMessagingTest,

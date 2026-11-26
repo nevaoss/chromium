@@ -65,6 +65,7 @@
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
 #include "base/i18n/android_locale.h"
+#include "base/i18n/language_tag.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/metrics/histogram_functions.h"
@@ -200,12 +201,9 @@ base::WeakPtr<AsyncCheckTracker> GetAsyncCheckTracker(
     return nullptr;
   }
 
-  // Setting should_sync_checker_check_allowlist to false since the allowlist
-  // is not available on WebView.
   return AsyncCheckTracker::GetOrCreateForWebContents(
              web_contents,
-             AwBrowserProcess::GetInstance()->GetSafeBrowsingUIManager(),
-             /*should_sync_checker_check_allowlist=*/false)
+             AwBrowserProcess::GetInstance()->GetSafeBrowsingUIManager())
       ->GetWeakPtr();
 }
 }  // anonymous namespace
@@ -507,8 +505,8 @@ void AwContentBrowserClient::AppendExtraCommandLineSwitches(
   }
 }
 
-std::string AwContentBrowserClient::GetApplicationLocale() {
-  return std::string(base::i18n::GetAndroidDefaultLocale().tag_string());
+base::i18n::LanguageTag AwContentBrowserClient::GetApplicationLocale() {
+  return base::i18n::GetAndroidDefaultLocale();
 }
 
 std::string AwContentBrowserClient::GetAcceptLangs(

@@ -66,12 +66,6 @@ BASE_FEATURE_PARAM(int,
                    "shared_memory_size_bytes",
                    tracing::kDefaultSharedMemorySizeBytes);
 
-BASE_FEATURE_PARAM(int,
-                   kPerfettoBrowserSharedMemorySizeBytes,
-                   &kPerfettoBackendParams,
-                   "browser_shared_memory_size_bytes",
-                   tracing::kDefaultBrowserSharedMemorySizeBytes);
-
 }  // namespace features
 
 namespace tracing {
@@ -85,7 +79,7 @@ bool ShouldSetupSystemTracing() {
   if (base::FeatureList::GetInstance()) {
     return base::FeatureList::IsEnabled(features::kEnablePerfettoSystemTracing);
   }
-  return features::kEnablePerfettoSystemTracing.default_state ==
+  return features::kEnablePerfettoSystemTracing.GetDefaultState() ==
          base::FEATURE_ENABLED_BY_DEFAULT;
 }
 

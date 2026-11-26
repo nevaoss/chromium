@@ -120,8 +120,7 @@ const LayoutResult& BoxFragmentBuilder::LayoutResultForPropagation(
 
 void BoxFragmentBuilder::AddBreakBeforeChild(LayoutInputNode child,
                                              std::optional<BreakAppeal> appeal,
-                                             bool is_forced_break,
-                                             LogicalOffset oof_start_offset) {
+                                             bool is_forced_break) {
   // If there's a pre-set break token, we shouldn't be here.
   DCHECK(!break_token_);
 
@@ -172,9 +171,22 @@ void BoxFragmentBuilder::AddBreakBeforeChild(LayoutInputNode child,
     }
     return;
   }
-  auto* token = BlockBreakToken::CreateBreakBefore(child, is_forced_break,
-                                                   oof_start_offset);
+  auto* token = BlockBreakToken::CreateBreakBefore(child, is_forced_break);
   child_break_tokens_.push_back(token);
+}
+
+void BoxFragmentBuilder::AddBreakBeforeOofChild(
+    BlockNode child,
+    LayoutUnit oof_block_start_offset,
+    LogicalOffset oof_post_layout_offset) {
+  DCHECK(RuntimeEnabledFeatures::FragmentedOofInCbEnabled());
+  DCHECK(child.IsOutOfFlowPositioned());
+  // If there's a pre-set break token, we shouldn't be here.
+  DCHECK(!break_token_);
+
+  const auto* break_token = BlockBreakToken::CreateBreakBeforeOof(
+      child, oof_block_start_offset, oof_post_layout_offset);
+  child_break_tokens_.push_back(break_token);
 }
 
 void BoxFragmentBuilder::AddResult(
@@ -370,6 +382,11 @@ void BoxFragmentBuilder::AddChild(
   }
 
   DCHECK(relative_insets);
+  if (child.IsCSSBox() && child.Style().GetPosition() == EPosition::kRelative) {
+    To<PhysicalBoxFragment>(child)
+        .GetMutableForPositioned()
+        .SetUsedPositionInsets(*relative_insets);
+  }
   const LogicalOffset relative_offset =
       relative_insets->ConvertToLogical(GetWritingDirection()).StartOffset();
   PropagateFromFragment(child, child_offset, relative_offset, inline_container);
@@ -384,6 +401,18 @@ void BoxFragmentBuilder::AddBreakToken(const BreakToken* token,
   DCHECK(token);
   child_break_tokens_.push_back(token);
   has_inflow_child_break_inside_ |= !is_in_parallel_flow;
+}
+
+void BoxFragmentBuilder::UpdateConsumedBlockSizeToFragmentainerEnd() {
+  LayoutUnit fragmentainer_end =
+      FragmentainerSpaceLeft(*this, /*is_for_children=*/false);
+  if (!GetConstraintSpace().HasKnownFragmentainerBlockSize()) {
+    return;
+  }
+  if (const BlockBreakToken* token = PreviousBreakToken()) {
+    fragmentainer_end += token->ConsumedBlockSize();
+  }
+  consumed_block_size_ = std::max(consumed_block_size_, fragmentainer_end);
 }
 
 EBreakBetween BoxFragmentBuilder::JoinedBreakBetweenValue(

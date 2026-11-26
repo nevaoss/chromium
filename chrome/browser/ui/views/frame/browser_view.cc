@@ -377,6 +377,7 @@
 #include "ash/public/cpp/metrics_util.h"
 #include "ash/wm/window_properties.h"
 #include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
+#include "chrome/browser/lifetime/browser_shutdown.h"  // nogncheck
 #include "chrome/browser/ui/chromeos/locked_state/locked_state_controller.h"
 #include "chrome/browser/ui/views/frame/browser_frame_view_chromeos.h"
 #include "chrome/browser/ui/views/frame/immersive_mode_controller_chromeos.h"
@@ -1733,6 +1734,11 @@ void BrowserView::SetBounds(const gfx::Rect& bounds) {
 }
 
 void BrowserView::Close() {
+#if BUILDFLAG(IS_CHROMEOS)
+  if (browser_shutdown::HasShutdownStarted()) {
+    browser_widget_->SetVisibilityChangedAnimationsEnabled(false);
+  }
+#endif  // BUILDFLAG(IS_CHROMEOS)
   browser_widget_->Close();
 }
 
@@ -2138,7 +2144,7 @@ void BrowserView::OnActiveTabChanged(content::WebContents* old_contents,
   // Update all the UI bits.
   UpdateTitleBar();
 
-  CHECK_DEREF(TranslateBubbleController::From(browser_.get())).CloseBubble();
+  CHECK_DEREF(TranslateController::From(browser_.get())).CloseBubble();
 }
 
 void BrowserView::OnTabDetached(content::WebContents* contents,
@@ -3177,11 +3183,10 @@ ShowTranslateBubbleResult BrowserView::ShowTranslateBubble(
     // No need for a separate highlight.
     highlight_element = std::nullopt;
   }
-  CHECK_DEREF(TranslateBubbleController::From(browser_.get()))
+  CHECK_DEREF(TranslateController::From(browser_.get()))
       .ShowTranslateBubble(web_contents, anchor, highlight_element, step,
                            source_language, target_language, error_type,
-                           is_user_gesture ? TranslateBubbleView::USER_GESTURE
-                                           : TranslateBubbleView::AUTOMATIC);
+                           is_user_gesture);
 
   return ShowTranslateBubbleResult::kSuccess;
 }

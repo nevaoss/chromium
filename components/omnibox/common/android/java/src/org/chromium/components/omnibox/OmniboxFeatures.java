@@ -86,7 +86,7 @@ public class OmniboxFeatures {
     public static final CachedFlag sPrefetchSelectedSuggestionsOmtAndroid =
             newFlag(
                     OmniboxFeatureList.OMNIBOX_PREFETCH_SELECTED_SUGGESTIONS_OMT_ANDROID,
-                    FeatureState.DISABLED_IN_PROD);
+                    FeatureState.ENABLED_IN_TEST);
 
     public static final CachedFlag sOmniboxSearchPrefetchOnEnterKeyDown =
             newFlag(
@@ -116,6 +116,9 @@ public class OmniboxFeatures {
             newFlag(
                     OmniboxFeatureList.OMNIBOX_FUSEBOX_ASYNC_INFLATION,
                     FeatureState.ENABLED_IN_TEST);
+
+    public static final CachedFlag sEarlyInflation =
+            newFlag(OmniboxFeatureList.OMNIBOX_EARLY_INFLATION, FeatureState.DISABLED_IN_PROD);
 
     public static final CachedFlag sOmniboxAimImageDownscaling =
             newFlag(OmniboxFeatureList.OMNIBOX_AIM_IMAGE_DOWNSCALING, FeatureState.ENABLED_IN_PROD);
@@ -279,6 +282,13 @@ public class OmniboxFeatures {
             newFlag(
                     OmniboxFeatureList.ANDROID_TAB_SEARCH_CLOSE_TAB_BUTTON,
                     FeatureState.DISABLED_IN_PROD);
+
+    /**
+     * Delegates Omnibox, New Tab Page and toolbar mic voice capture and transcription to the Google
+     * app Voice Plate.
+     */
+    public static final CachedFlag sOmniboxVoicePlateIntent =
+            newFlag(OmniboxFeatureList.OMNIBOX_VOICE_PLATE_INTENT, FeatureState.DISABLED_IN_PROD);
 
     public static final IntCachedFeatureParam sTouchDownTriggerMaxPrefetchesPerSession =
             newIntParam(

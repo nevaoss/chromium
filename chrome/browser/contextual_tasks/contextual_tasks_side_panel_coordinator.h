@@ -66,6 +66,9 @@ class ContextualTasksService;
 class ContextualTasksUiService;
 class ActiveTaskContextProvider;
 class EntryPointEligibilityManager;
+#if !BUILDFLAG(IS_ANDROID)
+class ContextualTasksOnboardingTooltipController;
+#endif
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -116,6 +119,10 @@ class ContextualTasksSidePanelCoordinator
     ContextualTasksPanelController::EntrySource entry_source =
         ContextualTasksPanelController::EntrySource::kOther;
 
+    // The entry point that triggered this task's panel.
+    omnibox::ChromeAimEntryPoint entry_point =
+        omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT;
+
     // The time when this task's panel was opened.
     base::TimeTicks open_time_ticks;
 
@@ -136,8 +143,6 @@ class ContextualTasksSidePanelCoordinator
     GURL restored_url;
   };
 
-  DECLARE_USER_DATA(ContextualTasksSidePanelCoordinator);
-
   explicit ContextualTasksSidePanelCoordinator(
       BrowserWindowInterface* browser_window,
       ActiveTaskContextProvider* active_task_context_provider,
@@ -155,9 +160,6 @@ class ContextualTasksSidePanelCoordinator
   ContextualTasksSidePanelCoordinator& operator=(
       const ContextualTasksSidePanelCoordinator&) = delete;
   ~ContextualTasksSidePanelCoordinator() override;
-
-  static ContextualTasksSidePanelCoordinator* From(
-      BrowserWindowInterface* window);
 
   // ContextualTasksPanelController:
   void AddObserver(ContextualTasksPanelController::Observer* observer) override;
@@ -184,8 +186,10 @@ class ContextualTasksSidePanelCoordinator
   void UnshareTabs(const std::vector<tabs::TabHandle>& tab_handles) override;
   bool IsPanelOpenForContextualTask() const override;
   bool IsShowingResults() const override;
+  bool HasResults() const override;
   ContextualTasksPanelController::EntrySource GetActiveEntrySource()
       const override;
+  bool IsOnboardingTooltipVisible() const override;
   std::optional<tabs::TabHandle> GetAutoSuggestedTabHandle() override;
   void OnTaskChanged(content::WebContents* web_contents,
                      base::Uuid task_id) override;
@@ -212,9 +216,13 @@ class ContextualTasksSidePanelCoordinator
   bool CanExpandToFullTab() const override;
   void ShowPageInfoBubble(bool is_pointer_interaction) override;
   void OnLogoPointerDown() override;
-  ContextualTasksPermissionController* permission_controller() {
-    return permission_controller_.get();
+  ContextualTasksPermissionController* permission_controller() override;
+#if !BUILDFLAG(IS_ANDROID)
+  ContextualTasksOnboardingTooltipController*
+  onboarding_controller_for_testing() {
+    return onboarding_controller_.get();
   }
+#endif
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_ANDROID)
   ContextualTasksExtensionsContainer* GetExtensionsContainerForTesting() {
     return extensions_container_.get();
@@ -278,6 +286,10 @@ class ContextualTasksSidePanelCoordinator
 
   // Hide or show panel base on open state of the current task.
   void UpdatePanelVisibility();
+
+  // Returns the task associated with the active side panel without
+  // mutating pending task state.
+  std::optional<ContextualTask> GetCurrentTask() const;
 
   // Clean up unused WebContents.
   void CleanUpUnusedWebContents() override;
@@ -375,13 +387,17 @@ class ContextualTasksSidePanelCoordinator
   // Get the open state of the panel.
   bool ShouldBeOpen();
 
-  // Returns true if the side panel is currently open and showing Lens results
-  // (e.g. a task waiting for its search URL, or a non-AIM Search Results Page /
-  // Lens SRP).
+  // Returns the active task's HTTP/HTTPS results URL, agnostic to whether side
+  // panel rearchitecture is enabled, or an empty `GURL` if no results URL is
+  // loaded.
+  GURL GetActiveResultsUrl() const;
+
+  // Returns true if the active tab's side panel has Lens results loaded (e.g.
+  // a Lens Overlay entry or a non-AIM Search Results Page / Lens SRP).
   bool IsShowingLensResults() const;
 
-  // Returns true if the side panel is currently open and showing AIM results
-  // (i.e. an AIM page that is not in zero state).
+  // Returns true if the active tab's side panel has AIM results loaded (i.e.
+  // an AIM page that is not in zero state).
   bool IsShowingAimResults() const;
 
   // Closes any active Lens sessions for tabs associated with the given task.
@@ -452,7 +468,7 @@ class ContextualTasksSidePanelCoordinator
 
   base::CallbackListSubscription eligibility_change_subscription_;
 
-  ui::ScopedUnownedUserData<ContextualTasksSidePanelCoordinator>
+  ui::ScopedUnownedUserData<ContextualTasksPanelController>
       scoped_unowned_user_data_;
 
   bool in_cobrowsing_session_ = false;
@@ -515,6 +531,8 @@ class ContextualTasksSidePanelCoordinator
       theme_service_observation_{this};
   base::ScopedObservation<ui::NativeTheme, ui::NativeThemeObserver>
       native_theme_observation_{this};
+  std::unique_ptr<ContextualTasksOnboardingTooltipController>
+      onboarding_controller_;
 #endif
 
   base::WeakPtrFactory<ContextualTasksSidePanelCoordinator> weak_ptr_factory_{

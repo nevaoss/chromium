@@ -57,8 +57,6 @@ inline constexpr char kHatsSurveyTriggerDownloadWarningPageHeed[] =
     "download-warning-page-heed";
 inline constexpr char kHatsSurveyTriggerDownloadWarningPageIgnore[] =
     "download-warning-page-ignore";
-inline constexpr char kHatsSurveyTriggerHistoryEmbeddings[] =
-    "history-embeddings";
 inline constexpr char kHatsSurveyTriggerHistoryPageExperiment[] =
     "history-page-experiment";
 inline constexpr char kHatsSurveyTriggerHistoryPageControl[] =
@@ -110,8 +108,18 @@ inline constexpr char kHatsSurveyTriggerNtpModules[] = "ntp-modules";
 inline constexpr char kHatsSurveyTriggerNextPanel[] = "next-panel";
 inline constexpr char kHatsSurveyTriggerNtpPhotosModuleOptOut[] =
     "ntp-photos-module-opt-out";
+inline constexpr char kHatsSurveyTriggerPerformanceControlsPerformance[] =
+    "performance-general";
 inline constexpr char kHatsSurveyTriggerPerformanceControlsPPM[] =
     "performance-ppm";
+inline constexpr char
+    kHatsSurveyTriggerPerformanceControlsBatteryPerformance[] =
+        "performance-battery";
+inline constexpr char kHatsSurveyTriggerPerformanceControlsMemorySaverOptOut[] =
+    "performance-high-efficiency-opt-out";
+inline constexpr char
+    kHatsSurveyTriggerPerformanceControlsBatterySaverOptOut[] =
+        "performance-battery-saver-opt-out";
 inline constexpr char kHatsSurveyTriggerPrivacyGuide[] = "privacy-guide";
 inline constexpr char kHatsSurveyTriggerRedWarning[] = "red-warning";
 inline constexpr char kHatsSurveyTriggerScheduledRestart[] =
@@ -175,10 +183,10 @@ inline constexpr char kHatsSurveyTriggerSigninNtpAccountAvatarTap[] =
 inline constexpr char kHatsSurveyTriggerSigninNtpPromo[] = "signin-ntp-promo";
 inline constexpr char kHatsSurveyTriggerSigninBookmarkPromo[] =
     "signin-bookmark-promo";
-inline constexpr char kHatsSurveyTriggerSuspiciousSiteWarning[] =
-    "suspicious-site-warning";
 #endif  // #if !BUILDFLAG(IS_ANDROID)
 
+inline constexpr char kHatsSurveyTriggerSuspiciousSiteWarning[] =
+    "suspicious-site-warning";
 inline constexpr char
     kHatsSurveyTriggerAutofillPersonalizationAndTrustAddressFilled[] =
         "autofill-personalization-and-trust-address-filled";

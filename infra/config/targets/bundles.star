@@ -26,13 +26,7 @@ targets.bundle(
         "chromium_gtests_for_devices_with_graphical_output",
         "linux_flavor_specific_chromium_gtests",
         "system_webview_shell_instrumentation_tests",  # Not an experimental test
-        targets.bundle(
-            targets = "webview_cts_tests_suite",
-            variants = [
-                "WEBVIEW_FULL_CTS_TESTS",
-                "WEBVIEW_INSTANT_CTS_TESTS",
-            ],
-        ),
+        "webview_cts_tests_suite",
         "webview_instrumentation_test_apk_single_process_mode_gtests",
         "webview_ui_instrumentation_tests",
     ],
@@ -76,13 +70,7 @@ targets.bundle(
         "chromium_gtests_for_devices_with_graphical_output",
         "linux_flavor_specific_chromium_gtests",
         "system_webview_shell_instrumentation_tests",  # Not an experimental test
-        targets.bundle(
-            targets = "webview_cts_tests_suite",
-            variants = [
-                "WEBVIEW_FULL_CTS_TESTS",
-                "WEBVIEW_INSTANT_CTS_TESTS",
-            ],
-        ),
+        "webview_cts_tests_suite",
         "webview_ui_instrumentation_tests",
     ],
 )
@@ -111,13 +99,7 @@ targets.bundle(
         "linux_flavor_specific_chromium_gtests",
         "minidump_uploader_test",
         "system_webview_shell_instrumentation_tests",  # Not an experimental test
-        targets.bundle(
-            targets = "webview_64_cts_tests_suite",
-            variants = [
-                "WEBVIEW_FULL_CTS_TESTS",
-                "WEBVIEW_INSTANT_CTS_TESTS",
-            ],
-        ),
+        "webview_64_cts_tests_suite",
         "webview_ui_instrumentation_tests",
     ],
 )
@@ -152,13 +134,7 @@ targets.bundle(
         "linux_flavor_specific_chromium_gtests",
         "minidump_uploader_test",
         "system_webview_shell_instrumentation_tests",  # Not an experimental test
-        targets.bundle(
-            targets = "webview_64_cts_tests_suite",
-            variants = [
-                "WEBVIEW_FULL_CTS_TESTS",
-                "WEBVIEW_INSTANT_CTS_TESTS",
-            ],
-        ),
+        "webview_64_cts_tests_suite",
         "webview_ui_instrumentation_tests",
     ],
 )
@@ -179,13 +155,7 @@ targets.bundle(
     name = "android_14_device_ci_only_gtests",
     targets = [
         "system_webview_shell_instrumentation_tests",
-        targets.bundle(
-            targets = "webview_64_cts_tests_suite",
-            variants = [
-                "WEBVIEW_FULL_CTS_TESTS",
-                "WEBVIEW_INSTANT_CTS_TESTS",
-            ],
-        ),
+        "webview_64_cts_tests_suite",
         "webview_ui_instrumentation_tests",
     ],
     mixins = [
@@ -215,13 +185,7 @@ targets.bundle(
         "chromium_gtests_for_devices_with_graphical_output",
         "linux_flavor_specific_chromium_gtests",
         "system_webview_shell_instrumentation_tests",  # Not an experimental test
-        targets.bundle(
-            targets = "webview_64_cts_tests_suite",
-            variants = [
-                "WEBVIEW_FULL_CTS_TESTS",
-                "WEBVIEW_INSTANT_CTS_TESTS",
-            ],
-        ),
+        "webview_64_cts_tests_suite",
         "webview_64_cts_tests_no_field_trial_suite",
         "webview_ui_instrumentation_tests",
     ],
@@ -238,13 +202,7 @@ targets.bundle(
         "chromium_gtests_for_devices_with_graphical_output",
         "linux_flavor_specific_chromium_gtests",
         "system_webview_shell_instrumentation_tests",  # Not an experimental test
-        targets.bundle(
-            targets = "webview_64_cts_tests_suite",
-            variants = [
-                "WEBVIEW_FULL_CTS_TESTS",
-                "WEBVIEW_INSTANT_CTS_TESTS",
-            ],
-        ),
+        "webview_64_cts_tests_suite",
         "webview_64_cts_tests_no_field_trial_suite",
         "webview_ui_instrumentation_tests",
     ],
@@ -266,13 +224,7 @@ targets.bundle(
         "minidump_uploader_test",
         "system_webview_shell_instrumentation_tests",  # Not an experimental test
         "webview_ui_instrumentation_tests",
-        targets.bundle(
-            targets = "webview_64_cts_tests_suite",
-            variants = [
-                "WEBVIEW_FULL_CTS_TESTS",
-                "WEBVIEW_INSTANT_CTS_TESTS",
-            ],
-        ),
+        "webview_64_cts_tests_suite",
         "android_ci_only_fieldtrial_webview_tests",
     ],
 )
@@ -280,13 +232,7 @@ targets.bundle(
 targets.bundle(
     name = "android_16_emulator_fyi_gtests",
     targets = [
-        targets.bundle(
-            targets = "webview_64_cts_tests_suite",
-            variants = [
-                "WEBVIEW_FULL_CTS_TESTS",
-                "WEBVIEW_INSTANT_CTS_TESTS",
-            ],
-        ),
+        "webview_64_cts_tests_suite",
         "webview_64_cts_tests_no_field_trial_suite",
     ],
 )
@@ -317,12 +263,7 @@ targets.bundle(
 targets.bundle(
     name = "android_16_webview_64_cts_tests",
     targets = [
-        targets.bundle(
-            targets = "webview_64_cts_tests_suite",
-            variants = [
-                "WEBVIEW_FULL_CTS_TESTS",
-            ],
-        ),
+        "webview_64_cts_tests_suite",
     ],
 )
 
@@ -4830,67 +4771,6 @@ targets.bundle(
 )
 
 targets.bundle(
-    name = "ios26_sdk_simulator_tests",
-    targets = [
-        targets.bundle(
-            targets = "ios_common_tests",
-            mixins = [
-                "use-ios-simulator-cache",
-            ],
-            variants = [
-                "SIM_IPHONE_15_18_5",
-            ],
-        ),
-        targets.bundle(
-            targets = "ios_crash_xcuitests",
-            mixins = [
-                "xcodebuild_sim_runner",
-                "use-ios-simulator-cache",
-            ],
-            variants = [
-                "SIM_IPHONE_15_18_5",
-            ],
-        ),
-        targets.bundle(
-            targets = "ios_eg2_cq_tests",
-            mixins = [
-                "xcodebuild_sim_runner",
-                "record_failed_tests",
-                "use-ios-simulator-cache",
-            ],
-            variants = [
-                "SIM_IPAD_PRO_7TH_GEN_18_5",
-                "SIM_IPHONE_15_18_5",
-            ],
-        ),
-        targets.bundle(
-            targets = "ios_eg2_tests",
-            mixins = [
-                "xcodebuild_sim_runner",
-                "record_failed_tests",
-                "use-ios-simulator-cache",
-            ],
-            variants = [
-                "SIM_IPAD_PRO_7TH_GEN_18_5",
-                "SIM_IPHONE_15_18_5",
-            ],
-        ),
-        targets.bundle(
-            targets = "ios_screen_size_dependent_tests",
-            mixins = [
-                "use-ios-simulator-cache",
-            ],
-            variants = [
-                "SIM_IPAD_AIR_6TH_GEN_18_5",
-                "SIM_IPAD_PRO_7TH_GEN_18_5",
-                "SIM_IPHONE_15_18_5",
-                "SIM_IPHONE_SE_3RD_GEN_18_5",
-            ],
-        ),
-    ],
-)
-
-targets.bundle(
     name = "ios27_beta_simulator_tests",
     targets = [
         targets.bundle(
@@ -4944,85 +4824,77 @@ targets.bundle(
 )
 
 targets.bundle(
-    name = "ios27_sdk_simulator_tests",
+    name = "ios27_duo_simulator_tests",
     targets = [
         targets.bundle(
-            mixins = [
-                "xcode_27_beta",
-            ],
-            targets = [
-                targets.bundle(
-                    targets = "ios_common_tests",
-                    variants = [
-                        "SIM_IPAD_A16_27_2",
-                        "SIM_IPHONE_16_27_2",
-                    ],
-                ),
-                targets.bundle(
-                    targets = "ios_eg2_cq_tests",
-                    mixins = [
-                        "xcodebuild_sim_runner",
-                    ],
-                    variants = [
-                        "SIM_IPAD_A16_27_2",
-                        "SIM_IPHONE_16_27_2",
-                    ],
-                ),
-                targets.bundle(
-                    targets = "ios_eg2_tests",
-                    mixins = [
-                        "xcodebuild_sim_runner",
-                    ],
-                    variants = [
-                        "SIM_IPAD_A16_27_2",
-                        "SIM_IPHONE_16_27_2",
-                    ],
-                ),
-                targets.bundle(
-                    targets = "ios_screen_size_dependent_tests",
-                    variants = [
-                        "SIM_IPAD_A16_27_2",
-                        "SIM_IPHONE_16_27_2",
-                        "SIM_IPHONE_SE_3RD_GEN_27_2",
-                    ],
-                ),
+            targets = "ios_common_tests",
+            variants = [
+                "SIM_IPHONE_DUO_27_2",
             ],
         ),
         targets.bundle(
+            targets = "ios_eg2_cq_tests",
             mixins = [
-                "xcode_27_1",
+                "xcodebuild_sim_runner",
             ],
-            targets = [
-                targets.bundle(
-                    targets = "ios_common_tests",
-                    variants = [
-                        "SIM_IPHONE_DUO_27_1",
-                    ],
-                ),
-                targets.bundle(
-                    targets = "ios_eg2_cq_tests",
-                    mixins = [
-                        "xcodebuild_sim_runner",
-                    ],
-                    variants = [
-                        "SIM_IPHONE_DUO_27_1",
-                    ],
-                ),
-                targets.bundle(
-                    targets = "ios_eg2_tests",
-                    mixins = [
-                        "xcodebuild_sim_runner",
-                    ],
-                    variants = [
-                        "SIM_IPHONE_DUO_27_1",
-                    ],
-                ),
-                targets.bundle(
-                    targets = "ios_screen_size_dependent_tests",
-                    variants = [
-                        "SIM_IPHONE_DUO_27_1",
-                    ],
-                ),
+            variants = [
+                "SIM_IPHONE_DUO_27_2",
+            ],
+        ),
+        targets.bundle(
+            targets = "ios_eg2_tests",
+            mixins = [
+                "xcodebuild_sim_runner",
+            ],
+            variants = [
+                "SIM_IPHONE_DUO_27_2",
+            ],
+        ),
+        targets.bundle(
+            targets = "ios_screen_size_dependent_tests",
+            variants = [
+                "SIM_IPHONE_DUO_27_2",
+            ],
+        ),
+    ],
+)
+
+targets.bundle(
+    name = "ios27_sdk_simulator_tests",
+    targets = [
+        targets.bundle(
+            targets = "ios_common_tests",
+            variants = [
+                "SIM_IPAD_A16_27_2",
+                "SIM_IPHONE_16_27_2",
+            ],
+        ),
+        targets.bundle(
+            targets = "ios_eg2_cq_tests",
+            mixins = [
+                "xcodebuild_sim_runner",
+            ],
+            variants = [
+                "SIM_IPAD_A16_27_2",
+                "SIM_IPHONE_16_27_2",
+            ],
+        ),
+        targets.bundle(
+            targets = "ios_eg2_tests",
+            mixins = [
+                "xcodebuild_sim_runner",
+            ],
+            variants = [
+                "SIM_IPAD_A16_27_2",
+                "SIM_IPHONE_16_27_2",
+            ],
+        ),
+        targets.bundle(
+            targets = "ios_screen_size_dependent_tests",
+            variants = [
+                "SIM_IPAD_A16_27_2",
+                "SIM_IPHONE_16_27_2",
+                "SIM_IPHONE_SE_3RD_GEN_27_2",
             ],
         ),
     ],
@@ -6826,10 +6698,6 @@ targets.bundle(
     targets = [
         "webview_cts_tests_suite",
     ],
-    variants = [
-        "WEBVIEW_FULL_CTS_TESTS",
-        "WEBVIEW_INSTANT_CTS_TESTS",
-    ],
 )
 
 targets.bundle(
@@ -6878,10 +6746,13 @@ targets.bundle(
     targets = [
         "webview_64_cts_hostside_tests",
     ],
-    variants = [
-        "WEBVIEW_FULL_CTS_TESTS",
-        "WEBVIEW_INSTANT_CTS_TESTS",
-    ],
+    per_test_modifications = {
+        "webview_64_cts_hostside_tests": targets.mixin(
+            swarming = targets.swarming(
+                shards = 2,
+            ),
+        ),
+    },
 )
 
 targets.bundle(
@@ -7031,6 +6902,9 @@ targets.bundle(
             args = [
                 "--store-tombstones",
             ],
+            swarming = targets.swarming(
+                shards = 2,
+            ),
         ),
     },
 )

@@ -43,13 +43,11 @@ base::CallbackListSubscription SubscribeToAnimations(
                   OrganizerPanelAnimations::kOrganizerPanel);
               auto* const browser_view =
                   BrowserView::GetBrowserViewForBrowser(browser);
-              if (motion == OrganizerPanelAnimations::kShow) {
-                views::ElementTrackerViews::GetInstance()->NotifyCustomEvent(
-                    kShowAnimationComplete, browser_view);
-              } else if (motion == OrganizerPanelAnimations::kHide) {
-                views::ElementTrackerViews::GetInstance()->NotifyCustomEvent(
-                    kHideAnimationComplete, browser_view);
-              }
+              views::ElementTrackerViews::GetInstance()->NotifyCustomEvent(
+                  OrganizerPanelAnimations::IsShow(motion)
+                      ? kShowAnimationComplete
+                      : kHideAnimationComplete,
+                  browser_view);
             }
           }));
 }

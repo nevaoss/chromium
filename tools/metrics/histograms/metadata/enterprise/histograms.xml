@@ -378,6 +378,8 @@ chromium-metrics-reviews@google.com.
       summary="URL filtering interstitial events"/>
 </variants>
 
+<!-- LINT.IfChange(EnterpriseSignals) -->
+
 <variants name="EnterpriseSignals">
   <variant name="Agent" summary="agent"/>
   <variant name="AntiVirus" summary="antivirus"/>
@@ -389,6 +391,8 @@ chromium-metrics-reviews@google.com.
   <variant name="SystemSettings" summary="system settings"/>
   <variant name="VerifyApps" summary="verify apps"/>
 </variants>
+
+<!-- LINT.ThenChange(//components/device_signals/core/browser/metrics_utils.cc:EnterpriseSignals) -->
 
 <variants name="FileUploadEvent">
   <variant name="OnFileAttach" summary="File upload event"/>
@@ -671,6 +675,28 @@ chromium-metrics-reviews@google.com.
   <token key="Scope" variants="ReportingScope"/>
 </histogram>
 
+<histogram name="Enterprise.BrowserSignin.UserScope.PolicyValue"
+    enum="BrowserSigninMode" expires_after="2027-10-14">
+  <owner>ydago@chromium.org</owner>
+  <owner>zmin@chromium.org</owner>
+  <summary>
+    Recorded when the BrowserSignin policy is configured with user scope and
+    applied to preferences. Records the policy value (0=Disabled, 1=Enabled,
+    2=Forced). Recorded at browser startup and when user policies are fetched.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.BrowserSignin.UserScope.SignoutAction"
+    enum="BrowserSigninUserScopeSignoutAction" expires_after="2027-10-14">
+  <owner>ydago@chromium.org</owner>
+  <owner>zmin@chromium.org</owner>
+  <summary>
+    Recorded when sign-in is disallowed on a profile because the BrowserSignin
+    policy is set to 0 (Disabled) at user scope. Records whether the user was
+    signed out directly or prompted to delete the profile.
+  </summary>
+</histogram>
+
 <histogram name="Enterprise.BrowserSigninIOS.SignedOutByPolicy"
     enum="BooleanHit" expires_after="2023-06-30">
   <owner>gujen@google.com</owner>
@@ -700,7 +726,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.CacheEncryptionPolicyEnabled" enum="BooleanEnabled"
-    expires_after="2027-02-17">
+    expires_after="2027-04-25">
   <owner>haihan@google.com</owner>
   <owner>valadkevich@google.com</owner>
   <owner>cbe-cep-eng@google.com</owner>
@@ -1086,6 +1112,20 @@ chromium-metrics-reviews@google.com.
     browser preferences (e.g., invalid types, schema violations, deprecated
     values).
   </summary>
+</histogram>
+
+<histogram name="Enterprise.CloudPolicy.LocalCacheSize.{StoreType}" units="KB"
+    expires_after="2027-04-01">
+  <owner>ydago@chromium.org</owner>
+  <owner>cbe-eng@google.com</owner>
+  <summary>
+    Recorded when reading {StoreType} cloud policy cache from disk on browser
+    startup. Logs the size of the cached policy file in kilobytes.
+  </summary>
+  <token key="StoreType">
+    <variant name="Machine" summary="machine-level (CBCM/CEC)"/>
+    <variant name="User" summary="user-level"/>
+  </token>
 </histogram>
 
 <histogram name="Enterprise.CloudPolicy.LocalCacheWriteStatus"
@@ -2285,7 +2325,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.Dlp.ConfidentialContentsCount" units="entries"
-    expires_after="2027-02-21">
+    expires_after="2027-04-25">
   <owner>aidazolic@chromium.org</owner>
   <owner>chromeos-dlp@google.com</owner>
   <summary>
@@ -3272,7 +3312,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.FileDownloadObfuscation.ReplaceRetryCount"
-    units="retries" expires_after="2027-02-19">
+    units="retries" expires_after="2027-04-25">
   <owner>mingyil@google.com</owner>
   <owner>haihan@google.com</owner>
   <owner>cbe-cep-eng@google.com</owner>
@@ -3705,7 +3745,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.LoginApiCleanup.{CleanupHandler}.Success"
-    enum="BooleanSuccess" expires_after="2026-11-17">
+    enum="BooleanSuccess" expires_after="2027-10-27">
   <owner>mpetrisor@chromium.org</owner>
   <owner>imprivata-eng@google.com</owner>
   <summary>ChromeOS only. Records if cleanup handler succeeded.</summary>
@@ -3713,7 +3753,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.LoginApiCleanup.{CleanupHandler}.Timing" units="ms"
-    expires_after="2026-11-17">
+    expires_after="2027-10-27">
   <owner>mpetrisor@chromium.org</owner>
   <owner>imprivata-eng@google.com</owner>
   <summary>
@@ -5921,9 +5961,9 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="EnterpriseCheck.OSType" enum="OsSuite"
-    expires_after="2026-12-01">
+    expires_after="2027-12-01">
   <owner>ydago@chromium.org</owner>
-  <owner>pastarmovj@chromium.org</owner>
+  <owner>zmin@chromium.org</owner>
   <summary>
     The rough Windows suite we are running on. This check is performed once at
     start-up on Windows. The histogram was removed in 108 and reinstated in 111.

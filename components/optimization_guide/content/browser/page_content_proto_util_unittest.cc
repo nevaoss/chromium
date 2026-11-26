@@ -1601,6 +1601,11 @@ TEST_F(PageContentProtoUtilTest, ConvertInteractionDisabledReasons) {
   disabled_reasons.push_back(
       blink::mojom::AIPageContentInteractionDisabledReason::
           kAriaRolePresentational);
+  disabled_reasons.push_back(
+      blink::mojom::AIPageContentInteractionDisabledReason::kPointerEventsNone);
+  disabled_reasons.push_back(
+      blink::mojom::AIPageContentInteractionDisabledReason::
+          kVisuallyUnreachable);
   root_content->root_node->children_nodes.emplace_back(
       std::move(container_node));
 
@@ -1619,11 +1624,14 @@ TEST_F(PageContentProtoUtilTest, ConvertInteractionDisabledReasons) {
       testing::UnorderedElementsAre(
           optimization_guide::proto::INTERACTION_DISABLED_REASON_ARIA_HIDDEN,
           optimization_guide::proto::
-              INTERACTION_DISABLED_REASON_ARIA_ROLE_PRESENTATIONAL));
+              INTERACTION_DISABLED_REASON_ARIA_ROLE_PRESENTATIONAL,
+          optimization_guide::proto::
+              INTERACTION_DISABLED_REASON_POINTER_EVENTS_NONE,
+          optimization_guide::proto::
+              INTERACTION_DISABLED_REASON_VISUALLY_UNREACHABLE));
 }
 
-TEST_F(PageContentProtoUtilTest,
-       ConvertClickabilityReasonsMouseEnterHoverAndOver) {
+TEST_F(PageContentProtoUtilTest, ConvertClickabilityReasonsMouseEnterAndOver) {
   auto root_content = CreatePageContent();
   auto container_node =
       CreateContentNode(blink::mojom::AIPageContentAttributeType::kContainer);
@@ -1632,8 +1640,6 @@ TEST_F(PageContentProtoUtilTest,
   auto& clickability_reasons =
       container_node->content_attributes->node_interaction_info
           ->clickability_reasons;
-  clickability_reasons.push_back(
-      blink::mojom::AIPageContentClickabilityReason::kMouseHover);
   clickability_reasons.push_back(
       blink::mojom::AIPageContentClickabilityReason::kMouseEnter);
   clickability_reasons.push_back(
@@ -1652,7 +1658,6 @@ TEST_F(PageContentProtoUtilTest,
                                      .interaction_info();
   EXPECT_THAT(interaction_info.clickability_reasons(),
               testing::UnorderedElementsAre(
-                  optimization_guide::proto::CLICKABILITY_REASON_MOUSE_HOVER,
                   optimization_guide::proto::CLICKABILITY_REASON_MOUSE_ENTER,
                   optimization_guide::proto::CLICKABILITY_REASON_MOUSE_OVER));
 }

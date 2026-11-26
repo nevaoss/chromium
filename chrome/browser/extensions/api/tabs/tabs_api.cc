@@ -4,6 +4,7 @@
 
 #include "chrome/browser/extensions/api/tabs/tabs_api.h"
 
+#include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/notimplemented.h"
@@ -42,6 +43,7 @@
 #include "chrome/browser/ui/tabs/tab_muted_utils.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/webui_url_constants.h"
+#include "components/enterprise/buildflags/buildflags.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/safe_browsing/buildflags.h"
 #include "components/sessions/content/session_tab_helper.h"
@@ -97,6 +99,10 @@
 #include "chrome/browser/safe_browsing/extension_telemetry/extension_telemetry_service.h"
 #include "chrome/browser/safe_browsing/extension_telemetry/tabs_api_signal.h"
 #endif
+
+#if BUILDFLAG(ENTERPRISE_CLOUD_CONTENT_ANALYSIS)
+#include "chrome/browser/enterprise/connectors/reporting/extension_actor_tracker.h"
+#endif  // BUILDFLAG(ENTERPRISE_CLOUD_CONTENT_ANALYSIS)
 
 static_assert(BUILDFLAG(ENABLE_EXTENSIONS_CORE));
 
@@ -1095,7 +1101,12 @@ void TabsCreateFunction::OnBrowserWindowCreated(
     return;
   }
 
+  base::WeakPtr<BrowserWindowInterface> weak_browser = browser->GetWeakPtr();
   browser->GetWindow()->Show();
+  if (!weak_browser) {
+    Respond(Error(ExtensionTabUtil::kNoCurrentWindowError));
+    return;
+  }
 
   // Re-fetch the opener, if one was specified. This call might fail if the
   // opener tab was destroyed while the window was being created. In that case,
@@ -1128,6 +1139,13 @@ void TabsCreateFunction::OpenTabInBrowser(BrowserWindowInterface& browser,
   }
 
   content::WebContents* new_contents = result.value();
+
+#if BUILDFLAG(ENTERPRISE_CLOUD_CONTENT_ANALYSIS)
+  if (extension()) {
+    enterprise_connectors::ExtensionActorTracker::SetActiveActor(
+        new_contents, extension_id(), static_function_name());
+  }
+#endif  // BUILDFLAG(ENTERPRISE_CLOUD_CONTENT_ANALYSIS)
 
 #if BUILDFLAG(FULL_SAFE_BROWSING)
   NotifyExtensionTelemetry(Profile::FromBrowserContext(browser_context()),
@@ -1502,6 +1520,13 @@ ExtensionFunction::ResponseAction TabsUpdateFunction::Run() {
     if (!UpdateURL(original_contents, updated_url, tab_id, &error)) {
       return RespondNow(Error(std::move(error)));
     }
+
+#if BUILDFLAG(ENTERPRISE_CLOUD_CONTENT_ANALYSIS)
+    if (extension()) {
+      enterprise_connectors::ExtensionActorTracker::SetActiveActor(
+          original_contents, extension_id(), static_function_name());
+    }
+#endif  // BUILDFLAG(ENTERPRISE_CLOUD_CONTENT_ANALYSIS)
 
 #if BUILDFLAG(FULL_SAFE_BROWSING)
     NotifyExtensionTelemetry(Profile::FromBrowserContext(browser_context()),

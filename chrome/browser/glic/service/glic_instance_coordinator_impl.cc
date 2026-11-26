@@ -167,7 +167,8 @@ GlicInstanceCoordinatorImpl::~GlicInstanceCoordinatorImpl() {
   for (auto& [id, instance] : instances_) {
     for (auto& handler : TakeInvokeHandlers(instance.get())) {
       if (handler) {
-        handler->CancelForInstanceRemoval(InstanceRemovalReason::kShutdown);
+        std::exchange(handler, nullptr)
+            ->CancelForInstanceRemoval(InstanceRemovalReason::kShutdown);
       }
     }
     instance->CloseInstanceAndShutdown();
@@ -234,27 +235,31 @@ bool GlicInstanceCoordinatorImpl::IsInvoking(
 void GlicInstanceCoordinatorImpl::CancelInvoke(GlicInstanceImpl* instance) {
   for (auto& handler : TakeInvokeHandlers(instance)) {
     if (handler) {
-      handler->Cancel(GlicInvokeError::kCancelled);
+      std::exchange(handler, nullptr)->Cancel(GlicInvokeError::kCancelled);
     }
   }
 }
 
-void GlicInstanceCoordinatorImpl::CancelShowOnlyInvokes(
+void GlicInstanceCoordinatorImpl::CancelInvokesOnPanelClose(
     GlicInstanceImpl* instance,
     GlicInvokeError error) {
   // Take the handlers out first: cancelling one re-enters
   // OnInvokeHandlerComplete(), which would otherwise mutate the map under us.
-  std::vector<std::unique_ptr<GlicInvokeHandler>> show_only;
+  const bool client_ready =
+      instance->host().client_load_state() == ClientLoadState::kReady;
+  std::vector<std::unique_ptr<GlicInvokeHandler>> to_cancel;
   auto [begin, end] = invoke_handlers_.equal_range(instance);
   for (auto it = begin; it != end;) {
-    if (it->second && !it->second->requires_client_invoke()) {
-      show_only.push_back(std::move(invoke_handlers_.extract(it++).mapped()));
+    GlicInvokeHandler* handler = it->second.get();
+    if (handler && ((!handler->requires_client_invoke() && !client_ready) ||
+                    handler->NeedsFreCompletion())) {
+      to_cancel.push_back(std::move(invoke_handlers_.extract(it++).mapped()));
     } else {
       ++it;
     }
   }
-  for (auto& handler : show_only) {
-    handler->Cancel(error);
+  for (auto& handler : to_cancel) {
+    std::exchange(handler, nullptr)->Cancel(error);
   }
 }
 
@@ -658,9 +663,11 @@ void GlicInstanceCoordinatorImpl::Shutdown() {
 
   for (auto& [instance, handler] : handlers) {
     if (handler) {
-      handler->CancelForInstanceRemoval(InstanceRemovalReason::kShutdown);
+      std::exchange(handler, nullptr)
+          ->CancelForInstanceRemoval(InstanceRemovalReason::kShutdown);
     }
   }
+  handlers.clear();
 
   for (auto& [instance_id, instance] : instances_) {
     instance->Shutdown();
@@ -1331,7 +1338,7 @@ void GlicInstanceCoordinatorImpl::RemoveInstance(InstanceId id,
   // Invocations hold a reference to `instance`, so end them first.
   for (auto& handler : TakeInvokeHandlers(instance)) {
     if (handler) {
-      handler->CancelForInstanceRemoval(reason);
+      std::exchange(handler, nullptr)->CancelForInstanceRemoval(reason);
     }
   }
 

@@ -51,14 +51,16 @@ namespace {
 
 constexpr int kDefaultFrames = 100;
 constexpr double kDefaultFps = 30.0;
-constexpr int kDefaultBitrateKbps = 5000;
+constexpr int kDefaultTargetBitrateKbpsPerMegapixel = 2500;
+constexpr int kMinimumDefaultBitrateKbps = 1000;
 constexpr int kMinDimension = 32;
+constexpr int kMinQuantizer = 10;
 
 constexpr int kAv1DefaultEncoderSpeed = 11;
 constexpr int kAv1MinEncoderSpeed = 7;
 constexpr int kAv1MaxEncoderSpeed = 11;
 
-constexpr int kVp9DefaultEncoderSpeed = 6;
+constexpr int kVp9DefaultEncoderSpeed = 9;
 constexpr int kVp9MinEncoderSpeed = 5;
 constexpr int kVp9MaxEncoderSpeed = 9;
 
@@ -87,13 +89,13 @@ struct EncoderConfig {
   ColorSpace color_space = ColorSpace::kI420;
   int encoder_speed = kAv1DefaultEncoderSpeed;
   bool use_active_map = false;
-  int bitrate_kbps = kDefaultBitrateKbps;
+  int bitrate_kbps = 0;
 };
 
 struct BenchmarkConfig {
   int frames = kDefaultFrames;
   double fps = kDefaultFps;
-  int bitrate_kbps = kDefaultBitrateKbps;
+  int bitrate_kbps = 0;
   std::vector<webrtc::DesktopSize> sizes;
   std::vector<std::string> scenarios;
   std::vector<EncoderConfig> encoders;
@@ -163,6 +165,28 @@ std::string DefaultEncoderName(const EncoderConfig& config) {
     case Codec::kVp8:
       return "vp8_p0";
   }
+}
+
+// Returns the target bitrate (in kbps) for a benchmark run. If an explicit
+// bitrate was configured (via the top-level or per-encoder JSON "bitrate_kbps"
+// field), that value is used directly. Otherwise, the default target bitrate is
+// scaled linearly with the frame resolution at 2500 kbps per megapixel (e.g.,
+// ~5.18 Mbps for 1080p, ~9.22 Mbps for 1440p, ~20.74 Mbps for 4K), with a floor
+// of 1000 kbps for sub-megapixel resolutions. This matches the 2500 kbps/MP
+// density used by WebrtcVideoEncoderVpx so that multi-resolution runs (1080p,
+// 1440p, 4K) maintain a consistent bits-per-pixel budget rather than starving
+// higher resolutions at a fixed 1080p bitrate.
+int GetTargetBitrateKbps(int configured_bitrate_kbps,
+                         const webrtc::DesktopSize& size) {
+  if (configured_bitrate_kbps > 0) {
+    return configured_bitrate_kbps;
+  }
+  constexpr int64_t kPixelsPerMegapixel = 1000000;
+  int64_t pixels =
+      static_cast<int64_t>(size.width()) * static_cast<int64_t>(size.height());
+  int scaled_bitrate_kbps = static_cast<int>(
+      (pixels * kDefaultTargetBitrateKbpsPerMegapixel) / kPixelsPerMegapixel);
+  return std::max(kMinimumDefaultBitrateKbps, scaled_bitrate_kbps);
 }
 
 std::unique_ptr<WebrtcVideoEncoder> CreateEncoder(const EncoderConfig& config) {
@@ -324,9 +348,12 @@ class EncoderBenchmark {
           preloaded_frames) {
     encoder_config_ = encoder_config;
     runtime_params_ = runtime_params;
+    encoder_config_.bitrate_kbps = GetTargetBitrateKbps(
+        encoder_config_.bitrate_kbps, runtime_params_.size);
     preloaded_frames_ = preloaded_frames;
     next_frame_index_ = 0;
     frames_encoded_ = 0;
+    top_off_active_ = false;
     total_pixels_ = 0;
     updated_pixels_ = 0;
     frame_metrics_.clear();
@@ -388,6 +415,25 @@ class EncoderBenchmark {
  private:
   void InitializeEncoderOnEncodeThread() {
     DCHECK(encode_task_runner_->RunsTasksInCurrentSequence());
+    auto warmup_encoder = CreateEncoder(encoder_config_);
+    if (!warmup_encoder) {
+      encoder_initialized_ = false;
+      return;
+    }
+
+    // Run a single warm-up encode on a temporary instance to warm up the
+    // encode thread, SIMD dispatch tables, and allocator caches without
+    // mutating the rate-control state of |encoder_|.
+    WebrtcVideoEncoder::FrameParams warmup_params;
+    warmup_params.bitrate_kbps = encoder_config_.bitrate_kbps;
+    warmup_params.duration = base::Hertz(runtime_params_.fps);
+    warmup_params.fps = static_cast<int>(std::round(runtime_params_.fps));
+    warmup_params.key_frame = true;
+    warmup_params.clear_active_map = true;
+    warmup_encoder->Encode(preloaded_frames_[0]->Share(), warmup_params,
+                           base::DoNothing());
+    warmup_encoder.reset();
+
     encoder_ = CreateEncoder(encoder_config_);
     encoder_initialized_ = (encoder_ != nullptr);
   }
@@ -411,7 +457,7 @@ class EncoderBenchmark {
     params.duration = base::Hertz(runtime_params_.fps);
     params.fps = static_cast<int>(std::round(runtime_params_.fps));
     params.key_frame = (frame_index == 0);
-    params.clear_active_map = true;
+    params.clear_active_map = !top_off_active_;
 
     // Stats are tracked on capture thread.
     // Use int64_t to prevent overflow for large dimensions.
@@ -460,6 +506,7 @@ class EncoderBenchmark {
       metric.quantizer = frame->quantizer;
       metric.key_frame = frame->key_frame;
       frame_metrics_.push_back(metric);
+      top_off_active_ = (frame->quantizer > kMinQuantizer);
     } else {
       LOG(ERROR) << "Encoder failed to encode frame.";
     }
@@ -707,6 +754,7 @@ class EncoderBenchmark {
   size_t next_frame_index_ = 0;
   int frames_to_encode_ = 0;
   int frames_encoded_ = 0;
+  bool top_off_active_ = false;
   int64_t total_pixels_ = 0;
   int64_t updated_pixels_ = 0;
   std::vector<FrameMetric> frame_metrics_;
@@ -741,10 +789,10 @@ Example JSON configuration:
       "use_active_map": false
     },
     {
-      "name": "vp9_s6_i420",
+      "name": "vp9_s9_i420",
       "codec": "vp9",
       "profile": 0,
-      "encoder_speed": 6
+      "encoder_speed": 9
     },
     {
       "name": "vp8_default",
@@ -1042,6 +1090,10 @@ bool LoadJsonConfigFile(const base::FilePath& config_path,
         return false;
       }
       config.encoders.push_back(std::move(encoder_config));
+    }
+  } else if (config.bitrate_kbps > 0) {
+    for (auto& encoder_config : config.encoders) {
+      encoder_config.bitrate_kbps = config.bitrate_kbps;
     }
   }
 

@@ -11,6 +11,7 @@
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/timer/elapsed_timer.h"
+#include "base/uuid.h"
 #include "build/build_config.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/contextual_tasks/aim_message_poster.h"
@@ -30,6 +31,8 @@
 #include "chrome/browser/ui/webui/new_tab_page/composebox/variations/composebox_fieldtrial.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_controller.h"
+#include "content/public/browser/navigation_handle.h"
+#include "net/http/http_response_headers.h"
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/contextual_tasks/active_task_context_provider.h"
 #include "chrome/browser/themes/theme_service.h"
@@ -48,6 +51,8 @@
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
 #include "components/contextual_search/contextual_search_service.h"
 #include "components/contextual_search/contextual_search_session_handle.h"
+#include "components/contextual_tasks/public/contextual_task.h"
+#include "components/contextual_tasks/public/contextual_tasks_service.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/contextual_tasks/public/prefs.h"
 #include "components/contextual_tasks/public/utils.h"
@@ -56,8 +61,10 @@
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_controller.h"
 #include "content/public/common/url_constants.h"
+#include "net/base/url_util.h"
 #include "third_party/lens_server_proto/aim_communication.pb.h"
 #include "ui/base/device_form_factor.h"
+#include "url/gurl.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/contextual_tasks/android/contextual_tasks_panel_host_android.h"
@@ -77,6 +84,29 @@ namespace contextual_tasks {
 bool IsContextualTasksUrl(const GURL& url) {
   return url.scheme() == content::kChromeUIScheme &&
          url.host() == chrome::kChromeUIContextualTasksHost;
+}
+
+std::optional<std::string> GetAiModeThreadId(const GURL& url) {
+  std::string thread_id;
+  if (!net::GetValueForKeyInQuery(url, "mtid", &thread_id) ||
+      thread_id.empty()) {
+    return std::nullopt;
+  }
+  return thread_id;
+}
+
+void UpdateAiModeThreadForTask(ContextualTasksService& service,
+                               const base::Uuid& task_id,
+                               const std::string& thread_id,
+                               const GURL& url) {
+  std::string query;
+  std::string mstk;
+  net::GetValueForKeyInQuery(url, "q", &query);
+  service.UpdateThreadForTask(
+      task_id, ThreadType::kAiMode, thread_id,
+      net::GetValueForKeyInQuery(url, "mstk", &mstk) ? std::make_optional(mstk)
+                                                     : std::nullopt,
+      query.empty() ? std::nullopt : std::make_optional(query));
 }
 
 std::unique_ptr<
@@ -125,6 +155,38 @@ void RecordInnerFrameContentsHttpResponseCode(int http_status_code,
         "ContextualTasks.InnerFrameContents.HttpResponseCode."
         "ExcludeZeroStateLoads",
         http_status_code);
+  }
+}
+
+void RecordContextualTasksNavigationMetrics(
+    content::NavigationHandle* navigation_handle,
+    bool is_zero_state) {
+  if (!navigation_handle || navigation_handle->IsSameDocument() ||
+      !navigation_handle->IsInPrimaryMainFrame()) {
+    return;
+  }
+  const GURL& url = navigation_handle->GetURL();
+  if (url.is_empty() || url.IsAboutBlank()) {
+    return;
+  }
+
+  if (const net::HttpResponseHeaders* response_headers =
+          navigation_handle->GetResponseHeaders()) {
+    int response_code = response_headers->response_code();
+    base::UmaHistogramSparse("ContextualTasks.Navigation.HttpResponseCode",
+                             response_code);
+    if (!is_zero_state) {
+      base::UmaHistogramSparse(
+          "ContextualTasks.Navigation.HttpResponseCode.ExcludeZeroStateLoads",
+          response_code);
+    }
+  }
+
+  net::Error net_error = navigation_handle->GetNetErrorCode();
+  if (navigation_handle->HasCommitted() ||
+      (net_error != net::OK && net_error != net::ERR_ABORTED)) {
+    base::UmaHistogramSparse("ContextualTasks.Navigation.NetErrorCode",
+                             std::abs(net_error));
   }
 }
 
@@ -648,6 +710,27 @@ std::vector<uint8_t> GetSerializedHandshakeMessage() {
   std::vector<uint8_t> serialized_message(size);
   message.SerializeToArray(serialized_message.data(), size);
   return serialized_message;
+}
+
+void RecordExtensionHandshakeStatus(ExtensionHandshakeStatus status) {
+  base::UmaHistogramEnumeration("ContextualTasks.ExtensionHandshake.Status",
+                                status);
+}
+
+void RecordExtensionHandshakeLatency(base::TimeDelta latency) {
+  base::UmaHistogramMediumTimes("ContextualTasks.ExtensionHandshake.Latency",
+                                latency);
+}
+
+void RecordExtensionPostMessageError(ExtensionPostMessageError error) {
+  base::UmaHistogramEnumeration("ContextualTasks.ExtensionPostMessage.Error",
+                                error);
+}
+
+void RecordExtensionQueuedSearchMessagesDropped(size_t count) {
+  base::UmaHistogramCounts100(
+      "ContextualTasks.ExtensionPostMessage.QueuedSearchMessagesDropped",
+      count);
 }
 
 bool ShouldUseDarkMode(Profile* profile, const GURL& url) {

@@ -159,16 +159,6 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//chrome/browser/ui/android/bottombar/java/src/org/chromium/chrome/browser/ui/bottombar/BottomBarMetrics.java:AndroidBottomBarIphEvent) -->
 
-<!-- LINT.IfChange(AndroidBottomBarPromoEvent) -->
-
-<enum name="AndroidBottomBarPromoEvent">
-  <int value="0" label="Shown"/>
-  <int value="1" label="Accepted"/>
-  <int value="2" label="Dismissed"/>
-</enum>
-
-<!-- LINT.ThenChange(//chrome/browser/ui/android/bottombar/java/src/org/chromium/chrome/browser/ui/bottombar/BottomBarMetrics.java:PromoEvent) -->
-
 <enum name="AndroidChildProcessConnectionEvents">
   <int value="0" label="SCHEDULE_TIMEOUT_SANDBOXED"/>
   <int value="1" label="SCHEDULE_TIMEOUT_UNSANDBOXED"/>
@@ -240,12 +230,16 @@ chromium-metrics-reviews@google.com.
   <int value="16" label="NEW_DOWNLOAD_TAB_OPEN_BUTTON"/>
 </enum>
 
+<!-- LINT.IfChange(AndroidDownloadOpenTarget) -->
+
 <enum name="AndroidDownloadOpenTarget">
   <int value="0" label="CHROME_DEFAULT"/>
   <int value="1" label="CHROME_FALLBACK"/>
   <int value="2" label="OTHER_APP_DEFAULT"/>
   <int value="3" label="OS_CHOOSER"/>
 </enum>
+
+<!-- LINT.ThenChange(//chrome/android/java/src/org/chromium/chrome/browser/download/DownloadMetrics.java:DownloadOpenTarget) -->
 
 <!-- LINT.IfChange(AndroidDragTargetType) -->
 
@@ -2106,6 +2100,7 @@ chromium-metrics-reviews@google.com.
   <int value="6" label="SETTINGS_ACTIVITY"/>
   <int value="7" label="BOOKMARK_ACTIVITY"/>
   <int value="8" label="FUSEBOX_POPUP"/>
+  <int value="9" label="FIRST_RUN_ACTIVITY"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/browser_ui/widget/android/java/src/org/chromium/components/browser_ui/widget/scrim/ScrimManager.java:ScrimClient) -->

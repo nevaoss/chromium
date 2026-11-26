@@ -561,7 +561,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Security.iOS.KeychainMigration.Result"
-    enum="IOSKeychainMigrationResult" expires_after="2027-02-21">
+    enum="IOSKeychainMigrationResult" expires_after="2027-04-25">
   <owner>marq@chromium.org</owner>
   <owner>bling-flags@google.com</owner>
   <summary>
@@ -586,6 +586,14 @@ chromium-metrics-reviews@google.com.
     captive portal login page&quot; bucket. Previously, these requests could
     have been put under various buckets depending on the captive portal
     configuration.
+
+    Starting from M157, that bucket also covers every request made in a
+    dedicated captive portal sign-in window, not just the window's initial
+    request. As with the M128 change above, those additional requests were
+    previously recorded in whichever bucket the upgrade path assigned them, most
+    often &quot;HTTP request upgraded to HTTPS&quot;, so the captive portal
+    bucket gains volume at their expense. Only captive portal sign-in windows
+    are affected.
   </summary>
 </histogram>
 
@@ -1341,7 +1349,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="SiteIsolation.ProxyCount" units="proxies"
-    expires_after="2027-02-21">
+    expires_after="2027-04-25">
   <owner>alexmos@chromium.org</owner>
   <owner>creis@chromium.org</owner>
   <owner>lukasza@chromium.org</owner>

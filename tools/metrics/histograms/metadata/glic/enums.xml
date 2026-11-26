@@ -40,6 +40,16 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//content/public/browser/render_widget_host_view.h:CopyFromSurfaceError) -->
 
+<enum name="ExternalTriggerDispatchResult">
+  <int value="0" label="STARTED_BACKGROUND_SERVICE"/>
+  <int value="1" label="OPENED_FOREGROUND_TAB"/>
+  <int value="2" label="ROUTED_TASK_INTERRUPT"/>
+  <int value="3" label="REJECTED_NOT_GOOGLE_SIGNED"/>
+  <int value="4" label="REJECTED_GLIC_DISABLED_FOR_PROFILE"/>
+  <int value="5" label="TASK_INTERRUPT_TASK_NOT_FOUND"/>
+  <int value="6" label="TASK_INTERRUPT_INTENT_CREATION_FAILED"/>
+</enum>
+
 <!-- LINT.IfChange(GeicCloseAuthTabResult) -->
 
 <enum name="GeicCloseAuthTabResult">
@@ -514,6 +524,7 @@ chromium-metrics-reviews@google.com.
   <int value="106" label="SetClientStorageItem"/>
   <int value="107" label="ClearClientStorage"/>
   <int value="108" label="GetSendTabToSelfDevices"/>
+  <int value="109" label="OnInputFocused"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/public/glic_api_metrics.h:GlicHostApiRequestId) -->
@@ -624,6 +635,7 @@ chromium-metrics-reviews@google.com.
   <int value="57" label="Response Stopped Other"/>
   <int value="58" label="Response Stopped Success"/>
   <int value="59" label="WebUI State Guest Loaded"/>
+  <int value="60" label="Input Focused"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/service/metrics/metrics_types.h:GlicInstanceEvent) -->
@@ -734,6 +746,7 @@ chromium-metrics-reviews@google.com.
   <int value="24" label="Instance destroyed: signed out"/>
   <int value="25" label="Instance destroyed: shutdown"/>
   <int value="26" label="Panel closed before the client was ready"/>
+  <int value="27" label="User did not sign in before the invocation timed out"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/public/glic_invoke_options.h:GlicInvokeError) -->

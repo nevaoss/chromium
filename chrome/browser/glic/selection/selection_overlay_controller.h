@@ -8,6 +8,8 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "base/callback_list.h"
 #include "base/containers/flat_map.h"
@@ -35,7 +37,7 @@
 namespace content {
 class RenderFrameHost;
 class WebContents;
-}
+}  // namespace content
 
 namespace views {
 class WebView;
@@ -196,6 +198,7 @@ class SelectionOverlayController
       const base::UnguessableToken& action_id,
       mojo::GenericPendingAssociatedReceiver channel) override;
   void OpenSettings() override;
+  void OpenDogfoodFeedback() override;
 
  private:
   void OnScreenshotTaken(const SkBitmap& bitmap);
@@ -207,12 +210,20 @@ class SelectionOverlayController
 
   void SetScreenshot(const SkBitmap& screenshot, SkBitmap rgb_screenshot);
 
-  // Render all the selected regions on top of the redacted screenshot.
-  void RenderRegions(bool should_focus_panel);
-  // Renders the pre-selected regions once the overlay is bound and the page
-  // context is ready. Called from each of those steps, so whichever finishes
-  // last does the work.
-  void RenderPendingRegions();
+  // The selected regions that fit in the redacted screenshot, in canvas
+  // pixels, in the form the Glic web client takes. Needs the redacted
+  // screenshot.
+  using CapturedRegions = std::vector<
+      std::pair<base::UnguessableToken, glic::mojom::CapturedRegionPtr>>;
+  CapturedRegions GetCapturedRegions() const;
+  // Sends the selected regions to the overlay WebUI and to the tab's Glic
+  // instance. Nothing goes out until the redacted screenshot is here, and
+  // nothing goes to the panel until the page context is; until then the panel
+  // send is pending and `SyncRegionsToPanelIfPending()` finishes it.
+  void SyncRegions(bool should_focus_panel);
+  void SyncRegionsToPanelIfPending();
+  void SendRegionsToPanel(CapturedRegions captured_regions,
+                          bool should_focus_panel);
 
   struct SelectedRegionData {
     explicit SelectedRegionData(selection::SelectedRegionPtr region);
@@ -256,8 +267,7 @@ class SelectionOverlayController
       bool complete,
       std::vector<std::unique_ptr<::selection::Suggestion>> suggestions);
   glic::mojom::AdditionalContextPtr CreateAdditionalContext(
-      std::vector<std::pair<base::UnguessableToken,
-                            glic::mojom::CapturedRegionPtr>> regions);
+      CapturedRegions regions);
 
   // Everything that belongs to one overlay session. Staged by the entry points
   // before the session starts, and replaced with a fresh one by `Reset()` when
@@ -276,15 +286,29 @@ class SelectionOverlayController
     // and used to dismiss the overlay from the web client. Only bound if the
     // overlay is invoked from the web client (web client UI, keyboard
     // shortcut). There are other invocations from outside the web client.
+    // Don't use it to tell who started the session; that's `owner`.
     // TODO(b/452032491): Remove this once the old codepath is no longer used.
     mojo::Remote<mojom::CaptureRegionObserver> capture_region_observer;
+
+    // Who started the session. Set by the entry point; a session the panel
+    // adopts after opening mid-session becomes `kPanel` (b/577143587).
+    enum class Owner {
+      // Started without the web client: `Show()` / `ShowWithSelection()`,
+      // from the hotkey, context menu or selection chip while the side panel
+      // is closed. Handing off to Glic closes the overlay.
+      kDirect,
+      // Started by the side panel's web client through `CaptureRegion()`.
+      // The overlay stays up after a hand-off, next to the panel.
+      kPanel,
+    };
+    Owner owner = Owner::kDirect;
 
     bool screenshot_available = false;
     selection::InteractionOptionsPtr interaction_options =
         selection::InteractionOptions::New();
-    // Whether the regions pre-selected at the start of the session still need
-    // to be sent to the web client.
-    bool staged_region_needs_render = false;
+    // Whether `SyncRegions()` ran before the page context and the redacted
+    // screenshot were here, and the panel still has to get the regions.
+    bool panel_sync_pending = false;
     SkBitmap initial_rgb_screenshot;
     SkBitmap redacted_screenshot;
     mojom::TabContextResultPtr tab_context;

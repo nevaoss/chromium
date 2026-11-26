@@ -144,6 +144,8 @@ class DesktopProduct(Product):
             '--disable-features=ScrollbarAnimations',
             # Keep focused carets visible for deterministic screenshots.
             '--disable-blink-features=CaretBlinking',
+            # Allow headless embedders to use SwiftShader for WebGL/WebGPU.
+            '--enable-unsafe-swiftshader',
         ]
         fs = self._host.filesystem
         if (

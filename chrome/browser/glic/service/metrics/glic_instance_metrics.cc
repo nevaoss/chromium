@@ -181,6 +181,10 @@ ToStructuredReason(ClientLoadErrorReason reason) {
       return Reason::CLIENT_LOAD_TIMEOUT;
     case ClientLoadErrorReason::kWarmedTimeout:
       return Reason::WARMED_TIMEOUT;
+    case ClientLoadErrorReason::kGuestOriginBlocked:
+      return Reason::GUEST_ORIGIN_BLOCKED;
+    case ClientLoadErrorReason::kGuestApiNotAllowed:
+      return Reason::GUEST_API_NOT_ALLOWED;
   }
 }
 #endif
@@ -802,6 +806,7 @@ void GlicInstanceMetrics::OnInstanceHidden() {
   LogEvent(GlicInstanceEvent::kInstanceHidden);
   MaybeRecordTimeToDismissWhileLoading();
   opt_in_impression_recorded_for_current_open_ = false;
+  open_start_time_ = base::TimeTicks();
 }
 
 void GlicInstanceMetrics::OnClose() {
@@ -820,6 +825,7 @@ void GlicInstanceMetrics::OnClose() {
   // A frame submitted during this invocation is stale for the next one.
   guest_actionable_.frame_submitted_while_hidden = false;
   opt_in_impression_recorded_for_current_open_ = false;
+  open_start_time_ = base::TimeTicks();
 }
 
 bool GlicInstanceMetrics::MarkShownAndCheckIfFirstTime(EmbedderKey key) {
@@ -836,6 +842,9 @@ void GlicInstanceMetrics::OnOpen(glic::mojom::InvocationSource source,
                                  const ShowOptions& options) {
   const base::TimeTicks now = base::TimeTicks::Now();
   const EmbedderType embedder_type = GetEmbedderTypeFromShowOptions(options);
+  open_start_time_ = now;
+  was_client_ready_on_open_ = is_client_ready_;
+  input_focused_for_current_open_ = false;
   if (!is_client_ready_) {
     if (invocation_load_state_.start_time.is_null()) {
       invocation_load_state_.start_time = now;
@@ -968,6 +977,7 @@ void GlicInstanceMetrics::SetActiveInvocationId(
   active_invocation_id_ = invocation_id;
   active_invocation_start_time_ =
       invocation_id ? base::TimeTicks::Now() : base::TimeTicks();
+  input_focused_for_current_invocation_ = false;
 }
 
 void GlicInstanceMetrics::OnClientLoadError(ClientLoadErrorReason reason) {
@@ -1120,6 +1130,8 @@ void GlicInstanceMetrics::OnWebUiStateChanged(mojom::WebUiState state) {
 
 void GlicInstanceMetrics::OnClientReady() {
   is_client_ready_ = true;
+  client_ready_time_ = base::TimeTicks::Now();
+  input_focused_after_client_ready_ = false;
   MaybeRecordOptInImpression();
   LogEvent(GlicInstanceEvent::kClientReady);
 
@@ -1280,8 +1292,7 @@ void GlicInstanceMetrics::OnUserInputSubmitted(mojom::WebClientMode mode,
   session_manager_.OnUserInputSubmitted(mode);
   LogEvent(GlicInstanceEvent::kUserInputSubmitted);
   cui_trackers_.push_back(std::make_unique<GlicSubmitQueryCuiTracker>());
-  cui_trackers_.push_back(
-      std::make_unique<GlicResponseCompletionCuiTracker>());
+  cui_trackers_.push_back(std::make_unique<GlicResponseCompletionCuiTracker>());
 
   base::RecordAction(base::UserMetricsAction("GlicResponseInputSubmit"));
   metric_reporter_.RecordEnumeration("Turn.PromptType", prompt_type);
@@ -1531,6 +1542,43 @@ void GlicInstanceMetrics::OnReaction(
     case mojom::MetricUserInputReactionType::kModel:
       base::RecordAction(base::UserMetricsAction("GlicReactionModelled"));
       return;
+  }
+}
+
+void GlicInstanceMetrics::OnInputFocused() {
+  base::RecordAction(base::UserMetricsAction("Glic.Instance.InputFocused"));
+  LogEvent(GlicInstanceEvent::kInputFocused);
+  const base::TimeTicks now = base::TimeTicks::Now();
+  const bool is_non_onboarded = !GlicEnabling::HasConsentedForProfile(profile_);
+  auto record_latency = [&](std::string_view name, base::TimeDelta duration) {
+    metric_reporter_.RecordMediumTimes(name, duration);
+    if (is_non_onboarded) {
+      metric_reporter_.RecordMediumTimes(base::StrCat({name, ".NonOnboarded"}),
+                                         duration);
+    }
+  };
+
+  if (!open_start_time_.is_null() && !input_focused_for_current_open_) {
+    input_focused_for_current_open_ = true;
+    input_focused_for_current_invocation_ = true;
+    const base::TimeDelta duration = now - open_start_time_;
+    record_latency("Instance.TimeToInputFocus", duration);
+    record_latency(was_client_ready_on_open_ ? "Instance.TimeToInputFocus.Warm"
+                                             : "Instance.TimeToInputFocus.Cold",
+                   duration);
+  } else if (!active_invocation_start_time_.is_null() &&
+             !input_focused_for_current_invocation_) {
+    input_focused_for_current_invocation_ = true;
+    const base::TimeDelta duration = now - active_invocation_start_time_;
+    record_latency("Instance.TimeToInputFocus", duration);
+    record_latency(is_client_ready_ ? "Instance.TimeToInputFocus.Warm"
+                                    : "Instance.TimeToInputFocus.Cold",
+                   duration);
+  }
+  if (!client_ready_time_.is_null() && !input_focused_after_client_ready_) {
+    input_focused_after_client_ready_ = true;
+    record_latency("Instance.ClientReadyToInputFocus",
+                   now - client_ready_time_);
   }
 }
 

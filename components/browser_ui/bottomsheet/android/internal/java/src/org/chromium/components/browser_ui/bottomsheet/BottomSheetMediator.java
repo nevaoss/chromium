@@ -78,6 +78,7 @@ class BottomSheetMediator implements TouchHandler {
     private @Nullable BottomSheetSwipeDetector mSwipeDetector;
     private boolean mIsTouchEnabled = true;
     private @Nullable Supplier<Boolean> mIsHidingSupplier;
+    private boolean mIsLargeFormFactor;
 
     /**
      * Creates a new BottomSheetMediator.
@@ -246,6 +247,35 @@ class BottomSheetMediator implements TouchHandler {
      */
     void setTargetSheetState(@SheetState int targetState) {
         mTargetState = targetState;
+    }
+
+    /**
+     * Resolves the active target state if settling, or the current stationary state, falling back
+     * to {@link SheetState#FULL}.
+     */
+    @SheetState
+    int getTargetOrCurrentState() {
+        if (mTargetState != SheetState.NONE && mTargetState != SheetState.SCROLLING) {
+            return mTargetState;
+        }
+        if (mCurrentState != SheetState.NONE && mCurrentState != SheetState.SCROLLING) {
+            return mCurrentState;
+        }
+        return SheetState.FULL;
+    }
+
+    /**
+     * Resolves the effective edge-to-edge bottom inset for the current content and target/current
+     * state. Sheets that cover the bottom controls handle the bottom safe-area inset internally
+     * when expanded (HALF/FULL), so 0 is returned there; in PEEK mode, the full edge-to-edge bottom
+     * inset is still applied.
+     */
+    @Px
+    int getEffectiveEdgeToEdgeBottomInset(@Px int rawE2eBottomInset) {
+        if (mSheetContent == null) return rawE2eBottomInset;
+        return mSheetContent.coversBottomControls() && getTargetOrCurrentState() != SheetState.PEEK
+                ? 0
+                : rawE2eBottomInset;
     }
 
     /**
@@ -911,6 +941,35 @@ class BottomSheetMediator implements TouchHandler {
      */
     void setSheetLayoutMode(@SheetLayoutMode int mode) {
         mModel.set(BottomSheetProperties.SHEET_LAYOUT_MODE, mode);
+    }
+
+    /** Sets whether the device is on a platform that supports a large form factor. */
+    void setIsLargeFormFactor(boolean isLargeFormFactor) {
+        mIsLargeFormFactor = isLargeFormFactor;
+    }
+
+    /** Returns whether the large form factor popup UI is enabled for the current content. */
+    boolean isLargeFormFactorUiEnabled() {
+        if (mSheetContent == null) return false;
+        return mIsLargeFormFactor && mSheetContent.supportsLargeFormFactor();
+    }
+
+    /** Returns whether the large form factor fallback UI is enabled for the current content. */
+    boolean isLargeFormFactorFallbackUiEnabled() {
+        if (mSheetContent == null) return false;
+        return mIsLargeFormFactor && !mSheetContent.supportsLargeFormFactor();
+    }
+
+    /** Resolves the {@link SheetLayoutMode} for the current form factor and sheet content. */
+    @SheetLayoutMode
+    int resolveSheetLayoutMode() {
+        if (isLargeFormFactorUiEnabled()) {
+            return SheetLayoutMode.DESKTOP_POPUP;
+        }
+        if (isLargeFormFactorFallbackUiEnabled()) {
+            return SheetLayoutMode.DESKTOP_FALLBACK;
+        }
+        return SheetLayoutMode.STANDARD;
     }
 
     /**

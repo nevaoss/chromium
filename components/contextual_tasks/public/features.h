@@ -392,6 +392,7 @@ int GetContextualTasksEphemeralButtonAutoDismissTimeMinutes();
 enum class UnifyPinButtonLogoOption {
   kSpark,
   kSuperG,
+  kGraySuperG,
 };
 
 extern const base::FeatureParam<UnifyPinButtonLogoOption>
@@ -404,6 +405,10 @@ bool ShouldUseSparkIconForPinButtons();
 // Returns whether both the toolbar and ephemeral pin buttons should be
 // unified to use the Super G logo.
 bool ShouldUseSuperGIconForPinButtons();
+
+// Returns whether both the toolbar and ephemeral pin buttons should be
+// unified to use the gray (monochrome) Super G logo.
+bool ShouldUseGraySuperGIconForPinButtons();
 
 // UI Options to expand the contextual tasks side panel to tab.
 extern const base::FeatureParam<ExpandButtonOption, true> kExpandButtonOptions;
@@ -629,6 +634,12 @@ extern const base::FeatureParam<bool>
 // menu should show a "Close/Hide side panel" item when active.
 extern bool ShouldShowCloseSidePanelInPinnedButtonContextMenu();
 
+// Whether the active status indicator on the pin button should use a blue
+// highlight for the circle when the side panel is closed instead of a blue icon
+// and underline pill.
+extern const base::FeatureParam<bool>
+    kContextualTasksPinnedButtonActiveIndicatorCircleHighlight;
+extern bool IsContextualTasksPinnedButtonActiveIndicatorCircleHighlightEnabled();
 // Returns whether the pin button in the side panel header is enabled on SRP.
 extern bool IsContextualTasksPinButtonOnSrpEnabled();
 
@@ -706,6 +717,8 @@ extern const char kContextualTasksClobberActiveTabName[];
 extern const char kContextualTasksClobberActiveTabDescription[];
 extern const char kContextualTasksTabBasedSuggestionsName[];
 extern const char kContextualTasksTabBasedSuggestionsDescription[];
+extern const char kContextualTasksSidePanelTabStateName[];
+extern const char kContextualTasksSidePanelTabStateDescription[];
 extern const char kContextualTasksBypassDismissedCapName[];
 extern const char kContextualTasksBypassDismissedCapDescription[];
 extern const char kEphemeralPinningVisibleWhenPermanentlyPinnedName[];

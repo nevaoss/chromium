@@ -4,8 +4,11 @@
 
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_base.h"
 
+#include <algorithm>
+#include <iterator>
 #include <optional>
 #include <string_view>
+#include <vector>
 
 #include "base/functional/bind.h"
 #include "base/memory/ref_counted_memory.h"
@@ -41,6 +44,7 @@
 #include "chrome/grit/contextual_tasks_resources.h"
 #include "chrome/grit/contextual_tasks_resources_map.h"
 #include "chrome/grit/generated_resources.h"
+#include "components/contextual_search/contextual_search_session_handle.h"
 #include "components/contextual_tasks/public/account_utils.h"
 #include "components/contextual_tasks/public/contextual_task.h"
 #include "components/contextual_tasks/public/features.h"
@@ -59,12 +63,14 @@
 #include "extensions/buildflags/buildflags.h"
 #include "google_apis/gaia/gaia_id.h"
 #include "mojo/public/mojom/base/error.mojom.h"
+#include "net/base/url_util.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
 #include "third_party/lens_server_proto/search_communication.pb.h"
 #include "ui/base/device_form_factor.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/base/ui_base_features.h"
+#include "ui/base/webui/resource_path.h"
 #include "ui/base/webui/web_ui_util.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/webui/tracked_element/tracked_element_handler_document_singleton.h"
@@ -142,6 +148,41 @@ GURL GetProfileAvatarUrl(Profile* profile, const GURL& url) {
   return GURL();
 }
 
+bool IsLegacyOnlyContextualTasksResource(std::string_view path) {
+  static constexpr std::string_view kLegacyOnlyPaths[] = {
+      "app.css.js",
+      "app.html.js",
+      "app.js",
+      "banner_promo.css.js",
+      "banner_promo.html.js",
+      "banner_promo.js",
+      "composebox.css.js",
+      "composebox.html.js",
+      "composebox.js",
+      "composebox.mojom-webui.js",
+      "contextual_tasks.html",
+      "contextual_tasks_inner_composebox.css.js",
+      "contextual_tasks_inner_composebox.html.js",
+      "contextual_tasks_inner_composebox.js",
+      "contextual_tasks_inner_composebox_context_menu.html.js",
+      "error_dialog.css.js",
+      "error_dialog.html.js",
+      "error_dialog.js",
+      "error_page.css.js",
+      "error_page.html.js",
+      "error_page.js",
+      "info_tooltip.css.js",
+      "info_tooltip.html.js",
+      "info_tooltip.js",
+      "onboarding_tooltip.css.js",
+      "onboarding_tooltip.html.js",
+      "onboarding_tooltip.js",
+      "web_view_type.js",
+      "window_manager.js",
+  };
+  return std::ranges::contains(kLegacyOnlyPaths, path);
+}
+
 // `WebUIDataSource::SetRequestFilter` only supports a single filter callback
 // pair, so `ShouldHandleContextualTasksRequest` and
 // `HandleContextualTasksRequest` multiplex both `WebUIToolbarLayoutCssHelper`
@@ -179,6 +220,18 @@ void HandleContextualTasksRequest(
     }
   }
   std::move(callback).Run(std::move(png_bytes));
+}
+
+// Returns true if the AI page at `url` has finished streaming a response.
+// Initial AI query navigations commit with `q` and a client `mtid` before the
+// response streams in. The turn token (`mstk`, or `smstk` on shared threads)
+// is appended via a same-document navigation once streaming completes, so its
+// presence is used as the signal that there are active results on the page.
+// TODO(crbug.com/578072477): Replace this query param check with an explicit
+// post message from AIM once one is available to signal streaming completion.
+bool HasActiveAimResults(const GURL& url) {
+  return net::GetValueForKeyInQuery(url, "mstk", nullptr) ||
+         net::GetValueForKeyInQuery(url, "smstk", nullptr);
 }
 
 }  // namespace
@@ -275,11 +328,14 @@ content::WebUIDataSource* ContextualTasksUIBase::RegisterWebUIDataSource(
   if (contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled()) {
     webui::SetJSModuleDefaults(source);
     webui::EnableTrustedTypesCSP(source);
+    std::vector<webui::ResourcePath> resources;
+    resources.reserve(std::size(kContextualTasksResources));
     for (const auto& resource : kContextualTasksResources) {
-      if (std::string_view(resource.path) != "contextual_tasks.html") {
-        source->AddResourcePath(resource.path, resource.id);
+      if (!IsLegacyOnlyContextualTasksResource(resource.path)) {
+        resources.push_back(resource);
       }
     }
+    source->AddResourcePaths(resources);
   } else {
     webui::SetupWebUIDataSource(source, kContextualTasksResources,
                                 IDR_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_HTML);
@@ -644,10 +700,67 @@ void ContextualTasksUIBase::CreateNewThread() {
   SetThreadTitle(std::nullopt);
 }
 
+// Pinning IPH trigger criteria: The pinning IPH should try to trigger when:
+// 1. Results have fully loaded for a contextual query about a tab or PDF
+// 2. The side panel is open & the ephemeral button is showing
+// 3. The user hasn't yet pinned the side panel
+bool ContextualTasksUIBase::CanTriggerPinningPromoForAiPage(
+    const GURL& url,
+    ContextualTasksPanelController* panel_controller) {
+  // 1a. Results have fully loaded (finished streaming).
+  if (!HasActiveAimResults(url) || !panel_controller) {
+    return false;
+  }
+
+  // 1b. Query has tab or PDF context.
+  const bool is_lens_overlay_entry =
+      panel_controller->GetActiveEntrySource() ==
+      ContextualTasksPanelController::EntrySource::kLensOverlay;
+  // Server-committed resources on the task (skipped for Lens Overlay, which
+  // includes the implicit initial Lens upload).
+  if (!is_lens_overlay_entry) {
+    std::optional<ContextualTask> current_task =
+        panel_controller->GetCurrentTask();
+    if (current_task &&
+        std::ranges::any_of(
+            current_task->GetUrlResources(), [](const UrlResource& r) {
+              return r.resource_type == ResourceType::kPdf ||
+                     r.resource_type == ResourceType::kWebpage ||
+                     r.tab_id.has_value() || r.has_chrome_tab_data;
+            })) {
+      return true;
+    }
+  }
+
+  // Fallback: client-side composebox tab/PDF context (before `ContextualTask`
+  // updates, or when manually added in a Lens Overlay session).
+  contextual_search::ContextualSearchSessionHandle* session_handle =
+      panel_controller->GetContextualSearchSessionHandleForPanel();
+  if (!session_handle) {
+    return false;
+  }
+
+  const contextual_search::TabContextState& tab_context =
+      session_handle->GetTabContextState();
+  if ((!is_lens_overlay_entry && !tab_context.restored.empty()) ||
+      std::ranges::any_of(
+          tab_context.attached,
+          [is_lens_overlay_entry](const contextual_search::TabInfo& tab) {
+            return !is_lens_overlay_entry || tab.uploaded ||
+                   tab.pending_delayed_upload;
+          })) {
+    return true;
+  }
+
+  return session_handle->HasPdfContext();
+}
+
 void ContextualTasksUIBase::MaybeTriggerPinningPromo() {
 #if !BUILDFLAG(IS_ANDROID)
+  // Side panel is open & pinning/ephemeral button eligibility is active.
   auto* panel_controller = GetPanelController();
-  if (!panel_controller || !panel_controller->IsPanelOpenForContextualTask()) {
+  if (!panel_controller || !panel_controller->IsPanelOpenForContextualTask() ||
+      panel_controller->IsOnboardingTooltipVisible()) {
     return;
   }
 
@@ -662,18 +775,19 @@ void ContextualTasksUIBase::MaybeTriggerPinningPromo() {
     return;
   }
 
+  // Results have fully loaded for a contextual query about a tab or PDF.
   if (!IsAiPage()) {
     return;
   }
 
-  if (auto* active_contents = panel_controller->GetActiveWebContents()) {
-    if (auto* ui_service = GetUiService();
-        ui_service && ContextualTasksUI::IsZeroState(
-                          active_contents->GetLastCommittedURL(), ui_service)) {
-      return;
-    }
+  auto* active_contents = panel_controller->GetActiveWebContents();
+  if (!active_contents ||
+      !CanTriggerPinningPromoForAiPage(active_contents->GetLastCommittedURL(),
+                                       panel_controller)) {
+    return;
   }
 
+  // User hasn't yet pinned the side panel.
   if (contextual_tasks::GetEffectivePinState(profile)) {
     return;
   }
@@ -685,6 +799,8 @@ void ContextualTasksUIBase::MaybeTriggerPinningPromo() {
     return;
   }
 
+  // Anchored to `kContextualTasksEphemeralToolbarButtonElementId`,
+  // so it only shows if the ephemeral button is visible.
   BrowserWindowInterface* browser_window = GetBrowser();
   if (!browser_window) {
     return;
@@ -761,10 +877,9 @@ ContextualTasksUIBase::GetActiveController() {
   if (!browser) {
     return nullptr;
   }
-  auto* coordinator =
-      contextual_tasks::ContextualTasksSidePanelCoordinator::Get(
-          browser->GetUnownedUserDataHost());
-  return coordinator ? coordinator->permission_controller() : nullptr;
+  auto* controller =
+      contextual_tasks::ContextualTasksPanelController::From(browser);
+  return controller ? controller->permission_controller() : nullptr;
 }
 
 ContextualTasksUIBase* ContextualTasksUIBase::FromWebContents(
@@ -791,9 +906,9 @@ ContextualTasksUIBase* ContextualTasksUIBase::FromWebContents(
 
 void ContextualTasksUIBase::NotifyPermissionDashboardStateChanged(
     ContextualTasksPermissionController* controller) {
-  // Only the active task's chips are on screen. Background tasks keep their
-  // own dashboard state and will be picked up by `GetState()` if and when they
-  // become active.
+  // All tasks in a window share one controller and dashboard, which shows
+  // the active task. Each task's permission data stays on its WebContents and
+  // is re-read on a task switch. Drop updates from any other controller.
   if (!controller || controller != GetActiveController()) {
     return;
   }
@@ -856,15 +971,12 @@ void ContextualTasksUIBase::GetInitialState(GetInitialStateCallback callback) {
   std::move(callback).Run(std::move(initial_state));
 }
 
-// TODO(crbug.com/558848727): Fix race condition where active task changes while
-// IPC is in flight. The WebUI should pass the target task ID (or generation
-// token), and the click should be dropped if the targeted task is no longer
-// active.
 void ContextualTasksUIBase::OnChipClicked(
     toolbar_ui_api::mojom::LhsChipIdentifier identifier,
-    bool is_mouse_interaction) {
+    bool is_mouse_interaction,
+    uint32_t state_token) {
   if (auto* controller = GetActiveController()) {
-    controller->OnChipClicked(identifier, is_mouse_interaction);
+    controller->OnChipClicked(identifier, is_mouse_interaction, state_token);
   }
 }
 
@@ -886,10 +998,18 @@ void ContextualTasksUIBase::OnChipMousePressed(
     toolbar_ui_api::mojom::LhsChipIdentifier identifier) {}
 
 void ContextualTasksUIBase::OnChipPointerEntered(
-    toolbar_ui_api::mojom::LhsChipIdentifier identifier) {}
+    toolbar_ui_api::mojom::LhsChipIdentifier identifier) {
+  if (ContextualTasksPermissionController* controller = GetActiveController()) {
+    controller->OnChipPointerEntered(identifier);
+  }
+}
 
 void ContextualTasksUIBase::OnChipPointerExited(
-    toolbar_ui_api::mojom::LhsChipIdentifier identifier) {}
+    toolbar_ui_api::mojom::LhsChipIdentifier identifier) {
+  if (ContextualTasksPermissionController* controller = GetActiveController()) {
+    controller->OnChipPointerExited(identifier);
+  }
+}
 
 void ContextualTasksUIBase::NotifyAiPageStatusChanged(bool is_ai_page) {
   if (auto* toolbar_page = GetToolbarPageRemote()) {

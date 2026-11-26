@@ -17,6 +17,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/task_traits.h"
+#include "base/types/expected.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/common/extensions/api/image_writer_private.h"
@@ -27,21 +28,29 @@
 #include "chromeos/ash/components/disks/disk_mount_manager.h"
 #endif
 
+#if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/extensions/api/image_writer_private/removable_storage_provider_android.h"
+#include "mojo/public/cpp/bindings/pending_receiver.h"
+#include "mojo/public/cpp/bindings/pending_remote.h"
+#include "mojo/public/cpp/bindings/remote.h"
+#include "services/device/public/mojom/usb_device.mojom-forward.h"
+#include "services/device/public/mojom/usb_manager.mojom-forward.h"
+#endif
+
 namespace image_writer_api = extensions::api::image_writer_private;
 
 namespace base {
 class FilePath;
 }  // namespace base
 
-namespace extensions {
-namespace image_writer {
+namespace extensions::image_writer {
 
 inline constexpr int kProgressComplete = 100;
 
 class OperationManager;
 class ZstdExtractor;
 
-#if !BUILDFLAG(IS_CHROMEOS)
+#if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_ANDROID)
 class ImageWriterUtilityClient;
 #endif
 
@@ -94,6 +103,24 @@ class Operation : public base::RefCountedThreadSafe<Operation> {
   // Posts `task` to Operation's `task_runner_`.
   void PostTask(base::OnceClosure task);
 
+#if BUILDFLAG(IS_ANDROID)
+  class UsbSession {
+   public:
+    using CompletionCallback =
+        base::OnceCallback<void(base::expected<void, std::string>)>;
+
+    virtual ~UsbSession() = default;
+    virtual void Start(CompletionCallback callback) = 0;
+  };
+
+  using UsbDeviceManagerBinder = base::RepeatingCallback<void(
+      mojo::PendingReceiver<device::mojom::UsbDeviceManager>)>;
+
+  void SetUsbDeviceManagerBinderForTesting(UsbDeviceManagerBinder binder) {
+    usb_binder_ = std::move(binder);
+  }
+#endif
+
  protected:
   virtual ~Operation();
 
@@ -104,6 +131,10 @@ class Operation : public base::RefCountedThreadSafe<Operation> {
   // This function should be overriden by subclasses to set up the work of the
   // operation.  It will be called from Start().
   virtual void StartImpl() = 0;
+
+  // Returns true if `Write()` over USB Mass Storage should also zero the backup
+  // GPT header and partition entries at the end of the disk.
+  virtual bool ShouldWipeBackupGpt() const;
 
   // Extracts the current file if it's an archive.  The current_file will be set
   // to the extracted file.
@@ -168,7 +199,7 @@ class Operation : public base::RefCountedThreadSafe<Operation> {
   friend class ImageWriterUtilityClientTest;
   friend class WriteFromUrlOperationForTest;
 
-#if !BUILDFLAG(IS_CHROMEOS)
+#if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_ANDROID)
   // Ensures the client is started.  This may be called many times but will only
   // instantiate one client which should exist for the lifetime of the
   // Operation.
@@ -204,6 +235,21 @@ class Operation : public base::RefCountedThreadSafe<Operation> {
   void OnBurnError();
 #endif
 
+#if BUILDFLAG(IS_ANDROID)
+  void ConnectToUsbDevice(ParsedDeviceId device_id,
+                          base::OnceClosure continuation);
+  void OnUsbManagerDisconnected();
+  void OnUsbDeviceInfoRefreshed(ParsedDeviceId device_id,
+                                base::OnceClosure continuation,
+                                device::mojom::UsbDeviceInfoPtr info);
+  void OnUsbDeviceConnected(
+      base::OnceClosure continuation,
+      const UsbMassStorageEndpoints& endpoints,
+      mojo::PendingRemote<device::mojom::UsbDevice> device_remote);
+  void OnUsbBotSessionFinished(base::OnceClosure continuation,
+                               base::expected<void, std::string> result);
+#endif
+
   // Incrementally calculates the MD5 sum of a file.
   void MD5Chunk(base::File file,
                 crypto::obsolete::Md5 md5,
@@ -230,8 +276,8 @@ class Operation : public base::RefCountedThreadSafe<Operation> {
 
   // `stage_` and `progress_` are owned by the FILE thread, use `SetStage` and
   // `SetProgress` to update.  Progress should be in the interval [0,100]
-  image_writer_api::Stage stage_;
-  int progress_;
+  image_writer_api::Stage stage_ = image_writer_api::Stage::kUnknown;
+  int progress_ = 0;
 
   // Cleanup operations that must be run.  All these functions are run on
   // `task_runner_`.
@@ -258,9 +304,20 @@ class Operation : public base::RefCountedThreadSafe<Operation> {
   // Sequenced task runner where all I/O operation will be performed.
   // Most of the methods of this class run in this task runner.
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
+
+#if BUILDFLAG(IS_ANDROID)
+  UsbDeviceManagerBinder usb_binder_;
+  // `usb_manager_` and `usb_session_` are created, used, and reset exclusively
+  // on `task_runner_`. `CleanUp()` (called on `task_runner_` by `Error()`,
+  // `Cancel()`, and `Abort()`, including `OperationManager::Shutdown()`) resets
+  // both before `this` can be destroyed, and `~Operation()` hands them to
+  // `task_runner_->DeleteSoon()`. Their callbacks therefore safely bind
+  // `base::Unretained(this)`.
+  std::unique_ptr<mojo::Remote<device::mojom::UsbDeviceManager>> usb_manager_;
+  std::unique_ptr<UsbSession> usb_session_;
+#endif
 };
 
-}  // namespace image_writer
-}  // namespace extensions
+}  // namespace extensions::image_writer
 
 #endif  // CHROME_BROWSER_EXTENSIONS_API_IMAGE_WRITER_PRIVATE_OPERATION_H_

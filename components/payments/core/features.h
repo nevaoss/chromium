@@ -39,10 +39,6 @@ BASE_DECLARE_FEATURE(kDelayNativePaymentAppScrimShow);
 // Used to reject the apps with partial delegation.
 BASE_DECLARE_FEATURE(kEnforceFullDelegation);
 
-// If enabled, the GooglePayPaymentApp handles communications between the native
-// GPay app and the browser for dynamic updates on shipping and payment data.
-BASE_DECLARE_FEATURE(kGPayAppDynamicUpdate);
-
 // Approach for discovering available Secure Payment Confirmation credentials.
 // Different platforms use different approaches, due to differing capabilities
 // of the authenticators in use by SPC.
@@ -123,6 +119,11 @@ BASE_DECLARE_FEATURE(kPaymentHandlerModalDialogHost);
 // Used to enforce Local Network Access (LNA) for payment requests by setting
 // the client security state on the resource request.
 BASE_DECLARE_FEATURE(kPaymentRequestEnforceLNAWithClientSecurityState);
+
+// Used to control whether user-initiated browser reloads on non-error
+// documents reset the once-per-navigation activationless PaymentRequest.show()
+// allowance.
+BASE_DECLARE_FEATURE(kPaymentRequestResetActivationlessShowOnReload);
 
 }  // namespace features
 }  // namespace payments

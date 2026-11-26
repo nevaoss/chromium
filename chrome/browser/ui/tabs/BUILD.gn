@@ -500,8 +500,6 @@ if (!is_android) {
       "//ui/views",
       "//url",
     ]
-
-    allow_circular_includes_from = [ ":tab_group" ]
   }
 
   source_set("impl") {
@@ -604,6 +602,7 @@ if (!is_android) {
       "//chrome/browser/preloading/new_tab_page_preload",
       "//chrome/browser/preloading/prefetch:zero_suggest_prefetch",
       "//chrome/browser/preloading/prefetch/no_state_prefetch",
+      "//chrome/browser/preloading/prerender",
       "//chrome/browser/profiles",
       "//chrome/browser/profiles:profile",
       "//chrome/browser/profiles:profile_manager",
@@ -895,6 +894,8 @@ if (!is_android) {
       "mock_vertical_tab_strip_state_controller.h",
       "pinned_tab_test_utils.cc",
       "pinned_tab_test_utils.h",
+      "recent_tabs_builder_test_helper.cc",
+      "recent_tabs_builder_test_helper.h",
       "tab_activity_simulator.cc",
       "tab_activity_simulator.h",
       "tab_strip_model_test_utils.cc",
@@ -909,6 +910,7 @@ if (!is_android) {
 
     public_deps = [
       "//chrome/browser/ui/startup:startup_tab",
+      "//components/sessions:session_id",
       "//components/ukm:test_support",
       "//ui/base",
     ]
@@ -921,6 +923,8 @@ if (!is_android) {
       "//chrome/browser/glic",
       "//chrome/browser/profiles:profile",
       "//chrome/browser/ui/tab_contents",
+      "//components/sync:test_support",
+      "//components/sync_sessions",
       "//content/public/browser",
       "//content/test:test_support",
       "//services/metrics/public/cpp:metrics_cpp",
@@ -940,8 +944,6 @@ if (!is_android) {
       "other_device_tabs_sub_menu_model_browsertest.cc",
       "pinned_tab_codec_browsertest.cc",
       "pinned_tab_service_browsertest.cc",
-      "recent_tabs_builder_test_helper.cc",
-      "recent_tabs_builder_test_helper.h",
       "recent_tabs_sub_menu_model_browsertest.cc",
       "tab_attachment_tracker_browsertest.cc",
       "tab_creation_metrics_controller_browsertest.cc",
@@ -985,6 +987,7 @@ if (!is_android) {
       "//chrome/browser/ui/thumbnails",
       "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/views/send_tab_to_self",
+      "//chrome/browser/ui/views/toolbar:test_support",
       "//chrome/browser/web_applications",
       "//chrome/browser/web_applications:prevent_close_test_support",
       "//chrome/browser/web_applications:web_applications_test_support",
@@ -1144,9 +1147,13 @@ if (!is_android) {
       "//testing/gtest",
       "//third_party/omnibox_proto",
       "//ui/base",
+      "//ui/base:test_support",
       "//ui/gfx",
       "//ui/views",
       "//url",
     ]
+    if (is_chromeos) {
+      deps += [ "//chrome/browser/lifetime" ]
+    }
   }
 }

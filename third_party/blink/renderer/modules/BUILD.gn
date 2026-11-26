@@ -90,6 +90,7 @@ component("modules") {
     "//third_party/blink/renderer/modules/delegated_ink",
     "//third_party/blink/renderer/modules/device_orientation",
     "//third_party/blink/renderer/modules/device_posture",
+    "//third_party/blink/renderer/modules/deviceboundsessions",
     "//third_party/blink/renderer/modules/dictation",
     "//third_party/blink/renderer/modules/document_metadata",
     "//third_party/blink/renderer/modules/document_picture_in_picture",
@@ -362,7 +363,7 @@ action_with_pydeps("modules_event_interfaces") {
 make_event_factory("make_modules_generated_event_factory") {
   in_files = [ "$blink_modules_output_dir/event_interface_modules_names.json5" ]
   outputs = [ "$blink_modules_output_dir/event_modules_factory.cc" ]
-  deps = make_core_generated_deps + [ ":modules_event_interfaces" ]
+  deps = [ ":modules_event_interfaces" ]
 }
 
 # make_names -------------------------------------------------------------------
@@ -370,7 +371,7 @@ make_event_factory("make_modules_generated_event_factory") {
 make_names("make_modules_generated_event_names") {
   in_files = [ "$blink_modules_output_dir/event_interface_modules_names.json5" ]
   output_dir = blink_modules_output_dir
-  deps = make_core_generated_deps + [ ":modules_event_interfaces" ]
+  deps = [ ":modules_event_interfaces" ]
 }
 
 make_names("make_modules_generated_event_target_names") {
@@ -381,7 +382,6 @@ make_names("make_modules_generated_event_target_names") {
 make_names("make_modules_generated_indexed_db_names") {
   in_files = [ "indexeddb/indexed_db_names.json5" ]
   output_dir = blink_modules_output_dir
-  deps = []  # Don't use default deps (otherwise it will be circular).
 }
 
 blink_modules_sources("modules_generated") {
@@ -475,6 +475,7 @@ source_set("unit_tests") {
     "delegated_ink/delegated_ink_trail_presenter_unittest.cc",
     "device_orientation/device_motion_event_pump_unittest.cc",
     "device_orientation/device_orientation_event_pump_unittest.cc",
+    "deviceboundsessions/device_bound_session_registration_observer_test.cc",
     "dictation/dictation_agent_impl_test.cc",
     "document_metadata/document_metadata_extractor_test.cc",
     "document_metadata/document_metadata_server_test.cc",

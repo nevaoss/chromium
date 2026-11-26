@@ -183,6 +183,7 @@
 #include "components/contextual_tasks/public/features.h"
 #include "components/custom_handlers/protocol_handler.h"
 #include "components/download/public/common/download_url_parameters.h"
+#include "components/feature_engagement/public/feature_constants.h"
 #include "components/google/core/common/google_util.h"
 #include "components/guest_view/browser/guest_view_base.h"
 #include "components/language/core/browser/language_model_manager.h"
@@ -1354,12 +1355,21 @@ void RenderViewContextMenu::InitMenu() {
       AppendLensGeminiSection();
     }
   } else {
+    const bool glic_below_search =
+        base::FeatureList::IsEnabled(features::kGlicContextMenuBelowSearch);
+    if (!glic_below_search &&
+        content_type_->SupportsGroup(
+            ContextMenuContentType::ITEM_GROUP_GLICSHAREIMAGE)) {
+      AppendGlicShareImageItem();
+    }
+
     if (content_type_->SupportsGroup(
             ContextMenuContentType::ITEM_GROUP_SEARCHWEBFORIMAGE)) {
       AppendSearchWebForImageItems();
     }
 
-    if (content_type_->SupportsGroup(
+    if (glic_below_search &&
+        content_type_->SupportsGroup(
             ContextMenuContentType::ITEM_GROUP_GLICSHAREIMAGE)) {
       AppendGlicShareImageItem();
     }
@@ -2321,6 +2331,10 @@ void RenderViewContextMenu::AppendOpenInWebAppLinkItems() {
       GetBrowser() ? web_app::AppBrowserController::From(GetBrowser())
                    : nullptr;
   if (app_controller && app_controller->app_id() == *link_app_id) {
+    // Prevent-close apps cannot open another window or navigate this one.
+    if (app_controller->IsPreventCloseEnabled()) {
+      return;
+    }
     if (provider->registrar_unsafe().IsTabbedWindowModeEnabled(*link_app_id)) {
       if (app_controller->IsUrlInHomeTabScope(params_.link_url)) {
         // Clicking on a link captured in the home tab will always focus and/or
@@ -2428,7 +2442,7 @@ void RenderViewContextMenu::AppendGlicShareImageItem() {
   if (tab) {
     menu_model_.AddItemWithIcon(
         IDC_CONTENT_CONTEXT_GLICSHAREIMAGE,
-        l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_GLICSHAREIMAGE),
+        l10n_util::GetStringUTF16(IDS_GLIC_BUTTON_ENTRYPOINT_ASK_GEMINI_LABEL),
         ui::ImageModel::FromVectorIcon(
             glic::GlicVectorIconManager::GetVectorIcon(
                 IDR_GLIC_BUTTON_VECTOR_ICON),
@@ -5028,9 +5042,23 @@ void RenderViewContextMenu::ExecOpenWebApp() {
     return;
   }
 
+  WindowOpenDisposition disposition = WindowOpenDisposition::kCurrentTab;
+  if (web_app::AppBrowserController::IsForWebApp(GetBrowser(), *app_id)) {
+    // This is safe because this is read-only and IsTabbedWindowModeEnabled
+    // handles edge-case states by returning false.
+    const auto& registrar =
+        web_app::WebAppProvider::GetForLocalAppsUnchecked(GetProfile())
+            ->registrar_unsafe();
+    if (!registrar.IsTabbedWindowModeEnabled(*app_id)) {
+      // The same-app menu item explicitly promises a new window. Do not let
+      // focus-existing or navigate-existing reuse the source window.
+      // WebAppLaunchProcess enforces prevent-close for all launch callers.
+      disposition = WindowOpenDisposition::kNewWindow;
+    }
+  }
   apps::AppLaunchParams launch_params(
-      *app_id, apps::LaunchContainer::kLaunchContainerWindow,
-      WindowOpenDisposition::kCurrentTab, apps::LaunchSource::kFromMenu);
+      *app_id, apps::LaunchContainer::kLaunchContainerWindow, disposition,
+      apps::LaunchSource::kFromMenu);
   launch_params.override_url = params_.link_url;
   // Forwarding `params_.frame_origin`, `params_.frame_url.GetAsReferrer()`, and
   // `params_.referrer_policy` directly mirrors
@@ -5375,6 +5403,11 @@ void RenderViewContextMenu::ExecIndigo() {
           tabs::TabInterface::MaybeGetFromContents(source_web_contents_))) {
     UserEducationService::MaybeNotifyNewBadgeFeatureUsed(
         GetBrowserContext(), features::kIndigoContextMenu);
+    if (auto* user_ed = BrowserUserEducationInterface::From(GetBrowser())) {
+      user_ed->NotifyFeaturePromoFeatureUsed(
+          feature_engagement::kIPHIndigoContextMenuToastFeature,
+          FeaturePromoFeatureUsedAction::kClosePromoIfPresent);
+    }
     indigo::RecordContextMenuTargetType(
         content_type_->SupportsGroup(
             ContextMenuContentType::ITEM_GROUP_MEDIA_IMAGE)
@@ -6247,7 +6280,8 @@ bool RenderViewContextMenu::CanAppendRegionSearchItem() const {
 }
 
 bool RenderViewContextMenu::CanAppendGlicShareImageItem() const {
-  if (!IsNormalBrowser()) {
+  if (!IsNormalBrowser() || glic_item_shown_ ||
+      !params_.selection_text.empty()) {
     return false;
   }
 
@@ -6310,13 +6344,18 @@ void RenderViewContextMenu::AppendLensGeminiSection() {
 
   menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
 
+  const bool glic_below_search =
+      base::FeatureList::IsEnabled(features::kGlicContextMenuBelowSearch);
+  if (!glic_below_search && can_glic) {
+    AppendGlicShareImageItem();
+  }
   if (can_region) {
     AppendRegionSearchItem();
   }
   if (can_image_search) {
     AppendSearchWebForImageItems();
   }
-  if (can_glic) {
+  if (glic_below_search && can_glic) {
     AppendGlicShareImageItem();
   }
   if (can_indigo) {

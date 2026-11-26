@@ -468,12 +468,12 @@ BASE_FEATURE(kAutofillAmbientAutofillSuppression,
 // new behavior and design.
 // TODO(crbug.com/438125774): Remove when launched.
 BASE_FEATURE(kAutofillAndroidDesktopKeyboardAccessoryRevamp,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, on Android desktop, Autofill keyboard accessory will be
 // suppressed when there are no autofill suggestions.
 BASE_FEATURE(kAutofillAndroidDesktopSuppressAccessoryOnEmpty,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether user tap on an element is needed to show autofill
 // suggestions. If enabled, this flag would disable android autofill suggestions
@@ -500,7 +500,7 @@ BASE_FEATURE(kAutofillAndroidHideSuggestionsOnContextMenu,
 // desktops.
 // TODO(crbug.com/438125774): Remove when launched.
 BASE_FEATURE(kAutofillAndroidKeyboardAccessoryDynamicPositioning,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
 // If enabled, on Android, hovering over an Autofill suggestion in the keyboard
@@ -840,6 +840,12 @@ BASE_FEATURE(kAutofillGmailOtpPreLaunchMetrics,
 
 // When enabled, Greek regexes are used for parsing in branded builds.
 BASE_FEATURE(kAutofillGreekRegexes, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Kill switch for guarding against offering an address update prompt when there
+// are no UI-visible differences (e.g. only whitespace or formatting changes
+// normalized away by `GetEnvelopeStyleAddress()`).
+BASE_FEATURE(kAutofillGuardEmptyUpdatePrompts,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, `BrowserAutofillManager` hides suggestions as soon as the
 // renderer reports that the focus moved away from the field the suggestions

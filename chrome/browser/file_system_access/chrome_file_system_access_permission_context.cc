@@ -484,6 +484,25 @@ GenerateBlockPaths(bool should_normalize_file_path) {
                                 BlockType::kBlockAllChildren),
       BlockPath::CreateRelative(base::DIR_HOME, FILE_PATH_LITERAL(".zlogin"),
                                 BlockType::kBlockAllChildren),
+      // Vim startup directories and files in the home directory, including the
+      // ones read by Git for Windows' bundled Vim and native Windows Vim, see
+      // crbug.com/578510310.
+      BlockPath::CreateRelative(base::DIR_HOME, FILE_PATH_LITERAL(".vim"),
+                                BlockType::kBlockAllChildren),
+      BlockPath::CreateRelative(base::DIR_HOME, FILE_PATH_LITERAL("vimfiles"),
+                                BlockType::kBlockAllChildren),
+      BlockPath::CreateRelative(base::DIR_HOME, FILE_PATH_LITERAL(".vimrc"),
+                                BlockType::kBlockAllChildren),
+      BlockPath::CreateRelative(base::DIR_HOME, FILE_PATH_LITERAL("_vimrc"),
+                                BlockType::kBlockAllChildren),
+      BlockPath::CreateRelative(base::DIR_HOME, FILE_PATH_LITERAL(".gvimrc"),
+                                BlockType::kBlockAllChildren),
+      BlockPath::CreateRelative(base::DIR_HOME, FILE_PATH_LITERAL("_gvimrc"),
+                                BlockType::kBlockAllChildren),
+      BlockPath::CreateRelative(base::DIR_HOME, FILE_PATH_LITERAL(".exrc"),
+                                BlockType::kBlockAllChildren),
+      BlockPath::CreateRelative(base::DIR_HOME, FILE_PATH_LITERAL("_exrc"),
+                                BlockType::kBlockAllChildren),
       // Block write access to */.git/hooks, see crbug.com/465668234 and
       // crbug.com/553115714.
       BlockPath::CreateSuffix(FILE_PATH_LITERAL(".git/hooks"),
@@ -494,6 +513,11 @@ GenerateBlockPaths(bool should_normalize_file_path) {
       BlockPath::CreateSuffix(FILE_PATH_LITERAL(".git/config"),
                               BlockType::kBlockWrite),
       BlockPath::CreateSuffix(FILE_PATH_LITERAL(".git/modules"),
+                              BlockType::kBlockWrite),
+      // Block write access to */.mvn, which holds Maven project and JVM
+      // configuration (such as jvm.config, maven.config, and extensions.xml),
+      // see crbug.com/578500839.
+      BlockPath::CreateSuffix(FILE_PATH_LITERAL(".mvn"),
                               BlockType::kBlockWrite),
 #if BUILDFLAG(IS_WIN)
       // Some Windows specific directories to block, basically all apps, the
@@ -578,6 +602,11 @@ GenerateBlockPaths(bool should_normalize_file_path) {
       BlockPath::CreateAbsolute(FILE_PATH_LITERAL("/boot"),
                                 BlockType::kBlockAllChildren),
       BlockPath::CreateAbsolute(FILE_PATH_LITERAL("/etc"),
+                                BlockType::kBlockAllChildren),
+      // And runtime data in /run, including per-session runtime directories
+      // (/run/user/<uid>, the default $XDG_RUNTIME_DIR), see
+      // crbug.com/577376424.
+      BlockPath::CreateAbsolute(FILE_PATH_LITERAL("/run"),
                                 BlockType::kBlockAllChildren),
       // Block ~/.dbus as well, just in case, although there probably isn't much
       // a website can do with access to that directory and its contents.
@@ -1281,6 +1310,7 @@ class ChromeFileSystemAccessPermissionContext::PermissionGrantImpl
   void SetStatus(PermissionStatus new_status,
                  PersistedPermissionOptions update_options) {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    scoped_refptr<PermissionGrantImpl> self(this);
 
     auto permission_changed = status_ != new_status;
     status_ = new_status;
@@ -1384,7 +1414,8 @@ class ChromeFileSystemAccessPermissionContext::PermissionGrantImpl
       return;
     }
 
-    auto* const grant_to_move = old_path_it->second.get();
+    scoped_refptr<PermissionGrantImpl> grant_to_move =
+        old_path_it->second.get();
 
     if (allow_overwrite) {
       // Check for a collision at the new path. If a different grant already
@@ -1409,10 +1440,13 @@ class ChromeFileSystemAccessPermissionContext::PermissionGrantImpl
       // pass regardless of destruction order.
       auto new_path_it = grants.find(new_path.path);
       if (new_path_it != grants.end() &&
-          new_path_it->second.get() != grant_to_move) {
+          new_path_it->second.get() != grant_to_move.get()) {
         // A different grant exists at the destination. Revoke it before it gets
         // orphaned.
-        new_path_it->second->SetStatus(
+        scoped_refptr<PermissionGrantImpl> grant_to_revoke =
+            new_path_it->second.get();
+        grants.erase(new_path_it);
+        grant_to_revoke->SetStatus(
             PermissionStatus::DENIED,
             // Only update the in-memory permission, as the persistent
             // permission should be updated by the call site.
@@ -1420,18 +1454,19 @@ class ChromeFileSystemAccessPermissionContext::PermissionGrantImpl
       }
     }
 
-    grant_to_move->SetPath(new_path);
-
     // `insert_or_assign` is used when overwriting is allowed, as it will
     // replace any grant that already exists at the destination path. `emplace`
     // is used otherwise to preserve the old behavior of not overwriting
-    // existing grants.
-    grants.erase(old_path_it);
+    // existing grants. Update `grants` before `SetPath()` notifies observers,
+    // which may destroy the last external reference to `grant_to_move`.
+    grants.erase(old_path.path);
     if (allow_overwrite) {
-      grants.insert_or_assign(new_path.path, grant_to_move);
+      grants.insert_or_assign(new_path.path, grant_to_move.get());
     } else {
-      grants.emplace(new_path.path, grant_to_move);
+      grants.emplace(new_path.path, grant_to_move.get());
     }
+
+    grant_to_move->SetPath(new_path);
   }
 
   // Downgrades the in-memory read permission grant. This is different from
@@ -1948,27 +1983,28 @@ ChromeFileSystemAccessPermissionContext::GetReadPermissionGrant(
   // operator[] might insert a new OriginState in |active_permissions_map_|,
   // but that is exactly what we want.
   auto& origin_state = active_permissions_map_[origin];
-  auto& existing_grant = origin_state.read_grants[path_info.path];
-  scoped_refptr<PermissionGrantImpl> grant;
+  auto existing_grant_it = origin_state.read_grants.find(path_info.path);
+  scoped_refptr<PermissionGrantImpl> grant =
+      existing_grant_it != origin_state.read_grants.end()
+          ? existing_grant_it->second.get()
+          : nullptr;
 
-  if (existing_grant && existing_grant->handle_type() != handle_type) {
+  if (grant && grant->handle_type() != handle_type) {
     // |path| changed from being a directory to being a file or vice versa,
     // don't just re-use the existing grant but revoke the old grant before
     // creating a new grant.
-    existing_grant->SetStatus(
-        PermissionStatus::DENIED,
-        PersistedPermissionOptions::kUpdatePersistedPermission);
-    existing_grant = nullptr;
+    origin_state.read_grants.erase(existing_grant_it);
+    grant->SetStatus(PermissionStatus::DENIED,
+                     PersistedPermissionOptions::kUpdatePersistedPermission);
+    grant.reset();
   }
 
-  bool creating_new_grant = !existing_grant;
+  bool creating_new_grant = !grant;
   if (creating_new_grant) {
     grant = base::MakeRefCounted<PermissionGrantImpl>(
         weak_factory_.GetWeakPtr(), origin, path_info, handle_type,
         GrantType::kRead, access_trigger);
-    existing_grant = grant.get();
-  } else {
-    grant = existing_grant;
+    origin_state.read_grants[path_info.path] = grant.get();
   }
 
   const ContentSetting content_setting = GetReadGuardContentSetting(origin);
@@ -2042,27 +2078,28 @@ ChromeFileSystemAccessPermissionContext::GetWritePermissionGrant(
   // operator[] might insert a new OriginState in |active_permissions_map_|,
   // but that is exactly what we want.
   auto& origin_state = active_permissions_map_[origin];
-  auto& existing_grant = origin_state.write_grants[path_info.path];
-  scoped_refptr<PermissionGrantImpl> grant;
+  auto existing_grant_it = origin_state.write_grants.find(path_info.path);
+  scoped_refptr<PermissionGrantImpl> grant =
+      existing_grant_it != origin_state.write_grants.end()
+          ? existing_grant_it->second.get()
+          : nullptr;
 
-  if (existing_grant && existing_grant->handle_type() != handle_type) {
+  if (grant && grant->handle_type() != handle_type) {
     // |path| changed from being a directory to being a file or vice versa,
     // don't just re-use the existing grant but revoke the old grant before
     // creating a new grant.
-    existing_grant->SetStatus(
-        PermissionStatus::DENIED,
-        PersistedPermissionOptions::kUpdatePersistedPermission);
-    existing_grant = nullptr;
+    origin_state.write_grants.erase(existing_grant_it);
+    grant->SetStatus(PermissionStatus::DENIED,
+                     PersistedPermissionOptions::kUpdatePersistedPermission);
+    grant.reset();
   }
 
-  bool creating_new_grant = !existing_grant;
+  bool creating_new_grant = !grant;
   if (creating_new_grant) {
     grant = base::MakeRefCounted<PermissionGrantImpl>(
         weak_factory_.GetWeakPtr(), origin, path_info, handle_type,
         GrantType::kWrite, access_trigger);
-    existing_grant = grant.get();
-  } else {
-    grant = existing_grant;
+    origin_state.write_grants[path_info.path] = grant.get();
   }
 
   const ContentSetting content_setting = GetWriteGuardContentSetting(origin);
@@ -2482,7 +2519,10 @@ void ChromeFileSystemAccessPermissionContext::CheckPathAgainstBlocklist(
   // The only check for content-URIs is that they are not from an internal
   // FileProvider.
   if (path_info.path.IsContentUri()) {
-    std::move(callback).Run(base::IsContentUriFromThisApp(path_info.path));
+    base::ContentUriOwner owner = base::ResolveContentUriOwner(path_info.path);
+    std::move(callback).Run(
+        owner == base::ContentUriOwner::kExportedFromCurrentApp ||
+        owner == base::ContentUriOwner::kNonExportedFromCurrentApp);
     return;
   }
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -2963,12 +3003,17 @@ void ChromeFileSystemAccessPermissionContext::NotifyEntryRemoved(
     updated = true;
 
     // Revoke active read grants for the removed entry and its descendants.
-    for (auto& [grant_path, grant] : origin_state.read_grants) {
+    for (auto grant_iter = origin_state.read_grants.begin(),
+              grant_end = origin_state.read_grants.end();
+         grant_iter != grant_end;) {
+      // The grant may be removed from `read_grants`, so increase the iterator
+      // before continuing.
+      auto& [grant_path, grant] = *(grant_iter++);
       if (!is_path_or_descendant(grant_path)) {
         continue;
       }
-      grant->DowngradeActiveReadGrant();
       origin_state.downgraded_read_paths.insert(grant_path);
+      grant->DowngradeActiveReadGrant();
     }
   }
 
@@ -3514,17 +3559,21 @@ void ChromeFileSystemAccessPermissionContext::
                            ? HandleType::kDirectory
                            : HandleType::kFile;
     if (object_dict.FindBool(kPermissionReadableKey).value_or(false)) {
-      auto& read_grant = it->second.read_grants[path];
-      if (read_grant && read_grant->handle_type() == handle_type) {
-        read_grant->SetStatus(
+      auto read_grant_it = it->second.read_grants.find(path);
+      if (read_grant_it != it->second.read_grants.end() &&
+          read_grant_it->second &&
+          read_grant_it->second->handle_type() == handle_type) {
+        read_grant_it->second->SetStatus(
             PermissionStatus::GRANTED,
             PersistedPermissionOptions::kDoNotUpdatePersistedPermission);
       }
     }
     if (object_dict.FindBool(kPermissionWritableKey).value_or(false)) {
-      auto& write_grant = it->second.write_grants[path];
-      if (write_grant && write_grant->handle_type() == handle_type) {
-        write_grant->SetStatus(
+      auto write_grant_it = it->second.write_grants.find(path);
+      if (write_grant_it != it->second.write_grants.end() &&
+          write_grant_it->second &&
+          write_grant_it->second->handle_type() == handle_type) {
+        write_grant_it->second->SetStatus(
             PermissionStatus::GRANTED,
             PersistedPermissionOptions::kDoNotUpdatePersistedPermission);
       }
@@ -4087,6 +4136,7 @@ void ChromeFileSystemAccessPermissionContext::UpdatePageAction(
   CHECK(controller);
   controller->UpdateVisibility();
 }
+#endif
 
 bool ChromeFileSystemAccessPermissionContext::
     IsPathInDowngradedReadPathsForTesting(const url::Origin& origin,
@@ -4097,4 +4147,3 @@ bool ChromeFileSystemAccessPermissionContext::
   }
   return it->second.downgraded_read_paths.contains(path);
 }
-#endif

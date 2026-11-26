@@ -10,13 +10,17 @@ import '/strings.m.js';
 import '//resources/cr_components/composebox/composebox_voice_search.js';
 import '//resources/cr_components/most_visited/most_visited.js';
 import '//resources/cr_components/search/animated_glow.js';
+import '//resources/cr_elements/cr_icon/cr_icon.js';
+import '//resources/cr_elements/icons.html.js';
 
+import {ColorChangeUpdater} from '//resources/cr_components/color_change_listener/colors_css_updater.js';
 import type {ComposeboxState} from '//resources/cr_components/composebox/common.js';
 import type {ComposeboxVoiceSearchElement, VoicePermissionPromptState} from '//resources/cr_components/composebox/composebox_voice_search.js';
 import {browserProxyFactory} from '//resources/cr_components/most_visited/most_visited.mojom-webui.js';
 import type {MostVisitedInfo} from '//resources/cr_components/most_visited/most_visited.mojom-webui.js';
 import type {SearchAnimatedGlowElement} from '//resources/cr_components/search/animated_glow.js';
 import {SearchboxBrowserProxy} from '//resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {I18nMixinLit} from '//resources/cr_elements/i18n_mixin_lit.js';
 import {EventTracker} from '//resources/js/event_tracker.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import {getDeepActiveElement} from '//resources/js/util.js';
@@ -52,7 +56,10 @@ export interface OmniboxEverywhereAppElement {
   };
 }
 
-export class OmniboxEverywhereAppElement extends CrLitElement {
+const OmniboxEverywhereAppElementBase = I18nMixinLit(CrLitElement);
+
+export class OmniboxEverywhereAppElement extends
+    OmniboxEverywhereAppElementBase {
   static get is() {
     return 'omnibox-everywhere-app';
   }
@@ -192,8 +199,14 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
   private wasJustActivated_ = false;
   private activationTimeoutId_: number|null = null;
 
+  constructor() {
+    super();
+    ColorChangeUpdater.forDocument().start();
+  }
+
   override connectedCallback() {
     super.connectedCallback();
+    ColorChangeUpdater.forDocument().refreshColorsCss();
     this.isActive_ = !this.isPersistentMode_ || document.hasFocus();
     this.eventTracker_.add(window, 'focus', this.onWindowFocus_.bind(this));
     this.eventTracker_.add(window, 'blur', this.onWindowBlur_.bind(this));
@@ -446,6 +459,12 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
       return 5;
     }
     return (this.dynamicSizing_ && this.dynamicSizingWidth_ === 600) ? 6 : 7;
+  }
+
+  protected onMostVisitedCloseClick_() {
+    this.hasMostVisitedTiles_ = false;
+    OmniboxEverywhereBrowserProxyImpl.getInstance()
+        .handler.onDismissMostVisited();
   }
 
   private setIsComposebox_(isComposebox: boolean) {

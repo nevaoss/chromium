@@ -14,7 +14,6 @@
 #import "base/ios/block_types.h"
 #import "base/task/sequenced_task_runner.h"
 #import "components/feature_engagement/public/tracker.h"
-#import "components/ntp_tiles/features.h"
 #import "ios/chrome/browser/content_suggestions/magic_stack/public/magic_stack_constants.h"
 #import "ios/chrome/browser/content_suggestions/magic_stack/ui/magic_stack_collection_view.h"
 #import "ios/chrome/browser/content_suggestions/public/ntp_home_constants.h"
@@ -52,8 +51,6 @@
 #import "ios/chrome/common/ui/util/constraints_ui_util.h"
 #import "ios/chrome/common/ui/util/ui_util.h"
 #import "ui/base/device_form_factor.h"
-
-using ntp_tiles::AimButtonRefactorArm;
 
 namespace {
 
@@ -261,8 +258,8 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
   [_quickActionsViewController setAIMTitle:_aimTitle
                                       icon:_aimIcon
                         accessibilityLabel:_aimAccessibilityLabel];
-  if (ntp_tiles::GetAimButtonRefactorArm() ==
-      ntp_tiles::AimButtonRefactorArm::kImageGenerationQuickAction) {
+  if (GetAimButtonRefactorArm() ==
+      AimButtonRefactorArm::kImageGenerationQuickAction) {
     [_quickActionsViewController
         setAIMImageGenerationAllowed:_aimImageGenerationAllowed];
   }
@@ -938,15 +935,14 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
 
 - (void)setAIMAllowed:(BOOL)allowed {
   _isAIMAllowed = allowed;
-  if (ntp_tiles::GetAimButtonRefactorArm() ==
-      ntp_tiles::AimButtonRefactorArm::kAimAsModule) {
+  if (GetAimButtonRefactorArm() == AimButtonRefactorArm::kAimAsModule) {
     [self.contentSuggestionsViewController setAIMAllowed:allowed];
   }
 }
 
 - (void)setAIMImageGenerationAllowed:(BOOL)allowed {
-  CHECK_EQ(ntp_tiles::GetAimButtonRefactorArm(),
-           ntp_tiles::AimButtonRefactorArm::kImageGenerationQuickAction);
+  CHECK_EQ(GetAimButtonRefactorArm(),
+           AimButtonRefactorArm::kImageGenerationQuickAction);
   _aimImageGenerationAllowed = allowed;
   [_quickActionsViewController setAIMImageGenerationAllowed:allowed];
 }
@@ -1335,9 +1331,10 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
 - (void)setContentSuggestionsViewController:
     (ContentSuggestionsViewController*)contentSuggestionsViewController {
   _contentSuggestionsViewController = contentSuggestionsViewController;
-  if (ntp_tiles::GetAimButtonRefactorArm() ==
-      ntp_tiles::AimButtonRefactorArm::kAimAsModule) {
+  if (GetAimButtonRefactorArm() == AimButtonRefactorArm::kAimAsModule) {
     [_contentSuggestionsViewController setAIMAllowed:_isAIMAllowed];
+    _contentSuggestionsViewController.NTPShortcutsHandler =
+        self.NTPShortcutsHandler;
   }
 }
 
@@ -1345,6 +1342,10 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
     (id<NewTabPageShortcutsHandler>)NTPShortcutsHandler {
   _NTPShortcutsHandler = NTPShortcutsHandler;
   _quickActionsViewController.NTPShortcutsHandler = NTPShortcutsHandler;
+  if (GetAimButtonRefactorArm() == AimButtonRefactorArm::kAimAsModule) {
+    self.contentSuggestionsViewController.NTPShortcutsHandler =
+        NTPShortcutsHandler;
+  }
 }
 
 - (void)setLayoutGuideCenter:(LayoutGuideCenter*)layoutGuideCenter {
@@ -1357,10 +1358,17 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
   if (!_isAIMAllowed || !IsAimEnabledInNtp()) {
     return NO;
   }
-  AimButtonRefactorArm arm = ntp_tiles::GetAimButtonRefactorArm();
-  return arm != AimButtonRefactorArm::kAimAsModule &&
-         arm != AimButtonRefactorArm::kAimAsMvt &&
-         arm != AimButtonRefactorArm::kNoChips;
+  switch (GetAimButtonRefactorArm()) {
+    case AimButtonRefactorArm::kFocusComposeboxAimQuickAction:
+    case AimButtonRefactorArm::kImageGenerationQuickAction:
+    case AimButtonRefactorArm::kAttachImageQuickAction:
+    case AimButtonRefactorArm::kDisabled:
+      return YES;
+    case AimButtonRefactorArm::kAimAsModule:
+    case AimButtonRefactorArm::kAimAsMvt:
+    case AimButtonRefactorArm::kNoChips:
+      return NO;
+  }
 }
 
 // Applies the horizontal constraints for the quick actions row.

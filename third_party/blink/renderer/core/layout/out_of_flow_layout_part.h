@@ -170,9 +170,9 @@ class CORE_EXPORT OutOfFlowLayoutPart {
     // Used to determine the scroll direction for:
     // https://drafts.csswg.org/css-align-3/#auto-safety-position
     LogicalBoxSides scroll_direction = LogicalBoxSides(false);
-    // The relative positioned offset to be applied after fragmentation is
-    // completed.
-    LogicalOffset relative_offset;
+    // Offset to apply after layout. This is so that relative positioning
+    // doesn't affect fragmentation.
+    LogicalOffset post_layout_offset;
   };
 
   // This stores the information needed to update a multicol child inside an
@@ -240,7 +240,7 @@ class CORE_EXPORT OutOfFlowLayoutPart {
 
    public:
     // Absolutized inset property values. Not necessarily the insets of the box.
-    BoxStrut insets_for_get_computed_style;
+    PhysicalBoxStrut insets_for_get_computed_style;
     // Offset to container's border box.
     LogicalOffset offset;
     // Inset-modified containing block relative to containing block's border
@@ -451,6 +451,19 @@ class CORE_EXPORT OutOfFlowLayoutPart {
   // paint-layer.
   void SaveStaticPositionOnPaintLayer(LayoutBox* layout_box,
                                       LogicalStaticPosition position) const;
+
+  LogicalOffset PostLayoutOffsetForBreakToken(const NodeToLayout& node) const {
+    // Once a node breaks and is resumed, all inline-offset is treated as
+    // post-layout offset. It doesn't really matter for the result when it's
+    // applied, since the inline axis doesn't interact with fragmentation. We
+    // need to carry this additional inline-offset, since the inline start
+    // offset may be based on auto ("static") positioning, which cannot be
+    // recomputed in a subsequent fragmentainer.
+    LogicalOffset offset =
+        node.node_info.base_container_info.post_layout_offset;
+    offset.inline_offset += node.offset_info.offset.inline_offset;
+    return offset;
+  }
 
   const FragmentBuilder::ChildrenVector& FragmentationContextChildren() const {
     DCHECK(!RuntimeEnabledFeatures::FragmentedOofInCbEnabled());

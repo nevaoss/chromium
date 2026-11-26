@@ -183,6 +183,7 @@ export const ComposeboxEmbedderMixin =
             tabSuggestionsState: {type: Number},
             aimThreadRestoredTabs: {type: Array},
             tabDeselectionEnabled: {type: Boolean},
+            tabStateUnificationEnabled: {type: Boolean},
             transcript: {type: String},
             hasVoiceSearchError: {type: Boolean},
             voiceSearchCoherenceEnabled: {type: Boolean},
@@ -193,6 +194,10 @@ export const ComposeboxEmbedderMixin =
               type: Boolean,
             },
             energyEffectAnimationEnabled: {
+              reflect: true,
+              type: Boolean,
+            },
+            willFulfillInAim: {
               reflect: true,
               type: Boolean,
             },
@@ -229,6 +234,8 @@ export const ComposeboxEmbedderMixin =
             getLoadTimeBoolean('composeboxContextMenuTooltipsEnabled', false);
         accessor tabDeselectionEnabled: boolean = getLoadTimeBoolean(
             'composeboxContextMenuEnableTabDeselection', false);
+        accessor tabStateUnificationEnabled: boolean =
+            getLoadTimeBoolean('composeboxTabStateUnificationEnabled', true);
         contextMenuDescriptionEnabled: boolean =
             getLoadTimeBoolean('composeboxShowContextMenuDescription', false);
         accessor showContextMenuDescription: boolean =
@@ -248,6 +255,7 @@ export const ComposeboxEmbedderMixin =
             loadTimeData.getBoolean('tabFaviconChipsToCoinsEnabled');
         accessor energyEffectEnabled: boolean = false;
         accessor energyEffectAnimationEnabled: boolean = false;
+        accessor willFulfillInAim: boolean = true;
 
         browserTabContextAdded: boolean = false;
         pendingAutomaticActiveTabUrl: string = '';
@@ -3472,6 +3480,7 @@ export interface ComposeboxEmbedderMixinInterface extends I18nMixinLitInterface,
   tabSuggestions: TabInfo[];
   tabSuggestionsState: TabSuggestionsState;
   tabDeselectionEnabled: boolean;
+  tabStateUnificationEnabled: boolean;
   transcript: string;
   composeboxNoFlickerSuggestionsFix: boolean;
   unselectMatchOnTabExit: boolean;
@@ -3487,6 +3496,7 @@ export interface ComposeboxEmbedderMixinInterface extends I18nMixinLitInterface,
   voiceSearchCoherenceEnabled: boolean;
   energyEffectEnabled: boolean;
   energyEffectAnimationEnabled: boolean;
+  willFulfillInAim: boolean;
   updateComplete: Promise<boolean>;
   pendingAutomaticActiveTabUrl: string;
   pendingAutomaticActiveTabTitle: string;

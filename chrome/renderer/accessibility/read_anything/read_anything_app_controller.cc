@@ -18,6 +18,7 @@
 #include "base/functional/callback_helpers.h"
 #include "base/i18n/language_tag.h"
 #include "base/i18n/tag_converters.h"
+#include "base/json/json_writer.h"
 #include "base/json/string_escape.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/metrics_hashes.h"
@@ -91,17 +92,6 @@ const double kPostInputDistillSeconds = 1.5;
 
 // The amount of time after a distillation for a PDF to wait before drawing.
 const int kPdfDrawDebounceMs = 500;
-
-SkBitmap CorrectColorOfBitMap(SkBitmap& originalBitmap) {
-  SkBitmap converted;
-  converted.allocPixels(SkImageInfo::Make(
-      originalBitmap.width(), originalBitmap.height(),
-      SkColorType::kRGBA_8888_SkColorType, originalBitmap.alphaType()));
-
-  originalBitmap.readPixels(converted.info(), converted.getPixels(),
-                            converted.rowBytes(), 0, 0);
-  return converted;
-}
 
 template <typename T>
   requires(std::is_enum_v<T> &&
@@ -1094,14 +1084,10 @@ bool ReadAnythingAppController::PostProcessSelection() {
     return false;
   }
 
-  // TODO(b/574644874): Align Readability selection / hidden lifecycle with
-  // Screen2x so `PostProcessSelection()` is not called while hidden.
-  // On pages distilled via Readability, a selection can change what the side
-  // panel shows. Update the selection endpoints, but leave the selection
-  // pending until reading mode is shown.
-  if (model_.is_readability_next_distillation_method() && IsHidden()) {
-    model_.UpdateSelectionEndpoints();
-    model_.set_requires_post_process_selection(true);
+  // Don't process the selection while reading mode is hidden, since the side
+  // panel can't be redrawn. The selection stays pending until reading mode is
+  // shown.
+  if (IsHidden()) {
     return false;
   }
 
@@ -1547,6 +1533,8 @@ gin::ObjectTemplateBuilder ReadAnythingAppController::GetObjectTemplateBuilder(
       .SetMethod<
           &ReadAnythingAppController::GetHighlightForCurrentSegmentIndex>(
           "getHighlightForCurrentSegmentIndex")
+      .SetMethod<&ReadAnythingAppController::RequestPhraseBoundaries>(
+          "requestPhraseBoundaries")
       .SetMethod<&ReadAnythingAppController::GetValidatedFontName>(
           "getValidatedFontName")
       .SetMethod<&ReadAnythingAppController::SendGetPresentationStateRequest>(
@@ -2258,19 +2246,26 @@ v8::Local<v8::Value> ReadAnythingAppController::GetImageBitmap(
     SkBitmap bitmap = std::move(itr->second);
     // Remove the downloaded image from the map.
     downloaded_images_.erase(node_id);
-    // Ensure that the bitmap is in the correct color format.
-    if (bitmap.colorType() != SkColorType::kRGBA_8888_SkColorType) {
-      bitmap = CorrectColorOfBitMap(bitmap);
+    ui::AXNode* node = model_.GetAXNode(node_id);
+    DUMP_WILL_BE_CHECK(node);
+    if (bitmap.empty() || !node) {
+      return v8::Undefined(isolate);
     }
 
-    // Get the pixmap to compute the bytes.
-    auto pixmap = std::move(bitmap.pixmap());
-    auto size = pixmap.computeByteSize();
+    // Convert to RGBA and copy into the array buffer in a single pass.
+    SkImageInfo rgba_info =
+        bitmap.info().makeColorType(SkColorType::kRGBA_8888_SkColorType);
+    size_t size = rgba_info.computeMinByteSize();
+    if (SkImageInfo::ByteSizeOverflowed(size)) {
+      return v8::Undefined(isolate);
+    }
     // Create an array buffer with the image bytes.
     v8::Local<v8::ArrayBuffer> buffer = v8::ArrayBuffer::New(isolate, size);
     // Copy the memory in.
-    pixmap.readPixels(pixmap.info(), buffer->GetBackingStore()->Data(),
-                      pixmap.rowBytes());
+    if (!bitmap.readPixels(rgba_info, buffer->GetBackingStore()->Data(),
+                           rgba_info.minRowBytes(), 0, 0)) {
+      return v8::Undefined(isolate);
+    }
     // Create a clamped array so we can create an ImageData object on the
     // javascript side.
     v8::Local<v8::Uint8ClampedArray> array =
@@ -2278,11 +2273,6 @@ v8::Local<v8::Value> ReadAnythingAppController::GetImageBitmap(
 
     // Create an object with the image data and height, as well as a scale
     // factor.
-    ui::AXNode* node = model_.GetAXNode(node_id);
-    DUMP_WILL_BE_CHECK(node);
-    if (!node) {
-      return v8::Undefined(isolate);
-    }
     int width = bitmap.width();
     int height = bitmap.height();
     float scale = (node->data().relative_bounds.bounds.width()) / width;
@@ -3175,6 +3165,44 @@ void ReadAnythingAppController::UpdateDependencyParserModel(
   read_aloud_model_.GetDependencyParserModel()
       .AsyncCall(&DependencyParserModel::UpdateWithFile)
       .WithArgs(std::move(model_file));
+}
+
+void ReadAnythingAppController::RequestPhraseBoundaries(
+    const std::vector<std::u16string>& sentences) {
+  if (!features::IsReadAnythingReadAloudPhraseHighlightingEnabled() ||
+      sentences.empty()) {
+    return;
+  }
+
+  // If the model isn't available yet, this returns an empty list of
+  // boundaries for each sentence.
+  read_aloud_model_.GetDependencyParserModel()
+      .AsyncCall(&DependencyParserModel::GetPhraseBoundariesForSentences)
+      .WithArgs(sentences)
+      .Then(
+          base::BindOnce(&ReadAnythingAppController::OnPhraseBoundariesComputed,
+                         weak_ptr_factory_.GetWeakPtr()));
+}
+
+void ReadAnythingAppController::OnPhraseBoundariesComputed(
+    std::vector<std::vector<int>> boundaries) {
+  base::ListValue boundaries_list;
+  boundaries_list.reserve(boundaries.size());
+  for (const std::vector<int>& sentence_boundaries : boundaries) {
+    base::ListValue sentence_list;
+    sentence_list.reserve(sentence_boundaries.size());
+    for (int boundary : sentence_boundaries) {
+      sentence_list.Append(boundary);
+    }
+    boundaries_list.Append(std::move(sentence_list));
+  }
+
+  std::optional<std::string> json = base::WriteJson(boundaries_list);
+  if (!json) {
+    return;
+  }
+  ExecuteJavaScript("chrome.readingMode.onPhraseBoundariesReady(" + *json +
+                    ");");
 }
 
 base::SequenceBound<DependencyParserModel>&

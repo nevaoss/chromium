@@ -1040,7 +1040,6 @@ const FeatureEntry::FeatureParam
         {"Omnibox_AskGLensSearchHintText", "true"},
         {"Omnibox_AskGShowChip", "false"},
         {"Omnibox_AskGComposeboxLensChip", "false"},
-        {"Omnibox_AskGBlockAutoTabZeroStateSuggestions", "false"},
         {"Omnibox_AskGShowFirstDescription", "false"},
         {"Omnibox_AskGComposeboxPlaceholder", "false"},
         {"Omnibox_AskGBypassPrivacyNotice", "true"}};
@@ -1057,7 +1056,6 @@ const FeatureEntry::FeatureParam
         {"Omnibox_AskGLensSearchHintText", "true"},
         {"Omnibox_AskGShowChip", "false"},
         {"Omnibox_AskGComposeboxLensChip", "false"},
-        {"Omnibox_AskGBlockAutoTabZeroStateSuggestions", "false"},
         {"Omnibox_AskGShowFirstDescription", "false"},
         {"Omnibox_AskGComposeboxPlaceholder", "false"},
         {"Omnibox_AskGBypassPrivacyNotice", "true"}};
@@ -1074,7 +1072,6 @@ const FeatureEntry::FeatureParam
         {"Omnibox_AskGLensSearchHintText", "true"},
         {"Omnibox_AskGShowChip", "false"},
         {"Omnibox_AskGComposeboxLensChip", "true"},
-        {"Omnibox_AskGBlockAutoTabZeroStateSuggestions", "true"},
         {"Omnibox_AskGShowFirstDescription", "false"},
         {"Omnibox_AskGComposeboxPlaceholder", "true"},
         {"Omnibox_AskGBypassPrivacyNotice", "true"}};
@@ -1091,7 +1088,6 @@ const FeatureEntry::FeatureParam
         {"Omnibox_AskGLensSearchHintText", "true"},
         {"Omnibox_AskGShowChip", "false"},
         {"Omnibox_AskGComposeboxLensChip", "false"},
-        {"Omnibox_AskGBlockAutoTabZeroStateSuggestions", "true"},
         {"Omnibox_AskGShowFirstDescription", "false"},
         {"Omnibox_AskGComposeboxPlaceholder", "true"},
         {"Omnibox_AskGBypassPrivacyNotice", "true"}};
@@ -1108,7 +1104,6 @@ const FeatureEntry::FeatureParam
         {"Omnibox_AskGLensSearchHintText", "true"},
         {"Omnibox_AskGShowChip", "true"},
         {"Omnibox_AskGComposeboxLensChip", "false"},
-        {"Omnibox_AskGBlockAutoTabZeroStateSuggestions", "true"},
         {"Omnibox_AskGShowFirstDescription", "true"},
         {"Omnibox_AskGComposeboxPlaceholder", "true"},
         {"Omnibox_AskGBypassPrivacyNotice", "true"}};
@@ -1129,7 +1124,6 @@ const FeatureEntry::FeatureParam
         {"Omnibox_AskGLensSearchHintText", "true"},
         {"Omnibox_AskGShowChip", "false"},
         {"Omnibox_AskGComposeboxLensChip", "false"},
-        {"Omnibox_AskGBlockAutoTabZeroStateSuggestions", "false"},
         {"Omnibox_AskGShowFirstDescription", "false"},
         {"Omnibox_AskGComposeboxPlaceholder", "false"},
         {"Omnibox_AskGBypassPrivacyNotice", "true"},
@@ -4671,6 +4665,14 @@ const FeatureEntry::FeatureParam
 const FeatureEntry::FeatureParam
     kContextualTasksPinnedButtonActiveIndicatorWithContextMenu[] = {
         {"ContextualTasksPinnedButtonContextMenuCloseSidePanel", "true"}};
+const FeatureEntry::FeatureParam
+    kContextualTasksPinnedButtonActiveIndicatorCircleHighlight[] = {
+        {"ContextualTasksPinnedButtonActiveIndicatorCircleHighlight", "true"}};
+const FeatureEntry::FeatureParam
+    kContextualTasksPinnedButtonActiveIndicatorCircleHighlightWithContextMenu
+        [] = {{"ContextualTasksPinnedButtonActiveIndicatorCircleHighlight",
+               "true"},
+              {"ContextualTasksPinnedButtonContextMenuCloseSidePanel", "true"}};
 
 const FeatureEntry::FeatureVariation
     kContextualTasksPinnedButtonActiveIndicatorVariations[] = {
@@ -4678,18 +4680,28 @@ const FeatureEntry::FeatureVariation
          kContextualTasksPinnedButtonActiveIndicatorWithoutContextMenu,
          nullptr},
         {"with 'Close/Hide side panel' in context menu",
-         kContextualTasksPinnedButtonActiveIndicatorWithContextMenu, nullptr}};
+         kContextualTasksPinnedButtonActiveIndicatorWithContextMenu, nullptr},
+        {"with circle highlight",
+         kContextualTasksPinnedButtonActiveIndicatorCircleHighlight, nullptr},
+        {"with circle highlight and 'Close/Hide side panel' in context menu",
+         kContextualTasksPinnedButtonActiveIndicatorCircleHighlightWithContextMenu,
+         nullptr}};
 
 const FeatureEntry::FeatureParam kContextualTasksUnifyPinButtonLogosSpark[] = {
     {"ContextualTasksUnifyPinButtonLogo", "spark"}};
 const FeatureEntry::FeatureParam kContextualTasksUnifyPinButtonLogosSuperG[] = {
     {"ContextualTasksUnifyPinButtonLogo", "super-g"}};
+const FeatureEntry::FeatureParam
+    kContextualTasksUnifyPinButtonLogosGraySuperG[] = {
+        {"ContextualTasksUnifyPinButtonLogo", "gray-super-g"}};
 
 const FeatureEntry::FeatureVariation
     kContextualTasksUnifyPinButtonLogosVariations[] = {
         {"with Spark logo", kContextualTasksUnifyPinButtonLogosSpark, nullptr},
         {"with Super G logo", kContextualTasksUnifyPinButtonLogosSuperG,
-         nullptr}};
+         nullptr},
+        {"with Gray Super G logo",
+         kContextualTasksUnifyPinButtonLogosGraySuperG, nullptr}};
 
 const FeatureEntry::FeatureParam
     kContextualTasksUpdatedEntryPointsSidePanelRouting[] = {
@@ -5453,11 +5465,6 @@ const FeatureEntry kFeatureEntries[] = {
     {"edge-to-edge-automotive", flag_descriptions::kEdgeToEdgeAutomotiveName,
      flag_descriptions::kEdgeToEdgeAutomotiveDescription, kOsAndroid,
      FEATURE_VALUE_TYPE(chrome::android::kEdgeToEdgeAutomotive)},
-    {"safe-browsing-sync-checker-check-allowlist",
-     flag_descriptions::kSafeBrowsingSyncCheckerCheckAllowlistName,
-     flag_descriptions::kSafeBrowsingSyncCheckerCheckAllowlistDescription,
-     kOsAndroid,
-     FEATURE_VALUE_TYPE(safe_browsing::kSafeBrowsingSyncCheckerCheckAllowlist)},
 #endif  // BUILDFLAG(IS_ANDROID)
 
     {"enable-content-analysis-clipboard-copy",
@@ -5574,15 +5581,15 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kTopChromeTouchUiDescription, kOsDesktop,
      MULTI_VALUE_TYPE(kTopChromeTouchUiChoices)},
 #if BUILDFLAG(IS_CHROMEOS)
-    {"allow-apn-modification-policy",
-     flag_descriptions::kAllowApnModificationPolicyName,
-     flag_descriptions::kAllowApnModificationPolicyDescription, kOsCrOS,
-     FEATURE_VALUE_TYPE(ash::features::kAllowApnModificationPolicy)},
     {"apply-managed-proxy-bypass-list-verbatim",
      flag_descriptions::kApplyManagedProxyBypassListVerbatimName,
      flag_descriptions::kApplyManagedProxyBypassListVerbatimDescription,
      kOsCrOS,
      FEATURE_VALUE_TYPE(ash::features::kApplyManagedProxyBypassListVerbatim)},
+    {"audio-selection-improvement",
+     flag_descriptions::kAudioSelectionImprovementName,
+     flag_descriptions::kAudioSelectionImprovementDescription, kOsCrOS,
+     FEATURE_VALUE_TYPE(ash::features::kAudioSelectionImprovement)},
     {"cras-processor-wav-dump", flag_descriptions::kCrasProcessorWavDumpName,
      flag_descriptions::kCrasProcessorWavDumpDescription, kOsCrOS,
      PLATFORM_FEATURE_NAME_TYPE("CrOSLateBootCrasProcessorWavDump")},
@@ -7094,6 +7101,10 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kOmniboxFuseboxAsyncInflationDescription, kOsAndroid,
      FEATURE_VALUE_TYPE(omnibox::kOmniboxFuseboxAsyncInflation)},
 
+    {"omnibox-early-inflation", flag_descriptions::kOmniboxEarlyInflationName,
+     flag_descriptions::kOmniboxEarlyInflationDescription, kOsAndroid,
+     FEATURE_VALUE_TYPE(omnibox::kOmniboxEarlyInflation)},
+
     {"omnibox-multimodal-input", flag_descriptions::kOmniboxMultimodalInputName,
      flag_descriptions::kOmniboxMultimodalInputDescription, kOsAndroid,
      FEATURE_WITH_PARAMS_VALUE_TYPE(omnibox::kOmniboxMultimodalInput,
@@ -7164,6 +7175,11 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kAndroidTabSearchCloseTabButtonName,
      flag_descriptions::kAndroidTabSearchCloseTabButtonDescription, kOsAndroid,
      FEATURE_VALUE_TYPE(omnibox::kAndroidTabSearchCloseTabButton)},
+
+    {"omnibox-voice-plate-intent",
+     flag_descriptions::kOmniboxVoicePlateIntentName,
+     flag_descriptions::kOmniboxVoicePlateIntentDescription, kOsAndroid,
+     FEATURE_VALUE_TYPE(omnibox::kOmniboxVoicePlateIntent)},
 
     {"omnibox-diagnostics", flag_descriptions::kOmniboxDiagnosticsName,
      flag_descriptions::kOmniboxDiagnosticsDescription, kOsAndroid,
@@ -8111,11 +8127,6 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kEnableHeadlessLiveCaptionDescription, kOsDesktop,
      FEATURE_VALUE_TYPE(media::kHeadlessLiveCaption)},
 
-    {"enable-media-link-helpers",
-     flag_descriptions::kEnableMediaLinkHelpersName,
-     flag_descriptions::kEnableMediaLinkHelpersDescription, kOsDesktop,
-     FEATURE_VALUE_TYPE(media::kMediaLinkHelpers)},
-
     {"enable-headless-live-caption-early-start",
      flag_descriptions::kHeadlessCaptionEarlyStartName,
      flag_descriptions::kHeadlessCaptionEarlyStartDescription, kOsDesktop,
@@ -9014,6 +9025,11 @@ const FeatureEntry kFeatureEntries[] = {
      kOsAll,
      FEATURE_VALUE_TYPE(
          lens::features::kLensUseSeparateRequestIdForViewportImages)},
+
+    {"lens-send-drive-tab-urls-in-composeboxes",
+     flag_descriptions::kLensSendDriveTabUrlsInComposeboxesName,
+     flag_descriptions::kLensSendDriveTabUrlsInComposeboxesDescription, kOsAll,
+     FEATURE_VALUE_TYPE(lens::features::kLensSendDriveTabUrlsInComposeboxes)},
 
     {"lens-bypass-compression-for-c2pa",
      flag_descriptions::kLensBypassCompressionForC2paName,
@@ -9917,13 +9933,6 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kCompressionDictionaryTTLName,
      flag_descriptions::kCompressionDictionaryTTLDescription, kOsAll,
      FEATURE_VALUE_TYPE(network::features::kCompressionDictionaryTTL)},
-
-#if BUILDFLAG(IS_ANDROID)
-    {"deprecated-external-picker-function",
-     flag_descriptions::kDeprecatedExternalPickerFunctionName,
-     flag_descriptions::kDeprecatedExternalPickerFunctionDescription,
-     kOsAndroid, FEATURE_VALUE_TYPE(ui::kDeprecatedExternalPickerFunction)},
-#endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_ANDROID)
     {"android-progress-bar-visual-update",
@@ -11159,7 +11168,7 @@ const FeatureEntry kFeatureEntries[] = {
                                     kGlicOSIconVariantVariations,
                                     "GlicOSIconVariant")},
     {"glic-share-image", flag_descriptions::kGlicShareImageName,
-     flag_descriptions::kGlicShareImageDescription, kOsDesktop,
+     flag_descriptions::kGlicShareImageDescription, kOsDesktop | kOsAndroid,
      FEATURE_VALUE_TYPE(features::kGlicShareImage)},
     {"glic-default-tab-context-setting",
      flag_descriptions::kGlicDefaultTabContextSettingName,
@@ -12363,6 +12372,13 @@ const FeatureEntry kFeatureEntries[] = {
          kContextualTasksTabBasedSuggestionsDescription,
      kOsDesktop | kOsAndroid,
      FEATURE_VALUE_TYPE(contextual_tasks::kContextualTasksTabBasedSuggestions)},
+
+    {"contextual-tasks-side-panel-tab-state",
+     contextual_tasks::flag_descriptions::kContextualTasksSidePanelTabStateName,
+     contextual_tasks::flag_descriptions::
+         kContextualTasksSidePanelTabStateDescription,
+     kOsDesktop | kOsAndroid,
+     FEATURE_VALUE_TYPE(contextual_tasks::kContextualTasksSidePanelTabState)},
 
     {"contextual-tasks-bypass-dismissed-cap",
      contextual_tasks::flag_descriptions::
@@ -13826,13 +13842,6 @@ const FeatureEntry kFeatureEntries[] = {
      kOsAll,
      FEATURE_VALUE_TYPE(features::kDevToolsSourceMapScopesInSourcesPanel)},
 
-#if defined(TOOLKIT_VIEWS)
-    {"native-view-host-manages-layers",
-     flag_descriptions::kNativeViewHostManagesLayersName,
-     flag_descriptions::kNativeViewHostManagesLayersDescription, kOsDesktop,
-     FEATURE_VALUE_TYPE(views::features::kNativeViewHostManagesLayers)},
-#endif  // defined(TOOLKIT_VIEWS)
-
 #if BUILDFLAG(IS_ANDROID)
     {"android-fre-layout-update",
      flag_descriptions::kAndroidFreLayoutUpdateName,
@@ -14126,6 +14135,11 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kBrowsingHistoryFilterByDeviceDescription, kOsAll,
      FEATURE_VALUE_TYPE(history::kBrowsingHistoryFilterByDevice)},
 
+    {"browsing-history-filter-by-domain",
+     flag_descriptions::kBrowsingHistoryFilterByDomainName,
+     flag_descriptions::kBrowsingHistoryFilterByDomainDescription, kOsDesktop,
+     FEATURE_VALUE_TYPE(history::kBrowsingHistoryFilterByDomain)},
+
     {"browsing-history-filter-by-time",
      flag_descriptions::kBrowsingHistoryFilterByTimeName,
      flag_descriptions::kBrowsingHistoryFilterByTimeDescription, kOsAll,
@@ -14150,11 +14164,6 @@ const FeatureEntry kFeatureEntries[] = {
      kOsAndroid,
      FEATURE_VALUE_TYPE(switches::kHandleMdmErrorsForDasherAccountsOnAndroid)},
 #endif  // BUILDFLAG(IS_ANDROID)
-
-    {"autofill-enable-omnibox-gpay-button",
-     flag_descriptions::kAutofillEnableOmniboxGPayButtonName,
-     flag_descriptions::kAutofillEnableOmniboxGPayButtonDescription, kOsDesktop,
-     FEATURE_VALUE_TYPE(autofill::features::kAutofillEnableOmniboxGPayButton)},
 
     {"search-settings-with-more-engines",
      flag_descriptions::kSearchSettingsWithMoreEnginesName,

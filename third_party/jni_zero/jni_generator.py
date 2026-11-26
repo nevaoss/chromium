@@ -456,25 +456,33 @@ class JniObject:
 
   def CollectClassesThatRequireAccessors(self):
     ret = set()
+
+    def add_array_element_class(java_type):
+      if java_type.java_class:
+        if upper_bound_type := java_type.java_class.upper_bound_type:
+          ret.add(upper_bound_type.java_class)
+        else:
+          ret.add(java_type.java_class)
+
     for c in self.jni_classes:
       ret.add(c.java_class)
+      for f in c.fields:
+        if (not f.final and f.java_type.is_object_array()
+            and f.java_type.converted_type):
+          add_array_element_class(f.java_type)
       # jclasses required for @JniType conversions.
       for cbn in c.called_by_natives:
         for param in cbn.params:
-          java_type = param.java_type
           # Arrays with @JniType need class accessors, but users will likely
           # need the class accessors when not using @JniType as well.
-          if java_type.is_array() and java_type.java_class:
-            if upper_bound_type := java_type.java_class.upper_bound_type:
-              ret.add(upper_bound_type.java_class)
-            else:
-              ret.add(java_type.java_class)
+          if param.java_type.is_array():
+            add_array_element_class(param.java_type)
 
     # jclasses required for @JniType conversions.
     for native in self.proxy_natives:
       return_type = native.return_type
       if return_type.is_object_array() and return_type.converted_type:
-        ret.add(return_type.java_class)
+        add_array_element_class(return_type)
     # Filter out those ones that have a global variable for.
     ret = [c for c in ret if c not in java_types.JCLASS_GLOBALS_CLASSES]
     ret.sort()
@@ -733,10 +741,11 @@ def _CreatePlaceholderSrcJar(srcjar_path, jni_objs, *, script_name):
       # write a stubbed version of the class if it's imported by another class.
       for jni_obj in jni_objs:
         for java_class in jni_obj.CollectClassesToBeImported():
-          # JniPtr is already in gendeps_java; JniUniquePtr and JniRawPtr are in
-          # jni_zero_java and still need placeholders.
+          # JniPtr and JniRawPtr are already in gendeps_java; JniUniquePtr is
+          # in jni_zero_java and still needs a placeholder.
           if (java_class.full_name_with_slashes.startswith('java/')
-              or java_class == java_types.JNI_PTR_CLASS):
+              or java_class
+              in (java_types.JNI_PTR_CLASS, java_types.JNI_RAW_PTR_CLASS)):
             continue
           # TODO(mheikal): handle more than 1 nesting layer.
           if java_class.is_nested():

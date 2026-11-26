@@ -303,14 +303,6 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
   }
   InitializePageLoadMetricsForWebContents(web_contents);
 
-  sync_sessions_router_ =
-      std::make_unique<sync_sessions::SyncSessionsRouterTabHelper>(
-          web_contents,
-          sync_sessions::SyncSessionsWebContentsRouterFactory::GetForProfile(
-              profile),
-          ChromeTranslateClient::FromWebContents(web_contents),
-          favicon::ContentFaviconDriver::FromWebContents(web_contents));
-
   http_auth_cache_status_ = std::make_unique<HttpAuthCacheStatus>(web_contents);
 
   security_state_event_observer_ =
@@ -511,9 +503,7 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
       enterprise_connectors::IsReferrerChainNeededForEnterprise(profile));
   if (g_browser_process->safe_browsing_service()) {
     safe_browsing::AsyncCheckTracker::CreateForWebContents(
-        web_contents, g_browser_process->safe_browsing_service()->ui_manager(),
-        safe_browsing::AsyncCheckTracker::
-            IsPlatformEligibleForSyncCheckerCheckAllowlist());
+        web_contents, g_browser_process->safe_browsing_service()->ui_manager());
   }
   if (autofill::ContentAutofillClient::FromWebContents(web_contents)) {
     // Attach password reuse detection client when Autofill is present.
@@ -643,6 +633,14 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
         GetUserDataFactory().CreateInstance<SupervisedUserNavigationObserver>(
             *tab, *tab, web_contents);
   }
+
+  sync_sessions_router_ =
+      std::make_unique<sync_sessions::SyncSessionsRouterTabHelper>(
+          web_contents,
+          sync_sessions::SyncSessionsWebContentsRouterFactory::GetForProfile(
+              profile),
+          ChromeTranslateClient::FromWebContents(web_contents),
+          favicon::ContentFaviconDriver::FromWebContents(web_contents));
 
   offline_page_tab_helper_ =
       GetUserDataFactory().CreateInstance<offline_pages::OfflinePageTabHelper>(

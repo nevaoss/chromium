@@ -13,9 +13,11 @@ that never made it into a patch is silently lost on the next roll
 Design: https://crbug.com/568074175.
 
 Subcommands:
-  check: Applies patches/*.patch in sorted order to the upstream commit on
-    README.chromium's 'Revision:' line and verifies that the result matches
-    //third_party/protobuf, modulo known Chromium exceptions.
+  check [-C <out_dir>] [--baseline <name>]: Verifies that patches/*.patch
+    reproduces //third_party/protobuf, README.chromium's patch descriptions
+    match patches/, no .rej/.orig/conflict markers remain, and bootstrap files
+    are up to date; also reports unfollowed src/file_lists.cmake changes and
+    optional compile_size_probe.py deltas (https://crbug.com/568074591).
   plan --to <tag or commit>: Dry run of a roll in temporary repositories
     (https://crbug.com/568074498). Replays every patch onto the target with
     `git apply -3`, classifies it (see PatchReplayStatus), and lists upstream
@@ -36,6 +38,9 @@ Subcommands:
     .patch file, and continues replaying remaining patches.
   resume: Reconciles GITDIR/protobuf-roll/state.json with manual Apply/Drop
     commits and continues replaying remaining patches.
+  generate -C <out_dir>: Runs gen_extra_chromium_files.py -C <out_dir>,
+    force-stages gitignored *_pb2.py outputs alongside bootstrap files, and
+    commits "Regenerate bootstrap files".
   abort: Resets the branch to the commit recorded by `start` and removes
     GITDIR/protobuf-roll/.
 
@@ -45,13 +50,15 @@ conflict (or for invalid CLI arguments), 1 when verification failed or an error
 occurred.
 """
 
-from collections.abc import Collection, Iterable, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 import argparse
 import collections
 import dataclasses
 import enum
 import filecmp
 import functools
+import hashlib
+import importlib.util
 import json
 import os
 import pathlib
@@ -109,6 +116,22 @@ BOOTSTRAP_GENERATED_FILES = frozenset({
     'python/google/protobuf/internal/python_edition_defaults.py',
 })
 
+# Non-compiler files that gen_extra_chromium_files.py reads or bakes into
+# BOOTSTRAP_GENERATED_FILES alongside src/google/protobuf/compiler/.
+BOOTSTRAP_GENERATOR_EXACT_INPUTS = frozenset({
+    'gen_extra_chromium_files.py',
+    'python/build_targets.bzl',
+    'python/google/protobuf/internal/python_edition_defaults.py.template',
+    'src/google/protobuf/descriptor.proto',
+    'src/google/protobuf/feature_resolver.cc',
+    'src/google/protobuf/feature_resolver.h',
+    'src/google/protobuf/generated_message_tctable_gen.cc',
+    'src/google/protobuf/generated_message_tctable_gen.h',
+    'src/google/protobuf/port_def.inc',
+    'src/google/protobuf/runtime_version.h',
+})
+_BOOTSTRAP_INPUTS_TRAILER_KEY = 'Bootstrap-Inputs-Hash'
+
 # Upstream ships pre-generated C++ for the Well-Known Types. Chromium deletes
 # them in gen_extra_chromium_files.py and builds them from the .proto files
 # (//third_party/protobuf:well_known_type_protos) instead.
@@ -143,6 +166,13 @@ def IsChromiumOwnedFile(relative_path: str) -> bool:
 def IsIntentionallyDeletedUpstreamFile(relative_path: str) -> bool:
     return (relative_path.startswith(DELETED_UPSTREAM_DIRECTORY_PREFIXES)
             or relative_path in DELETED_WELL_KNOWN_TYPE_GENERATED_FILES)
+
+
+def IsBootstrapGeneratorInput(relative_path: str) -> bool:
+    """Returns True if editing relative_path requires `generate` to re-run."""
+    return (relative_path not in BOOTSTRAP_GENERATED_FILES
+            and (relative_path in BOOTSTRAP_GENERATOR_EXACT_INPUTS
+                 or relative_path.startswith('src/google/protobuf/compiler/')))
 
 
 def ReadReadmeRevision(protobuf_directory: str) -> str:
@@ -955,6 +985,31 @@ class RollPlan:
         }
 
 
+def _DiffFileListsAgainstGitSpec(
+        protobuf_directory: str, old_repository: str, old_spec: str,
+        new_tree_directory: str) -> check_file_lists.FileListsDiff | None:
+    new_cmake_path = os.path.join(new_tree_directory,
+                                  *_UPSTREAM_FILE_LISTS_PATH.split('/'))
+    if not os.path.isfile(new_cmake_path) or not all(
+            os.path.isfile(os.path.join(protobuf_directory, name))
+            for name in ('proto_sources.gni', 'BUILD.gn')):
+        return None
+    old_cmake = _RunScratchGit(old_repository,
+                               'cat-file',
+                               'blob',
+                               old_spec,
+                               accepted_return_codes=None)
+    if old_cmake.returncode != 0:
+        return None
+    return check_file_lists.ComputeFileListsDiff(
+        old_cmake_text=old_cmake.stdout.decode('utf-8', errors='replace'),
+        new_cmake_text=pathlib.Path(new_cmake_path).read_text(
+            encoding='utf-8', errors='replace'),
+        chromium_gn_files=check_file_lists.ReadChromiumGnSourceFiles(
+            protobuf_directory),
+        new_tree_directory=new_tree_directory)
+
+
 def _ComputeUpstreamFileListsDiff(
         protobuf_directory: str, patch_chain: PatchChain,
         replay_directory: str) -> check_file_lists.FileListsDiff | None:
@@ -963,23 +1018,10 @@ def _ComputeUpstreamFileListsDiff(
     The new tree is the replay repository after the CLEAN patches, so files a
     patch adds are on disk and do not show up as removed.
     """
-    old_cmake = _RunScratchGit(
-        patch_chain.repository_directory,
-        'show',
+    return _DiffFileListsAgainstGitSpec(
+        protobuf_directory, patch_chain.repository_directory,
         f'{patch_chain.base_commit}:{_UPSTREAM_FILE_LISTS_PATH}',
-        accepted_return_codes=(0, 128))
-    new_cmake_path = os.path.join(replay_directory,
-                                  *_UPSTREAM_FILE_LISTS_PATH.split('/'))
-    if old_cmake.returncode != 0 or not os.path.isfile(new_cmake_path):
-        return None
-    with open(new_cmake_path, encoding='utf-8') as new_cmake_file:
-        new_cmake_text = new_cmake_file.read()
-    return check_file_lists.ComputeFileListsDiff(
-        old_cmake_text=old_cmake.stdout.decode('utf-8'),
-        new_cmake_text=new_cmake_text,
-        chromium_gn_files=check_file_lists.ReadChromiumGnSourceFiles(
-            protobuf_directory),
-        new_tree_directory=replay_directory)
+        replay_directory)
 
 
 def PlanRoll(to_revision: str,
@@ -1240,7 +1282,11 @@ def PrepareRoll(to_revision: str,
     """
     checkout = _ResolveCheckoutPaths(protobuf_directory)
     existing_state = LoadRollState(checkout.protobuf_directory)
-    if existing_state is not None and existing_state.phase != 'prepared':
+    if existing_state is not None and (
+        (existing_state.phase == 'conflict'
+         and _FindLocalRollBranch(checkout, existing_state) is not None) or
+        (existing_state.phase == 'replayed'
+         and _IsRollBranchHead(checkout, existing_state))):
         raise RollProtobufError(
             f'A roll to {existing_state.new_revision} is already in '
             f'progress (phase: {existing_state.phase}); run '
@@ -1460,11 +1506,17 @@ def _ReplayRemainingPatches(checkout: _CheckoutPaths,
 def _RequireActiveConflictState(checkout: _CheckoutPaths,
                                 subcommand: str) -> RollState:
     state = LoadRollState(checkout.protobuf_directory)
-    if (state is None or state.phase != 'conflict'
+    roll_branch = (_FindLocalRollBranch(checkout, state) if state is not None
+                   and state.phase == 'conflict' else None)
+    if (state is None or roll_branch is None
             or not 0 <= state.current_index < len(state.patches)):
         raise RollProtobufError(
             f'No conflicting protobuf patch is waiting for `{subcommand}`; '
             'run `roll_protobuf.py status` first.')
+    if roll_branch != 'HEAD':
+        raise RollProtobufError(
+            f'Current HEAD is not on the {state.new_revision} roll branch; '
+            f'run `git checkout {roll_branch}` before `{subcommand}`.')
     current_head = _RunScratchGit(checkout.repository_root, 'rev-parse',
                                   'HEAD').stdout.decode().strip()
     if current_head != state.expected_head:
@@ -1474,22 +1526,21 @@ def _RequireActiveConflictState(checkout: _CheckoutPaths,
     return state
 
 
+# Matches git's `diff --check` conflict markers (`<`, `|`, `>`), omitting
+# standalone `=======` so Markdown Setext H1 underlines (csharp/README.md) do
+# not false-positive.
+_CONFLICT_MARKER_PATTERN = re.compile(rb'^(?:<{7}|\|{7}|>{7})(?: |\r?$)',
+                                      re.MULTILINE)
+
+
 def _FindFilesWithConflictMarkers(
-        repository_root: str,
-        relative_paths: Iterable[str]) -> tuple[str, ...]:
+        root_directory: str, relative_paths: Iterable[str]) -> tuple[str, ...]:
     flagged = []
     for relative_path in sorted(set(relative_paths)):
-        full_path = os.path.join(repository_root, *relative_path.split('/'))
-        if not os.path.isfile(full_path):
-            continue
-        with open(full_path, 'rb') as file_handle:
-            # Match git's `diff --check` markers (`<`, `|`, `>`), omitting
-            # standalone `=======` so Markdown Setext H1 underlines (such as
-            # csharp/README.md) do not false-positive.
-            if any(
-                    re.match(rb'^(?:<{7}|\|{7}|>{7})(?: |\r?$)', line)
-                    for line in file_handle):
-                flagged.append(relative_path)
+        full_path = os.path.join(root_directory, *relative_path.split('/'))
+        if os.path.isfile(full_path) and _CONFLICT_MARKER_PATTERN.search(
+                pathlib.Path(full_path).read_bytes()):
+            flagged.append(relative_path)
     return tuple(flagged)
 
 
@@ -1672,10 +1723,17 @@ def ResumeRoll(protobuf_directory: str = _PROTOBUF_DIRECTORY) -> RollState:
     """Reconciles state.json with manual Apply/Drop commits and continues."""
     checkout = _ResolveCheckoutPaths(protobuf_directory)
     state = LoadRollState(checkout.protobuf_directory)
-    if state is None or state.phase == 'prepared':
+    roll_branch = (_FindLocalRollBranch(checkout, state) if state is not None
+                   and state.phase != 'prepared' else None)
+    if state is None or roll_branch is None:
         raise RollProtobufError(
             'No active protobuf roll to resume; run `roll_protobuf.py start` '
             'first.')
+    if roll_branch != 'HEAD':
+        raise RollProtobufError(
+            f'Current HEAD is not on the {state.new_revision} roll branch; '
+            f'run `git checkout {roll_branch}` before '
+            '`roll_protobuf.py resume`.')
     dirty_status = _RunScratchGit(checkout.repository_root, 'status',
                                   '--porcelain',
                                   '--ignore-submodules=all').stdout.strip()
@@ -1689,27 +1747,18 @@ def ResumeRoll(protobuf_directory: str = _PROTOBUF_DIRECTORY) -> RollState:
             'finish committing the manual step (or run '
             '`roll_protobuf.py continue`) before running '
             '`roll_protobuf.py resume`.')
-    ancestry = _RunScratchGit(checkout.repository_root,
-                              'merge-base',
-                              '--is-ancestor',
-                              state.start_commit,
-                              'HEAD',
-                              accepted_return_codes=(0, 1))
-    commit_lines = _RunScratchGit(
-        checkout.repository_root, 'log', '--reverse', '--format=%H%x00%s',
-        f'{state.start_commit}..HEAD').stdout.decode(
-            'utf-8', errors='replace').splitlines() if (ancestry.returncode
-                                                        == 0) else []
-    if not commit_lines:
+    commit_lines = _RunScratchGit(checkout.repository_root, 'log',
+                                  '--no-show-signature', '--reverse',
+                                  '--format=%H%x00%s',
+                                  f'{state.start_commit}..HEAD').stdout.decode(
+                                      'utf-8', errors='replace').splitlines()
+    expected_import = (
+        f'Import upstream protobuf {state.new_revision} (unmodified)')
+    if not commit_lines or commit_lines[0].split('\0',
+                                                 1)[1] != expected_import:
         raise RollProtobufError(
-            f'HEAD does not descend from roll start commit '
-            f'{state.start_commit}; run `roll_protobuf.py abort` to reset.')
-    _, import_subject = commit_lines[0].split('\0', 1)
-    expected_import = f'Import upstream protobuf {state.new_revision} (unmodified)'
-    if import_subject != expected_import:
-        raise RollProtobufError(
-            f'Expected first roll commit {expected_import!r}, found '
-            f'{import_subject!r}.')
+            f'Expected first roll commit {expected_import!r} after '
+            f'{state.start_commit}.')
     patch_commits = commit_lines[1:]
     if len(patch_commits) > len(state.patches):
         raise RollProtobufError(
@@ -1792,9 +1841,658 @@ def StartRoll(to_revision: str,
     import_commit = ImportUpstreamRelease(checkout.protobuf_directory,
                                           repository_path, to_revision,
                                           state.new_commit)
-    state = dataclasses.replace(state, expected_head=import_commit)
+    state = dataclasses.replace(
+        state,
+        phase='conflict' if state.patches else 'replayed',
+        expected_head=import_commit)
     _SaveRollState(checkout, state)
     return _ReplayRemainingPatches(checkout, state)
+
+
+def _IsAncestorOfHead(repository_root: str,
+                      commit: str,
+                      ref: str = 'HEAD') -> bool:
+    return _RunScratchGit(repository_root,
+                          'merge-base',
+                          '--is-ancestor',
+                          commit,
+                          ref,
+                          accepted_return_codes=(0, 1, 128)).returncode == 0
+
+
+def _IsRollBranchHead(checkout: _CheckoutPaths,
+                      state: RollState,
+                      ref: str = 'HEAD') -> bool:
+    """Returns True if ref is on the roll branch recorded by state."""
+    root = checkout.repository_root
+    if (_ResolveCommitHash(root, ref) in (None, state.start_commit)
+            or not _IsAncestorOfHead(root, state.start_commit, ref)):
+        return False
+    if (state.expected_head != state.start_commit
+            and _IsAncestorOfHead(root, state.expected_head, ref)):
+        return True
+    subjects = _RunScratchGit(root, 'log', '--no-show-signature',
+                              '--format=%s', '-n', '200',
+                              f'{state.start_commit}..{ref}').stdout.decode(
+                                  'utf-8', errors='replace').splitlines()
+    return (f'Import upstream protobuf {state.new_revision} (unmodified)'
+            in subjects)
+
+
+def _CanResetRollHead(checkout: _CheckoutPaths, state: RollState) -> bool:
+    return state.phase != 'prepared' and (
+        _IsRollBranchHead(checkout, state) or
+        (state.phase == 'conflict'
+         and state.expected_head == state.start_commit and _ResolveCommitHash(
+             checkout.repository_root, 'HEAD') == state.expected_head))
+
+
+def _FindLocalRollBranch(checkout: _CheckoutPaths,
+                         state: RollState) -> str | None:
+    if state.phase == 'prepared':
+        return None
+    if _CanResetRollHead(checkout, state):
+        return 'HEAD'
+    root = checkout.repository_root
+    if _ResolveCommitHash(root, state.start_commit) is None:
+        return None
+    records = _RunScratchGit(
+        root, 'for-each-ref', '--format=%(objectname) %(refname:lstrip=2)',
+        '--contains', state.start_commit,
+        'refs/heads').stdout.decode('utf-8', errors='replace').splitlines()
+    for record in records:
+        sha, _, branch_name = record.partition(' ')
+        if (sha != state.start_commit and _IsRollBranchHead(
+                checkout, state, f'refs/heads/{branch_name}')):
+            return branch_name
+    return None
+
+
+def _ComputeBootstrapInputsDigest(protobuf_directory: str) -> str:
+    """Hashes README.chromium's Revision and all bootstrap generator inputs."""
+    digest = hashlib.sha256(
+        f'Revision:{ReadReadmeRevision(protobuf_directory)}\0'.encode('utf-8'))
+    for relative_path in sorted(
+            path for path in _ListChromiumProtobufFiles(protobuf_directory)
+            if IsBootstrapGeneratorInput(path)):
+        raw_bytes = pathlib.Path(protobuf_directory,
+                                 *relative_path.split('/')).read_bytes()
+        digest.update(
+            relative_path.encode('utf-8') + b'\0' +
+            raw_bytes.replace(b'\r\n', b'\n') + b'\0')
+    return digest.hexdigest()
+
+
+def _RestoreProtobufWorktreeAfterFailedGenerate(
+        checkout: _CheckoutPaths) -> None:
+    for path in BOOTSTRAP_GENERATED_FILES:
+        full_path = os.path.join(checkout.protobuf_directory, *path.split('/'))
+        if os.path.lexists(full_path):
+            os.remove(full_path)
+    if _ResolveCommitHash(checkout.repository_root, 'HEAD') is not None:
+        _RunScratchGit(checkout.repository_root, 'restore', '--quiet',
+                       '--source=HEAD', '--worktree', '--',
+                       checkout.protobuf_directory)
+    _CleanUntrackedAndBackupFiles(checkout.protobuf_directory)
+
+
+@dataclasses.dataclass(frozen=True)
+class GenerateResult:
+    """Outcome of regenerating and committing bootstrap files."""
+
+    commit: str
+    inputs_digest: str
+    changed_files: tuple[str, ...]
+
+    def ToDictionary(self) -> dict[str, object]:
+        return {
+            'commit': self.commit,
+            'inputs_digest': self.inputs_digest,
+            'changed_files': list(self.changed_files),
+        }
+
+
+def GenerateBootstrapFiles(
+        build_directory: str,
+        protobuf_directory: str = _PROTOBUF_DIRECTORY) -> GenerateResult:
+    """Runs gen_extra_chromium_files.py and commits bootstrap outputs."""
+    if not build_directory or not build_directory.strip():
+        raise RollProtobufError(
+            'Provide -C <out_dir> so gen_extra_chromium_files.py can build '
+            'protoc.')
+    checkout = _ResolveCheckoutPaths(protobuf_directory)
+    state = LoadRollState(checkout.protobuf_directory)
+    current_head = _ResolveCommitHash(checkout.repository_root, 'HEAD')
+    if (state is not None and state.phase in ('prepared', 'conflict')
+            and (current_head == state.expected_head
+                 or _IsRollBranchHead(checkout, state))):
+        raise RollProtobufError(
+            f'Cannot regenerate bootstrap files while roll phase is '
+            f'{state.phase!r}; finish replaying patches first.')
+    if _RunScratchGit(checkout.repository_root, 'diff', '--cached',
+                      '--name-only', '-z').stdout.strip():
+        raise RollProtobufError(
+            'Repository has staged changes; commit or unstage them before '
+            'running `roll_protobuf.py generate`.')
+    protobuf_pathspec = checkout.protobuf_prefix or '.'
+    dirty_protobuf = _RunScratchGit(checkout.repository_root, 'status',
+                                    '--porcelain', '--ignore-submodules=all',
+                                    '--', protobuf_pathspec).stdout.strip()
+    leftover_rejects = any(
+        p.endswith(('.rej', '.orig'))
+        for p in _ListRegularFilesInDirectory(checkout.protobuf_directory))
+    if dirty_protobuf or leftover_rejects:
+        raise RollProtobufError(
+            '//third_party/protobuf has uncommitted changes or .rej/.orig '
+            'files; commit or clean them before running '
+            '`roll_protobuf.py generate`.')
+    generator_script = os.path.join(checkout.protobuf_directory,
+                                    'gen_extra_chromium_files.py')
+    if not os.path.isfile(generator_script):
+        raise RollProtobufError(
+            f'Missing gen_extra_chromium_files.py at {generator_script}.')
+    ReadReadmeRevision(checkout.protobuf_directory)
+    _ListChromiumProtobufFiles(checkout.protobuf_directory)
+    process = subprocess.run([
+        sys.executable, generator_script, '-C',
+        os.path.abspath(build_directory)
+    ],
+                             env=_IsolatedGitEnvironment(),
+                             stdin=subprocess.DEVNULL,
+                             capture_output=True,
+                             cwd=checkout.repository_root,
+                             check=False)
+    if process.returncode != 0:
+        _RestoreProtobufWorktreeAfterFailedGenerate(checkout)
+        diagnostics = '\n'.join(
+            s.decode('utf-8', errors='replace').strip()
+            for s in (process.stderr, process.stdout) if s.strip())
+        raise RollProtobufError(
+            f'gen_extra_chromium_files.py failed (exit {process.returncode}): '
+            f'{diagnostics}')
+    missing_outputs = sorted(
+        path for path in BOOTSTRAP_GENERATED_FILES if not _IsRegularFile(
+            os.path.join(checkout.protobuf_directory, *path.split('/'))))
+    if missing_outputs:
+        _RestoreProtobufWorktreeAfterFailedGenerate(checkout)
+        raise RollProtobufError(
+            'gen_extra_chromium_files.py did not produce expected bootstrap '
+            'files: ' + ', '.join(missing_outputs))
+    _RunScratchGit(checkout.repository_root, 'add', '--update', '--',
+                   protobuf_pathspec)
+    _RunScratchGit(
+        checkout.repository_root, 'add', '--force', '--',
+        *(os.path.join(checkout.protobuf_directory, *p.split('/'))
+          for p in sorted(BOOTSTRAP_GENERATED_FILES)))
+    prefix_with_slash = (f'{checkout.protobuf_prefix}/'
+                         if checkout.protobuf_prefix else '')
+    changed_files = tuple(
+        sorted(
+            path.removeprefix(prefix_with_slash)
+            for path in _SplitNulSeparatedPaths(
+                _RunScratchGit(checkout.repository_root, 'diff', '--cached',
+                               '--name-only', '-z', '--',
+                               protobuf_pathspec).stdout)))
+    inputs_digest = _ComputeBootstrapInputsDigest(checkout.protobuf_directory)
+    commit_message = (f'Regenerate bootstrap files\n\n'
+                      f'{_BOOTSTRAP_INPUTS_TRAILER_KEY}: {inputs_digest}')
+    _RunScratchGit(checkout.repository_root, 'commit', '--quiet',
+                   '--no-verify', '--allow-empty', '-m', commit_message)
+    new_head = _RunScratchGit(checkout.repository_root, 'rev-parse',
+                              'HEAD').stdout.decode().strip()
+    if (state is not None and state.phase == 'replayed'
+            and _IsRollBranchHead(checkout, state)):
+        _SaveRollState(checkout,
+                       dataclasses.replace(state, expected_head=new_head))
+    return GenerateResult(new_head, inputs_digest, changed_files)
+
+
+def FormatGenerateReport(result: GenerateResult) -> str:
+    if not result.changed_files:
+        return (f'Regenerated bootstrap files at {result.commit} '
+                '(already up to date).')
+    lines = [
+        f'Regenerated {len(result.changed_files)} bootstrap file(s) at '
+        f'{result.commit}:'
+    ]
+    lines += [f'  {path}' for path in result.changed_files]
+    return '\n'.join(lines)
+
+
+@functools.cache
+def _LoadProtobufPresubmitModule():
+    spec = importlib.util.spec_from_file_location(
+        '_protobuf_presubmit', os.path.join(_PROTOBUF_DIRECTORY,
+                                            'PRESUBMIT.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _FindPatchInventoryErrors(protobuf_directory: str) -> tuple[str, ...]:
+    """Checks patches/*.{patch,md} against README.chromium via PRESUBMIT."""
+    readme_path = pathlib.Path(protobuf_directory, _README_FILENAME)
+    if not readme_path.is_file():
+        return (
+            f'{_README_FILENAME} is missing from //third_party/protobuf.', )
+    readme_lines = readme_path.read_text(encoding='utf-8').splitlines()
+    patches_directory = os.path.join(protobuf_directory, 'patches')
+    top_level_files = ({
+        name
+        for name in os.listdir(patches_directory)
+        if os.path.isfile(os.path.join(patches_directory, name))
+    } if os.path.isdir(patches_directory) else set())
+    presubmit = _LoadProtobufPresubmitModule()
+    return tuple(
+        presubmit.FindPatchInventorySyncErrors(readme_lines, top_level_files) +
+        presubmit.FindCompanionMarkdownErrors(readme_lines, top_level_files))
+
+
+def _ProtobufPathsFromGit(checkout: _CheckoutPaths, *git_arguments:
+                          str) -> set[str]:
+    prefix = f'{checkout.protobuf_prefix}/' if checkout.protobuf_prefix else ''
+    output = _RunScratchGit(checkout.repository_root, *git_arguments, '--',
+                            checkout.protobuf_prefix or '.').stdout
+    return {
+        path.removeprefix(prefix)
+        for path in _SplitNulSeparatedPaths(output)
+    }
+
+
+def _FindLocalHygieneErrors(checkout: _CheckoutPaths) -> tuple[str, ...]:
+    """Lists leftover .rej/.orig files, conflict markers, or unmerged paths."""
+    errors = [
+        f'{path}: leftover patch .rej/.orig file' for path in sorted(
+            _ListRegularFilesInDirectory(checkout.protobuf_directory))
+        if path.endswith(('.rej', '.orig'))
+    ]
+    marked = set(
+        _FindFilesWithConflictMarkers(
+            checkout.protobuf_directory,
+            _ListChromiumProtobufFiles(checkout.protobuf_directory)))
+    errors += [
+        f'{path}: unresolved conflict markers' for path in sorted(marked)
+    ]
+    unmerged = _ProtobufPathsFromGit(checkout, 'diff', '--name-only', '-z',
+                                     '--diff-filter=U')
+    errors += [
+        f'{path}: unresolved unmerged index entry'
+        for path in sorted(unmerged - marked)
+    ]
+    return tuple(errors)
+
+
+def _ResolveRollBaseCommit(checkout: _CheckoutPaths) -> str | None:
+    """Returns the baseline commit before the current roll or branch."""
+    root = checkout.repository_root
+    if _ResolveCommitHash(root, 'HEAD') is None:
+        return None
+    state = LoadRollState(checkout.protobuf_directory)
+    if (state is not None and state.phase in ('conflict', 'replayed')
+            and _IsRollBranchHead(checkout, state)):
+        return state.start_commit
+    merge_base = _RunScratchGit(root,
+                                'merge-base',
+                                'HEAD',
+                                'origin/main',
+                                accepted_return_codes=None)
+    if merge_base.returncode == 0:
+        return merge_base.stdout.decode().strip()
+    log_lines = _RunScratchGit(root, 'log', '--no-show-signature', '--reverse',
+                               '-n', '200', '--format=%H%x00%s',
+                               'HEAD').stdout.decode(
+                                   'utf-8', errors='replace').splitlines()
+    for line in log_lines:
+        sha, subject = line.split('\0', 1)
+        if (subject.startswith('Import upstream protobuf ')
+                or subject == 'Regenerate bootstrap files'):
+            return _ResolveCommitHash(root, f'{sha}~1')
+    return log_lines[0].split('\0', 1)[0] if log_lines else None
+
+
+def _ReadGitReadmeRevision(checkout: _CheckoutPaths,
+                           commit: str) -> str | None:
+    prefix = f'{checkout.protobuf_prefix}/' if checkout.protobuf_prefix else ''
+    shown = _RunScratchGit(checkout.repository_root,
+                           'cat-file',
+                           'blob',
+                           f'{commit}:{prefix}{_README_FILENAME}',
+                           accepted_return_codes=None)
+    if shown.returncode != 0:
+        return None
+    match = re.search(r'^Revision:\s*(\S+)\s*$',
+                      shown.stdout.decode('utf-8', errors='replace'),
+                      re.MULTILINE)
+    return match.group(1) if match else None
+
+
+def _ParseNameStatusWrittenPaths(raw_bytes: bytes, prefix: str) -> set[str]:
+    tokens = _SplitNulSeparatedPaths(raw_bytes.lstrip(b'\x00\n'))
+    return {
+        tokens[i + 1].removeprefix(prefix)
+        for i in range(0,
+                       len(tokens) - 1, 2)
+        if tokens[i] != 'D' and (not prefix or tokens[i +
+                                                      1].startswith(prefix))
+    }
+
+
+def _FindStaleBootstrapTriggers(checkout: _CheckoutPaths) -> tuple[str, ...]:
+    """Returns inputs or missing outputs requiring `generate` to run."""
+    root = checkout.repository_root
+    if _ResolveCommitHash(root, 'HEAD') is None:
+        return ()
+    base_commit = _ResolveRollBaseCommit(checkout)
+    prefix = f'{checkout.protobuf_prefix}/' if checkout.protobuf_prefix else ''
+    visible_files = _ListChromiumProtobufFiles(checkout.protobuf_directory)
+    has_generator = os.path.isfile(
+        os.path.join(checkout.protobuf_directory,
+                     'gen_extra_chromium_files.py'))
+    uncommitted = (_ProtobufPathsFromGit(checkout, 'diff', '--no-renames',
+                                         '--name-only', '-z', 'HEAD')
+                   | _ProtobufPathsFromGit(checkout, 'ls-files', '--others',
+                                           '--exclude-standard', '-z'))
+    current_revision = ReadReadmeRevision(checkout.protobuf_directory)
+
+    # Omit pathspec so `--allow-empty` regeneration commits stay visible.
+    log_args = ([f'{base_commit}..HEAD']
+                if base_commit else ['-n', '200', 'HEAD'])
+    raw_log = _RunScratchGit(root, 'log', '--no-show-signature', '--root',
+                             '--no-merges', '--reverse', '--no-renames', '-z',
+                             '--name-status',
+                             '--format=%x1e%H%x1f%s%x1f%B%x1d',
+                             *log_args).stdout
+    base_rev = (_ReadGitReadmeRevision(checkout, base_commit)
+                if base_commit else None)
+    prev_rev = base_rev
+    regen_commit = None
+    regen_rev = None
+    recorded_hashes: tuple[str, ...] = ()
+    step5_ready = False
+    unregenerated_revision_change = False
+    for raw_record in raw_log.split(b'\x1e')[1:]:
+        header, _, status_blob = raw_record.partition(b'\x1d')
+        sha, subject, body = header.decode('utf-8',
+                                           errors='replace').split('\x1f', 2)
+        written = _ParseNameStatusWrittenPaths(status_blob, prefix)
+        commit_rev = (_ReadGitReadmeRevision(checkout, sha)
+                      if _README_FILENAME in written else prev_rev)
+        rev_changed = prev_rev is not None and commit_rev != prev_rev
+        prev_rev = commit_rev
+        hashes = tuple(
+            re.findall(
+                rf'^[ \t]*{_BOOTSTRAP_INPUTS_TRAILER_KEY}:\s*([0-9a-f]{{64}})'
+                r'[ \t]*$', body, re.MULTILINE))
+        wrote_bootstrap = written & BOOTSTRAP_GENERATED_FILES
+        wrote_python_bootstrap = any(
+            p.startswith('python/') for p in wrote_bootstrap)
+        # Upstream archives include C++ bootstrap .pb.{h,cc} files, whereas
+        # python/ bootstrap outputs are only produced by
+        # gen_extra_chromium_files.py.
+        is_manual_regen = (not subject.startswith('Import upstream protobuf ')
+                           and (wrote_python_bootstrap if
+                                (rev_changed or unregenerated_revision_change)
+                                else bool(wrote_bootstrap)))
+        is_step5_readme_update = (
+            rev_changed and step5_ready
+            and not subject.startswith('Import upstream protobuf ')
+            and all(IsChromiumOwnedFile(p) for p in written))
+        if (hashes or subject == 'Regenerate bootstrap files'
+                or is_manual_regen):
+            regen_commit = sha
+            regen_rev = commit_rev
+            recorded_hashes = hashes
+            step5_ready = (not hashes and not rev_changed
+                           and not unregenerated_revision_change
+                           and (step5_ready or wrote_python_bootstrap
+                                or subject == 'Regenerate bootstrap files'))
+            unregenerated_revision_change = False
+        elif ((rev_changed and not is_step5_readme_update)
+              or subject.startswith('Import upstream protobuf ')):
+            regen_commit = None
+            regen_rev = None
+            recorded_hashes = ()
+            step5_ready = False
+            unregenerated_revision_change = True
+        elif is_step5_readme_update:
+            regen_rev = commit_rev
+            step5_ready = False
+
+    reference_commit = regen_commit or base_commit
+    changed = set(uncommitted)
+    if reference_commit is not None:
+        changed |= _ProtobufPathsFromGit(checkout, 'diff', '--no-renames',
+                                         '--name-only', '-z', reference_commit)
+    stale = {p for p in changed if IsBootstrapGeneratorInput(p)}
+    if has_generator or regen_commit is not None:
+        stale |= {
+            f'missing bootstrap output: {p}'
+            for p in BOOTSTRAP_GENERATED_FILES - visible_files
+        }
+    expected_rev = regen_rev if regen_commit is not None else base_rev
+    uncommitted_step5_readme = (step5_ready and current_revision != regen_rev
+                                and all(
+                                    IsChromiumOwnedFile(p)
+                                    for p in uncommitted))
+    if (unregenerated_revision_change or
+        (reference_commit is not None and expected_rev != current_revision
+         and not uncommitted_step5_readme)):
+        stale.add('upstream revision changed')
+    if (not stale and recorded_hashes and _ComputeBootstrapInputsDigest(
+            checkout.protobuf_directory) not in recorded_hashes):
+        stale.add('generator inputs changed since last '
+                  '`roll_protobuf.py generate`')
+    return tuple(sorted(stale))
+
+
+def _SelectCompileSizeBaseline(build_directory: str,
+                               baseline_name: str | None) -> str | None:
+    if baseline_name is not None:
+        if not baseline_name.strip():
+            raise RollProtobufError(
+                'Provide a non-empty baseline name to --baseline.')
+        return baseline_name.strip()
+    probe_dir = os.path.join(os.path.abspath(build_directory),
+                             '.compile_size_probe')
+    if not os.path.isdir(probe_dir):
+        return None
+    candidates = [
+        stem for name in os.listdir(probe_dir) if not name.startswith('.')
+        and name.endswith('.json') and not name.endswith('.artifacts.json')
+        and os.path.isfile(os.path.join(probe_dir, name))
+        and re.fullmatch(r'[A-Za-z0-9_.-]+', stem := name[:-len('.json')])
+        and '..' not in stem
+    ]
+    if not candidates:
+        return None
+    preferred = [name for name in ('before', 'pre_roll') if name in candidates]
+    return max(
+        preferred or candidates,
+        key=lambda name:
+        (os.path.getmtime(os.path.join(probe_dir, f'{name}.json')), name))
+
+
+def _RunCompileSizeProbeComparison(
+        checkout: _CheckoutPaths, build_directory: str | None,
+        baseline_name: str | None
+) -> tuple[dict[str, object] | None, str | None]:
+    """Invokes compile_size_probe.py --compare=<name> --json if available."""
+    if not build_directory or not build_directory.strip():
+        if baseline_name is not None:
+            raise RollProtobufError('--baseline requires -C <out_dir>.')
+        return None, None
+    selected = _SelectCompileSizeBaseline(build_directory, baseline_name)
+    probe_script = os.path.join(checkout.protobuf_directory,
+                                'compile_size_probe.py')
+    if not os.path.isfile(probe_script):
+        if baseline_name is not None:
+            return None, f'Missing compile_size_probe.py at {probe_script}.'
+        return None, None
+    if selected is None:
+        return None, None
+    command = [
+        sys.executable, probe_script, '-C',
+        os.path.abspath(build_directory), f'--compare={selected}', '--json'
+    ]
+    process = subprocess.run(command,
+                             env=_IsolatedGitEnvironment(),
+                             stdin=subprocess.DEVNULL,
+                             capture_output=True,
+                             cwd=checkout.repository_root,
+                             check=False)
+    if process.returncode != 0:
+        stderr_text = process.stderr.decode('utf-8', errors='replace').strip()
+        stdout_text = process.stdout.decode('utf-8', errors='replace').strip()
+        details = stderr_text or stdout_text
+        return None, details or f'exit {process.returncode}'
+    try:
+        payload = json.loads(process.stdout.decode('utf-8'))
+    except ValueError as error:
+        return None, f'invalid JSON from compile_size_probe.py: {error}'
+    if not isinstance(payload, dict):
+        return None, 'invalid JSON from compile_size_probe.py: expected object'
+    return payload, None
+
+
+def _FormatCompileSizeSummary(comparison: Mapping[str, object]) -> str:
+    baseline = comparison.get('baseline_name', 'before')
+    before = int(comparison.get('before_total_bytes', 0))
+    after = int(comparison.get('after_total_bytes', 0))
+    delta = int(comparison.get('delta_total_bytes', after - before))
+    lines = [
+        f'Compile-size comparison against baseline "{baseline}": '
+        f'{before:,} B -> {after:,} B ({delta:+,} B)'
+    ]
+    sym_before = int(comparison.get('before_total_symbol_bytes', 0))
+    sym_after = int(comparison.get('after_total_symbol_bytes', 0))
+    if sym_before or sym_after:
+        sym_delta = int(
+            comparison.get('delta_total_symbol_bytes', sym_after - sym_before))
+        lines.append(f'  Compiled symbol bytes: {sym_before:,} B -> '
+                     f'{sym_after:,} B ({sym_delta:+,} B)')
+    for unit in comparison.get('translation_units', ()):
+        u_before = int(unit.get('before_bytes', 0))
+        u_after = int(unit.get('after_bytes', 0))
+        u_delta = int(unit.get('delta_bytes', u_after - u_before))
+        lines.append(f'  {unit.get("translation_unit")}: {u_delta:+,} B '
+                     f'({u_before:,} B -> {u_after:,} B)')
+        for header in list(unit.get('added_headers', ()))[:5]:
+            size = int(header.get('size_bytes', 0))
+            lines.append(f'    +{size:,} B  {header.get("path", "")}')
+            chain = header.get('include_chain', ())
+            if len(chain) > 1:
+                lines.append('      via: ' + ' -> '.join(chain))
+        for header in list(unit.get('removed_headers', ()))[:5]:
+            size = int(header.get('size_bytes', 0))
+            lines.append(f'    -{size:,} B  {header.get("path", "")}')
+        for resized in list(unit.get('resized_files', ()))[:5]:
+            change = int(resized.get('delta_bytes', 0))
+            lines.append(
+                f'    {change:+,} B  {resized.get("path", "")} (resized)')
+    return '\n'.join(lines)
+
+
+def _ComputeBranchFileListsDiff(
+        checkout: _CheckoutPaths) -> check_file_lists.FileListsDiff | None:
+    """Diffs src/file_lists.cmake against the pre-roll baseline and GN lists."""
+    base_commit = _ResolveRollBaseCommit(checkout)
+    if base_commit is None:
+        return None
+    prefix = f'{checkout.protobuf_prefix}/' if checkout.protobuf_prefix else ''
+    return _DiffFileListsAgainstGitSpec(
+        checkout.protobuf_directory, checkout.repository_root,
+        f'{base_commit}:{prefix}{_UPSTREAM_FILE_LISTS_PATH}',
+        checkout.protobuf_directory)
+
+
+@dataclasses.dataclass(frozen=True)
+class RollCheckResult:
+    """Full verification and informational report for `roll_protobuf.py check`."""
+
+    tree_result: TreeVerificationResult
+    patch_inventory_errors: tuple[str, ...] = ()
+    hygiene_errors: tuple[str, ...] = ()
+    stale_bootstrap_triggers: tuple[str, ...] = ()
+    file_lists_diff: check_file_lists.FileListsDiff | None = None
+    compile_size_comparison: dict[str, object] | None = None
+    compile_size_error: str | None = None
+
+    def IsClean(self) -> bool:
+        return (self.tree_result.IsClean() and not self.patch_inventory_errors
+                and not self.hygiene_errors
+                and not self.stale_bootstrap_triggers)
+
+    def ToDictionary(self) -> dict[str, object]:
+        result = self.tree_result.ToDictionary()
+        result.update(is_clean=self.IsClean(),
+                      patch_inventory_errors=list(self.patch_inventory_errors),
+                      hygiene_errors=list(self.hygiene_errors),
+                      stale_bootstrap_triggers=list(
+                          self.stale_bootstrap_triggers),
+                      file_lists=(None if self.file_lists_diff is None else
+                                  self.file_lists_diff.ToDictionary()),
+                      compile_size=self.compile_size_comparison,
+                      compile_size_error=self.compile_size_error)
+        return result
+
+
+def CheckRoll(protobuf_directory: str = _PROTOBUF_DIRECTORY,
+              upstream_repository_path: str | None = None,
+              cache_directory: str | None = None,
+              build_directory: str | None = None,
+              upstream_url: str = UPSTREAM_REPOSITORY_URL,
+              baseline_name: str | None = None) -> RollCheckResult:
+    """Runs blocking verification checks plus informational roll reports."""
+    if baseline_name is not None:
+        if not baseline_name.strip():
+            raise RollProtobufError(
+                'Provide a non-empty baseline name to --baseline.')
+        if not build_directory or not build_directory.strip():
+            raise RollProtobufError('--baseline requires -C <out_dir>.')
+    tree_result = CheckTreeMatchesPatchedUpstream(protobuf_directory,
+                                                  upstream_repository_path,
+                                                  cache_directory,
+                                                  build_directory,
+                                                  upstream_url)
+    checkout = _ResolveCheckoutPaths(protobuf_directory)
+    compile_size, compile_size_error = _RunCompileSizeProbeComparison(
+        checkout, build_directory, baseline_name)
+    return RollCheckResult(
+        tree_result=tree_result,
+        patch_inventory_errors=_FindPatchInventoryErrors(
+            checkout.protobuf_directory),
+        hygiene_errors=_FindLocalHygieneErrors(checkout),
+        stale_bootstrap_triggers=_FindStaleBootstrapTriggers(checkout),
+        file_lists_diff=_ComputeBranchFileListsDiff(checkout),
+        compile_size_comparison=compile_size,
+        compile_size_error=compile_size_error)
+
+
+def FormatRollCheckReport(result: RollCheckResult) -> str:
+    sections = [FormatTreeVerificationReport(result.tree_result)]
+    if result.patch_inventory_errors:
+        sections.append('Patch inventory / README.chromium errors:\n' +
+                        '\n'.join(f'  {e}'
+                                  for e in result.patch_inventory_errors))
+    if result.hygiene_errors:
+        sections.append('Local hygiene errors:\n' +
+                        '\n'.join(f'  {e}' for e in result.hygiene_errors))
+    if result.stale_bootstrap_triggers:
+        sections.append(
+            'Stale bootstrap files (run `roll_protobuf.py generate -C '
+            '<out_dir>`):\n' +
+            '\n'.join(f'  {t}' for t in result.stale_bootstrap_triggers))
+    if (result.file_lists_diff is not None
+            and result.file_lists_diff.HasUnfollowedChanges()):
+        sections.append(
+            check_file_lists.FormatFileListsDiffReport(result.file_lists_diff))
+    if result.compile_size_comparison is not None:
+        sections.append(
+            _FormatCompileSizeSummary(result.compile_size_comparison))
+    elif result.compile_size_error:
+        sections.append('Compile-size probe skipped due to error: '
+                        f'{result.compile_size_error}')
+    return '\n\n'.join(sections)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1820,8 +2518,15 @@ class RollStatus:
 
 
 def GetRollStatus(protobuf_directory: str = _PROTOBUF_DIRECTORY) -> RollStatus:
-    roll_state = LoadRollState(protobuf_directory)
-    if roll_state is None:
+    checkout = _ResolveCheckoutPaths(protobuf_directory)
+    roll_state = LoadRollState(checkout.protobuf_directory)
+    roll_branch = (_FindLocalRollBranch(checkout, roll_state)
+                   if roll_state is not None and roll_state.phase == 'conflict'
+                   else None)
+    if (roll_state is None
+            or (roll_state.phase == 'conflict' and roll_branch is None)
+            or (roll_state.phase == 'replayed'
+                and not _IsRollBranchHead(checkout, roll_state))):
         return RollStatus(
             state='idle',
             index=0,
@@ -1837,30 +2542,43 @@ def GetRollStatus(protobuf_directory: str = _PROTOBUF_DIRECTORY) -> RollStatus:
             next_commands=(
                 f'roll_protobuf.py start --to {roll_state.new_revision}',
                 'roll_protobuf.py abort'))
-    if roll_state.phase == 'conflict':
+    if roll_state.phase == 'conflict' and 0 <= roll_state.current_index < total:
+        on_roll_head = roll_branch == 'HEAD'
         return RollStatus(
             state='conflict',
             index=roll_state.current_index + 1,
             total=total,
             patch=roll_state.patches[roll_state.current_index].patch_name,
-            files=roll_state.conflict_files,
+            files=roll_state.conflict_files if on_roll_head else (),
             next_commands=('roll_protobuf.py continue',
                            'roll_protobuf.py drop --reason <why>',
-                           'roll_protobuf.py abort'))
+                           'roll_protobuf.py abort') if on_roll_head else
+            (f'git checkout {roll_branch}', ))
+    stale = _FindStaleBootstrapTriggers(checkout)
+    next_step = ('roll_protobuf.py generate -C <out_dir>'
+                 if stale else 'roll_protobuf.py check -C <out_dir>')
     return RollStatus(state='replayed',
                       index=total,
                       total=total,
-                      next_commands=('roll_protobuf.py check',
-                                     'roll_protobuf.py abort'))
+                      next_commands=(next_step, 'roll_protobuf.py abort'))
 
 
 def AbortRoll(protobuf_directory: str = _PROTOBUF_DIRECTORY) -> RollState:
-    """Resets the branch to start_commit and removes GITDIR/protobuf-roll/."""
+    """Resets an active roll to start_commit or clears stale roll state."""
     checkout = _ResolveCheckoutPaths(protobuf_directory)
     roll_state = LoadRollState(checkout.protobuf_directory)
     if roll_state is None:
         raise RollProtobufError('No protobuf roll is in progress (missing '
                                 f'{checkout.state_file_path}).')
+    roll_branch = _FindLocalRollBranch(checkout, roll_state)
+    if roll_branch != 'HEAD':
+        if roll_state.phase == 'prepared' or roll_branch is None:
+            shutil.rmtree(checkout.roll_state_directory)
+            return roll_state
+        raise RollProtobufError(
+            f'Current HEAD is not on the {roll_state.new_revision} roll '
+            f'branch; run `git checkout {roll_branch}` before running '
+            '`roll_protobuf.py abort`.')
     _RunScratchGit(checkout.repository_root, 'reset', '--quiet', '--hard',
                    roll_state.start_commit)
     _CleanUntrackedAndBackupFiles(checkout.protobuf_directory)
@@ -1884,7 +2602,7 @@ def FormatRollStateReport(state: RollState) -> str:
         f'{_DescribePatchReplayResult(result)}'
         for index, result in enumerate(state.patch_results, start=1)
     ]
-    if state.phase == 'conflict':
+    if state.phase == 'conflict' and 0 <= state.current_index < total:
         lines += [
             '',
             f'Stopped at [{state.current_index + 1}/{total}] '
@@ -1920,10 +2638,15 @@ def main(command_line_arguments: Sequence[str] | None = None) -> int:
         description='Verifies //third_party/protobuf against upstream plus '
         'patches/*.patch, and sizes rolls to new upstream versions.')
     subparsers = parser.add_subparsers(dest='subcommand', required=True)
-    subparsers.add_parser(
+    check_parser = subparsers.add_parser(
         'check',
-        help='Verify that upstream at README.chromium Revision plus '
-        'patches/*.patch reproduces //third_party/protobuf.')
+        help='Verify //third_party/protobuf invariants and report '
+        'file_lists.cmake and optional compile_size_probe.py deltas.')
+    check_parser.add_argument(
+        '--baseline',
+        dest='baseline_name',
+        help='Saved compile_size_probe.py baseline name to compare against '
+        'when -C is set (default: "before" or "pre_roll", else newest).')
     plan_parser = subparsers.add_parser(
         'plan',
         help='Dry run: classify every patch as CLEAN, EMPTY, CONFLICT or '
@@ -1963,8 +2686,12 @@ def main(command_line_arguments: Sequence[str] | None = None) -> int:
         help='Reconcile roll state after manual Apply/Drop commits and '
         'continue replaying remaining patches.')
     subparsers.add_parser(
+        'generate',
+        help='Run gen_extra_chromium_files.py -C <out_dir> and commit '
+        'regenerated bootstrap files.')
+    subparsers.add_parser(
         'abort',
-        help='Reset the branch to the commit before start and delete '
+        help='Reset an active roll branch to start_commit or clear '
         'GITDIR/protobuf-roll/.')
     for target_parser in (plan_parser, prepare_parser, start_parser):
         target_parser.add_argument(
@@ -2050,19 +2777,34 @@ def main(command_line_arguments: Sequence[str] | None = None) -> int:
             report = FormatRollStateReport(result)
             exit_code = (EXIT_CODE_CONFLICT
                          if result.phase == 'conflict' else EXIT_CODE_SUCCESS)
+        elif arguments.subcommand == 'generate':
+            result = GenerateBootstrapFiles(arguments.build_directory or '',
+                                            arguments.protobuf_directory)
+            report = FormatGenerateReport(result)
+            exit_code = EXIT_CODE_SUCCESS
         elif arguments.subcommand == 'status':
             result = GetRollStatus(arguments.protobuf_directory)
             report = FormatRollStatusReport(result)
             exit_code = EXIT_CODE_SUCCESS
         elif arguments.subcommand == 'abort':
+            checkout = _ResolveCheckoutPaths(arguments.protobuf_directory)
+            prior_state = LoadRollState(checkout.protobuf_directory)
+            did_reset = (prior_state is not None
+                         and _CanResetRollHead(checkout, prior_state))
             result = AbortRoll(arguments.protobuf_directory)
-            report = (f'Aborted roll to {result.new_revision} and reset to '
-                      f'{result.start_commit}.')
+            if did_reset:
+                report = (f'Aborted roll to {result.new_revision} and reset '
+                          f'to {result.start_commit}.')
+            elif result.phase == 'prepared':
+                report = f'Aborted prepared roll to {result.new_revision}.'
+            else:
+                report = f'Removed stale roll state for {result.new_revision}.'
             exit_code = EXIT_CODE_SUCCESS
         else:
-            result = CheckTreeMatchesPatchedUpstream(
-                arguments.protobuf_directory, *upstream_arguments)
-            report = FormatTreeVerificationReport(result)
+            result = CheckRoll(arguments.protobuf_directory,
+                               *upstream_arguments,
+                               baseline_name=arguments.baseline_name)
+            report = FormatRollCheckReport(result)
             exit_code = (EXIT_CODE_SUCCESS
                          if result.IsClean() else EXIT_CODE_ERROR)
         if arguments.should_output_json:

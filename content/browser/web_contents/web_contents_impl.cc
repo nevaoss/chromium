@@ -342,7 +342,7 @@ RenderFrameHostImpl* FindOpenerRFH(const WebContents::CreateParams& params) {
 // user interaction observers.
 bool IsUserInteractionInputType(blink::WebInputEvent::Type type) {
   // TODO(mustaq): This list should be based off the HTML spec:
-  // https://html.spec.whatwg.org/multipage/interaction.html#tracking-user-activation,
+  // https://html.spec.whatwg.org/multipage/interaction.html#activation-triggering-input-event,
   // and kGestureScrollBegin is a clear outlier.
   return type == blink::WebInputEvent::Type::kMouseDown ||
          type == blink::WebInputEvent::Type::kGestureScrollBegin ||
@@ -7704,21 +7704,26 @@ bool WebContentsImpl::GotResponseToPointerLockRequest(
     blink::mojom::PointerLockResult result) {
   OPTIONAL_TRACE_EVENT0("content",
                         "WebContentsImpl::GotResponseToPointerLockRequest");
-  if (pointer_lock_widget_) {
-    auto* web_contents =
-        WebContentsImpl::FromRenderWidgetHostImpl(pointer_lock_widget_);
-    if (web_contents != this) {
-      return web_contents->GotResponseToPointerLockRequest(result);
-    }
+  // Ignore the response if this WebContents has no pointer lock request of its
+  // own. Clearing the parent chain here would drop a lock held by an outer
+  // WebContents.
+  if (!pointer_lock_widget_) {
+    return false;
+  }
 
-    if (pointer_lock_widget_->GotResponseToPointerLockRequest(result)) {
-      return true;
-    }
+  auto* web_contents =
+      WebContentsImpl::FromRenderWidgetHostImpl(pointer_lock_widget_);
+  if (web_contents != this) {
+    return web_contents->GotResponseToPointerLockRequest(result);
+  }
 
-    if (pointer_lock_widget_ && pointer_lock_widget_->GetView() &&
-        pointer_lock_widget_->GetView()->IsPointerLocked()) {
-      return true;
-    }
+  if (pointer_lock_widget_->GotResponseToPointerLockRequest(result)) {
+    return true;
+  }
+
+  if (pointer_lock_widget_ && pointer_lock_widget_->GetView() &&
+      pointer_lock_widget_->GetView()->IsPointerLocked()) {
+    return true;
   }
 
   SetPointerLockWidgetInParentChain(nullptr);
@@ -11228,6 +11233,10 @@ bool WebContentsImpl::IsPrivileged() {
 bool WebContentsImpl::DoesWebContentsDisallowServiceWorkerControl() {
   return privileged_params_ &&
          privileged_params_->disallow_service_worker_control;
+}
+
+bool WebContentsImpl::DoesWebContentsDisallowSharedWorkers() {
+  return privileged_params_ && privileged_params_->disallow_shared_workers;
 }
 
 WebContents* WebContentsImpl::GetDocumentPictureInPictureOpener() {

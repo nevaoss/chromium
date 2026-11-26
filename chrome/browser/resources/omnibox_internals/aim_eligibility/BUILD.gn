@@ -16,7 +16,6 @@ build_webui("build") {
   ts_files = [
     "app.html.ts",
     "app.ts",
-    "browser_proxy.ts",
   ]
 
   mojo_files_deps = [ "//chrome/browser/ui/webui/omnibox_internals/aim_eligibility:mojo_bindings_ts__generator" ]
@@ -39,5 +38,9 @@ build_webui("build") {
   if (optimize) {
     optimize_webui_host = "omnibox-internals"
     optimize_webui_in_files = [ "app.js" ]
+    optimize_webui_excludes = [
+      "chrome://resources/cr_components/color_change_listener/color_change_listener.mojom-webui.js",
+      "chrome://resources/mojo/mojo/public/mojom/base/time.mojom-webui.js",
+    ]
   }
 }

@@ -43,7 +43,6 @@
 #include "chrome/browser/media/webrtc/desktop_media_picker.h"
 #include "chrome/common/chrome_features.h"
 #include "components/autofill/core/common/autofill_features.h"
-#include "components/download/public/common/download_features.h"
 #include "content/common/features.h"
 #include "content/public/common/content_features.h"
 #include "gpu/config/gpu_finch_features.h"
@@ -140,20 +139,6 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
   feature_overrides.EnableFeature(kAndroidMediaPicker);
   feature_overrides.EnableFeature(features::kUserMediaScreenCapturing);
 
-  // Enable open download in new tab.
-  // TODO(crbug.com/531944280): Remove when rollout is complete to all form
-  // factors.
-  feature_overrides.EnableFeature(download::features::kOpenDownloadInNewTab);
-
-  // Enable`save as`context menu.
-  feature_overrides.EnableFeature(
-      download::features::kEnableDownloadSaveAsContextMenu);
-
-  // Enable open download in preferred app.
-  // TODO(crbug.com/539965859): Remove when rollout is complete to all form
-  // factors.
-  feature_overrides.EnableFeature(chrome::android::kOpenDownloadInPreferredApp);
-
   // Enable background media capturing on desktop devices.
   // TODO(crbug.com/426461170): Remove once we enable this feature for all form
   // factors. Currently we have no conclusion whether to enable this on mobile
@@ -171,10 +156,6 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
   // Enable V8 optimizations for high-end Android Desktop devices.
   // TODO(crbug.com/425860368): Remove when the feature is stable.
   feature_overrides.EnableFeature(features::kV8AndroidDesktopHighEndConfig);
-  // TODO(crbug.com/430304112): Remove when rollout is complete to all form
-  // factors.
-  feature_overrides.EnableFeature(
-      autofill::features::kAutofillAndroidDesktopSuppressAccessoryOnEmpty);
   // TODO(crbug.com/445446479): Remove when rollout is complete to all form
   // factors.
   feature_overrides.EnableFeature(
@@ -226,13 +207,6 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
   // Enforces 2-pixel even boundary alignment for YUV SurfaceControl overlays
   // on desktop Android as a native workaround for Intel hardware scalers.
   feature_overrides.EnableFeature(features::kAndroidYuvOverlayEvenAlignment);
-
-  // Enable by default for desktop platforms, pending a phone / foldable /
-  // tablet rollout using the same flag.
-  // TODO(crbug.com/442327273): Remove when rollout is complete to all form
-  // factors.
-  feature_overrides.EnableFeature(
-      autofill::features::kAutofillAndroidDesktopKeyboardAccessoryRevamp);
 
   // Enable ANGLE/Vulkan features.
   // TODO (crbug.com//376280554): Enable these features with runtime checks

@@ -62,6 +62,9 @@ base::flat_set<std::string> GetGlicSelectionDefaultBlockedSites();
 
 BASE_DECLARE_FEATURE(kGlicSelectionOverlayPrompt);
 BASE_DECLARE_FEATURE(kGlicSelectionOverlayPromptBox);
+BASE_DECLARE_FEATURE(kGlicSelectionOverlayDogfoodFeedback);
+BASE_DECLARE_FEATURE_PARAM(std::string,
+                           kGlicSelectionOverlayDogfoodFeedbackUrl);
 BASE_DECLARE_FEATURE(kGlicSelectionSuggestions);
 BASE_DECLARE_FEATURE_PARAM(std::string, kGlicSelectionSuggestionsCapabilities);
 
@@ -178,6 +181,8 @@ BASE_DECLARE_FEATURE(kGlicShowForSignedOut);
 BASE_DECLARE_FEATURE(kGlicAnchorEntryPointForOnboardedUsers);
 BASE_DECLARE_FEATURE(kGlicProcessCounterAbuseVerdict);
 BASE_DECLARE_FEATURE(kGlicNoWebUiLoader);
+BASE_DECLARE_FEATURE(kGlicNativeLoadingPlaceholder);
+bool IsGlicNativeLoadingPlaceholderEnabled();
 
 // TODO(b/576288240): Move the GEiC features below into a GEiC-specific
 // header and namespace under chrome/browser/glic/gemini_enterprise/.

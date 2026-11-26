@@ -567,6 +567,7 @@ class Generator(generator.Generator):
   def GetFilters(self):
     java_filters = {
       'array_expected_length': GetArrayExpectedLength,
+      'array_nullability_flags': GetArrayNullabilityFlags,
       'array': GetArrayKind,
       'constant_value': ConstantValue,
       'covers_continuous_range': EnumCoversContinuousRange,
@@ -587,6 +588,7 @@ class Generator(generator.Generator):
       "is_primary_nullable_value_kind_packed_field": pack.IsPrimaryNullableValueKindPackedField,
       'is_pointer_array_kind': IsPointerArrayKind,
       'is_reference_kind': mojom.IsReferenceKind,
+      'is_string_kind': mojom.IsStringKind,
       'is_struct_kind': mojom.IsStructKind,
       'is_union_array_kind': IsUnionArrayKind,
       'is_union_kind': mojom.IsUnionKind,

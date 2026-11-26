@@ -1374,6 +1374,7 @@ class CONTENT_EXPORT WebContentsImpl
   FrameTree* GetDocumentPictureInPictureOpenerFrameTree() override;
   std::optional<int64_t> GetPrivilegedContentsFeatureId() override;
   bool DoesWebContentsDisallowServiceWorkerControl() override;
+  bool DoesWebContentsDisallowSharedWorkers() override;
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   // content::RenderProcessHostCreationObserver

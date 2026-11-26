@@ -1861,6 +1861,11 @@ interface DelegatedInkTrailPresenter
     getter presentationArea
     method constructor
     method updateInkTrailStartPoint
+interface DeviceBoundSessionRegistrationObserver
+    attribute @@toStringTag
+    method constructor
+    method disconnect
+    method observe
 interface DeviceMotionEvent : Event
     static method requestPermission
     attribute @@toStringTag
@@ -3566,6 +3571,7 @@ interface HTMLAnchorElement : HTMLElement
     getter text
     getter type
     getter username
+    getter windowFeatures
     method constructor
     method toString
     setter charset
@@ -3593,6 +3599,7 @@ interface HTMLAnchorElement : HTMLElement
     setter text
     setter type
     setter username
+    setter windowFeatures
 interface HTMLAreaElement : HTMLElement
     attribute @@toStringTag
     getter alt
@@ -3619,6 +3626,7 @@ interface HTMLAreaElement : HTMLElement
     getter target
     getter type
     getter username
+    getter windowFeatures
     method constructor
     method toString
     setter alt
@@ -3644,6 +3652,7 @@ interface HTMLAreaElement : HTMLElement
     setter target
     setter type
     setter username
+    setter windowFeatures
 interface HTMLAudioElement : HTMLMediaElement
     attribute @@toStringTag
     method constructor
@@ -4220,6 +4229,7 @@ interface HTMLFormElement : HTMLElement
     getter rel
     getter relList
     getter target
+    getter windowFeatures
     method @@iterator
     method checkValidity
     method constructor
@@ -4238,6 +4248,7 @@ interface HTMLFormElement : HTMLElement
     setter rel
     setter relList
     setter target
+    setter windowFeatures
 interface HTMLFrameElement : HTMLElement
     attribute @@toStringTag
     getter contentDocument

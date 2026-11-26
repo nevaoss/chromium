@@ -176,16 +176,6 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
                                "ContextualTasksEnableLensInContextualTasks",
                                "ContextualTasksTabAutoSuggestionChipEnabled"});
 
-  // History embeddings survey.
-  survey_configs.emplace_back(
-      &features::kHappinessTrackingSurveysForHistoryEmbeddings,
-      kHatsSurveyTriggerHistoryEmbeddings,
-      /*presupplied_trigger_id=*/std::nullopt,
-      std::vector<std::string>{"non empty results",
-                               "best matches result clicked", "result clicked",
-                               "answer shown", "answer citation clicked"},
-      std::vector<std::string>{"query word count"});
-
   // NTP Photos module opt-out survey.
   survey_configs.emplace_back(
       &features::kHappinessTrackingSurveysForNtpPhotosOptOut,
@@ -591,6 +581,13 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
 
   // Performance Controls surveys.
   survey_configs.emplace_back(
+      &performance_manager::features::kPerformanceControlsPerformanceSurvey,
+      kHatsSurveyTriggerPerformanceControlsPerformance,
+      /*presupplied_trigger_id=*/std::nullopt,
+      std::vector<std::string>{"Memory Saver Mode Enabled",
+                               "Battery Saver Mode Enabled"},
+      std::vector<std::string>{});
+  survey_configs.emplace_back(
       &performance_manager::features::kPerformanceControlsPPMSurvey,
       kHatsSurveyTriggerPerformanceControlsPPM,
       /*presupplied_trigger_id=*/std::nullopt,
@@ -603,6 +600,22 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
           "Performance Characteristics (OS and Total Memory)"},
       /*log_responses_to_uma=*/true,
       /*log_responses_to_ukm=*/true);
+  survey_configs.emplace_back(
+      &performance_manager::features::
+          kPerformanceControlsBatteryPerformanceSurvey,
+      kHatsSurveyTriggerPerformanceControlsBatteryPerformance,
+      /*presupplied_trigger_id=*/std::nullopt,
+      std::vector<std::string>{"Memory Saver Mode Enabled",
+                               "Battery Saver Mode Enabled"},
+      std::vector<std::string>{});
+  survey_configs.emplace_back(
+      &performance_manager::features::
+          kPerformanceControlsMemorySaverOptOutSurvey,
+      kHatsSurveyTriggerPerformanceControlsMemorySaverOptOut);
+  survey_configs.emplace_back(
+      &performance_manager::features::
+          kPerformanceControlsBatterySaverOptOutSurvey,
+      kHatsSurveyTriggerPerformanceControlsBatterySaverOptOut);
 
   // Red Warning surveys.
   survey_configs.emplace_back(
@@ -774,17 +787,26 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
           safe_browsing::kReportType, safe_browsing::kTimeWarningVisible,
           safe_browsing::kUserAction, safe_browsing::kUserActivityWithUrls});
 
+#endif  // #if !BUILDFLAG(IS_ANDROID)
+
   // Suspicious Site Warning surveys.
   survey_configs.emplace_back(
       &safe_browsing::kSuspiciousSiteWarningSurvey,
       kHatsSurveyTriggerSuspiciousSiteWarning,
       safe_browsing::kSuspiciousSiteWarningSurveyTriggerId.Get(),
-      std::vector<std::string>{"did_proceed", "learn_more_clicked",
-                               "repeat_visit"},
-      std::vector<std::string>{"site_origin", "user_choice",
-                               "time_prompt_visible", "referrer_origin",
-                               "referring_app"});
-#endif  // #if !BUILDFLAG(IS_ANDROID)
+      std::vector<std::string>{"Did proceed", "Learn more clicked",
+                               "Repeat visit"},
+      std::vector<std::string>{
+          // TODO(crbug.com/516759212): Coarsen site origin and referrer origin
+          // to eTLD+1.
+          "Site origin",
+          "User choice",
+          "Time prompt visible",
+          "Referrer origin",
+#if BUILDFLAG(IS_ANDROID)
+          "Referring app",
+#endif
+      });
 
   auto with_client_context_psd_fields = [](std::vector<std::string> fields) {
     fields.insert(

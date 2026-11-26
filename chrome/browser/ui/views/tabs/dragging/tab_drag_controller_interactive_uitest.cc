@@ -864,6 +864,32 @@ IN_PROC_BROWSER_TEST_F(TabDragControllerTest, GestureEndShouldEndDragTest) {
   EXPECT_FALSE(IsDragSessionActive(tab_strip));
 }
 
+namespace {
+
+// Reports `window` as the topmost window at every point, unless it is ignored.
+// Tests that drive TabDragController directly with synthesized events use this
+// to avoid depending on the platform's real pointer state, e.g: on Wayland,
+// the window under a point is determined by the current pointer focus.
+class FixedWindowFinder : public WindowFinder {
+ public:
+  explicit FixedWindowFinder(gfx::NativeWindow window) : window_(window) {}
+  FixedWindowFinder(const FixedWindowFinder&) = delete;
+  FixedWindowFinder& operator=(const FixedWindowFinder&) = delete;
+  ~FixedWindowFinder() override = default;
+
+  // WindowFinder:
+  gfx::NativeWindow GetLocalProcessWindowAtPoint(
+      const gfx::Point& screen_point,
+      const std::set<gfx::NativeWindow>& ignore) override {
+    return ignore.contains(window_) ? gfx::NativeWindow() : window_;
+  }
+
+ private:
+  gfx::NativeWindow window_;
+};
+
+}  // namespace
+
 IN_PROC_BROWSER_TEST_F(TabDragControllerTest,
                        DetachToNewBrowserWindowDestroyedDuringShow) {
   TabStrip* tab_strip = GetTabStripForBrowser(browser());
@@ -885,6 +911,9 @@ IN_PROC_BROWSER_TEST_F(TabDragControllerTest,
   TabDragController* controller =
       tab_strip->GetDragContext()->GetDragController();
   ASSERT_NE(controller, nullptr);
+  SetWindowFinderForTabStrip(tab_strip,
+                             std::make_unique<FixedWindowFinder>(
+                                 tab_strip->GetWidget()->GetNativeWindow()));
 
   // First drag movement starts the drag session.
   ASSERT_EQ(controller->Drag(tab_1_center + gfx::Vector2d(20, 0)),
@@ -930,6 +959,9 @@ IN_PROC_BROWSER_TEST_F(TabDragControllerTest,
   TabDragController* controller =
       tab_strip->GetDragContext()->GetDragController();
   ASSERT_NE(controller, nullptr);
+  SetWindowFinderForTabStrip(tab_strip,
+                             std::make_unique<FixedWindowFinder>(
+                                 tab_strip->GetWidget()->GetNativeWindow()));
 
   ASSERT_EQ(controller->Drag(tab_1_center + gfx::Vector2d(20, 0)),
             TabDragController::Liveness::kAlive);
@@ -4973,7 +5005,11 @@ IN_PROC_BROWSER_TEST_P(DetachToBrowserTabDragControllerTest,
   ASSERT_EQ(4, model->count());
   ASSERT_EQ(2u, group_model->GetTabGroup(group)->ListTabs().length());
 
-  // Drag group1, group should remain collapsed.
+  content::WebContents* const active_contents = model->GetActiveWebContents();
+  EXPECT_FALSE(model->IsTabCollapsed(model->active_index()));
+
+  // Drag group1, group should remain collapsed and active tab should remain
+  // unchanged outside the collapsed group.
   ASSERT_TRUE(PressInputAtCenter(tab_strip->group_header(group)));
   ASSERT_TRUE(DragInputToCenter(tab_strip->tab_at(1)));
   ASSERT_TRUE(TabDragController::IsActive());
@@ -4981,6 +5017,8 @@ IN_PROC_BROWSER_TEST_P(DetachToBrowserTabDragControllerTest,
   ASSERT_TRUE(ReleaseInput());
   StopAnimating(tab_strip);
   EXPECT_TRUE(model->IsGroupCollapsed(group));
+  EXPECT_EQ(model->GetActiveWebContents(), active_contents);
+  EXPECT_FALSE(model->IsTabCollapsed(model->active_index()));
 }
 
 #if BUILDFLAG(IS_MAC)

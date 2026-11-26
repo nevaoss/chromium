@@ -56,9 +56,6 @@ BASE_FEATURE(kKeyboardAccessibleTooltipInViews,
 // out yet).
 BASE_FEATURE(kLabelDefaultTooltipFastPath, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// If enabled, NativeViewHost controls the layers of the native view.
-BASE_FEATURE(kNativeViewHostManagesLayers, base::FEATURE_ENABLED_BY_DEFAULT);
-
 #if BUILDFLAG(IS_MAC)
 // When enabled, focusing a View in an inactive Widget makes the Widget's window
 // key (i.e. activates it), matching the behavior on other platforms. This is a
@@ -76,7 +73,7 @@ BASE_FEATURE(kNotifyCompositorOfSpaceVisibilityOnMacOs,
 
 // When enabled, tell the browser compositor when the window is fully occluded
 // (covered by other windows), to allow it to reclaim resources. The occlusion
-// state comes from `WebContentsOcclusionCheckerMac`, so this only applies to
+// state comes from `WindowOcclusionCheckerMac`, so this only applies to
 // top-level windows that contain web contents. Becoming occluded is debounced;
 // becoming visible again takes effect immediately.
 BASE_FEATURE(kNotifyCompositorOfWindowOcclusionOnMacOs,

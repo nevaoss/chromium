@@ -181,11 +181,6 @@ void LogFetchLaterMetric(const FetchLaterRendererMetricType& type) {
   base::UmaHistogramEnumeration("FetchLater.Renderer.Metrics", type);
 }
 
-void RecordBlobFetchNetErrorCode(int net_error_code) {
-  base::UmaHistogramSparse("Net.BlobFetch.ResponseNetErrorCode",
-                           net_error_code);
-}
-
 // Tells whether the FetchLater request should use BackgroundSync permission to
 // decide whether it should send out deferred requests on entering
 // BackForwardCache.
@@ -548,8 +543,7 @@ class FetchManager::Loader final
           IntegrityReport integrity_report;
           IntegrityMetadataSet metadata_set;
           SubresourceIntegrity::ParseIntegrityAttribute(
-              integrity_metadata_, metadata_set, loader_->GetExecutionContext(),
-              &integrity_report);
+              integrity_metadata_, metadata_set, &integrity_report);
 
           const FetchResponseData* data = response_->GetResponse();
           String raw_headers = data->InternalHeaderList()->GetAsRawString(
@@ -558,7 +552,7 @@ class FetchManager::Loader final
               !updater_ ? FetchResponseType::kError : data->GetType();
           integrity_failed = !SubresourceIntegrity::CheckSubresourceIntegrity(
               metadata_set, &buffer_, url_, type, raw_headers,
-              loader_->GetExecutionContext(), integrity_report);
+              integrity_report);
           integrity_report.SendReports(loader_->GetExecutionContext());
           error_message = "SRI's integrity checks failed.";
         }
@@ -720,12 +714,6 @@ void FetchManager::Loader::DidReceiveResponse(
     uint64_t,
     const ResourceResponse& response) {
   received_response_headers_ = true;
-
-  // Record the blob fetch request status.
-  if (GetFetchRequestData() &&
-      GetFetchRequestData()->Url().ProtocolIs("blob")) {
-    RecordBlobFetchNetErrorCode(net::OK);
-  }
 
   // Verify that we're dealing with the URL we expect (which could be an
   // HTTPS-upgraded variant of `url_list_.back()`.
@@ -895,12 +883,6 @@ void FetchManager::Loader::DidFail(uint64_t identifier,
   if (GetExecutionContext()) {
     GetExecutionContext()->MaybeRecordFetchError(error.ErrorCode(),
                                                  GetFetchRequestData());
-  }
-
-  // Record the failures for blob fetch request.
-  if (GetFetchRequestData() &&
-      GetFetchRequestData()->Url().ProtocolIs("blob")) {
-    RecordBlobFetchNetErrorCode(-error.ErrorCode());
   }
 
   if (GetFetchRequestData() && GetFetchRequestData()->TrustTokenParams()) {
@@ -1199,8 +1181,7 @@ void FetchLoaderBase::PerformHTTPFetch(ExceptionState& exception_state) {
   }
   request.SetCacheMode(fetch_request_data_->CacheMode());
   request.SetRedirectMode(fetch_request_data_->Redirect());
-  request.SetFetchIntegrity(fetch_request_data_->Integrity(),
-                            execution_context_);
+  request.SetFetchIntegrity(fetch_request_data_->Integrity());
   request.SetFetchPriorityHint(fetch_request_data_->FetchPriorityHint());
   request.SetPriority(fetch_request_data_->Priority());
   request.SetUseStreamOnResponse(true);

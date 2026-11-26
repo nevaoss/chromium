@@ -37,6 +37,7 @@
 #include "remoting/base/source_location.h"
 #include "remoting/host/mojom/common.mojom-shared.h"
 #include "remoting/proto/control.pb.h"
+#include "remoting/proto/terminal.pb.h"
 
 #if BUILDFLAG(REMOTING_MULTI_PROCESS)
 #include "remoting/host/base/desktop_environment_options.h"
@@ -1608,6 +1609,46 @@ class StructTraits<remoting::mojom::PortRangeDataView, ::remoting::PortRange> {
 };
 
 template <>
+struct EnumTraits<remoting::mojom::SessionPolicies_AudioMode,
+                  ::remoting::SessionPolicies::AudioMode> {
+  static remoting::mojom::SessionPolicies_AudioMode ToMojom(
+      ::remoting::SessionPolicies::AudioMode input) {
+    switch (input) {
+      case ::remoting::SessionPolicies::AudioMode::kUnspecified:
+        return remoting::mojom::SessionPolicies_AudioMode::kUnspecified;
+      case ::remoting::SessionPolicies::AudioMode::kNone:
+        return remoting::mojom::SessionPolicies_AudioMode::kNone;
+      case ::remoting::SessionPolicies::AudioMode::kClientToHost:
+        return remoting::mojom::SessionPolicies_AudioMode::kClientToHost;
+      case ::remoting::SessionPolicies::AudioMode::kHostToClient:
+        return remoting::mojom::SessionPolicies_AudioMode::kHostToClient;
+      case ::remoting::SessionPolicies::AudioMode::kBoth:
+        return remoting::mojom::SessionPolicies_AudioMode::kBoth;
+    }
+
+    NOTREACHED();
+  }
+
+  static ::remoting::SessionPolicies::AudioMode FromMojom(
+      remoting::mojom::SessionPolicies_AudioMode input) {
+    switch (input) {
+      case remoting::mojom::SessionPolicies_AudioMode::kUnspecified:
+        return ::remoting::SessionPolicies::AudioMode::kUnspecified;
+      case remoting::mojom::SessionPolicies_AudioMode::kNone:
+        return ::remoting::SessionPolicies::AudioMode::kNone;
+      case remoting::mojom::SessionPolicies_AudioMode::kClientToHost:
+        return ::remoting::SessionPolicies::AudioMode::kClientToHost;
+      case remoting::mojom::SessionPolicies_AudioMode::kHostToClient:
+        return ::remoting::SessionPolicies::AudioMode::kHostToClient;
+      case remoting::mojom::SessionPolicies_AudioMode::kBoth:
+        return ::remoting::SessionPolicies::AudioMode::kBoth;
+    }
+
+    NOTREACHED();
+  }
+};
+
+template <>
 class StructTraits<remoting::mojom::SessionPoliciesDataView,
                    ::remoting::SessionPolicies> {
  public:
@@ -1674,6 +1715,11 @@ class StructTraits<remoting::mojom::SessionPoliciesDataView,
   static std::optional<bool> allow_terminal_mode(
       const ::remoting::SessionPolicies& policies) {
     return policies.allow_terminal_mode;
+  }
+
+  static std::optional<::remoting::SessionPolicies::AudioMode> audio_mode(
+      const ::remoting::SessionPolicies& policies) {
+    return policies.audio_mode;
   }
 
   static bool Read(remoting::mojom::SessionPoliciesDataView data_view,
@@ -1785,11 +1831,6 @@ template <>
 class StructTraits<remoting::mojom::AgentStatusDataView,
                    ::remoting::protocol::TerminalControl_AgentInfo> {
  public:
-  static int32_t terminal_id(
-      const ::remoting::protocol::TerminalControl_AgentInfo& status) {
-    return status.terminal_id();
-  }
-
   static std::optional<
       ::remoting::protocol::TerminalControl_AgentInfo_AgentState>
   agent_state(const ::remoting::protocol::TerminalControl_AgentInfo& status) {

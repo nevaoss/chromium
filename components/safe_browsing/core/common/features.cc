@@ -515,11 +515,6 @@ BASE_FEATURE(kSafeBrowsingRustDmgParser, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSafeBrowsingSkipRealTimeLookupIfOffline,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-#if BUILDFLAG(IS_ANDROID)
-BASE_FEATURE(kSafeBrowsingSyncCheckerCheckAllowlist,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#endif
-
 BASE_FEATURE(kSafeBrowsingWaitForDnsForRealTimeLookup,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -565,12 +560,22 @@ constexpr base::FeatureParam<std::string>
     kSuspiciousSiteWarningSurveyProceedTriggerId{
         &kSuspiciousSiteWarningSurvey,
         "SuspiciousSiteWarningSurveyProceedTriggerId",
-        /*default_value=*/"HguD8vrc50tK1KeaPYj0R37AzmWa"};
+#if BUILDFLAG(IS_ANDROID)
+        /*default_value=*/"HguD8vrc50tK1KeaPYj0R37AzmWa"
+#else
+        /*default_value=*/"qKoRRzn180ugnJ3q1cK0WX7PXscX"
+#endif
+    };
 constexpr base::FeatureParam<std::string>
     kSuspiciousSiteWarningSurveyHeedTriggerId{
         &kSuspiciousSiteWarningSurvey,
         "SuspiciousSiteWarningSurveyHeedTriggerId",
-        /*default_value=*/"LZD24fmuf0tK1KeaPYj0Z79hw2qC"};
+#if BUILDFLAG(IS_ANDROID)
+        /*default_value=*/"LZD24fmuf0tK1KeaPYj0Z79hw2qC"
+#else
+        /*default_value=*/"BjcqKTVFY0ugnJ3q1cK0VD1dNzUU"
+#endif
+    };
 
 BASE_FEATURE(kSuspiciousSiteWarnings, base::FEATURE_DISABLED_BY_DEFAULT);
 

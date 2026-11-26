@@ -2416,7 +2416,10 @@ test("content_browsertests") {
       "../browser/site_per_process_mac_browsertest.mm",
       "../renderer/render_view_browsertest_mac.mm",
     ]
-    deps += [ "//third_party/ocmock" ]
+    deps += [
+      "//components/remote_cocoa/app_shim",
+      "//third_party/ocmock",
+    ]
     data_deps += [ "//content/shell:content_shell" ]
     data += [ "$root_out_dir/Content Shell.app/" ]
     frameworks = [ "ScreenCaptureKit.framework" ]
@@ -2770,7 +2773,6 @@ test("content_unittests") {
     "../browser/media/session/media_session_uma_helper_unittest.cc",
     "../browser/media/system_media_controls/system_media_controls_notifier_unittest.cc",
     "../browser/media/webaudio/audio_context_manager_impl_unittest.cc",
-    "../browser/memory/swap_metrics_driver_impl_unittest.cc",
     "../browser/memory_coordinator/browser_memory_coordinator_impl_unittest.cc",
     "../browser/memory_coordinator/child_memory_consumer_registry_host_unittest.cc",
     "../browser/memory_coordinator/zero_limit_policy_unittest.cc",

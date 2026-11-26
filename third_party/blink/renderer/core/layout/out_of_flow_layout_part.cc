@@ -693,6 +693,13 @@ void OutOfFlowLayoutPart::Run() {
       BlockNode(box).FinishRepeatableRoot();
     }
   }
+
+  // OOF breaks may have caused the containing block to break.
+  if (container_builder_.ShouldBreakInsideForContent() &&
+      !container_builder_.FoundColumnSpanner() &&
+      RuntimeEnabledFeatures::FragmentedOofInCbEnabled()) {
+    container_builder_.UpdateConsumedBlockSizeToFragmentainerEnd();
+  }
 }
 
 void OutOfFlowLayoutPart::PropagateOOFsFromPageAreas() {
@@ -861,7 +868,17 @@ OutOfFlowLayoutPart::GetContainingBlockInfo(
     return *viewport_containing_block_;
   }
 
-  return default_containing_block_;
+  ContainingBlockInfo info(default_containing_block_);
+  if (const BlockBreakToken* break_token = candidate.GetBreakToken()) {
+    // The post-layout offset is first and foremost about offsets caused by
+    // relative positioning (which should not affect layout / fragmentation),
+    // but when resuming after a break, like here, any static inline-offset is
+    // also included, as well as the block-offset if the element is a repeated
+    // fixedpos. These values cannot be recomputed when resuming after a break,
+    // which is why they are part of the break token.
+    info.post_layout_offset = break_token->OofPostLayoutOffset();
+  }
+  return info;
 }
 
 void OutOfFlowLayoutPart::ComputeInlineContainingBlocks(
@@ -872,6 +889,8 @@ void OutOfFlowLayoutPart::ComputeInlineContainingBlocks(
     const LayoutInline* inline_container = candidate.InlineContainer();
     if (inline_container) {
       InlineContainingBlockGeometry inline_geometry = {};
+      inline_geometry.relative_offset =
+          candidate.InlineContainerInfo().RelativeOffset();
       inline_container_fragments.insert(inline_container, inline_geometry);
     }
   }
@@ -1078,12 +1097,11 @@ void OutOfFlowLayoutPart::AddInlineContainingBlockInfo(
     // Subtract out the inline relative offset, if set, so that it can be
     // applied after fragmentation is performed on the fragmentainer
     // descendants.
-    DCHECK((geometry.relative_offset == LogicalOffset() &&
-            containing_block_relative_offset == LogicalOffset() &&
+    DCHECK((containing_block_relative_offset == LogicalOffset() &&
             containing_block_offset == LogicalOffset()) ||
            container_builder_.IsBlockFragmentationContextRoot());
     LogicalOffset container_offset = start_offset - geometry.relative_offset;
-    LogicalOffset total_relative_offset =
+    LogicalOffset post_layout_offset =
         containing_block_relative_offset + geometry.relative_offset;
 
     // The offset of the container is currently relative to the containing
@@ -1093,14 +1111,13 @@ void OutOfFlowLayoutPart::AddInlineContainingBlockInfo(
 
     containing_blocks_map_.insert(
         block_info.key.Get(),
-        ContainingBlockInfo{inline_writing_direction,
-                            /* is_scroll_container */ false,
-                            geometry.is_hidden_due_to_layout,
-                            LogicalRect(container_offset, inline_cb_size),
-                            /* scroll_rect */ std::nullopt,
-                            /* scroll_limit_rect */ std::nullopt,
-                            /* scroll_direction */ LogicalBoxSides(false),
-                            total_relative_offset});
+        ContainingBlockInfo{
+            inline_writing_direction,
+            /* is_scroll_container */ false, geometry.is_hidden_due_to_layout,
+            LogicalRect(container_offset, inline_cb_size),
+            /* scroll_rect */ std::nullopt,
+            /* scroll_limit_rect */ std::nullopt,
+            /* scroll_direction */ LogicalBoxSides(false), post_layout_offset});
   }
 }
 
@@ -1153,15 +1170,15 @@ void OutOfFlowLayoutPart::LayoutCandidates(
       LayoutUnit block_overflow = offset_info.offset.block_offset - space_left;
       if (block_overflow > LayoutUnit()) {
         // The block offset is past the end of this fragmentainer, so the OOF
-        // needs to be pushed to a subsequent one. Also store the inline
-        // offset. The value may be based on the hypothetically static offset,
-        // and that one cannot be recomputed in a subsequent fragmentainer, so
-        // we need to carry it with us.
-        LogicalOffset start_inset(offset_info.offset.inline_offset,
-                                  block_overflow);
-        container_builder_.AddBreakBeforeChild(
-            node_info.node, /*appeal=*/std::nullopt,
-            /*is_forced_break=*/false, start_inset);
+        // needs to be pushed to a subsequent one. Supply the start
+        // block-offset, so that the node keeps on breaking without creating any
+        // fragments until we've reached the right start fragmentainer. Also
+        // store any post-layout offset, such as relative positioning, but also
+        // any hypothetically static inline-offset, which cannot be recomputed
+        // in a subsequent fragmentainer, so we need to carry it with us.
+        container_builder_.AddBreakBeforeOofChild(
+            node_info.node, block_overflow,
+            PostLayoutOffsetForBreakToken(node_to_layout));
         continue;
       }
     }
@@ -1172,9 +1189,11 @@ void OutOfFlowLayoutPart::LayoutCandidates(
             node_info.node.Style().GetWritingDirection());
     BoxStrut margins = physical_margins.ConvertToLogical(
         container_builder_.GetWritingDirection());
-    container_builder_.AddResult(
-        *result, result->OutOfFlowPositionedOffset(), margins,
-        /* relative_insets */ std::nullopt, &candidate.InlineContainerInfo());
+    LogicalOffset child_offset =
+        offset_info.offset + node_info.base_container_info.post_layout_offset;
+    container_builder_.AddResult(*result, child_offset, margins,
+                                 /*relative_insets=*/std::nullopt,
+                                 &candidate.InlineContainerInfo());
     container_builder_.SetHasOutOfFlowFragmentChild(true);
     if (GetConstraintSpace().IsInitialColumnBalancingPass()) {
       container_builder_.PropagateTallestUnbreakableBlockSize(
@@ -2543,21 +2562,23 @@ OutOfFlowLayoutPart::TryCalculateOffset(
 
   if (const BlockBreakToken* break_token = node_info.break_token) {
     DCHECK(RuntimeEnabledFeatures::FragmentedOofInCbEnabled());
-    // Calculate the offset for a resumed node.
-    //
-    // The inline offset is the same for every fragment.
-    offset_info.offset.inline_offset = break_token->OofInlineStartOffset();
+    // The inline-offset to use is stored in the break token, and will be
+    // applied post-layout in its entirety. Note that it doesn't matter when we
+    // apply it, since inline offsets don't affect fragmentation.
+    offset_info.offset.inline_offset = LayoutUnit();
     if (break_token->IsRepeated()) {
-      // If the node is repeated, the block offset is also the same for every
-      // fragment.
-      offset_info.offset.block_offset = break_token->OofBlockStartOffset();
+      // The block-offset of a repeated fixedpos is stored in the break token,
+      // and will be applied post-layout. Note that it doesn't matter when we
+      // apply it, since repeated elements don't participate in regular
+      // fragmentation.
+      offset_info.offset.block_offset = LayoutUnit();
     } else {
       // We store the block offset for OOFs in the break token since they may
-      // not start in the first fragmentainer. Additionally, if there is any
-      // monolitic overflow from previous fragmentainers, and an OOF is to be
-      // resumed in this fragmentainer, we need to adjust the offset to account
-      // for such overflow as well. In all other cases, fragmented nodes resume
-      // at the block-start of the next fragmentainer.
+      // not start in the fragmentainer where they are initially discovered by
+      // in-flow layout. Additionally, if there is any monolitic overflow from
+      // previous fragmentainers, and an OOF is to be resumed in this
+      // fragmentainer, we need to adjust the offset to account for such
+      // overflow as well.
       LayoutUnit monolithic_overflow;
       if (container_break_token) {
         monolithic_overflow = container_break_token->MonolithicOverflow();
@@ -2591,7 +2612,7 @@ OutOfFlowLayoutPart::TryCalculateOffset(
                  imcb.block_end)
             .ConvertToPhysical(candidate_writing_direction));
 
-    // Calculate the absolutized insets to be stored on |LayoutResult|.
+    // Calculate the absolutized insets to be stored on |PhysicalBoxFragment|.
     // |node_dimensions.inset| doesn't include margins, but |insets| do. We add
     // margins into |used_insets| for the calculation, and then remove them at
     // the end.
@@ -2607,8 +2628,7 @@ OutOfFlowLayoutPart::TryCalculateOffset(
     insets_to_store.block_end =
         insets.block_end.value_or(used_insets.block_end);
     offset_info.insets_for_get_computed_style =
-        insets_to_store.ConvertToPhysical(candidate_writing_direction)
-            .ConvertToLogical(node_info.default_writing_direction);
+        insets_to_store.ConvertToPhysical(candidate_writing_direction);
   }
 
   bool anchor_center_x = anchor_center_position.inline_offset.has_value();
@@ -2651,11 +2671,10 @@ const LayoutResult* OutOfFlowLayoutPart::Layout(
 
   DCHECK_EQ(layout_result->Status(), LayoutResult::kSuccess);
 
-  layout_result->GetMutableForOutOfFlow().SetOutOfFlowInsetsForGetComputedStyle(
+  const auto& fragment =
+      To<PhysicalBoxFragment>(layout_result->GetPhysicalFragment());
+  fragment.GetMutableForPositioned().SetUsedPositionInsets(
       offset_info.insets_for_get_computed_style);
-
-  layout_result->GetMutableForOutOfFlow().SetOutOfFlowPositionedOffset(
-      offset_info.offset);
 
   layout_result->GetMutableForOutOfFlow().SetNeedsScrollAdjustment(
       offset_info.needs_scroll_adjustment_in_x,
@@ -2675,20 +2694,19 @@ const LayoutResult* OutOfFlowLayoutPart::Layout(
         offset_info.imcb_rect);
   }
 
-  const auto& fragment =
-      To<PhysicalBoxFragment>(layout_result->GetPhysicalFragment());
   const BlockBreakToken* break_token = fragment.GetBreakToken();
   if (break_token && RuntimeEnabledFeatures::FragmentedOofInCbEnabled()) {
     // If the node is to generate more fragments, store the inline offset on the
     // outgoing break token. In case the offset is based on the static position,
     // it cannot be recomputed in the next fragmentainer.
-    auto mutator = break_token->GetMutableForOofFragmentation();
-    mutator.SetInlineStartOffset(offset_info.offset.inline_offset);
+    LogicalOffset offset = PostLayoutOffsetForBreakToken(oof_node_to_layout);
     if (break_token->IsRepeated()) {
-      // When the node is repeated, the block offset also needs to be the same
-      // on every page.
-      mutator.SetBlockStartOffset(offset_info.offset.block_offset);
+      // When the node is repeated, the block-offset also needs to be the same
+      // on every page. Move this into the post-layout offset, and use zero as
+      // layout offset in the next fragmentainers.
+      offset.block_offset += offset_info.offset.block_offset;
     }
+    break_token->GetMutableForOofFragmentation().SetPostLayoutOffset(offset);
   }
 
   const BlockNode& node = oof_node_to_layout.node_info.node;
@@ -2995,10 +3013,10 @@ void OutOfFlowLayoutPart::AddOOFToFragmentainer(
   DCHECK_EQ(result->Status(), LayoutResult::kSuccess);
 
   // Apply the relative positioned offset now that fragmentation is complete.
-  LogicalOffset oof_offset = result->OutOfFlowPositionedOffset();
-  LogicalOffset relative_offset =
-      descendant.node_info.base_container_info.relative_offset;
-  LogicalOffset adjusted_offset = oof_offset + relative_offset;
+  LogicalOffset oof_offset = descendant.offset_info.offset;
+  LogicalOffset post_layout_offset =
+      descendant.node_info.base_container_info.post_layout_offset;
+  LogicalOffset adjusted_offset = oof_offset + post_layout_offset;
 
   // In the case where an OOF descendant of |descendant| has its containing
   // block outside the current fragmentation context, we will want to apply an
@@ -3006,9 +3024,6 @@ void OutOfFlowLayoutPart::AddOOFToFragmentainer(
   // it's the offset relative to the current builder rather than the offset such
   // that all fragmentainers are stacked on top of each other.
   LogicalOffset offset_adjustment = fragmentainer_offset;
-
-  result->GetMutableForOutOfFlow().SetOutOfFlowPositionedOffset(
-      adjusted_offset);
 
   LogicalOffset additional_fixedpos_offset;
   if (descendant.node_info.fixedpos_containing_block.Fragment()) {
@@ -3088,14 +3103,14 @@ void OutOfFlowLayoutPart::AddOOFToFragmentainer(
   // regular layout, MutableForOofFragmentation / SimplifiedOofLayoutAlgorithm
   // won't do this for us.
   container_builder_.PropagateChildAnchors(
-      physical_fragment, oof_offset + relative_offset + offset_adjustment);
+      physical_fragment, oof_offset + post_layout_offset + offset_adjustment);
   container_builder_.PropagateStickyDescendants(physical_fragment);
   LayoutUnit containing_block_adjustment =
       container_builder_.BlockOffsetAdjustmentForFragmentainer(
           fragmentainer_consumed_block_size_);
   if (result->GetPhysicalFragment().NeedsOOFPositionedInfoPropagation()) {
     container_builder_.PropagateOOFPositionedInfo(
-        result->GetPhysicalFragment(), oof_offset, relative_offset,
+        result->GetPhysicalFragment(), oof_offset, post_layout_offset,
         offset_adjustment,
         /* inline_container */ nullptr, containing_block_adjustment,
         &descendant.node_info.containing_block,
@@ -3103,7 +3118,7 @@ void OutOfFlowLayoutPart::AddOOFToFragmentainer(
         &descendant.node_info.fixedpos_inline_container,
         additional_fixedpos_offset);
   }
-  algorithm->AppendOutOfFlowResult(result);
+  algorithm->AppendOutOfFlowResult(result, adjusted_offset);
 }
 
 ConstraintSpace OutOfFlowLayoutPart::GetFragmentainerConstraintSpace(

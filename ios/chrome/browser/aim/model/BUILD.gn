@@ -23,6 +23,7 @@ source_set("aim_button_service") {
     "//components/search",
     "//components/search_engines",
     "//ios/chrome/app/strings",
+    "//ios/chrome/browser/content_suggestions/most_visited_tiles/public",
     "//ios/chrome/browser/favicon/model",
     "//ios/chrome/browser/image_fetcher/model",
     "//ios/chrome/browser/ntp/ui_bundled:constants",

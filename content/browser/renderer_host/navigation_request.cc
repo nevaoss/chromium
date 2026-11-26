@@ -6809,9 +6809,9 @@ void NavigationRequest::OnRedirectChecksComplete(
 
   // Removes all Client Hints from the request, that were passed on from the
   // previous one.
-  for (const auto& elem : network::GetClientHintToNameMap()) {
+  for (const auto& elem : network::kClientHintToNameMap) {
     const auto& header = elem.second;
-    headers_update_params.removed_headers.push_back(header);
+    headers_update_params.removed_headers.emplace_back(header);
   }
 
   // Add any required Client Hints to the current request.
@@ -10238,6 +10238,12 @@ void NavigationRequest::ReadyToCommitNavigation(bool is_error) {
 
   commit_params_->is_load_data_with_base_url = IsLoadDataWithBaseURL();
   commit_params_->origin_to_commit = origin_to_commit.value();
+
+  if (frame_tree_node_->frame_tree()
+          .delegate()
+          ->DoesWebContentsDisallowSharedWorkers()) {
+    GetMutableRuntimeFeatureStateContext().SetSharedWorkerEnabled(false);
+  }
 
   if (!IsSameDocument()) {
     // TODO(crbug.com/504574017): Remove the WeakPtr check once Android

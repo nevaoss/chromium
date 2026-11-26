@@ -42,6 +42,8 @@ BASE_DECLARE_FEATURE(kImportExportFlags);
 // infobars wait in the prioritization queue.
 BASE_DECLARE_FEATURE(kInfoBarQueuedCountPill);
 
+BASE_DECLARE_FEATURE(kFindInPageSkipViewport);
+
 BASE_DECLARE_FEATURE(kKeyboardLockHeldEscExitsTabFullscreen);
 
 #if BUILDFLAG(IS_LINUX)
@@ -277,7 +279,6 @@ BASE_DECLARE_FEATURE(kPasswordSaveUpdateDropdownMenuExperiment);
 BASE_DECLARE_FEATURE(kNTPFooterBadgingPolicies);
 
 BASE_DECLARE_FEATURE(kEnterpriseManagementDisclaimerUsesCustomLabel);
-BASE_DECLARE_FEATURE(kEnterpriseReleaseNotes);
 BASE_DECLARE_FEATURE(kManagedProfileRequiredInterstitial);
 // Enables WebUI migration for chrome://management on Android Mobile.
 BASE_DECLARE_FEATURE(kMigrateManagementPageToWebUIOnMobile);
@@ -336,10 +337,6 @@ BASE_DECLARE_FEATURE(kByDateHistoryInSidePanel);
 
 // If enabled, the "Tabs from other devices" side panel will be available.
 BASE_DECLARE_FEATURE(kTabsFromOtherDevicesSidePanel);
-
-// If enabled, the "Tabs from other devices" toolbar button will be pinned by
-// default.
-BASE_DECLARE_FEATURE(kTabsFromOtherDevicesSidePanelPinnedByDefault);
 
 #if !BUILDFLAG(IS_ANDROID)
 

@@ -1671,6 +1671,10 @@ export class OmniboxPopupSearchboxElement extends
     this.clickQueriedZps_ = false;
     this.getInputElement().setSelectionRange(0, 0);
     this.getInputElement().blur();
+    // Show the start of the text, so that the #mirror elides its end. Blink
+    // scrolls an <input> back to its start on blur, but only fires blur (from
+    // `blur()`) while the page has system focus, so don't rely on it.
+    this.getInputElement().inputElement.scrollLeft = 0;
     // Cache the selected match before clearing autocomplete results so the
     // searchbox icon does not fall back to the default icon while blurred.
     if (this.selectedMatch) {
@@ -2253,13 +2257,9 @@ export class OmniboxPopupSearchboxElement extends
       return;
     }
 
-    // Stage 4 (`kBlur`): Blurs Omnibox and closes UI, returning focus to Web
-    // Contents.
-    if (this.fullUrlShown_) {
-      // Revert the native omnibox view in case it was unelided (e.g. via drag)
-      // so closing the popup restores the elided URL.
-      this.popupPageHandler_.revert(this.currentSequenceNum_);
-    }
+    // Stage 4 (`kBlur`): Reverts selection, blurs omnibox and closes UI,
+    // returning focus to Web Contents.
+    this.popupPageHandler_.revert(this.currentSequenceNum_);
     inputEl.blur();
     this.popupPageHandler_.closeUI();
     this.popupPageHandler_.logEscapeAction(OmniboxEscapeAction.kBlur);

@@ -52,11 +52,9 @@ ContextualTasksLocationBar::~ContextualTasksLocationBar() {
   // order.
 }
 
-ContextualTasksSidePanelCoordinator*
-ContextualTasksLocationBar::GetCoordinator() const {
-  return browser_window_ ? ContextualTasksSidePanelCoordinator::Get(
-                               browser_window_->GetUnownedUserDataHost())
-                         : nullptr;
+ContextualTasksPanelController* ContextualTasksLocationBar::GetCoordinator()
+    const {
+  return ContextualTasksPanelController::From(browser_window_);
 }
 
 content::WebContents* ContextualTasksLocationBar::GetWebContents() {
@@ -65,7 +63,7 @@ content::WebContents* ContextualTasksLocationBar::GetWebContents() {
 
 content::WebContents* ContextualTasksLocationBar::GetToolbarWebContents()
     const {
-  ContextualTasksSidePanelCoordinator* coordinator = GetCoordinator();
+  ContextualTasksPanelController* coordinator = GetCoordinator();
   return coordinator ? coordinator->GetToolbarWebContents() : nullptr;
 }
 
@@ -168,6 +166,13 @@ void ContextualTasksLocationBar::Update(content::WebContents* contents) {
   if (web_contents_.get() != contents) {
     if (auto* chip_controller = GetChipController()) {
       chip_controller->ResetPermissionPromptChip();
+    }
+    // Mirrors `WebUILocationBar::Update()`: invalidate the chips' state tokens
+    // so that click IPCs still in flight from the previous task are dropped,
+    // even if a chip stays visible across the switch. `OnChanged()` below
+    // pushes the new tokens to the WebUI.
+    if (permission_dashboard_) {
+      permission_dashboard_->ResetTabState();
     }
     web_contents_ = contents ? contents->GetWeakPtr() : nullptr;
   }

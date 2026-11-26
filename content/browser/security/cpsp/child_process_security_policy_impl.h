@@ -333,6 +333,15 @@ class CONTENT_EXPORT ChildProcessSecurityPolicyImpl
   // TODO(crbug.com/379869738): Remove this method when usages are ported.
   bool CanCommitURL(int child_id, const GURL& url);
 
+  // Valid blob URLs should contain canonically serialized origins. See
+  // https://crbug.com/40085381.
+  static bool IsMalformedBlobUrl(const GURL& url);
+
+  // Sets the "cpspi_can_commit_url_failure_reason" crash key.
+  // TODO(crbug.com/575911997): Remove this once Rust crash key support is
+  // available and CanCommitURL_Cpp() is removed.
+  static void LogCanCommitUrlFailureReason(std::string_view failure_reason);
+
   // This function will check whether |origin| requires process isolation
   // within |isolation_context|, and if so, it will return true and put the
   // most specific matching isolated origin into |result|.

@@ -161,7 +161,7 @@
     },
 
     'internal.chrome.fyi': {
-      'android-emulator-finch-smoke-chrome': 'android_release_bot_minimal_symbols_x86_fastbuild_webview_trichrome_remoteexec',
+      'android-emulator-finch-smoke-chrome': 'android_release_bot_minimal_symbols_x86_fastbuild_webview_debug_package_name_remoteexec',
       'linux-finch-smoke-chrome': 'official_remoteexec',
       'lorenz-graph-dbg': 'android_debug_static_no_symbols_remoteexec_external_fastbuild',
       'mac-arm64-finch-smoke-chrome': 'official_remoteexec_mac_arm',
@@ -245,7 +245,7 @@
     },
 
     'tryserver.internal.chrome.fyi': {
-      'android-emulator-finch-smoke-chrome': 'android_release_bot_minimal_symbols_x86_fastbuild_webview_trichrome_remoteexec',
+      'android-emulator-finch-smoke-chrome': 'android_release_bot_minimal_symbols_x86_fastbuild_webview_debug_package_name_remoteexec',
       'linux-finch-smoke-chrome': 'official_remoteexec',
       'mac-arm64-finch-smoke-chrome': 'official_remoteexec_mac_arm',
       'win-finch-smoke-chrome': 'official_remoteexec',
@@ -299,9 +299,9 @@
       'android_external', 'android_fastbuild',
     ],
 
-    'android_release_bot_minimal_symbols_x86_fastbuild_webview_trichrome_remoteexec': [
+    'android_release_bot_minimal_symbols_x86_fastbuild_webview_debug_package_name_remoteexec': [
       'android', 'release_bot_remoteexec', 'minimal_symbols', 'x86',
-      'strip_debug_info', 'android_fastbuild', 'webview_trichrome',
+      'strip_debug_info', 'android_fastbuild', 'webview_debug_package_name',
       'webview_shell',
     ],
 
@@ -436,7 +436,7 @@
     ],
 
     'official_android_arm32_pgo': [
-      'official', 'remoteexec', 'android', 'android_external', 'arm', 'minimal_symbols', 'no_default_afdo', 'pgo_phase_1', 'stable_version_code',
+      'official', 'remoteexec', 'android', 'android_external', 'arm', 'minimal_symbols', 'no_default_afdo', 'pgo_phase_1',
     ],
 
     'official_android_arm64_orderfile': [
@@ -444,7 +444,7 @@
     ],
 
     'official_android_arm64_pgo': [
-      'official', 'remoteexec', 'android', 'android_external', 'arm64', 'minimal_symbols', 'no_default_afdo', 'pgo_phase_1', 'stable_version_code',
+      'official', 'remoteexec', 'android', 'android_external', 'arm64', 'minimal_symbols', 'no_default_afdo', 'pgo_phase_1',
     ],
 
     'official_celab_release_bot': [
@@ -581,7 +581,7 @@
     ],
 
     'official_webview_arm64_pgo': [
-      'official', 'remoteexec', 'android', 'arm64', 'minimal_symbols', 'no_default_afdo', 'pgo_phase_1', 'stable_version_code',
+      'official', 'remoteexec', 'android', 'arm64', 'minimal_symbols', 'no_default_afdo', 'pgo_phase_1',
     ],
 
     'official_win_arm64_pgo': [
@@ -1053,12 +1053,6 @@
       'gn_args': 'is_component_build=true',
     },
 
-    # Ensures we don't have mulitple versions of Trichrome Library installed on
-    # devices so as to not run out of disk space.
-    'stable_version_code': {
-      'gn_args': 'android_override_version_code="1234567980"',
-    },
-
     'static': {
       'gn_args': 'is_component_build=false',
     },
@@ -1105,15 +1099,15 @@
       'gn_args': 'system_webview_package_name="com.google.android.webview"',
     },
 
+    # For Android >=Q, only userdebug/eng
+    'webview_debug_package_name': {
+      'gn_args': 'system_webview_package_name="com.google.android.webview.debug"',
+    },
+
     # Mainly used by builders that use android emulator.
     # See https://bit.ly/3B1cyyt for more details.
     'webview_shell': {
       'gn_args': 'system_webview_shell_package_name = "org.chromium.my_webview_shell"',
-    },
-
-    # For Android >=Q, only userdebug/eng
-    'webview_trichrome': {
-      'gn_args': 'system_webview_package_name="com.google.android.webview.debug"',
     },
 
     'win_linker_timing': {

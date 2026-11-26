@@ -167,9 +167,6 @@ class BottomSheetCoordinator
     /** Whether or not always use the full width of the container. */
     private boolean mAlwaysFullWidth;
 
-    /** Whether the device is on a platform that supports a large form factor. */
-    private boolean mIsLargeFormFactor;
-
     /** The window for the bottom sheet. */
     private @MonotonicNonNull Window mWindow;
 
@@ -313,7 +310,7 @@ class BottomSheetCoordinator
         mContainerWidth = mSheetContainer.getWidth();
         mContainerHeight = mSheetContainer.getHeight();
         mAlwaysFullWidth = alwaysFullWidth;
-        mIsLargeFormFactor = isLargeFormFactor;
+        mMediator.setIsLargeFormFactor(isLargeFormFactor);
 
         sizeAndPositionSheetInParent();
 
@@ -372,19 +369,7 @@ class BottomSheetCoordinator
         return mMediator.calculateContentBottomPadding(
                 isLargeFormFactorUiEnabled(),
                 isFullHeightResizeContent(),
-                getEffectiveEdgeToEdgeBottomInset());
-    }
-
-    /**
-     * Returns the bottom inset used to offset the sheet vertically. Sheets that cover the bottom
-     * controls handle the bottom safe-area inset internally when expanded (HALF/FULL), so 0 is
-     * returned there; in PEEK mode, the full edge-to-edge bottom inset is still applied so the peek
-     * view remains lifted above the navigation bar.
-     */
-    private @Px int getEffectiveEdgeToEdgeBottomInset() {
-        return contentCoversBottomControls() && getTargetOrCurrentState() != SheetState.PEEK
-                ? 0
-                : getEdgeToEdgeBottomInset();
+                mMediator.getEffectiveEdgeToEdgeBottomInset(getEdgeToEdgeBottomInset()));
     }
 
     @Px
@@ -413,9 +398,6 @@ class BottomSheetCoordinator
         }
 
         boolean insetOrHeightChanged = updateViewportAndBottomInset(previousHeight);
-        if (insetOrHeightChanged) {
-            invalidateContentDesiredHeight();
-        }
         if (!maybeRevertStateOnLayoutChange() && insetOrHeightChanged) {
             resettleSheetOnContainerChange(keyboardDelegate);
         }
@@ -452,6 +434,9 @@ class BottomSheetCoordinator
         boolean insetOrHeightChanged =
                 previousHeight != mContainerHeight || mPreviousBottomInset != e2eBottomInset;
         mPreviousBottomInset = e2eBottomInset;
+        if (insetOrHeightChanged) {
+            invalidateContentDesiredHeight();
+        }
         return insetOrHeightChanged;
     }
 
@@ -758,7 +743,8 @@ class BottomSheetCoordinator
             float offset, @StateChangeReason int reason, boolean reportOpenClosed) {
         mCurrentOffsetPx = offset;
 
-        @Px int bottomInset = getEffectiveEdgeToEdgeBottomInset();
+        @Px
+        int bottomInset = mMediator.getEffectiveEdgeToEdgeBottomInset(getEdgeToEdgeBottomInset());
         boolean isSheetOpen = isSheetOpen();
         float translationY =
                 mMediator.calculateSheetTranslationY(
@@ -1109,14 +1095,9 @@ class BottomSheetCoordinator
     private void updateSheetLayoutMode(@SheetLayoutMode int mode) {
         mMediator.setSheetLayoutMode(mode);
         boolean isPopup = mode == SheetLayoutMode.DESKTOP_POPUP;
-        setBottomMargin(mRequestedBottomMargin);
+        updateContainerBottomMargin();
         mMediator.updateCloseButton(isPopup, getCurrentSheetContent());
         updateContainerClipping(isPopup);
-    }
-
-    private boolean isLargeFormFactorFallbackUiEnabled() {
-        BottomSheetContent content = getCurrentSheetContent();
-        return mIsLargeFormFactor && content != null && !content.supportsLargeFormFactor();
     }
 
     /**
@@ -1199,10 +1180,6 @@ class BottomSheetCoordinator
      */
     @VisibleForTesting
     float getSheetHeightForState(@SheetState int state) {
-        if (isFullHeightWrapContent() && state == SheetState.FULL) {
-            ensureContentDesiredHeightIsComputed();
-        }
-
         return getRatioForState(state) * getMaxSheetHeight();
     }
 
@@ -1224,8 +1201,7 @@ class BottomSheetCoordinator
     @Override
     @VisibleForTesting
     public boolean isLargeFormFactorUiEnabled() {
-        BottomSheetContent content = getCurrentSheetContent();
-        return mIsLargeFormFactor && content != null && content.supportsLargeFormFactor();
+        return mMediator.isLargeFormFactorUiEnabled();
     }
 
     /** Toggles the sheet state between its open states when the handlebar is clicked. */
@@ -1424,20 +1400,10 @@ class BottomSheetCoordinator
     }
 
     private void configureSheetAppearanceForContent(@Nullable BottomSheetContent content) {
-        updateSheetLayoutMode(resolveSheetLayoutMode());
+        updateSheetLayoutMode(mMediator.resolveSheetLayoutMode());
         boolean showHandlebar = content != null && content.showHandlebar();
         mMediator.setHandlebarVisible(showHandlebar);
         sizeAndPositionSheetInParent();
-    }
-
-    private @SheetLayoutMode int resolveSheetLayoutMode() {
-        if (isLargeFormFactorUiEnabled()) {
-            return SheetLayoutMode.DESKTOP_POPUP;
-        }
-        if (isLargeFormFactorFallbackUiEnabled()) {
-            return SheetLayoutMode.DESKTOP_FALLBACK;
-        }
-        return SheetLayoutMode.STANDARD;
     }
 
     private void configureWrapContentLayout(@Nullable BottomSheetContent content) {
@@ -1446,7 +1412,6 @@ class BottomSheetCoordinator
         // Listen for layout/size changes.
         content.getContentView().addOnLayoutChangeListener(this);
 
-        invalidateContentDesiredHeight();
         ensureContentIsWrapped(/* animate= */ true);
 
         // HALF state is forbidden when wrapping the content.
@@ -1455,21 +1420,11 @@ class BottomSheetCoordinator
         }
     }
 
-    private @SheetState int getTargetOrCurrentState() {
-        @SheetState int targetState = getTargetSheetState();
-        if (targetState != SheetState.NONE && targetState != SheetState.SCROLLING) {
-            return targetState;
-        }
-        @SheetState int currentState = getSheetState();
-        if (currentState != SheetState.NONE && currentState != SheetState.SCROLLING) {
-            return currentState;
-        }
-        return SheetState.FULL;
-    }
-
     private void updateContentContainerHeight() {
         assert mWindow != null;
-        @Px int e2eBottomInset = getEffectiveEdgeToEdgeBottomInset();
+        @Px
+        int e2eBottomInset =
+                mMediator.getEffectiveEdgeToEdgeBottomInset(getEdgeToEdgeBottomInset());
         updateViewport(e2eBottomInset);
 
         boolean isLargeFormFactorUiEnabled = isLargeFormFactorUiEnabled();
@@ -1505,7 +1460,7 @@ class BottomSheetCoordinator
         if (!isLargeFormFactorUiEnabled || isFullHeightResizeContent || isFullHeightWrapContent()) {
             return 0;
         }
-        return (int) getSheetHeightForState(getTargetOrCurrentState());
+        return (int) getSheetHeightForState(mMediator.getTargetOrCurrentState());
     }
 
     private boolean contentCoversBottomControls() {
@@ -1571,7 +1526,6 @@ class BottomSheetCoordinator
             int oldBottom) {
         // When there is a device rotation, mContentWidth needs to be updated before the new
         // view is drawn.
-        invalidateContentDesiredHeight();
         ensureContentIsWrapped(/* animate= */ true);
 
         // If the sheet height changes mid-animation, make sure we animate to that height.
@@ -1621,12 +1575,15 @@ class BottomSheetCoordinator
 
     void setBottomMargin(@Px int bottomMargin) {
         mRequestedBottomMargin = bottomMargin;
-        int effectiveBottomMargin = bottomMargin;
+        updateContainerBottomMargin();
+    }
+
+    private void updateContainerBottomMargin() {
         // Enforce the baseline visual requirements for large form factor devices: ensure the sheet
         // physically floats above the logical bottom by attaching a rigid bottom margin offset.
-        if (isLargeFormFactorUiEnabled()) {
-            effectiveBottomMargin += mDesktopBottomMargin;
-        }
+        @Px
+        int effectiveBottomMargin =
+                mRequestedBottomMargin + (isLargeFormFactorUiEnabled() ? mDesktopBottomMargin : 0);
 
         // TODO(crbug.com/521433079): Should early return if this doesn't change. Leaving for now to
         // ensure we don't introduce subtle client regressions.
@@ -1671,6 +1628,7 @@ class BottomSheetCoordinator
     }
 
     private void ensureContentIsWrapped(boolean animate) {
+        invalidateContentDesiredHeight();
         @SheetState int currentState = getSheetState();
         if (currentState == SheetState.HIDDEN || currentState == SheetState.PEEK) return;
 

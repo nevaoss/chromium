@@ -5,7 +5,6 @@
 #import "ios/chrome/browser/content_suggestions/ui/content_suggestions_view_controller.h"
 
 #import "components/ntp_tiles/constants.h"
-#import "components/ntp_tiles/features.h"
 #import "ios/chrome/browser/content_suggestions/model/content_suggestions_metrics_recorder.h"
 #import "ios/chrome/browser/content_suggestions/most_visited_tiles/public/most_visited_tiles_constants.h"
 #import "ios/chrome/browser/content_suggestions/most_visited_tiles/ui/most_visited_item.h"
@@ -19,6 +18,7 @@
 #import "ios/chrome/browser/drag_and_drop/model/url_drag_drop_handler.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_constants.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_feature.h"
+#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_shortcuts_handler.h"
 #import "ios/chrome/browser/ntp/ui_bundled/ntp_card_background_view.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_browser_agent.h"
@@ -26,9 +26,6 @@
 #import "ios/chrome/common/ui/util/constraints_ui_util.h"
 
 namespace {
-
-using ntp_tiles::AimButtonRefactorArm;
-using ntp_tiles::GetAimButtonRefactorArm;
 
 // Corner radius for the most visited tiles container.
 constexpr CGFloat kModuleContainerCornerRadius = 24.0;
@@ -289,10 +286,9 @@ constexpr CGFloat kStackViewSpacing = 12.0;
 
 - (void)aimModuleTapped {
   CHECK_EQ(GetAimButtonRefactorArm(), AimButtonRefactorArm::kAimAsModule);
+  CHECK(_isAIMAllowed);
   [self.audience didTapAIMModule];
-  const GURL aimURL = GURL(ntp_tiles::kAiModeTileUrl);
-  const UrlLoadParams params = UrlLoadParams::InCurrentTab(aimURL);
-  self.urlLoadingBrowserAgent->Load(params);
+  [self.NTPShortcutsHandler openAIM];
 }
 
 @end
