@@ -1,0 +1,47 @@
+From 6aa6c6c7a5b81f6caf0e514036f5df364785932d Mon Sep 17 00:00:00 2001
+From: Alexander Lapshenkov <alexander.lapshenkov@lge.com>
+Date: Thu, 26 Nov 2026 13:46:48 +0300
+Subject: [PATCH] [build][webos] 158.0.8127.0~1: Perfetto: Build pbzero headers
+ first
+
+trace_processor compiles sources that include generated Perfetto headers
+(trace_packet_defaults.pbzero.h) through
+packet_sequence_state_generation.h. The proto generators were a regular dep
+of the header target and did not order those compilations. A parallel build
+started to fail with the error:
+
+  protos/perfetto/trace/trace_packet_defaults.pbzero.h: file not found
+
+To avoid this error the proto targets are moved to public_deps of
+packet_sequence_state_generation_hdr, so consumers inherit the generated
+header dependencies.
+
+Test Scenario:
+
+1. Run do_compile task for mksnapshot-cross-aarch64 recipe after cleanall
+2. Check that the build succeeds
+
+Issue: NEVA-11578
+---
+ src/trace_processor/importers/proto/BUILD.gn | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/trace_processor/importers/proto/BUILD.gn b/src/trace_processor/importers/proto/BUILD.gn
+index f281757e7b..5f999aff82 100644
+--- a/src/trace_processor/importers/proto/BUILD.gn
++++ b/src/trace_processor/importers/proto/BUILD.gn
+@@ -298,2 +298,6 @@ source_set("packet_sequence_state_generation_hdr") {
+   ]
++  public_deps = [
++    "../../../../protos/perfetto/trace:non_minimal_zero",
++    "../../../../protos/perfetto/trace/track_event:zero",
++  ]
+   deps = [
+@@ -301,4 +305,2 @@ source_set("packet_sequence_state_generation_hdr") {
+     "../../../../include/perfetto/ext/base",
+-    "../../../../protos/perfetto/trace:non_minimal_zero",
+-    "../../../../protos/perfetto/trace/track_event:zero",
+     "../../containers",
+--
+2.34.1
+
