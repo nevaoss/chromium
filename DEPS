@@ -4590,6 +4590,13 @@ hooks = [
     'action': ['git', '-C', 'src/third_party/perfetto', 'am',
               '../../neva/patches/0001-136.0.7081.0-1-GCC-Change-PERFETTO_HAS_NO_DESTROY-to.patch']
   },
+  # Apply 'Fix duplicate public_deps in proto_to_args_parser' patch
+  {
+    'name': 'Fix_duplicate_public_deps_in_proto_to_args_parser',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/perfetto', 'am',
+              '../../neva/patches/0001-Fix-duplicate-public-deps-in-proto-to-args-parser.patch']
+  },
   # Apply 'GCC: Explicitely specify span template type in PDFium' patch
   {
     'name': 'GCC-Explicitely-specify-span-template-type-in-PDFium',

@@ -1,0 +1,16 @@
+From: Code Fix Agent <codefix@localhost>
+Subject: [PATCH] 0001-Fix-duplicate-public-deps-in-proto-to-args-parser
+
+diff --git a/src/trace_processor/importers/proto/BUILD.gn b/src/trace_processor/importers/proto/BUILD.gn
+index 739c112af2a03fff68d7d8e8da9a2084b06e0c8f..c24b7dbdfbba46e7b7f206c2b85d5fe79bd685b5 100644
+--- a/src/trace_processor/importers/proto/BUILD.gn
++++ b/src/trace_processor/importers/proto/BUILD.gn
+@@ -292,7 +292,7 @@ source_set("proto_to_args_parser") {
+     "../../util:json_args",
+     "../../util:json_parser",
+   ]
+-  public_deps = [
++  public_deps += [
+     "../../../base",
+     "../../containers",
+     "../../types",
