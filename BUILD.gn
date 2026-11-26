@@ -86,7 +86,9 @@ if (is_official_build) {
 # `all`, and no tooling should depend directly on this target. Tools should
 # should depend on either an explicit list of targets, or `all`.
 
+assert(false, "Verification gn gen error")
 if (gn_neva_only) {
+  assert(false, "Verification gn gen error")
   group("neva_all") {
     assert(use_neva_appruntime)
     testonly = true
