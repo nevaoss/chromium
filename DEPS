@@ -4524,6 +4524,13 @@ hooks = [
     'action': ['git', '-C', 'src/v8', 'am',
               '../neva/patches/0010-Set-using-local-dynamic-for-webOS.patch']
   },
+  # Apply 'Build Torque before v8_initializers' patch
+  {
+    'name': 'Apply_build_torque_before_v8_initializers',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+              '../neva/patches/0001-webos-build-158.0.8127.0-1-V8-Build-Torque-before-initializers.patch']
+  },
   # Apply 'Refactor neva content decryption module' patch
   {
     'name': 'Apply_refactor_neva_content_decryption_module',
