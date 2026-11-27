@@ -1,0 +1,61 @@
+name: copy-statuses
+
+# Copies the build and test statuses of one PR head (e.g. an adaptation PR)
+# to another PR head with the same tree (e.g. its upgrade PR), so that a
+# rebase merge does not force every Jenkins job to run again.
+# See nevaoss/ci tools/copy-statuses.py for the rules.
+
+on:
+  workflow_dispatch:
+    inputs:
+      SourcePullRequest:
+        description: "Source Pull Request number (verified, e.g. the adaptation PR)"
+        required: true
+        type: string
+      TargetPullRequest:
+        description: "Target Pull Request number (e.g. the upgrade PR)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: write
+
+concurrency:
+  group: copy-statuses-${{ inputs.TargetPullRequest }}
+  cancel-in-progress: true
+
+jobs:
+  copy-statuses:
+    name: copy-statuses
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate PR numbers
+        shell: bash
+        env:
+          SOURCE_PR: ${{ inputs.SourcePullRequest }}
+          TARGET_PR: ${{ inputs.TargetPullRequest }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${SOURCE_PR}" =~ ^[0-9]+$ || ! "${TARGET_PR}" =~ ^[0-9]+$ ]]; then
+            echo "::error::Wrong input in the Pull Request fields"
+            exit 1
+          fi
+
+      - name: Check out CI repository
+        uses: actions/checkout@v6
+        with:
+          repository: nevaoss/ci
+          ref: main
+          persist-credentials: false
+
+      - name: Copy statuses from the source PR head
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_PR: ${{ inputs.SourcePullRequest }}
+          TARGET_PR: ${{ inputs.TargetPullRequest }}
+        run: python3 ./tools/copy-statuses.py
