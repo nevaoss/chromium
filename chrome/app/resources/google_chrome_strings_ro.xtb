@@ -114,6 +114,7 @@
 <translation id="2039417478970545937">Setări.</translation>
 <translation id="2040220733769034247">Scanează codul QR cu telefonul pentru a descărca Chrome și a te conecta la Contul Google.</translation>
 <translation id="2044908892530830113">Afișează căutarea cu Chrome în bara de meniu Mac și activează comanda rapidă de la tastatură</translation>
+<translation id="2050189601866423230">Poți să fixezi Modul AI din Căutarea Google pentru a pune întrebări în timp ce navighezi</translation>
 <translation id="2091012649849228750">Pentru a primi actualizările Google Chrome viitoare, vei avea nevoie de Windows 10 sau o versiune ulterioară. Acest computer folosește Windows 8.</translation>
 <translation id="2094648590148273905">Condițiile pentru sistemul de operare Chrome Flex</translation>
 <translation id="2094919256425865063">Ieși din Chrome oricum?</translation>
@@ -139,7 +140,6 @@
 <translation id="2216543877350048334">Pentru a elimina Contul Google din Chrome, deconectează-te</translation>
 <translation id="2236949375853147973">Activitatea mea</translation>
 <translation id="22791603784558743">Închide Gemini în Chrome Dev</translation>
-<translation id="2284380654876659752">Când accesezi un site, Chrome trimite la <ph name="BEGIN_LINK" />Navigarea sigură Google<ph name="END_LINK" /> o parte obscurizată a adresei URL printr-un server pentru confidențialitate care îți ascunde adresa IP. Dacă un site are un comportament suspect, sunt trimise și adresele URL complete și fragmente din conținutul paginilor.</translation>
 <translation id="2290014774651636340">Lipsesc chei pentru API-ul Google. Unele funcționalități Google Chrome vor fi dezactivate.</translation>
 <translation id="2290095356545025170">Sigur vrei să dezinstalezi Google Chrome?</translation>
 <translation id="2295218613066132598">Afișează comenzile rapide pentru site-uri din Chrome</translation>
@@ -380,7 +380,6 @@ Dacă această pagină nu funcționează conform așteptărilor, încearcă să 
 <translation id="459622048091363950">Odată ce Chrome are acces, site-urile web îți vor putea solicita accesul.</translation>
 <translation id="4598116752460667024">Caută orice proces din listă.</translation>
 <translation id="4600710005438004015">Chrome nu s-a putut actualiza la cea mai recentă versiune. Astfel, pierzi noi funcții și remedieri de securitate.</translation>
-<translation id="4606805686144157064">Primește avertismente dacă Chrome găsește una dintre parolele tale într-o încălcare a securității datelor publice</translation>
 <translation id="4608435347866444037">Caută această imagine cu Google Lens</translation>
 <translation id="4624065194742029982">Modul incognito din Chrome</translation>
 <translation id="4627412468266359539">Opțional: contribuie la îmbunătățirea funcțiilor și a performanței sistemului de operare Chrome Flex, trimițând automat la Google date de diagnosticare și de utilizare.</translation>
@@ -397,9 +396,9 @@ Dacă această pagină nu funcționează conform așteptărilor, încearcă să 
 <translation id="4768676935374695498">Caută în acest videoclip cu Google Lens</translation>
 <translation id="479167709087336770">Folosește același verificator ortografic folosit în Căutarea Google. Textul pe care îl introduci în browser este trimis la Google. Poți schimba acest comportament în setări.</translation>
 <translation id="4793679854893018356">Află cum te protejează Chrome</translation>
-<translation id="4799870290441980300">Activează funcții suplimentare ca să oferi cele mai eficiente protecții din Chrome</translation>
 <translation id="4828579605166583682">Google Chrome încearcă să înlocuiască parolele existente. Introdu parola Windows pentru a permite acest lucru.</translation>
 <translation id="4836321460899997044">Profil Chrome</translation>
+<translation id="4839733921943823254">Fixează comanda rapidă</translation>
 <translation id="4842397268809523050">ChromeOS Flex nu a putut sincroniza datele, deoarece sincronizarea nu este disponibilă pentru domeniu.</translation>
 <translation id="4851866215237571846"><ph name="EXISTING_USER" /> s-a conectat deja.  Pentru a separa navigarea, conectează-te la Chrome în propriul profil ca <ph name="USER_EMAIL_ADDRESS" />.</translation>
 <translation id="4855026984605187434">Pentru a permite accesul la ecran, permite înregistrarea ecranului pentru Chrome din Setări de sistem</translation>
@@ -552,7 +551,6 @@ Dacă această pagină nu funcționează conform așteptărilor, încearcă să 
 <translation id="6251759518630934363">Te avertizează cu privire la site-uri periculoase, chiar și cele pe care Google nu le cunoștea înainte, analizând mai multe date din site-uri decât Protecția standard. Poți să omiți avertismentele din Chrome.</translation>
 <translation id="6277547788421725101">Părintele tău a dezactivat opțiunea Permisiuni pentru site-uri, aplicații și extensii în Chrome</translation>
 <translation id="627882678981830918">Personalizează și controlează Chrome. Setează Chrome ca prestabilit.</translation>
-<translation id="6280042952415350607">Protecția îmbunătățită dezactivează optimizarea JavaScript pentru site-urile pe care Chrome nu le recunoaște</translation>
 <translation id="6288580400488258237">Setează Google Chrome ca browser prestabilit și fixează-l în bara de activități</translation>
 <translation id="6291089322031436445">Aplicații Chrome Dev</translation>
 <translation id="6291549208091401781">Google Chrome este instalat deja pentru toți utilizatorii de pe computerul tău.</translation>
@@ -766,6 +764,7 @@ Dacă această pagină nu funcționează conform așteptărilor, încearcă să 
 <translation id="8074398340364918139">Pentru a căuta o anumită funcție sau extensie Chrome, introdu comanda rapidă respectivă în bara de adrese, urmată de tasta de pe tastatură selectată</translation>
 <translation id="8077579734294125741">Alte profiluri Chrome</translation>
 <translation id="8086881907087796310">Nu s-a instalat deoarece computerul nu îndeplinește cerințele minime de hardware.</translation>
+<translation id="8110438089258398864">Poți să redeschizi Modul AI în Căutarea Google pentru a pune întrebări în timp ce navighezi</translation>
 <translation id="8113883687556086139">Confirmă-ți identitatea pentru a folosi și a salva datele Chrome în contul <ph name="ACCOUNT_EMAIL" /></translation>
 <translation id="8115695070094288807">Se personalizează Chrome...</translation>
 <translation id="8118331347066725040">Trimite feedback pentru căutare cu Lens</translation>
@@ -822,6 +821,8 @@ Nu poți salva marcaje noi în cont până când nu ștergi câteva. Dacă te de
 <translation id="8555465886620020932">Eroare de serviciu: <ph name="SERVICE_ERROR" />.</translation>
 <translation id="856656450041460113">Caută lista de limbi</translation>
 <translation id="8575047640889685742">Folosește <ph name="BEGIN_LINK" />propria expresie de acces<ph name="END_LINK" /> pentru a cripta toate datele Chrome din Contul Google. Metodele de plată și adresele din Google Pay nu vor fi criptate. Istoricul de navigare din Chrome nu se va sincroniza.</translation>
+<translation id="8590782867495422699">Redeschide Modul AI în Căutarea Google</translation>
+<translation id="8598779894319572882">Folosind butonul Modul AI în Căutarea Google din bara de instrumente, poți să redeschizi Modul AI în Căutarea Google pentru a pune întrebări în timp ce navighezi</translation>
 <translation id="8614913330719544658">Google Chrome nu mai răspunde. Îl repornești acum?</translation>
 <translation id="8623450603356630491">Conectează-te la Chrome pe telefon</translation>
 <translation id="8624541899164515475">Setări, se deschide într-o filă nouă.</translation>
@@ -876,6 +877,7 @@ Nu poți salva marcaje noi în cont până când nu ștergi câteva. Dacă te de
 <translation id="9014771989710951291">Mai multe organizații gestionează Chrome</translation>
 <translation id="9018218886431812662">Instalare finalizată</translation>
 <translation id="9066987883552592250">Închide Gemini în Chrome Canary</translation>
+<translation id="9074041031320636790">Succes! Acum poți să pui cu ușurință întrebări în timp ce navighezi cu Modul AI în Căutarea Google</translation>
 <translation id="9090566250983691233">Află de ce Chrome blochează unele fișiere</translation>
 <translation id="9106236359747881194">Selectează text pentru a căuta</translation>
 <translation id="911206726377975832">Ștergi și datele de navigare?</translation>

@@ -155,13 +155,9 @@ NigoriState NigoriState::CreateFromLocalProto(
   state.encrypt_everything = proto.encrypt_everything();
 
   state.keystore_keys_cryptographer =
-      KeystoreKeysCryptographer::FromKeystoreKeys(base::ToVector(proto.keystore_key()));
-  if (!state.keystore_keys_cryptographer) {
-    // Crypto error occurs, create empty `keystore_keys_cryptographer`.
-    // Effectively it resets keystore keys.
-    state.keystore_keys_cryptographer =
-        KeystoreKeysCryptographer::CreateEmpty();
-  }
+      KeystoreKeysCryptographer::FromKeystoreKeys(
+          base::ToVector(proto.keystore_key()));
+  CHECK(state.keystore_keys_cryptographer, base::NotFatalUntil::M162);
 
   if (proto.has_pending_keystore_decryptor_token()) {
     state.pending_keystore_decryptor_token =
@@ -224,9 +220,6 @@ sync_pb::NigoriModel NigoriState::ToLocalProto() const {
     proto.add_encrypted_types_specifics_field_number(
         GetSpecificsFieldNumberFromDataType(data_type));
   }
-  // TODO(crbug.com/41462727): we currently store keystore keys in proto only to
-  // allow rollback of USS Nigori. We should remove them few milestones after
-  // USS migration completed.
   for (const std::string& keystore_key :
        keystore_keys_cryptographer->keystore_keys()) {
     proto.add_keystore_key(keystore_key);

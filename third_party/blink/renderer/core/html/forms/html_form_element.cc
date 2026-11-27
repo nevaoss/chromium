@@ -1103,6 +1103,7 @@ void HTMLFormElement::ScheduleFormSubmission(const Event* event,
       target_frame->ScheduleFormSubmission(scheduler, form_submission);
 }
 
+// https://html.spec.whatwg.org/multipage/#constructing-the-form-data-set
 FormData* HTMLFormElement::ConstructEntryList(Element* submitter,
                                               const TextEncoding& encoding) {
   if (is_constructing_entry_list_) {
@@ -1115,7 +1116,10 @@ FormData* HTMLFormElement::ConstructEntryList(Element* submitter,
     submitter->SetActivatedSubmit(true);
   }
 
-  for (ListedElement* control : ListedElements()) {
+  // Copy the element list because |AppendToFormData()| can update DOM
+  // structure.
+  ListedElement::List elements(ListedElements());
+  for (ListedElement* control : elements) {
     DCHECK(control);
     HTMLElement& element = control->ToHTMLElement();
     if (!element.IsDisabledFormControl())
@@ -1746,13 +1750,6 @@ void HTMLFormElement::InvalidateDefaultButtonStyle() const {
 
 void HTMLFormElement::InvalidateListedElementsForAutofill() {
   listed_elements_for_autofill_are_dirty_ = true;
-}
-
-void HTMLFormElement::InvalidateListedElements() {
-  listed_elements_are_dirty_ = true;
-  listed_elements_.clear();
-  listed_elements_for_autofill_are_dirty_ = true;
-  listed_elements_for_autofill_.clear();
 }
 
 void HTMLFormElement::UseCountPropertyAccess(

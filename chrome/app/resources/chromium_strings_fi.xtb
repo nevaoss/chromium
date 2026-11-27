@@ -256,7 +256,6 @@
 <translation id="3531741627422851418">QR-koodi, jolla voi ladata Chromium-selaimen mobiililaitteille</translation>
 <translation id="354621070532799440">Muistutus: Googlen parhaat turvaominaisuudet taskussasi</translation>
 <translation id="3561853857681580870">Jos haluat jakaa näytön, salli Chromiumin näytön tallennus järjestelmäasetuksista.</translation>
-<translation id="3588112919289558122">Parannettu suojaus laittaa JavaScript-optimoinnin pois päältä sivustoilla, joita Chromium ei tunnista</translation>
 <translation id="3597003331831379823">Käyttöönotto laajennetuilla pääsyoikeuksilla epäonnistui. <ph name="METAINSTALLER_ERROR" /></translation>
 <translation id="3600428265489994557">Chromiumiin kirjautuminen</translation>
 <translation id="3639635944603682591">Käyttäjän selaustiedot poistetaan tältä laitteelta. Jos haluat palauttaa tiedot myöhemmin, kirjaudu Chromiumiin käyttäjänä <ph name="USER_EMAIL" />.</translation>
@@ -295,7 +294,6 @@
 <translation id="3971865010372729242">Kun kirjoitat osoitepalkkiin tai hakukenttään, Chromium lähettää kirjoittamasi tekstin organisaatiosi haku-, tekoäly- ja agenttityökaluille, jotta saat ehdotuksia.</translation>
 <translation id="3975724895399328945">Tietoa &amp;Google Chrome for Testingistä</translation>
 <translation id="3997429360543082038">Tietoa Chromium-käyttöjärjestelmästä</translation>
-<translation id="4010059961270896984">Kun käyt sivustolla, Chromium lähettää osan URL-osoitteesta obfuskoituna <ph name="BEGIN_LINK" />Googlen selaussuojalle<ph name="END_LINK" /> yksityisyyspalvelimen kautta, jolloin IP-osoitteesi piilotetaan. Jos sivusto tekee jotakin epäilyttävää, koko URL-osoitteet ja osia sivun sisällöstä lähetetään.</translation>
 <translation id="4016217212818346953">Pysy turvassa Salasanojen avulla</translation>
 <translation id="4019629340646866719">Toinen <ph name="BEGIN_LINK_CROS_OSS" />avoimen lähdekoodin ohjelmisto<ph name="END_LINK_CROS_OSS" /> tukee Chromium-käyttöjärjestelmää, kuten myös <ph name="BEGIN_LINK_LINUX_OSS" />Linux-kehitysympäristöä<ph name="END_LINK_LINUX_OSS" />.</translation>
 <translation id="4022972681110646219">Käännä näyttö</translation>
@@ -373,6 +371,7 @@
 <translation id="4786083865378785874">Jos Gemini in Chromium on auki, sivupaneeli pysyy auki, kun luot uusia välilehtiä</translation>
 <translation id="479167709087336770">Tämä käyttää samaa oikeinkirjoituksen tarkistusta kuin Google Haku. Selaimeen kirjoittamasi teksti lähetetään Googlelle. Voit vaihtaa valintasi milloin tahansa asetuksista.</translation>
 <translation id="4814736265800133385">Käytä Chromiumia ilman tiliä</translation>
+<translation id="4839733921943823254">Kiinnitä pikanäppäin</translation>
 <translation id="4888717733111232871">Chromiumin saapuvien yhteyksien sääntö, joka sallii mDNS-liikenteen.</translation>
 <translation id="4893347770495441059">Päivitä &amp;Chromium käynnistämällä se uudelleen</translation>
 <translation id="4918086044614829423">Hyväksy</translation>
@@ -456,7 +455,6 @@ Jos tämä sivu ei toimi odotetulla tavalla, kokeile sallia optimointi.</transla
 <translation id="5821520528363214608">Chromium-datan käyttö ja tallennus Google-tilillä edellyttää Chromiumin päivittämistä</translation>
 <translation id="5824893331272123205">Paneelin lataaminen epäonnistui, yritä uudelleen</translation>
 <translation id="5862307444128926510">Tervetuloa Chromiumiin</translation>
-<translation id="5867606647614813312">Laittaa päälle lisäominaisuuksia, jotka tarjoavat Chromiumin tehokkaimman suojauksen</translation>
 <translation id="5871205389137001634">Poistu kuvahausta klikkaamalla</translation>
 <translation id="5883558403894052917">Chromium havaitsi, että näissä kohteissa on haittaohjelmia:</translation>
 <translation id="5889361821821684993">Chromium tarkistaa säännöllisesti, että selaimen asetukset ovat mahdollisimman turvalliset. Ilmoitamme, jos jotain on tarkistettava.</translation>
@@ -758,13 +756,13 @@ Chromium ei voi palauttaa asetuksiasi.</translation>
 <translation id="8522801943730206384">Chromium voi tarkistaa salasanasi, kun tallennat niitä</translation>
 <translation id="8525579356836940628">Asennus keskeytyi</translation>
 <translation id="8545729292258443488">Chromium-sovelluksella voit käyttää esimerkiksi salasanoja ja välilehtiä missä tahansa laitteellasi (<ph name="DEVICE_TYPE" />)</translation>
-<translation id="8548787790260785208">Saat varoituksen, jos Chromium jonkin salasanoistasi julkisesta tietosuojaloukkauksesta</translation>
 <translation id="8555465886620020932">Palveluvirhe: <ph name="SERVICE_ERROR" />.</translation>
 <translation id="8556055872671007529">Joissakin Chromiumin ominaisuuksissa ja laajennuksissa on pikanäppäimiä. Voit halutessasi laittaa ne takaisin päälle.</translation>
 <translation id="8556420416730706394">Kiinnitä kuvahaku klikkaamalla sivupaneelin yläreunan Kiinnitä-painiketta, niin löydät sen helposti</translation>
 <translation id="856656450041460113">Hakukielilista</translation>
 <translation id="8576826849825683917">Useat organisaatiot ylläpitävät Chromiumia</translation>
 <translation id="8586442755830160949">Copyright <ph name="YEAR" /> The Chromium Authors. Kaikki oikeudet pidätetään.</translation>
+<translation id="8590782867495422699">Avaa Google Haun tekoälytila uudelleen</translation>
 <translation id="8619360774459241877">Käynnistetään Chromiumia…</translation>
 <translation id="8624541899164515475">Asetukset, avautuu uudelle välilehdelle.</translation>
 <translation id="8648201657708811153">Google Chrome for Testingistä ei voi tehdä oletusselainta.</translation>
@@ -815,6 +813,7 @@ Chromium ei voi palauttaa asetuksiasi.</translation>
 <translation id="9056398481763999048">Chromium-sovelluksella voit käyttää Googlen parhaita tekoälytyökaluja puhelimella</translation>
 <translation id="9057625473949801035">Kirjaudu Chromiumiin, niin voit käyttää esimerkiksi salasanoja tältä laitteelta: <ph name="DEVICE" /></translation>
 <translation id="9062666675513499497">Kirjaudu Chromiumiin, kun kirjaudut muihin Googlen palveluihin</translation>
+<translation id="9074041031320636790">Valmista! Voit nyt helposti esittää kysymyksiä selailun aikana Google Haun tekoälytilassa</translation>
 <translation id="9078733879136747090">Chromium on suljettu automaattisesti</translation>
 <translation id="9089354809943900324">Chromium on vanhentunut</translation>
 <translation id="9093206154853821181">{0,plural, =1{Chromium käynnistetään uudelleen tunnin kuluttua}other{Chromium käynnistetään uudelleen # tunnin kuluttua}}</translation>

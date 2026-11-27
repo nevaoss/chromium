@@ -8,7 +8,6 @@ import static org.chromium.base.ApplicationStatus.getTaskId;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.role.RoleManager;
 import android.graphics.Rect;
 import android.os.Build;
 import android.os.Build.VERSION;
@@ -23,11 +22,12 @@ import androidx.annotation.VisibleForTesting;
 import androidx.core.view.WindowInsetsAnimationCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import org.jni_zero.JniPtr;
+
 import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ApplicationStatus.TaskVisibilityListener;
 import org.chromium.base.Callback;
-import org.chromium.base.ContextUtils;
 import org.chromium.base.IntentUtils;
 import org.chromium.base.JniOnceCallback;
 import org.chromium.base.Log;
@@ -46,6 +46,7 @@ import org.chromium.chrome.browser.tabmodel.IncognitoTabModelObserver;
 import org.chromium.chrome.browser.tabmodel.SupportedProfileType;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTask.NativeBrowserWindowInterface;
 import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTaskFeature.InitInfo;
 import org.chromium.chrome.browser.ui.browser_window.PendingActionManager.PendingAction;
 import org.chromium.chrome.browser.ui.browser_window.WindowStateManager.WindowState;
@@ -549,30 +550,15 @@ final class ChromeAndroidTaskImpl
             return WindowResizePrecheckResult.SDK_TOO_LOW;
         }
 
-        // For the window bounds to be changed, the app must hold the browser role.
-        var roleManager = ContextUtils.getApplicationContext().getSystemService(RoleManager.class);
-        if (!roleManager.isRoleHeld(RoleManager.ROLE_BROWSER)) {
-            Log.w(TAG, "Unable to set bounds: the app doesn't hold the browser role");
+        // For the window bounds to be changed, the app must hold REPOSITION_SELF_WINDOWS, which is
+        // granted to the browser role holder.
+        if (!AndroidTaskUtils.canRepositionSelfWindows()) {
+            Log.w(TAG, "Unable to set bounds: the app lacks REPOSITION_SELF_WINDOWS");
             return WindowResizePrecheckResult.BROWSER_ROLE_NOT_HELD;
         }
 
         // Only free-form windows can change bounds.
-        boolean isFreeformWindow;
-        if (topActivityScopedObjects.mBrowserWindowType == BrowserWindowType.NORMAL) {
-            isFreeformWindow =
-                    AppHeaderUtils.isAppInDesktopWindow(
-                            topActivityScopedObjects.mDesktopWindowStateManager);
-        } else {
-            // For CCT/TWA/PWA, check if the window height matches the screen height
-            var activity = topActivityScopedObjects.mActivity;
-            var windowManager = activity.getWindowManager();
-            int windowHeight = windowManager.getCurrentWindowMetrics().getBounds().height();
-            int screenHeight =
-                    topActivityScopedObjects.mActivityWindowAndroid.getDisplay().getDisplayHeight();
-            isFreeformWindow = windowHeight != screenHeight;
-        }
-
-        if (!isFreeformWindow) {
+        if (!isFreeformWindowInternal(topActivityScopedObjects)) {
             Log.w(TAG, "Unable to set bounds: the app isn't in desktop windowing mode");
             return WindowResizePrecheckResult.NOT_A_FREEFORM_WINDOW;
         }
@@ -826,6 +812,28 @@ final class ChromeAndroidTaskImpl
     // TODO(crbug.com/486858979): Mark this as deprecated and add Activity as a parameter.
     @Override
     public long getOrCreateNativeBrowserWindowPtr(Profile profile) {
+        return getTopmostWindowForNativeAccess(profile).getOrCreateLegacyNativePtr();
+    }
+
+    @Override
+    public JniPtr<NativeBrowserWindowInterface> getOrCreateNativeBrowserWindow(Profile profile) {
+        return getTopmostWindowForNativeAccess(profile).getOrCreateNativePtr();
+    }
+
+    @Override
+    public long getNativeBrowserWindowPtr(Profile profile, Activity activity) {
+        var browserWindow = getWindowForNativeAccess(profile, activity);
+        return browserWindow != null ? browserWindow.getLegacyNativePtr() : 0;
+    }
+
+    @Override
+    public @Nullable JniPtr<NativeBrowserWindowInterface> getNativeBrowserWindow(
+            Profile profile, Activity activity) {
+        var browserWindow = getWindowForNativeAccess(profile, activity);
+        return browserWindow != null ? browserWindow.getNativePtr() : null;
+    }
+
+    private AndroidBrowserWindow getTopmostWindowForNativeAccess(Profile profile) {
         ThreadUtils.assertOnUiThread();
         assert mState == State.PENDING_CREATE
                         || mState == State.IDLE
@@ -833,11 +841,11 @@ final class ChromeAndroidTaskImpl
                 : "This Task is not pending or alive.";
         var browserWindow = getTopmostWindowWithProfile(profile);
         assert browserWindow != null : "No AndroidBrowserWindow found for given Profile.";
-        return browserWindow.getOrCreateLegacyNativePtr();
+        return browserWindow;
     }
 
-    @Override
-    public long getNativeBrowserWindowPtr(Profile profile, Activity activity) {
+    private @Nullable AndroidBrowserWindow getWindowForNativeAccess(
+            Profile profile, Activity activity) {
         ThreadUtils.assertOnUiThread();
         assert mState == State.PENDING_CREATE
                         || mState == State.IDLE
@@ -845,14 +853,10 @@ final class ChromeAndroidTaskImpl
                 : "This Task is not pending or alive.";
         for (var obj : mActivityScopedObjectsDeque) {
             if (obj.mActivityScopedObjects.mActivityWindowAndroid.getActivity().get() == activity) {
-                var browserWindow = obj.mAndroidBrowserWindows.get(profile);
-                if (browserWindow != null) {
-                    return browserWindow.getLegacyNativePtr();
-                }
-                return 0;
+                return obj.mAndroidBrowserWindows.get(profile);
             }
         }
-        return 0;
+        return null;
     }
 
     @Override
@@ -988,6 +992,13 @@ final class ChromeAndroidTaskImpl
         }
 
         return mWindowStateManager.getWindowState() == WindowState.FULLSCREEN;
+    }
+
+    @Override
+    public boolean isFreeformWindow() {
+        ThreadUtils.assertOnUiThread();
+        return useActivity(
+                ChromeAndroidTaskImpl::isFreeformWindowInternal, /* defaultValue= */ false);
     }
 
     @Override
@@ -1754,6 +1765,21 @@ final class ChromeAndroidTaskImpl
                 : "This Task can no longer accept Features. Current state: " + mState;
     }
 
+    private static boolean isFreeformWindowInternal(
+            TopActivityScopedObjects topActivityScopedObjects) {
+        if (topActivityScopedObjects.mBrowserWindowType == BrowserWindowType.NORMAL) {
+            return AppHeaderUtils.isAppInDesktopWindow(
+                    topActivityScopedObjects.mDesktopWindowStateManager);
+        }
+        // For CCT/TWA/PWA, check if the window height matches the screen height
+        var activity = topActivityScopedObjects.mActivity;
+        var windowManager = activity.getWindowManager();
+        int windowHeight = windowManager.getCurrentWindowMetrics().getBounds().height();
+        int screenHeight =
+                topActivityScopedObjects.mActivityWindowAndroid.getDisplay().getDisplayHeight();
+        return windowHeight != screenHeight;
+    }
+
     private static boolean isActiveInternal(TopActivityScopedObjects topActivityScopedObjects) {
         return topActivityScopedObjects.mActivityWindowAndroid.isTopResumedActivity();
     }
@@ -1941,6 +1967,10 @@ final class ChromeAndroidTaskImpl
             }
         }
 
+        JniPtr<NativeBrowserWindowInterface> nativeBrowserWindow =
+                browserWindowForFeature != null
+                        ? browserWindowForFeature.getOrCreateNativePtr()
+                        : null;
         long nativeBrowserWindowPtr =
                 browserWindowForFeature != null
                         ? browserWindowForFeature.getOrCreateLegacyNativePtr()
@@ -1967,6 +1997,7 @@ final class ChromeAndroidTaskImpl
                                     .getDisplayId();
                     return new InitInfo(
                             nativeBrowserWindowPtr,
+                            nativeBrowserWindow,
                             isTaskVisible,
                             mWindowStateManager.getWindowBoundsInPx(),
                             mWindowStateManager.getWindowBoundsInDp(),
@@ -1974,6 +2005,7 @@ final class ChromeAndroidTaskImpl
                 },
                 new InitInfo(
                         nativeBrowserWindowPtr,
+                        nativeBrowserWindow,
                         /* isVisible= */ false,
                         new Rect(),
                         new Rect(),

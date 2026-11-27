@@ -372,6 +372,10 @@ class GlicInstanceImpl : public GlicInstance,
   void NotifyVisibilityChange();
   void NotifyInstanceChanged();
 
+  // Returns the active embedder if and only if `key` is currently the active
+  // embedder key. Useful for re-validating that the target embedder has not
+  // been deactivated or destroyed across synchronous observer notifications.
+  GlicUiEmbedder* GetActiveEmbedderForKey(EmbedderKey key);
   GlicUiEmbedder* GetEmbedderForKey(EmbedderKey key);
   EmbedderKey GetEmbedderKeyForTab(tabs::TabInterface* tab) const;
   EmbedderEntry* GetEmbedderEntry(EmbedderKey key);
@@ -391,7 +395,7 @@ class GlicInstanceImpl : public GlicInstance,
                      EmbedderEntry& entry,
                      const CloseOptions& options = {});
   void MaybeShowHostUi(
-      GlicUiEmbedder* embedder,
+      GlicUiEmbedder& embedder,
       mojom::InvocationSource source,
       std::optional<std::string> prompt_suggestion,
       mojom::FreOverride fre_override = mojom::FreOverride::kUnspecified);
@@ -449,6 +453,15 @@ class GlicInstanceImpl : public GlicInstance,
   void OnEmbedderClosed(EmbedderKey key);
 
   mojom::PanelState ComputePanelState();
+
+  void OnActuatingChanged(bool actuating);
+  void UpdateOffscreenRenderingState();
+  void StopOffscreenRendering();
+  // Returns the WebContents to attach for offscreen rendering: the WebUI
+  // contents in webview mode, or the guest contents in NoWebview mode.
+  // TODO(b/534807813): Remove once webview is deleted; callers should use
+  // host_.web_client_contents() directly.
+  content::WebContents* GetOffscreenRenderingContents() const;
 
   using ConversationInfoChangedCallbackList =
       base::RepeatingCallbackList<void(const mojom::ConversationInfo&)>;
@@ -525,10 +538,6 @@ class GlicInstanceImpl : public GlicInstance,
   bool suppress_show_on_tab_added_to_task_ = false;
 
   std::optional<TabGroupBinding> tab_group_binding_;
-
-  void OnActuatingChanged(bool actuating);
-  void UpdateOffscreenRenderingState();
-  void StopOffscreenRendering();
 
   bool is_hidden_initializing_ = false;
 #if BUILDFLAG(IS_ANDROID)

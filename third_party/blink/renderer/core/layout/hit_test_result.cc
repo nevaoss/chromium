@@ -109,7 +109,11 @@ std::optional<PositionWithAffinity> PositionForDisplayLock(
   if (!locked) {
     return std::nullopt;
   }
-  return PositionWithAffinity(Position(*locked, 0), TextAffinity::kDefault);
+  const Node* anchor = locked;
+  if (const auto* pseudo = DynamicTo<PseudoElement>(locked)) {
+    anchor = &pseudo->UltimateOriginatingElement();
+  }
+  return PositionWithAffinity(Position(*anchor, 0), TextAffinity::kDefault);
 }
 
 }  // namespace
@@ -282,8 +286,10 @@ PositionWithAffinity HitTestResult::GetPositionForInnerNodeOrImageMapImage()
   }
 
   PositionWithAffinity position = layout_object->PositionForPoint(LocalPoint());
-  if (position.IsNull())
-    return PositionWithAffinity(FirstPositionInOrBeforeNode(*node));
+  if (position.IsNull()) {
+    return PositionWithAffinity(
+        FirstPositionInOrBeforeNode(*InnerNodeOrImageMapImage()));
+  }
   return position;
 }
 
@@ -428,10 +434,10 @@ String HitTestResult::Title(TextDirection& dir) const {
   return String();
 }
 
-const AtomicString& HitTestResult::AltDisplayString() const {
+String HitTestResult::AltDisplayString() const {
   Node* inner_node_or_image_map_image = InnerNodeOrImageMapImage();
   if (!inner_node_or_image_map_image)
-    return g_null_atom;
+    return String();
 
   if (auto* image = DynamicTo<HTMLImageElement>(*inner_node_or_image_map_image))
     return image->FastGetAttribute(html_names::kAltAttr);
@@ -439,7 +445,7 @@ const AtomicString& HitTestResult::AltDisplayString() const {
   if (auto* input = DynamicTo<HTMLInputElement>(*inner_node_or_image_map_image))
     return input->Alt();
 
-  return g_null_atom;
+  return String();
 }
 
 Image* HitTestResult::GetImage() const {

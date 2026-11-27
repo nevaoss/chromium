@@ -34,6 +34,8 @@ BASE_DECLARE_FEATURE(kFeedbackDisabledDialog);
 BASE_DECLARE_FEATURE(kLegacySearchIntegrityCheck);
 #endif
 
+BASE_DECLARE_FEATURE(kFedCmPermissionUiWithContainer);
+
 BASE_DECLARE_FEATURE(kImportExportFlags);
 
 // Shows a "+N" count pill in the bottom-most infobar while lower-priority
@@ -400,6 +402,8 @@ BASE_DECLARE_FEATURE(kAiOverlayDisableNavigationContext);
 
 BASE_DECLARE_FEATURE(kTabGroupsFocusing);
 BASE_DECLARE_FEATURE_PARAM(bool, kTabGroupsFocusFreezing);
+BASE_DECLARE_FEATURE_PARAM(int, kTabGroupsFocusingIphMinTabs);
+BASE_DECLARE_FEATURE_PARAM(base::TimeDelta, kTabGroupsFocusingIphPromoDelay);
 bool IsTabGroupsFocusFreezingEnabled();
 
 BASE_DECLARE_FEATURE(kTabGroupRibbon);

@@ -80,7 +80,6 @@ class GPUCanvasContext : public ScriptWrappable,
       const gfx::ColorSpace& dst_color_space,
       VideoFrameCopyCompletedCallback callback) override;
   void PageVisibilityChanged() override {}
-  void SizeChanged() override;
   bool isContextLost() const override { return false; }
   bool IsComposited() const final { return true; }
   bool IsPaintable() const final { return true; }
@@ -90,7 +89,7 @@ class GPUCanvasContext : public ScriptWrappable,
   void Dispose() override;
 
   // OffscreenCanvas-specific methods
-  scoped_refptr<CanvasResource> GetResourceForPushFrame(
+  scoped_refptr<ExportedCanvasResource> GetResourceForPushFrame(
       bool& should_call_push_frame) final;
   // Returns a StaticBitmapImage backed by a texture containing the current
   // contents of the front buffer. This is done without any pixel copies. The

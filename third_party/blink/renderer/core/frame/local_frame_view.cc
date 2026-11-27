@@ -51,6 +51,7 @@
 #include "third_party/abseil-cpp/absl/cleanup/cleanup.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
+#include "third_party/blink/public/mojom/frame/frame_owner_properties.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/remote_frame.mojom-blink.h"
 #include "third_party/blink/public/mojom/scroll/scroll_enums.mojom-blink.h"
 #include "third_party/blink/public/mojom/scroll/scroll_into_view_params.mojom-blink.h"
@@ -87,6 +88,7 @@
 #include "third_party/blink/renderer/core/frame/browser_controls.h"
 #include "third_party/blink/renderer/core/frame/find_in_page.h"
 #include "third_party/blink/renderer/core/frame/frame_overlay.h"
+#include "third_party/blink/renderer/core/frame/frame_owner.h"
 #include "third_party/blink/renderer/core/frame/frame_view_auto_size_info.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
@@ -242,8 +244,7 @@ std::optional<cc::PaintRecord> GetCanvasSnapshot(DOMNodeId id) {
     if (snapshot) {
       DCHECK(!snapshot->IsTextureBacked());
       PaintRecordBuilder builder;
-      gfx::RectF dest_rect(
-          gfx::SizeF(nested_layout_obj->PhysicalContentBoxRect().size));
+      gfx::RectF dest_rect(nested_layout_obj->ReplacedContentRect());
       gfx::RectF src_rect(gfx::SizeF(nested_canvas->Size()));
       {
         DrawingRecorder recorder(
@@ -791,12 +792,15 @@ void LocalFrameView::PerformLayout() {
 
     if (first_layout_with_body_ && body) {
       first_layout_with_body_ = false;
-      mojom::blink::ScrollbarMode h_mode;
-      mojom::blink::ScrollbarMode v_mode;
-      GetLayoutView()->CalculateScrollbarModes(h_mode, v_mode);
-      if (v_mode == mojom::blink::ScrollbarMode::kAuto) {
-        if (auto* scrollable_area = GetLayoutView()->GetScrollableArea())
-          scrollable_area->ForceVerticalScrollbarForFirstLayout();
+      if (!RuntimeEnabledFeatures::SkipInitialForcedScrollbarEnabled()) {
+        mojom::blink::ScrollbarMode h_mode;
+        mojom::blink::ScrollbarMode v_mode;
+        GetLayoutView()->CalculateScrollbarModes(h_mode, v_mode);
+        if (v_mode == mojom::blink::ScrollbarMode::kAuto) {
+          if (auto* scrollable_area = GetLayoutView()->GetScrollableArea()) {
+            scrollable_area->ForceVerticalScrollbarForFirstLayout();
+          }
+        }
       }
     }
   }
@@ -1288,7 +1292,25 @@ LocalFrameView::NaturalSizeLayoutScope::NaturalSizeLayoutScope(
     view->layout_size_for_natural_size_ = layout_size;
     return;
   }
-  if (*view->layout_size_for_natural_size_ == layout_size) {
+  gfx::Size target_size;
+  if (RuntimeEnabledFeatures::ResponsiveIframesSingleAxisIcbEnabled()) {
+    target_size = layout_size;
+    if (const FrameOwner* owner = view->GetFrame().Owner()) {
+      switch (owner->GetResponsiveSizing()) {
+        case mojom::blink::FrameResponsiveSizing::kNone:
+          break;
+        case mojom::blink::FrameResponsiveSizing::kWidth:
+          target_size.set_width(view->layout_size_for_natural_size_->width());
+          break;
+        case mojom::blink::FrameResponsiveSizing::kHeight:
+          target_size.set_height(view->layout_size_for_natural_size_->height());
+          break;
+      }
+    }
+  } else {
+    target_size = *view->layout_size_for_natural_size_;
+  }
+  if (target_size == layout_size) {
     return;
   }
 
@@ -1296,8 +1318,7 @@ LocalFrameView::NaturalSizeLayoutScope::NaturalSizeLayoutScope(
   is_fixed_to_frame_size_ = view->LayoutSizeFixedToFrameSize();
   saved_layout_size_ = layout_size;
   view->SetLayoutSizeFixedToFrameSize(false, {.should_suppress_events = true});
-  view->SetLayoutSizeInternal(*view->layout_size_for_natural_size_,
-                              {.should_suppress_events = true});
+  view->SetLayoutSizeInternal(target_size, {.should_suppress_events = true});
 }
 
 LocalFrameView::NaturalSizeLayoutScope::~NaturalSizeLayoutScope() {
@@ -3948,9 +3969,9 @@ gfx::Rect LocalFrameView::ConvertToContainingEmbeddedContentView(
       return local_rect;
 
     // Add borders and padding etc.
-    gfx::Rect rect = layout_object->BorderBoxFromEmbeddedContent(local_rect);
-    return ToPixelSnappedRect(
-        layout_object->LocalToAbsoluteRect(PhysicalRect(rect)));
+    PhysicalRect rect(local_rect);
+    rect.offset += layout_object->PhysicalContentBoxRect().offset;
+    return ToPixelSnappedRect(layout_object->LocalToAbsoluteRect(rect));
   }
 
   return local_rect;
@@ -3965,8 +3986,10 @@ gfx::Rect LocalFrameView::ConvertFromContainingEmbeddedContentView(
         return parent_rect;
       }
 
-      return layout_object->EmbeddedContentFromBorderBox(ToEnclosingRect(
-          layout_object->AbsoluteToLocalRect(PhysicalRect(parent_rect))));
+      PhysicalRect local_rect =
+          layout_object->AbsoluteToLocalRect(PhysicalRect(parent_rect));
+      local_rect.offset -= layout_object->PhysicalContentBoxRect().offset;
+      return ToEnclosingRect(local_rect);
     }
 
     gfx::Rect local_rect = parent_rect;
@@ -3985,7 +4008,7 @@ PhysicalOffset LocalFrameView::ConvertToContainingEmbeddedContentView(
 
     PhysicalOffset point(local_offset);
     // Add borders and padding etc.
-    point = layout_object->BorderBoxFromEmbeddedContent(point);
+    point += layout_object->PhysicalContentBoxRect().offset;
     return layout_object->LocalToAbsolutePoint(point);
   }
 
@@ -4001,7 +4024,7 @@ gfx::PointF LocalFrameView::ConvertToContainingEmbeddedContentView(
 
     PhysicalOffset point = PhysicalOffset::FromPointFRound(local_point);
     // Add borders and padding etc.
-    point = layout_object->BorderBoxFromEmbeddedContent(point);
+    point += layout_object->PhysicalContentBoxRect().offset;
     return static_cast<gfx::PointF>(layout_object->LocalToAbsolutePoint(point));
   }
 
@@ -4024,7 +4047,7 @@ gfx::PointF LocalFrameView::ConvertFromContainingEmbeddedContentView(
 
     gfx::PointF point = layout_object->AbsoluteToLocalPoint(parent_point);
     // Subtract borders and padding etc.
-    point = layout_object->EmbeddedContentFromBorderBox(point);
+    point -= gfx::Vector2dF(layout_object->PhysicalContentBoxRect().offset);
     return point;
   }
 
@@ -4157,6 +4180,9 @@ void LocalFrameView::RemoveScrollableAreaWithScrollNode(
 
 void LocalFrameView::AttachToLayout() {
   CHECK(!IsAttached());
+#if DCHECK_IS_ON()
+  DCHECK(!has_been_disposed_);
+#endif
   if (frame_->GetDocument())
     CHECK_NE(Lifecycle().GetState(), DocumentLifecycle::kStopping);
   SetAttached(true);

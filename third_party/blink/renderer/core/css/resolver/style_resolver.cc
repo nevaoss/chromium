@@ -1523,7 +1523,8 @@ const ComputedStyle* StyleResolver::ResolveStyle(
 
   PropagateStyleBuilderFlags(state);
 
-  if (!cascade.GetMatchResult().MayPrecomputeHover()) {
+  if (state.HasAffectedByHoverAncestor() ||
+      !cascade.GetMatchResult().MayPrecomputeHover()) {
     return state.TakeStyle();
   }
 
@@ -1531,10 +1532,38 @@ const ComputedStyle* StyleResolver::ResolveStyle(
 
   const ComputedStyle* style = state.CloneStyle();
   cascade.ApplyPrecomputedHover();
-  PropagateStyleBuilderFlags(state);
-  style->AddCachedPseudoElementStyle(state.TakeStyle(),
-                                     kPseudoIdPrecomputedHover, g_null_atom);
+  if (ValidPrecomputedHoverDiff(state.StyleBuilder(), *style)) {
+    PropagateStyleBuilderFlags(state);
+    style->AddCachedPseudoElementStyle(state.TakeStyle(),
+                                       kPseudoIdPrecomputedHover, g_null_atom);
+  }
   return style;
+}
+
+bool StyleResolver::ValidPrecomputedHoverDiff(
+    const ComputedStyleBuilder& builder,
+    const ComputedStyle& style) {
+  // The assumption below is that we are only able to change color or visibility
+  // on/off for text-decorations on the compositor.
+  TextDecorationLine hover_line = builder.GetTextDecorationLine();
+  TextDecorationLine line = style.GetTextDecorationLine();
+  if (hover_line == TextDecorationLine::kNone ||
+      line == TextDecorationLine::kNone) {
+    return true;
+  }
+  const StyleColor& hover_color = builder.TextDecorationColor();
+  const StyleColor& color = style.TextDecorationColor();
+  if ((hover_color.IsAbsoluteColor() &&
+       hover_color.GetColor().IsFullyTransparent()) ||
+      (color.IsAbsoluteColor() && color.GetColor().IsFullyTransparent())) {
+    return true;
+  }
+  // At this point, we know the text-decoration will render both when hovered
+  // and not.
+  return hover_line == line &&
+         builder.TextDecorationStyle() == style.TextDecorationStyle() &&
+         builder.GetTextDecorationThickness() ==
+             style.GetTextDecorationThickness();
 }
 
 void StyleResolver::PropagateStyleBuilderFlags(
@@ -2060,6 +2089,9 @@ void StyleResolver::ApplyBaseStyleNoCache(
   }
   if (match_result.HasFlag(MatchFlag::kAffectedByHover)) {
     builder.SetAffectedByHover();
+  }
+  if (match_result.HasFlag(MatchFlag::kAffectedByNonSubjectHoverSelector)) {
+    builder.SetAffectedByNonSubjectHoverSelector();
   }
   if (match_result.HasFlag(MatchFlag::kAffectedByActive)) {
     builder.SetAffectedByActive();

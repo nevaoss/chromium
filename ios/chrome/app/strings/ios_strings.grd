@@ -215,6 +215,12 @@
       <message name="IDS_IOS_ACCNAME_NEW_INCOGNITO_TAB" desc="The accessibility label for the new incognito tab button on the new tab page [Length: unlimited]">
         New incognito tab
       </message>
+      <message name="IDS_IOS_ACCNAME_NTP_ATTACH_IMAGE" is_accessibility_with_no_ui="true" desc="The accessibility label for the attach image button in the new tab page quick actions row [Length: unlimited]">
+        Add image to your search
+      </message>
+      <message name="IDS_IOS_ACCNAME_NTP_CREATE_IMAGE" is_accessibility_with_no_ui="true" desc="The accessibility label for the create image button in the new tab page quick actions row [Length: unlimited]">
+        Create image
+      </message>
       <message name="IDS_IOS_ACCNAME_OPEN_PAGE_ACTION_MENU" desc="The accessibility label for the button that opens the page action menu [Length: unlimited]">
         Open page action menu
       </message>
@@ -1723,10 +1729,10 @@
         Precise location
       </message>
       <message name="IDS_IOS_BWG_SETTINGS_PAGE_CONTENT_FOOTER_TEXT" desc="The footer text of page content sharing row in BWG settings page.">
-        The current tab is shared with Gemini when you start a new chat. When you share a tab with Gemini, their contents and URL are sent to Google. <ph name="BEGIN_LINK">BEGIN_LINK</ph>Learn more<ph name="END_LINK">END_LINK</ph>
+        The current tab is shared with Gemini when you start a new chat. <ph name="BEGIN_LINK">BEGIN_LINK</ph>Learn more about AI and privacy<ph name="END_LINK">END_LINK</ph>
       </message>
       <message name="IDS_IOS_BWG_SETTINGS_PAGE_CONTENT_SHARING_TITLE" desc="The title text of page content sharing row in BWG settings page.">
-        Share current tab
+        Share current tab by default
       </message>
       <message name="IDS_IOS_BWG_VISUAL_RICH_PRIMARY_BUTTON" desc="Primary button text for the Gemini first run experience.">
           Start using Gemini
@@ -3857,6 +3863,12 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
         =1 {Only 1 tab can be shared.}
         other {Only {COUNT} tabs can be shared.}}
       </message>
+      <message name="IDS_IOS_GEMINI_WEB_MODAL_CLOSE_BUTTON_ACCESSIBILITY_LABEL" desc="Accessibility label for the close button of the modal sheet that shows a web page (e.g. a quiz or flashcards) on top of the Gemini chat panel. Spoken by VoiceOver to distinguish it from the Gemini chat panel's own close button. [iOS only]">
+        Close <ph name="PAGE_TITLE">$1<ex>Challenging Bat Biology Quiz</ex></ph>
+      </message>
+      <message name="IDS_IOS_GEMINI_WEB_MODAL_CLOSE_BUTTON_FALLBACK_ACCESSIBILITY_LABEL" desc="Accessibility label for the close button of the modal sheet that shows a web page on top of the Gemini chat panel, used while the page has no title yet. Spoken by VoiceOver to distinguish it from the Gemini chat panel's own close button. [iOS only]">
+        Close page
+      </message>
       <message name="IDS_IOS_GENERIC_PASSKIT_ERROR" desc="Generic error message on failure reading a PassKit object. [Length: 60em] [iOS only]">
         Sorry, your Pass cannot be installed to Passbook at this time.
       </message>
@@ -4174,12 +4186,6 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_IDENTITY_ERROR_INFOBAR_ENTER_PASSPHRASE_TITLE" desc="The title of the identity error info bar when the passphrase is required. [iOS only]">
         Enter your passphrase
       </message>
-      <message name="IDS_IOS_IDENTITY_ERROR_INFOBAR_GET_ALL_YOUR_PASSWORDS_ON_THIS_DEVICE" desc="The error message that explains a sync error: Passwords stored in the user's Google Account can't be synced to the device (due to missing trusted vault keys). [iOS only]">
-        Verify it’s you to get all your passwords on this device
-      </message>
-      <message name="IDS_IOS_IDENTITY_ERROR_INFOBAR_GET_ALL_YOUR_PASSWORDS_TITLE" desc="The title of the identity error info bar when a user needs to fix an error for being able to access their passwords.">
-        Get all your passwords
-      </message>
       <message name="IDS_IOS_IDENTITY_ERROR_INFOBAR_KEEP_USING_PASSWORDS_MESSAGE" desc="The error message in the identity error info bar related to keep using passwords. [iOS only]">
         Keep using the passwords in your Google Account
       </message>
@@ -4188,9 +4194,6 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       </message>
       <message name="IDS_IOS_IDENTITY_ERROR_INFOBAR_MAKE_SURE_YOU_CAN_ALWAYS_USE_PASSWORDS_MESSAGE" desc="The error message in the identity error info bar related to making sure you can always use your passwords. [iOS only]">
         Make sure you can always use the passwords in your Google Account
-      </message>
-      <message name="IDS_IOS_IDENTITY_ERROR_INFOBAR_OKAY_BUTTON_LABEL" desc="Button label for the message shown in the Sync Error Card (due to missing trusted vault keys) for confirming that a user wants to get all their passwords on their device.">
-        Okay
       </message>
       <message name="IDS_IOS_IDENTITY_ERROR_INFOBAR_VERIFY_BUTTON_LABEL" desc="The label of the verify your account action button in the identity error info bar. [iOS only]">
         Verify
@@ -5783,10 +5786,10 @@ Handoff must also be enabled in the General section of Settings, and your device
         The sites you visit, including Google, are responsible for determining how they respond to this request. Depending on the laws in your region, sites may respond by limiting the sale and sharing of your data or its use for personalized ads. <ph name="BEGIN_LINK">BEGIN_LINK</ph>Learn more<ph name="END_LINK">END_LINK</ph>
       </message>
       <message name="IDS_IOS_OPTIONS_ENABLE_UNIVERSAL_OPT_OUT_ERROR_IPAD" desc="Error message displayed in the Universal Opt-Out settings screen when the web extension fails to load on iPad. [iOS only]">
-        Something went wrong with this setting. Update and restart Chrome and iPadOS, and try again. If this error keeps happening, your iPad might not support this setting.
+        Something went wrong with this setting. Update Chrome and iPadOS, then restart your device to try again. If this keeps happening, your iPad might not support this setting.
       </message>
       <message name="IDS_IOS_OPTIONS_ENABLE_UNIVERSAL_OPT_OUT_ERROR_IPHONE" desc="Error message displayed in the Universal Opt-Out settings screen when the web extension fails to load on iPhone. [iOS only]">
-        Something went wrong with this setting. Update and restart Chrome and iOS, and try again. If this error keeps happening, your iPhone might not support this setting.
+        Something went wrong with this setting. Update Chrome and iOS, then restart your device to try again. If this keeps happening, your iPhone might not support this setting.
       </message>
       <message name="IDS_IOS_OPTIONS_ENABLE_UNIVERSAL_OPT_OUT_ERROR_LEARN_MORE" desc="Button label allowing the user to learn more about the Universal Opt-Out error. [iOS only]">
         Learn more
@@ -7508,15 +7511,6 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_SAFE_BROWSING_NO_PROTECTION_CONFIRMATION_DIALOG_TITLE" desc="Title for Safe Browsing no protection confirmation dialog.">
         Turn off Safe Browsing?
-      </message>
-      <message name="IDS_IOS_SAFE_BROWSING_STANDARD_PROTECTION_BULLET_ONE" desc="First bullet point under the Safe Browsing standard protection mode.">
-        Detects and warns you about dangerous events when they happen.
-      </message>
-      <message name="IDS_IOS_SAFE_BROWSING_STANDARD_PROTECTION_EXTENDED_REPORTING_SUMMARY" desc="Summary for Safe Browsing extended reporting.">
-        Sends URLs of some pages you visit, limited system information, and some page content to Google, to help discover new threats and protect everyone on the web.
-      </message>
-      <message name="IDS_IOS_SAFE_BROWSING_STANDARD_PROTECTION_EXTENDED_REPORTING_TITLE" desc="Title for Safe Browsing extended reporting.">
-        Help improve security on the Web for everyone
       </message>
       <message name="IDS_IOS_SAFE_BROWSING_STANDARD_PROTECTION_LEAK_CHECK_TITLE" desc="Title for the switch toggling whether Chrome should check that entered credentials have been part of a leak.">
         Warn you if passwords are Exposed in a Data breach
@@ -9481,10 +9475,10 @@ Handoff must also be enabled in the General section of Settings, and your device
           Unit type selector
       </message>
       <message name="IDS_IOS_UNIVERSAL_OPT_OUT_SNACKBAR_ACTION" desc="Button text on the snackbar allowing the user to manage their data use setting. [iOS only]">
-        Manage
+        Review
       </message>
       <message name="IDS_IOS_UNIVERSAL_OPT_OUT_SNACKBAR_MESSAGE" desc="Text displayed in a snackbar when loading the data use setting extension fails. [iOS only]">
-        Data use setting encountered an error.
+        Something went wrong with your data opt-out request
       </message>
       <message name="IDS_IOS_UNO_UPGRADE_PROMO_SIGNIN_SUBTITLE" desc="This string is on a sign-in page, shown several weeks after the user has installed Chrome. It explains the overarching user benefit of signing in (access to bookmarks, passwords, history, settings, etc.). We want users to understand why signing in is beneficial, and click 'Continue as name' to sign in to their Google Account. The tone should be informative and lightweight.">
         Get your bookmarks, passwords, and more on all your devices.

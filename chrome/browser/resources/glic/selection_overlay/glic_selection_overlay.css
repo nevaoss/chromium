@@ -117,6 +117,12 @@
   opacity: 10%;
 }
 
+/* Use visibility instead of display so that the glow's fade-out animation
+ * still runs while hidden and does not replay when the glow is shown again. */
+:host([skip-intro-animation]) #overlayBorderGlow {
+  visibility: hidden;
+}
+
 #selectionElements > * {
   inset: 0;
   position: absolute;
@@ -234,7 +240,7 @@
 }
 
 #floatingPromptContainer {
-  align-items: center;
+  align-items: flex-start;
   animation: promptFadeIn 200ms cubic-bezier(0, 0, 0.2, 1);
   box-sizing: border-box;
   display: flex;
@@ -243,6 +249,7 @@
   max-width: calc(100vw - 32px);
   pointer-events: auto;
   position: fixed;
+  width: max-content;
   z-index: 100;
 }
 
@@ -270,7 +277,9 @@
   display: flex;
   height: 48px;
   max-width: 100%;
-  padding: 0 16px;
+  padding: 0;
+  padding-inline-end: 6px;
+  padding-inline-start: 16px;
   transition: box-shadow 200ms ease;
   width: 360px;
 }
@@ -303,6 +312,21 @@
   color: #747775;
 }
 
+#submitPromptButton {
+  --cr-icon-button-fill-color: #0B57D0;
+  --cr-icon-button-hover-background-color: #A8C7FA;
+  --cr-icon-button-icon-size: 20px;
+  --cr-icon-button-margin-end: 0;
+  --cr-icon-button-margin-start: 8px;
+  --cr-icon-button-size: 36px;
+  --cr-icon-image: url('/arrow_upward.svg');
+  background-color: #C2E7FF;
+}
+
+#submitPromptButton[hidden] {
+  display: none;
+}
+
 .action-chips-row {
   box-sizing: border-box;
   display: flex;
@@ -313,8 +337,13 @@
   max-width: 100%;
 }
 
+.searchbox-pill + .action-chips-row {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
 .action-chip,
-.close-region-button {
+.settings-button {
   --cr-button-background-color: var(--cr-fallback-color-surface);
   --cr-button-border: none;
   --cr-button-height: 30px;
@@ -332,21 +361,21 @@
   padding-inline-start: 5px;
 }
 
-.close-region-button {
+.settings-button {
   padding: 5px;
   width: 30px;
 }
 
 /* The hover background is a capsule inset from the edge of the button. */
 .action-chip::part(hoverBackground),
-.close-region-button::part(hoverBackground) {
+.settings-button::part(hoverBackground) {
   background: var(--cr-hover-on-subtle-background-color);
   border-radius: inherit;
   inset: 2px;
 }
 
 .chip-icon,
-.close-region-icon {
+.settings-icon {
   background-color: var(--cr-fallback-color-on-surface-subtle);
   flex-shrink: 0;
   height: var(--cr-icon-size);
@@ -364,8 +393,8 @@
   mask-image: url('/spark_mono.svg');
 }
 
-.close-region-icon {
-  mask-image: url('/lens/icon_clear.svg');
+.settings-icon {
+  mask-image: url('/settings.svg');
 }
 
 #inlineFulfillmentHost {
@@ -471,7 +500,7 @@
   #cursorImg,
   #inlineFulfillmentHost .ask-gemini-icon,
   .chip-icon,
-  .close-region-icon {
+  .settings-icon {
     /* Set the icon color to hcm (high contrast mode) value. */
     background-color: ButtonText;
   }
@@ -479,7 +508,7 @@
   /* Add a border since the shadow is not visible in hcm. */
   #inlineFulfillmentHost,
   .action-chip,
-  .close-region-button {
+  .settings-button {
     border: 1px solid ButtonBorder;
   }
 }

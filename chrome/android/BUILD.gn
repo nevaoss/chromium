@@ -689,6 +689,7 @@ if (_is_default_toolchain) {
       "//components/crash/android:java",
       "//components/data_sharing/public:public_java",
       "//components/device_reauth:device_reauth_java_enums",
+      "//components/device_signals/core/browser/android:java",
       "//components/digital_goods/mojom:mojom_java",
       "//components/dom_distiller/content/browser/android:dom_distiller_content_java",
       "//components/dom_distiller/core/android:dom_distiller_core_java",
@@ -837,7 +838,6 @@ if (_is_default_toolchain) {
       "//third_party/android_deps:material_design_java",
       "//third_party/android_deps:playcore_java",
       "//third_party/android_deps:protobuf_lite_runtime_java",
-      "//third_party/android_media:android_media_java",
       "//third_party/android_swipe_refresh:android_swipe_refresh_java",
       "//third_party/androidx:androidx_activity_activity_java",
       "//third_party/androidx:androidx_annotation_annotation_experimental_java",
@@ -1466,7 +1466,6 @@ if (_is_default_toolchain) {
       "//content/public/test/android:content_java_test_support",
       "//net/android:net_java_test_support",
       "//third_party/android_deps:espresso_java",
-      "//third_party/android_media:android_media_resources",
       "//third_party/androidx:androidx_annotation_annotation_java",
       "//third_party/androidx:androidx_browser_browser_java",
       "//third_party/androidx:androidx_test_core_java",
@@ -2755,8 +2754,6 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/chrome/browser/IntentHandler.java",
       "java/src/org/chromium/chrome/browser/KeyboardShortcuts.java",
       "java/src/org/chromium/chrome/browser/PlayServicesVersionInfo.java",
-      "java/src/org/chromium/chrome/browser/RecentlyClosedEntriesManager.java",
-      "java/src/org/chromium/chrome/browser/RecentlyClosedWindowMetadata.java",
       "java/src/org/chromium/chrome/browser/ServiceTabLauncher.java",
       "java/src/org/chromium/chrome/browser/ShortcutHelper.java",
       "java/src/org/chromium/chrome/browser/WarmupManager.java",
@@ -2878,9 +2875,6 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/chrome/browser/notifications/scheduler/FindsAgent.java",
       "java/src/org/chromium/chrome/browser/notifications/scheduler/NotificationSchedulerTask.java",
       "java/src/org/chromium/chrome/browser/notifications/scheduler/TipsAgent.java",
-      "java/src/org/chromium/chrome/browser/ntp/RecentTabsPagePrefs.java",
-      "java/src/org/chromium/chrome/browser/ntp/RecentlyClosedBridge.java",
-      "java/src/org/chromium/chrome/browser/ntp/RecentlyClosedTab.java",
       "java/src/org/chromium/chrome/browser/offlinepages/AutoFetchNotifier.java",
       "java/src/org/chromium/chrome/browser/offlinepages/BackgroundSchedulerBridge.java",
       "java/src/org/chromium/chrome/browser/offlinepages/OfflinePageArchivePublisherBridge.java",
@@ -2907,6 +2901,9 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/chrome/browser/printing/WebContentsPrinter.java",
       "java/src/org/chromium/chrome/browser/privacy/settings/PrivacyPreferencesManagerImpl.java",
       "java/src/org/chromium/chrome/browser/push_messaging/PushMessagingServiceObserver.java",
+      "java/src/org/chromium/chrome/browser/recent_tabs/RecentTabsPagePrefs.java",
+      "java/src/org/chromium/chrome/browser/recent_tabs/RecentlyClosedEntriesManager.java",
+      "java/src/org/chromium/chrome/browser/recent_tabs/RecentlyClosedWindowMetadata.java",
       "java/src/org/chromium/chrome/browser/renderer_host/ChromeNavigationUiData.java",
       "java/src/org/chromium/chrome/browser/resources/ResourceMapper.java",
       "java/src/org/chromium/chrome/browser/rlz/RevenueStats.java",
@@ -2962,6 +2959,7 @@ if (_is_default_toolchain) {
       sources += [ "java/src/org/chromium/chrome/browser/offlinepages/evaluation/OfflinePageEvaluationBridge.java" ]
     }
 
+    deps = [ "//chrome/browser/ui/browser_window/public/android:jni" ]
     public_deps = [
       ":base_module_jni",
       "//chrome/browser/bookmarks/android:jni_headers",

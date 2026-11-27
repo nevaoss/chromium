@@ -207,8 +207,10 @@ source_set("misc") {
       "profile_list_desktop.h",
     ]
     deps += [
+      "//chrome/browser/metrics",
       "//chrome/browser/metrics/desktop_session_duration",
       "//chrome/browser/ui:chrome_pages",
+      "//components/metrics",
     ]
   }
 
@@ -766,6 +768,7 @@ source_set("profiles_extra_parts_impl") {
     "//chrome/browser/bookmarks",
     "//chrome/browser/breadcrumbs",
     "//chrome/browser/browser_actuator",
+    "//chrome/browser/browser_actuator/transport",
     "//chrome/browser/browsing_data",
     "//chrome/browser/btm",
     "//chrome/browser/client_hints",
@@ -916,6 +919,7 @@ source_set("profiles_extra_parts_impl") {
     "//components/optimization_guide/core",
     "//components/password_manager/content/browser",
     "//components/password_manager/core/browser/features:password_features",
+    "//components/password_manager/core/common:features",
     "//components/payments/content",
     "//components/permissions:permissions_common",
     "//components/policy/content",

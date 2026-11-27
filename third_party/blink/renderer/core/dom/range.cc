@@ -69,6 +69,7 @@
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+#include "third_party/blink/renderer/platform/wtf/text/format.h"
 #include "third_party/blink/renderer/platform/wtf/text/strcat.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 #include "ui/gfx/geometry/quad_f.h"
@@ -1060,30 +1061,26 @@ Node* Range::CheckNodeWOffset(Node* n,
       if (offset > To<CharacterData>(n)->length()) {
         exception_state.ThrowDOMException(
             DOMExceptionCode::kIndexSizeError,
-            StrCat({"The offset ", String::Number(offset),
-                    " is larger than the node's length (",
-                    String::Number(To<CharacterData>(n)->length()), ")."}));
+            Format("The offset {} is larger than the node's length ({}).",
+                   offset, To<CharacterData>(n)->length()));
       } else if (offset >
                  static_cast<unsigned>(std::numeric_limits<int>::max())) {
         exception_state.ThrowDOMException(
             DOMExceptionCode::kIndexSizeError,
-            StrCat({"The offset ", String::Number(offset), " is invalid."}));
+            Format("The offset {} is invalid.", offset));
       }
       return nullptr;
     case Node::kProcessingInstructionNode:
       if (offset > To<ProcessingInstruction>(n)->data().length()) {
         exception_state.ThrowDOMException(
             DOMExceptionCode::kIndexSizeError,
-            StrCat(
-                {"The offset ", String::Number(offset),
-                 " is larger than the node's length (",
-                 String::Number(To<ProcessingInstruction>(n)->data().length()),
-                 ")."}));
+            Format("The offset {} is larger than the node's length ({}).",
+                   offset, To<ProcessingInstruction>(n)->data().length()));
       } else if (offset >
                  static_cast<unsigned>(std::numeric_limits<int>::max())) {
         exception_state.ThrowDOMException(
             DOMExceptionCode::kIndexSizeError,
-            StrCat({"The offset ", String::Number(offset), " is invalid."}));
+            Format("The offset {} is invalid.", offset));
       }
       return nullptr;
     case Node::kAttributeNode:
@@ -1095,15 +1092,14 @@ Node* Range::CheckNodeWOffset(Node* n,
       if (offset > static_cast<unsigned>(std::numeric_limits<int>::max())) {
         exception_state.ThrowDOMException(
             DOMExceptionCode::kIndexSizeError,
-            StrCat({"The offset ", String::Number(offset), " is invalid."}));
+            Format("The offset {} is invalid.", offset));
         return nullptr;
       }
       Node* child_before = NodeTraversal::ChildAt(*n, offset - 1);
       if (!child_before) {
         exception_state.ThrowDOMException(
             DOMExceptionCode::kIndexSizeError,
-            StrCat(
-                {"There is no child at offset ", String::Number(offset), "."}));
+            Format("There is no child at offset {}.", offset));
       }
       return child_before;
     }
@@ -1703,18 +1699,31 @@ void Range::GetBorderAndTextQuads(Vector<gfx::QuadF>& quads) const {
   Node* end_container = &end_.Container();
   Node* stop_node = PastLastNode();
 
-  // Stores the elements selected by the range.
+  // A selected box-less element stays in this set so its descendants inherit
+  // selection. Only an enclosing box suppresses their border boxes.
   HeapHashSet<Member<const Node>> selected_elements;
+  // Stores the elements whose border box is already enclosed by a selected
+  // ancestor, i.e. that ancestor draws a boundary around this subtree. A
+  // box-less ancestor, such as a `display: contents` element, encloses
+  // nothing. Ancestors are visited before their descendants, so this only
+  // looks at the parent.
+  HeapHashSet<Member<const Node>> enclosed_elements;
   for (Node* node = FirstNode(); node && node != stop_node;
        node = NodeTraversal::Next(*node)) {
     if (!node->IsElementNode())
       continue;
     auto* parent_node = node->parentNode();
-    if ((parent_node && selected_elements.Contains(parent_node)) ||
+    const bool parent_is_selected =
+        parent_node && selected_elements.Contains(parent_node);
+    if (parent_is_selected ||
         (!node->contains(start_container) && !node->contains(end_container))) {
       DCHECK_LE(StartPosition(), Position::BeforeNode(*node));
       DCHECK_GE(EndPosition(), Position::AfterNode(*node));
       selected_elements.insert(node);
+    }
+    if (parent_is_selected && (parent_node->GetLayoutObject() ||
+                               enclosed_elements.Contains(parent_node))) {
+      enclosed_elements.insert(node);
     }
   }
 
@@ -1723,8 +1732,9 @@ void Range::GetBorderAndTextQuads(Vector<gfx::QuadF>& quads) const {
     auto* element_node = DynamicTo<Element>(node);
     if (element_node) {
       if (!selected_elements.Contains(node) ||
-          selected_elements.Contains(node->parentNode()))
+          enclosed_elements.Contains(node)) {
         continue;
+      }
       LayoutObject* const layout_object = element_node->GetLayoutObject();
       if (!layout_object)
         continue;

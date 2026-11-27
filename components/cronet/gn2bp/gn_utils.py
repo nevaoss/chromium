@@ -316,7 +316,7 @@ class GnParser:
             # metadata (`crate_header`, `crate_namespace`, `rust_target`).
             self.crubit_rust_target = None
             self.source_stem = None
-            self.crate_header_rel_path = None
+            self.source_subdir = None
             self.cpp_namespace = None
 
             self.java_jar_excluded_patterns = []
@@ -473,6 +473,9 @@ class GnParser:
         if toolchain in HOST_TOOLCHAIN_TO_SUFFIX.keys():
             return 'host', 'host'
         raise TypeError(f"Unknown toolchain found: {toolchain}")
+
+    def _label_with_toolchain(self, label, toolchain):
+        return f"{label}({toolchain})"
 
     def get_target(self, gn_target_name):
         """Returns a Target object from the fully qualified GN target name.
@@ -719,16 +722,24 @@ class GnParser:
             # GN target.
             pass
         elif target.type == 'crubit_cpp_from_rust':
-            target.crate_header_rel_path = metadata["crate_header"][0]
-            target.source_stem = target.crate_header_rel_path.split("/")[
-                -1
-            ].removesuffix(".h")
+            crate_header_rel_path = metadata["crate_header"][0]
+            target.source_subdir = (
+                os.path.dirname(crate_header_rel_path) or None
+            )
+            target.source_stem = os.path.basename(
+                crate_header_rel_path
+            ).removesuffix(".h")
             if "crate_namespace" in metadata and metadata["crate_namespace"]:
                 target.cpp_namespace = metadata["crate_namespace"][0]
             # Parse the underlying Rust library target to obtain its crate_name
             # and wire it as the `rust_library` dependency in Soong.
+            rust_target_label = metadata["rust_target"][0]
+            if arch == 'host':
+                rust_target_label = self._label_with_toolchain(
+                    rust_target_label, desc["toolchain"]
+                )
             rust_target = self.parse_gn_desc(
-                gn_desc, metadata["rust_target"][0], is_test_target
+                gn_desc, rust_target_label, is_test_target
             )
             target.crubit_rust_target = rust_target.name
             target.crate_name = rust_target.crate_name
@@ -739,11 +750,11 @@ class GnParser:
             deps = [
                 d
                 for d in deps
-                if not d.endswith(
+                if not gn2bp_common.label_without_toolchain(d).endswith(
                     ("_crubit_action", "_crubit_impl", "_crubit_rspgen")
                 )
             ]
-            deps.append(metadata["rust_target"][0])
+            deps.append(rust_target_label)
         elif target.type in [
             "rust_library",
             "rust_proc_macro",

@@ -77,12 +77,12 @@ import org.chromium.chrome.browser.omnibox.LocationBarSelectionController.Select
 import org.chromium.chrome.browser.omnibox.UrlBar.ScrollType;
 import org.chromium.chrome.browser.omnibox.UrlBar.UrlBarDelegate;
 import org.chromium.chrome.browser.omnibox.fusebox.ComposeboxQueryControllerBridge;
+import org.chromium.chrome.browser.omnibox.fusebox.Fusebox.FuseboxLayoutMode;
+import org.chromium.chrome.browser.omnibox.fusebox.Fusebox.FuseboxState;
+import org.chromium.chrome.browser.omnibox.fusebox.Fusebox.PopupState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentModelList;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentModelList.FuseboxAttachmentChangeListener;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.PopupState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.AiModeActivationSource;
 import org.chromium.chrome.browser.omnibox.geo.GeolocationHeader;
@@ -350,6 +350,7 @@ public class LocationBarMediator
     private boolean mMiniOriginMode;
     private LocationBarSelectionController mSelectionController;
     private boolean mIsTextWrapping;
+    private boolean mIsKeyboardDismissedByScroll;
     private @Nullable NonNullObservableSupplier<Boolean> mUrlTextWrappingSupplier;
 
     /*package */ LocationBarMediator(
@@ -712,6 +713,10 @@ public class LocationBarMediator
             mPrefChangeRegistrar.destroy();
             mPrefChangeRegistrar = null;
         }
+        if (mOmniboxPrerender != null) {
+            mOmniboxPrerender.destroy();
+            mOmniboxPrerender = null;
+        }
         mLocationBarLayout.removeOnLayoutChangeListener(mOnLocationBarLayoutChange);
         mDeferredFocusCurrentTab = false;
         if (mUrlTextWrappingSupplier != null) {
@@ -1061,10 +1066,14 @@ public class LocationBarMediator
     }
 
     @Override
-    public void onSuggestionDropdownScroll() {}
+    public void onSuggestionDropdownScroll() {
+        mIsKeyboardDismissedByScroll = true;
+    }
 
     @Override
-    public void onSuggestionDropdownOverscrolledToTop() {}
+    public void onSuggestionDropdownOverscrolledToTop() {
+        mIsKeyboardDismissedByScroll = false;
+    }
 
     @Override
     public void onSuggestionDropdownScrollOffsetChanged(int scrollOffset) {
@@ -1603,7 +1612,7 @@ public class LocationBarMediator
         marginLayoutParams.height = MarginLayoutParams.MATCH_PARENT;
         mToolbarParent = (ViewGroup) mLocationBarLayout.getParent();
         mIndexInToolbar = mToolbarParent.indexOfChild(mLocationBarLayout);
-        mToolbarParent.removeView(mLocationBarLayout);
+        detachLocationBarLayoutPreservingFocus(mToolbarParent);
         suggestionsContainer.addView(mLocationBarLayout, 0, marginLayoutParams);
         mDropdown = suggestionsContainer.takeDropdownView();
         // Ensure mDropdown is detached from any previous parent before adding. During
@@ -1700,7 +1709,7 @@ public class LocationBarMediator
         MarginLayoutParams marginLayoutParams =
                 (MarginLayoutParams) mLocationBarLayout.getLayoutParams();
         ViewGroup suggestionsContainer = mAutocompleteCoordinator.getSuggestionsContainer();
-        suggestionsContainer.removeView(mLocationBarLayout);
+        detachLocationBarLayoutPreservingFocus(suggestionsContainer);
         assertNonNull(mToolbarParent)
                 .addView(mLocationBarLayout, mIndexInToolbar, marginLayoutParams);
         if (mLocationBarLayout.isInLayout()) {
@@ -1717,6 +1726,26 @@ public class LocationBarMediator
                         && mCurrentInput.getDisplayState() != DisplayState.WEBSITE;
         mUrlCoordinator.finishReparenting(postReparentingFocus);
         mIsReparenting = false;
+    }
+
+    /**
+     * Removes {@link #mLocationBarLayout} from {@code parent} without unfocusing its subtree.
+     *
+     * <p>ViewGroup#removeView() only unfocuses the removed child (and hands focus to the root) when
+     * that child is the parent's focused child. Releasing the parent's reference first keeps the
+     * UrlBar focused through the move, so TextView and InputMethodManager never observe a focus
+     * loss and any in-progress IME composition survives; addView() on the new parent re-links the
+     * focus chain. ViewGroup#clearChildFocus() ignores its argument and clears the chain up to the
+     * root unconditionally, so it must only be called when the location bar actually holds focus,
+     * otherwise it would orphan focus held elsewhere (e.g. web contents).
+     *
+     * @param parent The current parent of {@link #mLocationBarLayout}.
+     */
+    private void detachLocationBarLayoutPreservingFocus(ViewGroup parent) {
+        if (parent.getFocusedChild() == mLocationBarLayout) {
+            parent.clearChildFocus(mLocationBarLayout);
+        }
+        parent.removeView(mLocationBarLayout);
     }
 
     private boolean isPageClassIneligibleForPopover() {
@@ -3197,6 +3226,7 @@ public class LocationBarMediator
         mFuseboxCoordinator.endInput();
         mHintTextUpdater.endInput();
         mIsTextWrapping = false;
+        mIsKeyboardDismissedByScroll = false;
         setAttachmentModelList(null);
         updateShowFocusRing();
         updateActivationChip();
@@ -3408,6 +3438,13 @@ public class LocationBarMediator
 
     @Override
     public boolean isKeyboardSuppressed() {
+        // Suppress keyboard if it was dismissed by scrolling the suggestions dropdown, since it
+        // should remain hidden across transient window-focus transfers until the dropdown is
+        // overscrolled back to the top or the UrlBar is touched.
+        if (OmniboxFeatures.isPrefetchSelectedSuggestionsOmtAndroidEnabled()
+                && mIsKeyboardDismissedByScroll) {
+            return true;
+        }
         // Suppress the keyboard while the fusebox popup is showing as a bottom sheet.
         return mFuseboxCoordinator.getPopupStateSupplier().get() == PopupState.BOTTOM;
     }
@@ -3446,6 +3483,7 @@ public class LocationBarMediator
 
     @Override
     public void onUrlBarTouchDown() {
+        mIsKeyboardDismissedByScroll = false;
         if (mSelectionController.getSelectedView() != mUrlBarSelectableView) {
             mSelectionController.reset();
         }

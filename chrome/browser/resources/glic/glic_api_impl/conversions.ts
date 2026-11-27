@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Utility functions for converting from mojom types to message types.
+// Utility functions for converting between mojom types and client API types.
 // Summary of changes:
 // * Window and tab IDs are sent using int32 in mojo, but made opaque
 //   strings for the public API. This allows Chrome to change the ID
@@ -44,6 +44,7 @@ import type {                                                                //
              PinTabsOptions as PinTabsOptionsMojo,                           //
              Screenshot as ScreenshotMojo,                                   //
              ScreenshotCollectionOptions as ScreenshotCollectionOptionsMojo, //
+             SendTabToSelfDevice as SendTabToSelfDeviceMojo,                 //
              SkillsPayload as SkillsPayloadMojo,                             //
              TabContextOptions as TabContextOptionsMojo,                     //
              TabContextResult as TabContextResultMojo,                       //
@@ -62,25 +63,35 @@ import {                                                             //
   WebClientMode as WebClientModeMojo,                                //
 } from '../glic.mojom-webui.js';
 import type {                                                   //
+             AdditionalContext,                                 //
+             AdditionalContextPart,                             //
+             AnnotatedPageData,                                 //
              CaptureRegionResult,                               //
              ConversationInfo,                                  //
              CounterAbuseVerdict,                               //
              CreateTabOptions,                                  //
              FileUploadPolicyState as FileUploadPolicyStateApi, //
+             FocusedTabData,                                    //
              GetPinCandidatesOptions,                           //
              HostCapability,                                    //
+             ImageBytesResult,                                  //
+             ImageInfo,                                         //
              InvocationPayload,                                 //
+             InvokeOptions,                                     //
              OpenPinnedTabPickerOptions,                        //
              PageMetadata,                                      //
              PanelOpeningData,                                  //
              PanelState,                                        //
+             PdfDocumentData,                                   //
              PinCandidate,                                      //
              PinTabsOptions,                                    //
              PinTrigger,                                        //
              Screenshot,                                        //
              ScreenshotCollectionOptions,                       //
+             SendTabToSelfDevice,                               //
              SkillsPayload,                                     //
              TabContextOptions,                                 //
+             TabContextResult,                                  //
              TabData,                                           //
              UnpinTabsOptions,                                  //
              UnpinTrigger,                                      //
@@ -97,19 +108,7 @@ import {                           //
 } from '../glic_api/glic_api.js';
 
 import {rgbaImageToBlob} from './client/image_utils.js';
-import type {                              //
-             AdditionalContextPartPrivate, //
-             AdditionalContextPrivate,     //
-             AnnotatedPageDataPrivate,     //
-             FocusedTabDataPrivate,        //
-             ImageBytesResultPrivate,      //
-             ImageInfoPrivate,             //
-             InvokeOptionsPrivate,         //
-             PdfDocumentDataPrivate,       //
-             RgbaImage,                    //
-             TabContextResultPrivate,      //
-             TabDataPrivate,               //
-} from './request_types.js';
+import type {RgbaImage} from './request_types.js';
 import {ImageAlphaType, ImageColorType} from './request_types.js';
 
 export const conversionSettings = {
@@ -118,11 +117,19 @@ export const conversionSettings = {
 };
 
 // Helper function to shallow-copy an object and replace some properties.
-// Useful to convert from these private types to public types. This will fail to
-// compile if a property is missed.
+// This will fail to compile if a property is missed.
 export function replaceProperties<O, R>(
     original: O, replacements: R): Omit<O, keyof R>&R {
   return Object.assign({}, original, replacements);
+}
+
+function streamFromBuffer(buffer: Uint8Array): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(buffer);
+      controller.close();
+    },
+  });
 }
 
 export function idToClient(windowId: number): string;
@@ -171,6 +178,16 @@ export function screenshotToClient(screenshot: ScreenshotMojo|null): Screenshot|
   };
 }
 
+export function sendTabToSelfDeviceToClient(device: SendTabToSelfDeviceMojo):
+    SendTabToSelfDevice {
+  return {
+    deviceGuid: device.deviceGuid,
+    deviceName: device.deviceName,
+    formFactor: enumToClient(device.formFactor),
+    lastUpdatedTime: timeToClient(device.lastUpdatedTime),
+  };
+}
+
 export function webPageDataToClient(webPageData: WebPageDataMojo|null):
     WebPageData|undefined {
   if (!webPageData) {
@@ -186,13 +203,12 @@ export function webPageDataToClient(webPageData: WebPageDataMojo|null):
 }
 
 export function pdfDocumentDataToClient(
-    pdfDocumentData: PdfDocumentDataMojo|null): PdfDocumentDataPrivate|
-    undefined {
+    pdfDocumentData: PdfDocumentDataMojo|null): PdfDocumentData|undefined {
   if (!pdfDocumentData) {
     return undefined;
   }
   const pdfData = pdfDocumentData.pdfData ?
-      new Uint8Array(pdfDocumentData.pdfData).buffer :
+      streamFromBuffer(new Uint8Array(pdfDocumentData.pdfData)) :
       undefined;
   return {
     origin: originToClient(pdfDocumentData.origin),
@@ -202,15 +218,16 @@ export function pdfDocumentDataToClient(
 }
 
 export function protoWrapperToClient(protoWrapper: ProtoWrapper|null|undefined):
-    ArrayBuffer|undefined {
+    ReadableStream<Uint8Array>|undefined {
   if (!protoWrapper) {
     return undefined;
   }
-  return getArrayBufferFromBigBuffer(protoWrapper.smuggled);
+  const buffer = getArrayBufferFromBigBuffer(protoWrapper.smuggled);
+  return buffer && streamFromBuffer(new Uint8Array(buffer));
 }
 
 export function annotatedPageDataToClient(
-    annotatedPageData: AnnotatedPageDataMojo|null): AnnotatedPageDataPrivate|
+    annotatedPageData: AnnotatedPageDataMojo|null): AnnotatedPageData|
     undefined {
   if (!annotatedPageData) {
     return undefined;
@@ -281,11 +298,9 @@ export function originToClientOpaqueAsNull(origin: Origin|null): string|
   return originToClient(origin);
 }
 
-export function tabDataToPrivate(tabData: TabDataMojo): TabDataPrivate;
-export function tabDataToPrivate(tabData: TabDataMojo|null): TabDataPrivate|
-    undefined;
-export function tabDataToPrivate(tabData: TabDataMojo|null): TabDataPrivate|
-    undefined {
+export function tabDataToClient(tabData: TabDataMojo): TabData;
+export function tabDataToClient(tabData: TabDataMojo|null): TabData|undefined;
+export function tabDataToClient(tabData: TabDataMojo|null): TabData|undefined {
   if (!tabData) {
     return undefined;
   }
@@ -294,56 +309,21 @@ export function tabDataToPrivate(tabData: TabDataMojo|null): TabDataPrivate|
   if (tabData.favicon && !conversionSettings.omitFaviconInTabData) {
     favicon = bitmapN32ToRGBAImage(tabData.favicon);
   }
-
-  const isObservable = optionalToClient(tabData.isObservable);
-  const isMediaActive = optionalToClient(tabData.isMediaActive);
-  const isTabContentCaptured = optionalToClient(tabData.isTabContentCaptured);
-  const isActiveInWindow = optionalToClient(tabData.isActiveInWindow);
-  const isWindowActive = optionalToClient(tabData.isWindowActive);
-  return {
-    tabId: idToClient(tabData.tabId),
-    windowId: idToClient(tabData.windowId),
-    url: urlToClient(tabData.url),
-    title: optionalToClient(tabData.title),
-    favicon,
-    faviconUrl: urlToClient(tabData.faviconUrl),
-    documentMimeType: tabData.documentMimeType,
-    isObservable,
-    isMediaActive,
-    isTabContentCaptured,
-    isActiveInWindow,
-    isWindowActive,
-    lightweightPageFeatures:
-        tabData.lightweightPageFeatures?.map(feature => enumToClient(feature)),
-  };
-}
-
-export function tabDataToClient(tabData: TabDataMojo): TabData;
-export function tabDataToClient(tabData: TabDataMojo|null): TabData|undefined;
-export function tabDataToClient(tabData: TabDataMojo|null): TabData|undefined {
-  if (!tabData) {
-    return undefined;
+  let faviconResult: Promise<Blob>|undefined;
+  async function getFavicon() {
+    if (favicon && !faviconResult) {
+      faviconResult = Promise.resolve(rgbaImageToBlob(favicon));
+      favicon = undefined;
+    }
+    return faviconResult;
   }
 
-  let faviconResult: Promise<Blob>|undefined;
-  const bitmap = tabData.favicon;
-  const getFavicon =
-      (bitmap && !conversionSettings.omitFaviconInTabData) ? async () => {
-        if (!faviconResult) {
-          const rgbaImage = bitmapN32ToRGBAImage(bitmap);
-          if (rgbaImage) {
-            faviconResult = Promise.resolve(rgbaImageToBlob(rgbaImage));
-          }
-        }
-        return faviconResult;
-      } : undefined;
-
   return {
     tabId: idToClient(tabData.tabId),
     windowId: idToClient(tabData.windowId),
     url: urlToClient(tabData.url),
     title: optionalToClient(tabData.title),
-    favicon: getFavicon,
+    favicon: favicon && getFavicon,
     faviconUrl: urlToClient(tabData.faviconUrl),
     documentMimeType: tabData.documentMimeType,
     isObservable: optionalToClient(tabData.isObservable),
@@ -382,17 +362,17 @@ export function timeToClient(time: Time|null|undefined): Date|undefined {
 }
 
 export function focusedTabDataToClient(focusedTabData: FocusedTabDataMojo):
-    FocusedTabDataPrivate {
+    FocusedTabData {
   if (focusedTabData.focusedTab) {
     return {
-      hasFocus: {tabData: tabDataToPrivate(focusedTabData.focusedTab)},
+      hasFocus: {tabData: tabDataToClient(focusedTabData.focusedTab)},
     };
   }
   if (focusedTabData.noFocusedTabData) {
     return {
       hasNoFocus: {
         tabFocusCandidateData:
-            tabDataToPrivate(focusedTabData.noFocusedTabData.activeTabData),
+            tabDataToClient(focusedTabData.noFocusedTabData.activeTabData),
         noFocusReason: focusedTabData.noFocusedTabData.noFocusReason,
       },
     };
@@ -519,8 +499,8 @@ export function timeDeltaFromClient(durationMs: number = 0): TimeDelta {
 }
 
 export function tabContextToClient(tabContext: TabContextResultMojo):
-    TabContextResultPrivate {
-  const tabData: TabDataPrivate = tabDataToPrivate(tabContext.tabData);
+    TabContextResult {
+  const tabData = tabDataToClient(tabContext.tabData);
   const webPageData = webPageDataToClient(tabContext.webPageData);
   const viewportScreenshot = screenshotToClient(tabContext.viewportScreenshot);
   const screenshotInfo = protoWrapperToClient(tabContext.screenshotInfo);
@@ -690,7 +670,7 @@ export function skillsPayloadToClient(payload: SkillsPayloadMojo):
 }
 
 export function invokeOptionsToClient(options: InvokeOptionsMojo):
-    InvokeOptionsPrivate {
+    InvokeOptions {
   return {
     invocationSource: enumToClient(options.invocationSource),
     prompts: options.prompts || undefined,
@@ -744,12 +724,12 @@ export function invocationPayloadToClient(payload: InvocationPayloadMojo|null):
 }
 
 export function additionalContextToClient(context: AdditionalContextMojo):
-    AdditionalContextPrivate {
+    AdditionalContext {
   const parts = context.parts ?
       context.parts.map(p => additionalContextPartToClient(p)) :
       [];
   // Filter out undefined parts if any.
-  const validParts: AdditionalContextPartPrivate[] = [];
+  const validParts: AdditionalContextPart[] = [];
   for (const p of parts) {
     if (p) {
       validParts.push(p);
@@ -767,13 +747,11 @@ export function additionalContextToClient(context: AdditionalContextMojo):
 }
 
 export function additionalContextPartToClient(part: AdditionalContextPartMojo):
-    AdditionalContextPartPrivate|undefined {
-  const result: AdditionalContextPartPrivate = {};
+    AdditionalContextPart|undefined {
+  const result: AdditionalContextPart = {};
   if (part.data) {
-    result.data = {
-      mimeType: part.data.mimeType,
-      data: getArrayBufferFromBigBuffer(part.data.data)!,
-    };
+    const buffer = getArrayBufferFromBigBuffer(part.data.data)!;
+    result.data = new Blob([buffer], {type: part.data.mimeType});
     result.filename = optionalToClient(part.data.filename);
   } else if (part.screenshot) {
     result.screenshot = screenshotToClient(part.screenshot);
@@ -835,7 +813,7 @@ export function screenshotCollectionOptionsFromClient(
   };
 }
 
-export function imageInfoToClient(info: ImageInfoMojo): ImageInfoPrivate {
+export function imageInfoToClient(info: ImageInfoMojo): ImageInfo {
   return {
     caption: optionalToClient(info.caption),
     sourceOrigin: originToClientOpaqueAsNull(info.sourceOrigin),
@@ -845,7 +823,7 @@ export function imageInfoToClient(info: ImageInfoMojo): ImageInfoPrivate {
 }
 
 export function imageBytesResultToClient(result: ImageBytesResultMojo):
-    ImageBytesResultPrivate|null {
+    ImageBytesResult|null {
   const buffer = getArrayBufferFromBigBuffer(result.bytes);
   if (!buffer) {
     return null;

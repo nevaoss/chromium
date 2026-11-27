@@ -549,7 +549,6 @@ component("platform") {
     "bindings/callback_method_retriever.cc",
     "bindings/callback_method_retriever.h",
     "bindings/cpp_heap_external_tag.h",
-    "bindings/cross_thread_copier.h",
     "bindings/cross_thread_source_location.cc",
     "bindings/cross_thread_source_location.h",
     "bindings/dictionary_base.cc",
@@ -595,7 +594,6 @@ component("platform") {
     "bindings/script_wrappable.h",
     "bindings/source_location.cc",
     "bindings/source_location.h",
-    "bindings/source_location_copier.h",
     "bindings/string_resource.h",
     "bindings/sync_iterator_base.cc",
     "bindings/sync_iterator_base.h",
@@ -965,8 +963,6 @@ component("platform") {
     "graphics/canvas_2d_color_params.h",
     "graphics/canvas_2d_resource_provider.cc",
     "graphics/canvas_2d_resource_provider.h",
-    "graphics/canvas_deferred_paint_record.cc",
-    "graphics/canvas_deferred_paint_record.h",
     "graphics/canvas_drawable_paint_record.h",
     "graphics/canvas_drawable_paint_state.cc",
     "graphics/canvas_drawable_paint_state.h",
@@ -986,8 +982,6 @@ component("platform") {
     "graphics/color_behavior.h",
     "graphics/color_space_gamut.cc",
     "graphics/color_space_gamut.h",
-    "graphics/color_space_profile_data.cc",
-    "graphics/color_space_profile_data.h",
     "graphics/compositing/adjust_mask_layer_geometry.cc",
     "graphics/compositing/adjust_mask_layer_geometry.h",
     "graphics/compositing/chunk_to_layer_mapper.cc",
@@ -1799,8 +1793,6 @@ component("platform") {
       "fonts/mac/font_matcher_mac.mm",
       "mac/color_mac.h",
       "mac/color_mac.mm",
-      "mac/graphics_context_canvas.h",
-      "mac/graphics_context_canvas.mm",
       "text/locale_mac.h",
       "text/locale_mac.mm",
       "theme/web_theme_engine_mac.cc",
@@ -2218,6 +2210,10 @@ static_library("test_support") {
 test("blink_platform_unittests") {
   deps = [ ":blink_platform_unittests_sources" ]
 
+  if (enable_jxl_decoder) {
+    fuzztests = [ "JXLImageDecoderFuzzTest.FuzzJXLDecoder" ]
+  }
+
   if (enable_nocompile_tests) {
     deps += [ ":blink_platform_nocompile_tests" ]
   }
@@ -2536,7 +2532,6 @@ source_set("blink_platform_unittests_sources") {
       "fonts/mac/font_matcher_mac_test.mm",
       "fonts/mac/font_platform_data_mac_test.mm",
       "fonts/opentype/open_type_caps_support_test.mm",
-      "mac/graphics_context_canvas_test.mm",
       "text/locale_mac_test.mm",
     ]
   } else if (is_posix || is_fuchsia) {
@@ -2707,6 +2702,7 @@ test("blink_platform_perftests") {
     "testing/blink_perf_test_suite.h",
     "testing/run_all_perf_tests.cc",
     "testing/shaping_line_breaker_perf_test.cc",
+    "text/capitalize_perf_test.cc",
   ]
 
   configs += [
@@ -2856,7 +2852,7 @@ source_set("blink_image_decoder_fuzzer_test_support") {
   ]
   deps = [ ":platform" ]
   if (enable_jxl_decoder) {
-    deps += [ "//third_party/rust/jxl/v0_7/wrapper:jxl_rs" ]
+    deps += [ "//third_party/rust/jxl/v0_8/wrapper:jxl_rs" ]
   }
 }
 
@@ -2975,7 +2971,7 @@ if (enable_jxl_decoder) {
     deps = [
       ":blink_image_decoder_fuzzer_test_support",
       ":platform",
-      "//third_party/rust/jxl/v0_7/wrapper:jxl_rs",
+      "//third_party/rust/jxl/v0_8/wrapper:jxl_rs",
     ]
     seed_corpuses =
         [ "//third_party/blink/web_tests/external/wpt/jpegxl/resources" ]

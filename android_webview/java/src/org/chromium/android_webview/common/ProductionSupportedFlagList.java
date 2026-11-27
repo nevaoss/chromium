@@ -184,6 +184,9 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 GpuFeatures.USE_STRONG_REF_TO_SHARED_IMAGE_INTERFACE,
                 "Allows ClientSharedImage to store a strong reference to SharedImageInterface."),
+        Flag.baseFeature(
+                GpuFeatures.USE_AUTOMATIC_SYNC_TOKEN_MANAGEMENT,
+                "Lets ClientSharedImage handle all SyncToken management internally."),
         Flag.baseFeature(VizFeatures.WEBVIEW_VULKAN_INTERMEDIATE_BUFFER, "For debugging vulkan"),
         Flag.baseFeature(
                 VizFeatures.WEBVIEW_ENABLE_ADPF, "Pass WebView threads to HWUI ADPF session"),
@@ -1152,9 +1155,6 @@ public final class ProductionSupportedFlagList {
                 "IgnoreQuicCryptoConfigMemoryPressure",
                 "If true, ignore memory pressure for all network isolation partitions in the Quic"
                         + " session cache."),
-        Flag.baseFeature(
-                "WebViewPersistentMetricsInNoBackupDir",
-                "Migrate the persistent metrics file to the nobackupfiles directory."),
         Flag.baseFeature(
                 "ConnectionKeepAliveForHttp2",
                 "When enabled, WebView#preconnect will use a ConnectionKeepAliveConfig for"

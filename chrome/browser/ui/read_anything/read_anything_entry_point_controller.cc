@@ -11,6 +11,7 @@
 #include "base/command_line.h"
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/types/pass_key.h"
 #include "chrome/browser/dom_distiller/tab_utils.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
@@ -267,13 +268,11 @@ void ReadAnythingEntryPointController::ShowUI(
                                   open_trigger);
   }
 
-  // TODO(crbug.com/471001915): Change IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE,
-  // one of the triggers of this method, to reflect that it's opening Immersive
-  // mode instead of Side Panel.
   if (tabs::TabInterface* tab = bwi->GetActiveTabInterface()) {
     auto* controller = ReadAnythingController::From(tab);
     CHECK(controller);
-    controller->ShowInPreferredUI(open_trigger);
+    controller->ShowInPreferredUI(
+        base::PassKey<ReadAnythingEntryPointController>(), open_trigger);
   }
 }
 
@@ -293,7 +292,17 @@ void ReadAnythingEntryPointController::ToggleUI(
   if (tabs::TabInterface* tab = bwi->GetActiveTabInterface()) {
     auto* controller = ReadAnythingController::From(tab);
     CHECK(controller);
-    controller->ToggleUI(open_trigger);
+    // Tell user education the keyboard shortcut was used, whether it opens or
+    // closes Reading Mode.
+    if (open_trigger == ReadAnythingOpenTrigger::kKeyboardShortcut) {
+      if (auto* user_ed = BrowserUserEducationInterface::From(bwi)) {
+        user_ed->NotifyFeaturePromoFeatureUsed(
+            feature_engagement::kIPHReadingModeKeyboardShortcutFeature,
+            FeaturePromoFeatureUsedAction::kClosePromoIfPresent);
+      }
+    }
+    controller->ToggleUI(base::PassKey<ReadAnythingEntryPointController>(),
+                         open_trigger);
   }
 }
 

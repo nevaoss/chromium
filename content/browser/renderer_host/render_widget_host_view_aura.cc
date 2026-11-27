@@ -57,6 +57,7 @@
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/device_service.h"
 #include "content/public/browser/render_view_host.h"
+#include "content/public/common/content_features.h"
 #include "content/public/common/page_visibility_state.h"
 #include "services/service_manager/public/cpp/interface_provider.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
@@ -419,9 +420,31 @@ void RenderWidgetHostViewAura::InitAsChild(gfx::NativeView parent_view) {
   if (parent_view)
     parent_view->AddChild(GetNativeView());
 
+  aura::Window* root = window_->GetRootWindow();
+  if (!root && base::FeatureList::IsEnabled(
+                   features::kPopulateUnattachedAuraScreenInfo)) {
+    // If `parent_view` is not attached to a root window, `AddedToRootWindow()`
+    // was not called by `AddChild()`. Populate `screen_infos_` directly now
+    // (falling back to the display for new windows for better ChromeOS support,
+    // matching `RenderWidgetHostViewMac` constructor behavior) without calling
+    // `UpdateScreenInfo()`, which would trigger `SynchronizeVisualProperties()`
+    // for a detached/hidden view.
+    //
+    // TODO(b/573268718): The client should ideally pass in the target display.
+    // In multi-window setups with different device scale factors, attaching on
+    // an external display with a different DSF will trigger a full visual
+    // properties update.
+    if (auto* screen = display::Screen::Get()) {
+      const display::Display display = screen->GetDisplayForNewWindows();
+      screen_infos_ = screen->GetScreenInfosNearestDisplay(display.id());
+    } else {
+      screen_infos_ = display::ScreenInfos(display::ScreenInfo());
+    }
+    screen_infos_.system_cursor_size = system_cursor_size_;
+  }
+
   device_scale_factor_ = GetDeviceScaleFactor();
 
-  aura::Window* root = window_->GetRootWindow();
   if (root) {
     auto* cursor_client = aura::client::GetCursorClient(root);
     if (cursor_client)
@@ -3992,17 +4015,10 @@ void RenderWidgetHostViewAura::DidNavigate() {
 }
 
 void RenderWidgetHostViewAura::CreateUnboundedSurface(
-    mojo::PendingAssociatedReceiver<blink::mojom::UnboundedSurfaceHost> host,
-    mojo::PendingAssociatedRemote<blink::mojom::UnboundedSurfaceClient> client,
-    const gfx::Rect& bounds_in_dips,
+    const gfx::Rect& bounds_in_screen,
     base::WeakPtr<RenderWidgetHostViewBase> subframe_view) {
-  // `bounds_in_screen` must be computed before std::moving `subframe_view`
-  // below, as it requires accessing `subframe_view`'s raw pointer.
-  gfx::Rect bounds_in_screen =
-      ConvertSubframeBoundsToScreen(bounds_in_dips, subframe_view.get());
   unbounded_surface_window_ = UnboundedSurfaceWindowAura::Create(
-      this, std::move(host), std::move(client), bounds_in_screen,
-      std::move(subframe_view));
+      this, bounds_in_screen, std::move(subframe_view));
 }
 
 MouseWheelPhaseHandler* RenderWidgetHostViewAura::GetMouseWheelPhaseHandler() {

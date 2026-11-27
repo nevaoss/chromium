@@ -57,7 +57,6 @@
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/input/native_web_keyboard_event.h"
 #include "components/optimization_guide/core/feature_registry/feature_registration.h"
-#include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
 #include "components/prefs/pref_service.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/vector_icons/vector_icons.h"
@@ -3039,6 +3038,18 @@ TEST_F(PopupViewViewsTest, VirtualCardSuggestion_ElementId) {
 
   EXPECT_EQ(GetPopupRowViewAt(0).GetProperty(views::kElementIdentifierKey),
             TestPopupViewViews::kAutofillCreditCardSuggestionEntryElementId);
+}
+
+TEST_F(PopupViewViewsTest, AmbientAutofillSpiiDisclaimerSuggestion_ElementId) {
+  Suggestion suggestion(u"dummy_main_text", SuggestionType::kFillAutofillAi);
+  suggestion.iph_metadata = Suggestion::IPHMetadata(
+      &feature_engagement::kIPH_AutofillAmbientAutofillSpiiDisclaimer);
+  controller().set_suggestions({suggestion});
+  CreateAndShowView();
+
+  EXPECT_EQ(
+      GetPopupRowViewAt(0).GetProperty(views::kElementIdentifierKey),
+      TestPopupViewViews::kAutofillAmbientAutofillSpiiDisclaimerElementId);
 }
 
 // Tests that (only) clickable items trigger an AcceptSuggestion event.

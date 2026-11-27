@@ -56,6 +56,14 @@ class WebGLTransformFeedback;
 class WebGLUniformLocation;
 class WebGLVertexArrayObject;
 
+struct WebGLWebGPUDriver {
+  gl::DriverEGL driver_egl;
+  gl::DriverGL driver_gl;
+
+  EGLDisplay display = EGL_NO_DISPLAY;
+  EGLContext context = EGL_NO_CONTEXT;
+};
+
 class MODULES_EXPORT WebGLRenderingContextWebGPUBase
     : public WebGLContextObjectSupport,
       public CanvasRenderingContext,
@@ -1295,7 +1303,7 @@ class MODULES_EXPORT WebGLRenderingContextWebGPUBase
   void Reshape(gfx::Size old_size, gfx::Size new_size) override;
   void Stop() override;
   void FinalizeFrame(FlushReason) override;
-  scoped_refptr<CanvasResource> GetResourceForPushFrame(
+  scoped_refptr<ExportedCanvasResource> GetResourceForPushFrame(
       bool& should_call_push_frame) override;
 
   // **************************************************************************
@@ -1400,17 +1408,27 @@ class MODULES_EXPORT WebGLRenderingContextWebGPUBase
 
   WebGLFramebuffer* GetBoundFramebuffer(GLenum target) const;
 
+  String GetGLString(GLenum name) const;
+  // Helpers for getParameter.
+  ScriptValue GetBooleanParameter(ScriptState*, GLenum pname);
+  ScriptValue GetFloatParameter(ScriptState*, GLenum pname);
+  ScriptValue GetIntParameter(ScriptState*, GLenum pname);
+  ScriptValue GetInt64Parameter(ScriptState*, GLenum pname);
+  ScriptValue GetUnsignedIntParameter(ScriptState*, GLenum pname);
+  template <GLsizei N>
+  ScriptValue GetBooleanArrayParameter(ScriptState*, GLenum pname);
+  template <GLsizei N>
+  ScriptValue GetFloatArrayParameter(ScriptState*, GLenum pname);
+  template <GLsizei N>
+  ScriptValue GetIntArrayParameter(ScriptState*, GLenum pname);
+
   scoped_refptr<DawnControlClientHolder> dawn_control_client_;
   std::unique_ptr<ProxyDawnInstanceForANGLE> proxy_instance_;
   wgpu::Instance instance_;
   wgpu::Device device_;
   std::unique_ptr<gpu::gles2::GLES2Interface> gles2_for_objects_;
 
-  gl::DriverEGL driver_egl_;
-  gl::DriverGL driver_gl_;
-
-  EGLDisplay display_ = EGL_NO_DISPLAY;
-  EGLContext context_ = EGL_NO_CONTEXT;
+  WebGLWebGPUDriver driver_;
 
   scoped_refptr<WebGPUSwapBufferProvider> swap_buffers_;
   wgpu::Texture current_swap_buffer_;

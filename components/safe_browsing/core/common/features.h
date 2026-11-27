@@ -296,6 +296,11 @@ BASE_DECLARE_FEATURE(kEnterprisePasswordReuseUiRefresh);
 // Use a new URL for the enterprise real-time URL check.
 BASE_DECLARE_FEATURE(kEnterpriseRealTimeUrlCheckNewUrl);
 
+// Skips enterprise real-time URL lookups for URLs in
+// `ChromeEnterpriseRealTimeUrlLookupService::CanCheckUrl` (about:blank on
+// Android, chrome-native://newtab/ and the search warmup URL).
+BASE_DECLARE_FEATURE(kEnterpriseRealTimeUrlCheckUrlSkiplist);
+
 // Makes the Enhanced Protection a syncable setting.
 // Check the design doc (go/esb-as-a-synced-setting-dd) for further details.
 BASE_DECLARE_FEATURE(kEsbAsASyncedSetting);
@@ -427,17 +432,16 @@ BASE_DECLARE_FEATURE_PARAM(
 BASE_DECLARE_FEATURE_PARAM(bool,
                            kMigrateToBlockV8OptimizerOnUnfamiliarSitesDryRun);
 
-// When enabled, the Password Leak detection toggle is moved out from under the
-// 'Standard protection' Safe Browsing option to the top-level 'Privacy and
-// security' page.
-BASE_DECLARE_FEATURE(kMovePasswordLeakDetectionToggleIos);
-
 // Enables the notice queue integration for the ESB notice.
 BASE_DECLARE_FEATURE(kNoticeQueueForEsb);
 
 // Enable the collection of Notification Telemetry to track potentially abusive
 // notifications.
 BASE_DECLARE_FEATURE(kNotificationTelemetry);
+
+// Routes synchronous navigation SafeBrowsing database lookup replies onto the
+// high-priority kNavigationNetworkResponse UI task runner.
+BASE_DECLARE_FEATURE(kPrioritizeSafeBrowsingNavigationCallbacks);
 
 // Enables proactive password protection, which triggers a CSD scan when
 // focusing on a password field.
@@ -483,6 +487,10 @@ BASE_DECLARE_FEATURE(kReportNotificationContentDetectionData);
 // it becomes excessive.
 extern const base::FeatureParam<int>
     kReportNotificationContentDetectionDataRate;
+
+// Enables the Rust implementation of mojom::PhishingModelSetter in the
+// renderer process.
+BASE_DECLARE_FEATURE(kRustPhishingModelSetter);
 
 // Enables client side phishing daily reports limit to be configured via Finch
 // for ESB and SBER users

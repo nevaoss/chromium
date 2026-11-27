@@ -41,8 +41,8 @@ import org.chromium.build.annotations.Contract;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.actor.ActorBackgroundActuationManager;
-import org.chromium.chrome.browser.actor.ActorForegroundServiceController;
-import org.chromium.chrome.browser.actor.ActorNotificationFactory;
+import org.chromium.chrome.browser.actor.foreground_service.ActorForegroundServiceController;
+import org.chromium.chrome.browser.actor.notifications.ActorNotificationFactory;
 import org.chromium.chrome.browser.app.tabmodel.AsyncTabParamsManagerSingleton;
 import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
 import org.chromium.chrome.browser.browserservices.SessionDataHolder;
@@ -1460,7 +1460,8 @@ public class IntentHandler {
 
     /** Return true if the type is one of the Mime types used for MHTML */
     static boolean isMhtmlMimeType(String type) {
-        return type.equals("multipart/related") || type.equals("message/rfc822");
+        return type.equalsIgnoreCase("multipart/related")
+                || type.equalsIgnoreCase("message/rfc822");
     }
 
     /**

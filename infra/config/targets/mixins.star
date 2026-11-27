@@ -1155,6 +1155,13 @@ targets.mixin(
 )
 
 targets.mixin(
+    name = "ios_smoke_tests",
+    args = [
+        "--run-eg-smoke-tests-only",
+    ],
+)
+
+targets.mixin(
     name = "tvos_runtime_cache_26_0",
     swarming = targets.swarming(
         named_caches = [
@@ -1918,16 +1925,6 @@ targets.mixin(
 )
 
 targets.mixin(
-    # TODO(crbug.com/568399534): Remove (along with the gl_unittests replacement
-    # in chromium.gpu.star) once Skia Gold is re-enabled across all remaining
-    # suites.
-    name = "skia_gold_bypass",
-    args = [
-        "--bypass-skia-gold-functionality",
-    ],
-)
-
-targets.mixin(
     name = "skia_gold_test",
     args = [
         "--git-revision=${got_revision}",
@@ -2285,8 +2282,8 @@ targets.mixin(
     swarming = targets.swarming(
         dimensions = {
             "display_attached": "1",
-            "gpu": "10de:2184-31.0.15.4601",
-            "os": "Windows-10-19045",
+            "gpu": "10de:2184-31.0.15.4601|10de:2184-32.0.16.1074",
+            "os": "Windows-10-19045|Windows-11-26200",
             "pool": "chromium.tests.gpu",
         },
     ),

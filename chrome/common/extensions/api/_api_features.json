@@ -803,10 +803,6 @@
     "dependencies": ["permission:sidePanel"],
     "contexts": ["privileged_extension"]
   },
-  "smartCardProviderPrivate": {
-    "dependencies": ["permission:smartCardProviderPrivate"],
-    "contexts": ["privileged_extension"]
-  },
   "systemPrivate": {
     "dependencies": ["permission:systemPrivate"],
     "contexts": ["privileged_extension"]
@@ -929,16 +925,6 @@
     "dependencies": ["permission:virtualKeyboardPrivate"],
     "contexts": ["privileged_extension"]
   },
-  "wallpaper": [{
-    "dependencies": ["permission:wallpaper"],
-    "contexts": ["privileged_extension"]
-  }, {
-    "channel": "stable",
-    "contexts": ["webui"],
-    "matches": [
-      "chrome://file-manager/*"
-    ]
-  }],
   "webAuthenticationProxy": {
     "dependencies": ["permission:webAuthenticationProxy"],
     "contexts": ["privileged_extension"]

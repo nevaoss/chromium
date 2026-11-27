@@ -60,6 +60,9 @@ import org.chromium.components.browser_ui.styles.SemanticColorUtils;
 import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.components.sync.SyncService;
 import org.chromium.components.sync.UserSelectableType;
+import org.chromium.components.url_formatter.SchemeDisplay;
+import org.chromium.components.url_formatter.UrlFormatter;
+import org.chromium.url.GURL;
 
 import java.util.List;
 
@@ -76,7 +79,7 @@ public class AutofillProfilesFragment extends ChromeBaseSettingsFragment
                     PersonalDataManagerFactory.getForProfile(getProfile())
                             .setProfile(address.getProfile());
                     recordAddressEditDone();
-                    SettingsAutofillAndPaymentsObserver.getInstance()
+                    SettingsAutofillAndPaymentsObserver.getForProfile(getProfile())
                             .notifyOnAddressUpdated(address);
                     if (sObserverForTest != null) {
                         sObserverForTest.onEditorReadyToEdit();
@@ -98,7 +101,8 @@ public class AutofillProfilesFragment extends ChromeBaseSettingsFragment
                         return;
                     }
                     PersonalDataManagerFactory.getForProfile(getProfile()).deleteProfile(guid);
-                    SettingsAutofillAndPaymentsObserver.getInstance().notifyOnAddressDeleted(guid);
+                    SettingsAutofillAndPaymentsObserver.getForProfile(getProfile())
+                            .notifyOnAddressDeleted(guid);
                     if (sObserverForTest != null) {
                         sObserverForTest.onEditorReadyToEdit();
                     }
@@ -358,36 +362,44 @@ public class AutofillProfilesFragment extends ChromeBaseSettingsFragment
                 category.addPreference(emptyPref);
             } else {
                 for (String email : emails) {
-                    Preference emailPref = new ChromeBasePreference(getStyledContext());
-                    emailPref.setKey(email);
-                    emailPref.setTitle(email);
-                    String issuer = personalDataManager.getEmailVerificationIssuer(email);
-                    if (issuer != null && !issuer.isEmpty()) {
-                        emailPref.setSummary(
-                                getString(
-                                        R.string.autofill_settings_email_verification_summary,
-                                        issuer));
-                    }
-                    emailPref.setOnPreferenceClickListener(
-                            preference -> {
-                                new AlertDialog.Builder(getStyledContext())
-                                        .setTitle(R.string.autofill_remove_verified_email_title)
-                                        .setMessage(R.string.autofill_remove_verified_email_body)
-                                        .setPositiveButton(
-                                                R.string.delete,
-                                                (dialog, which) -> {
-                                                    personalDataManager
-                                                            .removeEmailVerificationAddress(email);
-                                                    rebuildProfileList();
-                                                })
-                                        .setNegativeButton(R.string.cancel, null)
-                                        .show();
-                                return true;
-                            });
+                    AutofillVerifiedEmailPreference emailPref =
+                            new AutofillVerifiedEmailPreference(getStyledContext(), email);
+                    emailPref.setOnRemovePermissionClicked(
+                            () -> showRemoveEmailPermissionDialog(email));
                     category.addPreference(emailPref);
                 }
             }
         }
+    }
+
+    /** Asks the user to confirm removing the permission for the verified {@code email}. */
+    private void showRemoveEmailPermissionDialog(String email) {
+        PersonalDataManager personalDataManager =
+                PersonalDataManagerFactory.getForProfile(getProfile());
+        // The issuer site is stored as an origin (e.g. "https://google.com"); show it formatted for
+        // security display (e.g. "google.com"), like the Desktop email verification popup.
+        String issuer = personalDataManager.getEmailVerificationIssuer(email);
+        String issuerForDisplay =
+                issuer == null || issuer.isEmpty()
+                        ? ""
+                        : UrlFormatter.formatUrlForSecurityDisplay(
+                                new GURL(issuer), SchemeDisplay.OMIT_HTTP_AND_HTTPS);
+        new AlertDialog.Builder(getStyledContext())
+                .setTitle(R.string.autofill_settings_remove_verified_email_permission_title)
+                .setMessage(
+                        getString(
+                                R.string.autofill_settings_remove_verified_email_permission_body,
+                                issuerForDisplay))
+                .setPositiveButton(
+                        R.string.remove,
+                        (dialog, which) -> {
+                            personalDataManager.removeEmailVerificationAddress(email);
+                            // The fragment may have been detached while the dialog was shown.
+                            if (!isAdded()) return;
+                            rebuildProfileList();
+                        })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 
     @Override
@@ -418,13 +430,10 @@ public class AutofillProfilesFragment extends ChromeBaseSettingsFragment
 
     @Override
     public void onDisplayPreferenceDialog(Preference preference) {
-        if (!(preference instanceof AutofillProfileEditorPreference)) {
+        if (!(preference instanceof AutofillProfileEditorPreference editorPreference)) {
             super.onDisplayPreferenceDialog(preference);
             return;
         }
-
-        AutofillProfileEditorPreference editorPreference =
-                (AutofillProfileEditorPreference) preference;
 
         AutofillAddress autofillAddress = getAutofillAddress(editorPreference);
         if (autofillAddress == null) {

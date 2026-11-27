@@ -14,7 +14,6 @@
 #include "components/optimization_guide/core/access_token_helper.h"
 #include "components/optimization_guide/core/feature_registry/feature_keys.h"
 #include "components/optimization_guide/core/feature_registry/mqls_feature_registry.h"
-#include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
 #include "components/optimization_guide/core/model_quality/model_quality_log_entry.h"
 #include "components/optimization_guide/core/model_quality/model_quality_util.h"
 #include "components/optimization_guide/core/optimization_guide_enums.h"
@@ -255,6 +254,7 @@ void ModelQualityLogsUploaderService::UploadFinalizedLog(
           }
           last_reviewed: "2024-01-12"
           destination: GOOGLE_OWNED_SERVICE
+          api_service_name: "chromemodelquality-pa.googleapis.com"
         }
          policy {
           cookies_allowed: NO

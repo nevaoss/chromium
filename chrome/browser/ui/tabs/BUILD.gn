@@ -123,6 +123,7 @@ if (!is_android) {
 
     public_deps = [
       "//base",
+      "//chrome/browser/contextual_tasks",
       "//chrome/browser/glic",
       "//components/tabs:public",
       "//ui/base/interaction",
@@ -197,6 +198,7 @@ if (!is_android) {
       "//components/contextual_tasks/public",
       "//components/contextual_tasks/public:feature_list",
       "//components/feed:feature_list",
+      "//third_party/omnibox_proto",
     ]
   }
 
@@ -411,6 +413,7 @@ if (!is_android) {
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/commerce",
       "//chrome/browser/ui/send_tab_to_self",
+      "//chrome/browser/ui/tabs/alert:tab_alert",
       "//chrome/browser/ui/thumbnails",
       "//chrome/browser/ui/toasts",
       "//chrome/browser/ui/toasts/api:toasts",
@@ -423,6 +426,7 @@ if (!is_android) {
       "//components/commerce/core:utils",
       "//components/content_settings/core/browser",
       "//components/feature_engagement/public",
+      "//components/omnibox/common:features",
       "//components/pref_registry",
       "//components/reading_list/core",
       "//components/tab_groups",
@@ -447,6 +451,7 @@ if (!is_android) {
       "tab_attachment_tracker.h",
       "tab_creation_metrics_controller.h",
       "tab_data.h",
+      "tab_group_focus_iph_controller.h",
       "tab_metrics_provider.h",
       "tab_style.h",
       "tab_types.h",
@@ -524,6 +529,7 @@ if (!is_android) {
       "tab_data.cc",
       "tab_dialog_manager.cc",
       "tab_features.cc",
+      "tab_group_focus_iph_controller.cc",
       "tab_metrics_provider.cc",
       "tab_style.cc",
       "tab_utils.cc",
@@ -547,6 +553,7 @@ if (!is_android) {
       "//chrome/app/vector_icons",
       "//chrome/browser:browser_process",
       "//chrome/browser:chained_back_navigation_tracker",
+      "//chrome/browser:defaults",
       "//chrome/browser/actor",
       "//chrome/browser/actor/ui",
       "//chrome/browser/banners",
@@ -560,6 +567,7 @@ if (!is_android) {
       "//chrome/browser/content_settings:content_settings_factory",
       "//chrome/browser/contextual_search:contextual_cueing",
       "//chrome/browser/contextual_tasks",
+      "//chrome/browser/dictation:features",
       "//chrome/browser/enterprise",
       "//chrome/browser/external_protocol",
       "//chrome/browser/facilitated_payments",
@@ -670,6 +678,7 @@ if (!is_android) {
       "//chrome/browser/ui/views/bookmarks",
       "//chrome/browser/ui/views/commerce",
       "//chrome/browser/ui/views/contextual_tasks",
+      "//chrome/browser/ui/views/dictation:iph_controller",
       "//chrome/browser/ui/views/file_system_access",
       "//chrome/browser/ui/views/frame",
       "//chrome/browser/ui/views/intent_picker:intent_picker_page_action",
@@ -789,7 +798,6 @@ if (!is_android) {
       deps += [
         "//chrome/browser/apps/app_service",
         "//chrome/browser/ash/boot_times_recorder",
-        "//chrome/browser/ash/child_accounts/time_limits",
         "//chrome/browser/ash/growth",
         "//chrome/browser/ash/mahi/web_contents",
         "//chrome/browser/chromeos/gemini_app",
@@ -1033,6 +1041,7 @@ if (!is_android) {
       "//content/test:test_support",
       "//testing/gtest",
       "//ui/base:types",
+      "//ui/gfx:test_support",
       "//ui/views",
     ]
   }
@@ -1044,6 +1053,7 @@ if (!is_android) {
       "inactive_window_mouse_event_controller_unittest.cc",
       "split_view_iph_controller_unittest.cc",
       "tab_group_deletion_dialog_controller_unittest.cc",
+      "tab_group_focus_iph_controller_unittest.cc",
       "tab_menu_model_unittest.cc",
       "tab_metrics_provider_unittest.cc",
       "tab_model_unittest.cc",
@@ -1113,6 +1123,7 @@ if (!is_android) {
       "//components/contextual_tasks/public",
       "//components/contextual_tasks/public:feature_list",
       "//components/contextual_tasks/public:test_support",
+      "//components/omnibox/common:features",
       "//components/optimization_guide/core",
       "//components/optimization_guide/core:features",
       "//components/sessions",
@@ -1131,6 +1142,7 @@ if (!is_android) {
       "//skia",
       "//testing/gmock",
       "//testing/gtest",
+      "//third_party/omnibox_proto",
       "//ui/base",
       "//ui/gfx",
       "//ui/views",

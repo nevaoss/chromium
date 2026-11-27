@@ -227,8 +227,6 @@ class DualLayerUserPrefStoreTestBase : public testing::Test {
 class DualLayerUserPrefStoreTest : public DualLayerUserPrefStoreTestBase {
  public:
   DualLayerUserPrefStoreTest() : DualLayerUserPrefStoreTestBase(true) {
-    // TODO(crbug.com/40256875): Add proper test setup to enable and disable
-    // data types appropriately.
     dual_layer_store_->EnableType(syncer::PREFERENCES);
     dual_layer_store_->EnableType(syncer::PRIORITY_PREFERENCES);
 #if BUILDFLAG(IS_CHROMEOS)
@@ -2465,117 +2463,10 @@ TEST_F(
   // `observer_` was not notified of any pref change.
 }
 
-class DualLayerUserPrefStoreMaybeMergeEnabledTest
-    : public DualLayerUserPrefStoreMergeTest {
-  base::test::ScopedFeatureList feature_list_{
-      features::kOptimizeDualLayerUserPrefStoreMaybeMerge};
-};
-
-class DualLayerUserPrefStoreMaybeMergeDisabledTest
-    : public DualLayerUserPrefStoreMergeTest {
- public:
-  DualLayerUserPrefStoreMaybeMergeDisabledTest() {
-    feature_list_.InitAndDisableFeature(
-        features::kOptimizeDualLayerUserPrefStoreMaybeMerge);
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
-TEST_F(DualLayerUserPrefStoreMaybeMergeDisabledTest,
-       ShouldMergeAndNotifyWhenOptimizationDisabled) {
-  store()->GetAccountPrefStore()->SetValueSilently(
-      kMergeableDictPref1,
-      base::Value(base::DictValue()
-                      .Set("account_key", "account_value")
-                      .Set("common_key", "account_value")),
-      0);
-  store()->GetLocalPrefStore()->SetValueSilently(
-      kMergeableDictPref1,
-      base::Value(base::DictValue()
-                      .Set("local_key", "local_value")
-                      .Set("common_key", "local_value")),
-      0);
-
-  const base::Value* merged_value = nullptr;
-  ASSERT_TRUE(store()->GetValue(kMergeableDictPref1, &merged_value));
-  EXPECT_EQ(*merged_value,
-            base::Value(base::DictValue()
-                            .Set("account_key", "account_value")
-                            .Set("local_key", "local_value")
-                            .Set("common_key", "account_value")));
-
-  EXPECT_CALL(observer_, OnPrefValueChanged(kMergeableDictPref1));
-  store()->GetLocalPrefStore()->SetValue(
-      kMergeableDictPref1,
-      base::Value(base::DictValue()
-                      .Set("local_key", "new_local_value")
-                      .Set("common_key", "local_value")),
-      0);
-}
-
-TEST_F(DualLayerUserPrefStoreMaybeMergeDisabledTest,
-       ShouldUpdateMergedPrefOnWriteToUnderlyingStoresUsingSetValueSilently) {
-  store()->GetAccountPrefStore()->SetValueSilently(
-      kMergeableDictPref1,
-      base::Value(base::DictValue()
-                      .Set("account_key", "account_value")
-                      .Set("common_key", "account_value")),
-      0);
-  store()->GetLocalPrefStore()->SetValueSilently(
-      kMergeableDictPref1,
-      base::Value(base::DictValue()
-                      .Set("local_key", "local_value")
-                      .Set("common_key", "local_value")),
-      0);
-
-  ASSERT_TRUE(
-      ValueInStoreIs(*store(), kMergeableDictPref1,
-                     base::Value(base::DictValue()
-                                     .Set("account_key", "account_value")
-                                     .Set("local_key", "local_value")
-                                     .Set("common_key", "account_value"))));
-
-  // Update account value.
-  store()->GetAccountPrefStore()->SetValueSilently(
-      kMergeableDictPref1,
-      base::Value(base::DictValue()
-                      // Updated value.
-                      .Set("account_key", "new_account_value")
-                      .Set("common_key", "account_value")),
-      0);
-
-  // Updated account value should reflect in the merged view.
-  EXPECT_TRUE(
-      ValueInStoreIs(*store(), kMergeableDictPref1,
-                     base::Value(base::DictValue()
-                                     // Updated value.
-                                     .Set("account_key", "new_account_value")
-                                     .Set("local_key", "local_value")
-                                     .Set("common_key", "account_value"))));
-
-  // Add new key to local value.
-  store()->GetLocalPrefStore()->SetValueSilently(
-      kMergeableDictPref1,
-      base::Value(base::DictValue()
-                      .Set("local_key", "local_value")
-                      .Set("new_local_key", "local_value")
-                      .Set("common_key", "local_value")),
-      0);
-
-  // Updated local value should reflect in the merged view.
-  EXPECT_TRUE(
-      ValueInStoreIs(*store(), kMergeableDictPref1,
-                     base::Value(base::DictValue()
-                                     .Set("account_key", "new_account_value")
-                                     .Set("local_key", "local_value")
-                                     // New entry.
-                                     .Set("new_local_key", "local_value")
-                                     .Set("common_key", "account_value"))));
-}
-
-TEST_F(DualLayerUserPrefStoreMaybeMergeEnabledTest,
+// Verifies that the cached merged preference pointer remains stable when
+// underlying stores are updated, both when the effective merged value is
+// unchanged and when it is updated in-place.
+TEST_F(DualLayerUserPrefStoreMergeTest,
        MergedPrefPointerStabilityOnUnderlyingWrites) {
   // Initial setup.
   store()->GetAccountPrefStore()->SetValueSilently(
@@ -2598,7 +2489,7 @@ TEST_F(DualLayerUserPrefStoreMaybeMergeEnabledTest,
 
   // 1. Edge Case: Update local store's conflicting key.
   // Since account store wins on conflicts, the merged value should NOT change.
-  // Use SetValue (non-silent) so it triggers the observer and cache update.
+  // Use `SetValue()` (non-silent) so it triggers the observer and cache update.
   store()->GetLocalPrefStore()->SetValue(
       kMergeableDictPref1,
       base::Value(
@@ -2644,9 +2535,11 @@ TEST_F(DualLayerUserPrefStoreMaybeMergeEnabledTest,
                                      .Set("common_key", "account_value"))));
 }
 
-TEST_F(DualLayerUserPrefStoreMaybeMergeEnabledTest,
+// Verifies that setting the exact same merged preference value via `SetValue()`
+// preserves the cached merged value pointer.
+TEST_F(DualLayerUserPrefStoreMergeTest,
        MergedPrefPointerStabilityOnSetValueSameValue) {
-  // Initial setup via SetValueSilently.
+  // Initial setup via `SetValueSilently()`.
   store()->SetValueSilently(
       kMergeableDictPref1,
       base::Value(base::DictValue()
@@ -3297,13 +3190,7 @@ TEST_F(DualLayerUserPrefStoreTest,
                              base::Value(base::ListValue())));
 }
 
-class DualLayerUserPrefStoreAccountScopedTest
-    : public DualLayerUserPrefStoreTest {
-  base::test::ScopedFeatureList feature_list_{features::kAccountScopedPrefs};
-};
-
-TEST_F(DualLayerUserPrefStoreAccountScopedTest,
-       ShouldWriteOnlyToAccountStoreWhenSyncing) {
+TEST_F(DualLayerUserPrefStoreTest, ShouldWriteOnlyToAccountStoreWhenSyncing) {
   store()->SetUserSelectedTypesForTest(
       {syncer::UserSelectableType::kPreferences});
 
@@ -3351,7 +3238,7 @@ TEST_F(DualLayerUserPrefStoreAccountScopedTest,
                              base::Value("value4")));
 }
 
-TEST_F(DualLayerUserPrefStoreAccountScopedTest, ShouldNotReadFromLocalStore) {
+TEST_F(DualLayerUserPrefStoreTest, ShouldNotReadFromLocalStore) {
   store()->SetUserSelectedTypesForTest(
       {syncer::UserSelectableType::kPreferences});
 
@@ -3388,7 +3275,7 @@ TEST_F(DualLayerUserPrefStoreAccountScopedTest, ShouldNotReadFromLocalStore) {
   EXPECT_EQ(*dict_value, base::Value("account_value"));
 }
 
-TEST_F(DualLayerUserPrefStoreAccountScopedTest, ShouldNotWriteWhenNotSyncing) {
+TEST_F(DualLayerUserPrefStoreTest, ShouldNotWriteWhenNotSyncing) {
   // No types are selected.
   store()->SetUserSelectedTypesForTest(syncer::UserSelectableTypeSet());
 
@@ -3414,8 +3301,7 @@ TEST_F(DualLayerUserPrefStoreAccountScopedTest, ShouldNotWriteWhenNotSyncing) {
   EXPECT_TRUE(ValueInStoreIsAbsent(*local_store(), kAccountScopedPref));
 }
 
-TEST_F(DualLayerUserPrefStoreAccountScopedTest,
-       ShouldClearAccountScopedPrefWhenSyncStops) {
+TEST_F(DualLayerUserPrefStoreTest, ShouldClearAccountScopedPrefWhenSyncStops) {
   store()->SetUserSelectedTypesForTest(
       {syncer::UserSelectableType::kPreferences});
 
@@ -3431,8 +3317,7 @@ TEST_F(DualLayerUserPrefStoreAccountScopedTest,
   EXPECT_TRUE(ValueInStoreIsAbsent(*store(), kAccountScopedPref));
 }
 
-TEST_F(DualLayerUserPrefStoreAccountScopedTest,
-       ClearAccountScopedPrefsFromLocalStore) {
+TEST_F(DualLayerUserPrefStoreTest, ClearAccountScopedPrefsFromLocalStore) {
   // Directly write account-scoped pref to the local store (simulating a bug or
   // old state).
   local_store()->SetValueSilently(kAccountScopedPref,
@@ -3463,48 +3348,6 @@ TEST_F(DualLayerUserPrefStoreAccountScopedTest,
 
   // The regular pref should still be there.
   EXPECT_TRUE(ValueInStoreIs(*local_store(), kPrefName, "local_value"));
-}
-
-class DualLayerUserPrefStoreAccountScopedDisabledTest
-    : public DualLayerUserPrefStoreTest {
- public:
-  DualLayerUserPrefStoreAccountScopedDisabledTest() {
-    feature_list_.InitAndDisableFeature(features::kAccountScopedPrefs);
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
-TEST_F(DualLayerUserPrefStoreAccountScopedDisabledTest,
-       ShouldDualWriteToBothStoresWhenSyncing) {
-  store()->SetUserSelectedTypesForTest(
-      {syncer::UserSelectableType::kPreferences});
-
-  // When flag is DISABLED, should dual-write to both stores.
-  store()->SetValue(kAccountScopedPref, base::Value("value"), 0);
-
-  ASSERT_TRUE(
-      ValueInStoreIs(*store(), kAccountScopedPref, base::Value("value")));
-  EXPECT_TRUE(
-      ValueInStoreIs(*local_store(), kAccountScopedPref, base::Value("value")));
-  EXPECT_TRUE(ValueInStoreIs(*account_store(), kAccountScopedPref,
-                             base::Value("value")));
-}
-
-TEST_F(DualLayerUserPrefStoreAccountScopedDisabledTest,
-       ShouldWriteToLocalStoreWhenNotSyncing) {
-  // No types are selected.
-  store()->SetUserSelectedTypesForTest(syncer::UserSelectableTypeSet());
-
-  // When flag is DISABLED, should write to local store only.
-  store()->SetValue(kAccountScopedPref, base::Value("value"), 0);
-
-  ASSERT_TRUE(
-      ValueInStoreIs(*store(), kAccountScopedPref, base::Value("value")));
-  EXPECT_TRUE(
-      ValueInStoreIs(*local_store(), kAccountScopedPref, base::Value("value")));
-  EXPECT_TRUE(ValueInStoreIsAbsent(*account_store(), kAccountScopedPref));
 }
 
 }  // namespace

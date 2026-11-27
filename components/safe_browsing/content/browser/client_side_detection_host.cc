@@ -647,9 +647,6 @@ class ClientSideDetectionHost::ShouldClassifyUrlRequest {
         return base::RandDouble() >= kCsdClipboardCopyApiSampleRate.Get();
       case CREDIT_CARD_FORM:
         return base::RandDouble() >= kCsdCreditCardFormSampleRate.Get();
-      case UNFAMILIAR_LOGIN_PAGE:
-        return base::RandDouble() >=
-               kCsdProactivePasswordProtectionSampleRate.Get();
       default:
         break;
     }
@@ -856,8 +853,10 @@ void ClientSideDetectionHost::ReportUnsafeSite(SkBitmap screenshot,
 }
 
 void ClientSideDetectionHost::OnUnfamiliarLoginPageDetected() {
-  if (base::FeatureList::IsEnabled(kProactivePasswordProtection) &&
-      IsEnhancedProtectionEnabled()) {
+  // Check feature flag after ESB check so that the Finch experiment
+  // groups only include eligible clients.
+  if (IsEnhancedProtectionEnabled() &&
+      base::FeatureList::IsEnabled(kProactivePasswordProtection)) {
     MaybeStartPreClassification(ClientSideDetectionType::UNFAMILIAR_LOGIN_PAGE);
   }
 }

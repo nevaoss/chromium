@@ -84,7 +84,6 @@ targets.tests.gpu_telemetry_test(
     telemetry_test_name = "pixel",
     mixins = [
         "skia_gold_test",
-        "skia_gold_bypass",
         "has_native_resultdb_integration",
         "gpu_integration_test_common_args",
         "gpu_integration_test_pixel_args",
@@ -598,18 +597,6 @@ targets.tests.gtest_test(
     name = "chrome_public_test_apk",
     mixins = [
         "skia_gold_test",
-        targets.mixin(
-            # TODO(crbug.com/574560342): Remove this precommit_args bypass once
-            # post-submit CI diffs are triaged.
-            # @chromium-luci's _apply_mixin overwrites precommit_args rather
-            # than appending, so retain skia_gold_test's precommit_args.
-            precommit_args = [
-                "--gerrit-issue=${patch_issue}",
-                "--gerrit-patchset=${patch_set}",
-                "--buildbucket-id=${buildbucket_build_id}",
-                "--bypass-skia-gold-functionality",
-            ],
-        ),
     ],
 )
 
@@ -617,18 +604,6 @@ targets.tests.gtest_test(
     name = "chrome_public_test_apk_tablet",
     mixins = [
         "skia_gold_test",
-        targets.mixin(
-            # TODO(crbug.com/574560342): Remove this precommit_args bypass once
-            # post-submit CI diffs are triaged.
-            # @chromium-luci's _apply_mixin overwrites precommit_args rather
-            # than appending, so retain skia_gold_test's precommit_args.
-            precommit_args = [
-                "--gerrit-issue=${patch_issue}",
-                "--gerrit-patchset=${patch_set}",
-                "--buildbucket-id=${buildbucket_build_id}",
-                "--bypass-skia-gold-functionality",
-            ],
-        ),
     ],
     args = [
         "--annotation=Restriction=Tablet,Restriction=TabletOrDesktop,ImportantFormFactors=Tablet,ImportantFormFactors=TabletOrDesktop",
@@ -640,18 +615,6 @@ targets.tests.gtest_test(
     name = "chrome_public_test_apk_desktop",
     mixins = [
         "skia_gold_test",
-        targets.mixin(
-            # TODO(crbug.com/574560342): Remove this precommit_args bypass once
-            # post-submit CI diffs are triaged.
-            # @chromium-luci's _apply_mixin overwrites precommit_args rather
-            # than appending, so retain skia_gold_test's precommit_args.
-            precommit_args = [
-                "--gerrit-issue=${patch_issue}",
-                "--gerrit-patchset=${patch_set}",
-                "--buildbucket-id=${buildbucket_build_id}",
-                "--bypass-skia-gold-functionality",
-            ],
-        ),
     ],
     args = [
         "--annotation=Restriction=Desktop,Restriction=TabletOrDesktop,ImportantFormFactors=Desktop,ImportantFormFactors=TabletOrDesktop",
@@ -663,18 +626,6 @@ targets.tests.gtest_test(
     name = "chrome_public_test_apk_automotive",
     mixins = [
         "skia_gold_test",
-        targets.mixin(
-            # TODO(crbug.com/574560342): Remove this precommit_args bypass once
-            # post-submit CI diffs are triaged.
-            # @chromium-luci's _apply_mixin overwrites precommit_args rather
-            # than appending, so retain skia_gold_test's precommit_args.
-            precommit_args = [
-                "--gerrit-issue=${patch_issue}",
-                "--gerrit-patchset=${patch_set}",
-                "--buildbucket-id=${buildbucket_build_id}",
-                "--bypass-skia-gold-functionality",
-            ],
-        ),
     ],
     args = [
         "--annotation=Restriction=Auto,ImportantFormFactors=Auto",
@@ -690,18 +641,6 @@ targets.tests.gtest_test(
     name = "chrome_public_unit_test_apk",
     mixins = [
         "skia_gold_test",
-        targets.mixin(
-            # TODO(crbug.com/574560342): Remove this precommit_args bypass once
-            # post-submit CI diffs are triaged.
-            # @chromium-luci's _apply_mixin overwrites precommit_args rather
-            # than appending, so retain skia_gold_test's precommit_args.
-            precommit_args = [
-                "--gerrit-issue=${patch_issue}",
-                "--gerrit-patchset=${patch_set}",
-                "--buildbucket-id=${buildbucket_build_id}",
-                "--bypass-skia-gold-functionality",
-            ],
-        ),
     ],
 )
 
@@ -1141,7 +1080,6 @@ targets.tests.gpu_telemetry_test(
     telemetry_test_name = "expected_color",
     mixins = [
         "skia_gold_test",
-        "skia_gold_bypass",
         "has_native_resultdb_integration",
         "gpu_force_command_decoder_passthrough",
         "gpu_force_angle_metal",
@@ -1157,7 +1095,6 @@ targets.tests.gpu_telemetry_test(
     telemetry_test_name = "expected_color",
     mixins = [
         "skia_gold_test",
-        "skia_gold_bypass",
         "has_native_resultdb_integration",
         "gpu_force_command_decoder_passthrough",
         "gpu_force_skia_ganesh",
@@ -1172,7 +1109,6 @@ targets.tests.gpu_telemetry_test(
     telemetry_test_name = "expected_color",
     mixins = [
         "skia_gold_test",
-        "skia_gold_bypass",
         "has_native_resultdb_integration",
         "gpu_force_command_decoder_passthrough",
         "gpu_force_skia_graphite",
@@ -1187,7 +1123,6 @@ targets.tests.gpu_telemetry_test(
     telemetry_test_name = "expected_color",
     mixins = [
         "skia_gold_test",
-        "skia_gold_bypass",
         "has_native_resultdb_integration",
         "gpu_force_command_decoder_passthrough",
         "gpu_integration_test_expected_color_args",
@@ -1201,7 +1136,6 @@ targets.tests.gpu_telemetry_test(
     telemetry_test_name = "expected_color",
     mixins = [
         "skia_gold_test",
-        "skia_gold_bypass",
         "has_native_resultdb_integration",
         "gpu_force_command_decoder_validating",
         "gpu_integration_test_expected_color_args",
@@ -2145,18 +2079,6 @@ targets.tests.gtest_test(
     name = "pixel_browser_tests",
     mixins = [
         "skia_gold_test",
-        targets.mixin(
-            # TODO(crbug.com/574560342): Remove this precommit_args bypass once
-            # post-submit CI diffs are triaged.
-            # @chromium-luci's _apply_mixin overwrites precommit_args rather
-            # than appending, so retain skia_gold_test's precommit_args.
-            precommit_args = [
-                "--gerrit-issue=${patch_issue}",
-                "--gerrit-patchset=${patch_set}",
-                "--buildbucket-id=${buildbucket_build_id}",
-                "--bypass-skia-gold-functionality",
-            ],
-        ),
     ],
     args = [
         "--browser-ui-tests-verify-pixels",
@@ -2171,18 +2093,6 @@ targets.tests.gtest_test(
     name = "pixel_interactive_ui_tests",
     mixins = [
         "skia_gold_test",
-        targets.mixin(
-            # TODO(crbug.com/574560342): Remove this precommit_args bypass once
-            # post-submit CI diffs are triaged.
-            # @chromium-luci's _apply_mixin overwrites precommit_args rather
-            # than appending, so retain skia_gold_test's precommit_args.
-            precommit_args = [
-                "--gerrit-issue=${patch_issue}",
-                "--gerrit-patchset=${patch_set}",
-                "--buildbucket-id=${buildbucket_build_id}",
-                "--bypass-skia-gold-functionality",
-            ],
-        ),
     ],
     args = [
         "--browser-ui-tests-verify-pixels",
@@ -2197,7 +2107,6 @@ targets.tests.gpu_telemetry_test(
     telemetry_test_name = "pixel",
     mixins = [
         "skia_gold_test",
-        "skia_gold_bypass",
         "has_native_resultdb_integration",
         "gpu_force_command_decoder_passthrough",
         "gpu_force_angle_metal",
@@ -2213,7 +2122,6 @@ targets.tests.gpu_telemetry_test(
     telemetry_test_name = "pixel",
     mixins = [
         "skia_gold_test",
-        "skia_gold_bypass",
         "has_native_resultdb_integration",
         "gpu_force_command_decoder_passthrough",
         "gpu_force_skia_ganesh",
@@ -2228,7 +2136,6 @@ targets.tests.gpu_telemetry_test(
     telemetry_test_name = "pixel",
     mixins = [
         "skia_gold_test",
-        "skia_gold_bypass",
         "has_native_resultdb_integration",
         "gpu_force_command_decoder_passthrough",
         "gpu_force_skia_graphite",
@@ -2243,7 +2150,6 @@ targets.tests.gpu_telemetry_test(
     telemetry_test_name = "pixel",
     mixins = [
         "skia_gold_test",
-        "skia_gold_bypass",
         "has_native_resultdb_integration",
         "gpu_force_command_decoder_passthrough",
         "gpu_integration_test_pixel_args",
@@ -2257,7 +2163,6 @@ targets.tests.gpu_telemetry_test(
     telemetry_test_name = "pixel",
     mixins = [
         "skia_gold_test",
-        "skia_gold_bypass",
         "has_native_resultdb_integration",
         "gpu_force_command_decoder_validating",
         "gpu_integration_test_pixel_args",
@@ -2460,18 +2365,6 @@ targets.tests.gtest_test(
     name = "site_per_process_chrome_public_test_apk",
     mixins = [
         "skia_gold_test",
-        targets.mixin(
-            # TODO(crbug.com/574560342): Remove this precommit_args bypass once
-            # post-submit CI diffs are triaged.
-            # @chromium-luci's _apply_mixin overwrites precommit_args rather
-            # than appending, so retain skia_gold_test's precommit_args.
-            precommit_args = [
-                "--gerrit-issue=${patch_issue}",
-                "--gerrit-patchset=${patch_set}",
-                "--buildbucket-id=${buildbucket_build_id}",
-                "--bypass-skia-gold-functionality",
-            ],
-        ),
         "has_native_resultdb_integration",
     ],
     args = [
@@ -2484,18 +2377,6 @@ targets.tests.gtest_test(
     name = "site_per_process_chrome_public_unit_test_apk",
     mixins = [
         "skia_gold_test",
-        targets.mixin(
-            # TODO(crbug.com/574560342): Remove this precommit_args bypass once
-            # post-submit CI diffs are triaged.
-            # @chromium-luci's _apply_mixin overwrites precommit_args rather
-            # than appending, so retain skia_gold_test's precommit_args.
-            precommit_args = [
-                "--gerrit-issue=${patch_issue}",
-                "--gerrit-patchset=${patch_set}",
-                "--buildbucket-id=${buildbucket_build_id}",
-                "--bypass-skia-gold-functionality",
-            ],
-        ),
     ],
     args = [
         "--site-per-process",
@@ -2842,7 +2723,6 @@ targets.tests.gpu_telemetry_test(
         "has_native_resultdb_integration",
         "legacy_gpu_vulkan_pixel_skia_gold_test_args",
         "skia_gold_test",
-        "skia_gold_bypass",
     ],
     module_scheme = "flat",
 )

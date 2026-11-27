@@ -102,6 +102,7 @@ class SidePanelRegistry;
 class SigninViewController;
 class SplitViewIphController;
 class TabDragServiceFeature;
+class TabGroupFocusIphController;
 class TabListBridge;
 
 namespace send_tab_to_self {
@@ -216,10 +217,6 @@ namespace pdf::infobar {
 class PdfInfoBarController;
 }  // namespace pdf::infobar
 #endif
-
-namespace qrcode_generator {
-class QRCodeWindowController;
-}  // namespace qrcode_generator
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 namespace session_restore_infobar {
@@ -424,8 +421,6 @@ class BrowserWindowFeatures {
       most_recent_shared_tab_update_store_;
   std::unique_ptr<ProfileMenuCoordinator> profile_menu_coordinator_;
   std::unique_ptr<OrganizerPanelController> organizer_panel_controller_;
-  std::unique_ptr<qrcode_generator::QRCodeWindowController>
-      qrcode_window_controller_;
   std::unique_ptr<ReadingListSidePanelCoordinator>
       reading_list_side_panel_coordinator_;
   std::unique_ptr<RecentActivityBubbleCoordinator>
@@ -462,6 +457,7 @@ class BrowserWindowFeatures {
   std::unique_ptr<BrowserUserEducationInterface> user_education_;
   std::unique_ptr<send_tab_to_self::SendTabToSelfIphController>
       send_tab_to_self_iph_controller_;
+  std::unique_ptr<TabGroupFocusIphController> tab_group_focus_iph_controller_;
   std::unique_ptr<VerticalTabIphController> vertical_tab_iph_controller_;
   std::unique_ptr<tabs::VerticalTabStripStateController>
       vertical_tab_strip_state_controller_;

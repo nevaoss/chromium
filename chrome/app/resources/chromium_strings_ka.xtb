@@ -258,7 +258,6 @@
 <translation id="3531741627422851418">QR კოდი Chromium ბრაუზერის მობილურ მოწყობილობებზე ჩამოსატვირთად</translation>
 <translation id="354621070532799440">შეხსენება: Google-ის უსაფრთხოების საუკეთესო ფუნქციები თქვენს ხელთ</translation>
 <translation id="3561853857681580870">თქვენი ეკრანის გასაზიარებლად დაუშვით ეკრანის ჩაწერა Chromium-ისთვის სისტემის პარამეტრებში.</translation>
-<translation id="3588112919289558122">გაძლიერებული დაცვა თიშავს JavaScript-ის ოპტიმიზაციას იმ საიტებისთვის, რომლებსაც Chromium ვერ ამოიცნობს</translation>
 <translation id="3597003331831379823">მაღალი პრივილეგიებით დაყენების გაშვება ვერ მოხერხდა. <ph name="METAINSTALLER_ERROR" /></translation>
 <translation id="3600428265489994557">Chromium-ში შესვლა</translation>
 <translation id="3639635944603682591">ამ პიროვნების დათვალიერების მონაცემები წაიშლება ამ მოწყობილობიდან. მონაცემების აღსადგენად შედით Chromium-ში, როგორც <ph name="USER_EMAIL" />.</translation>
@@ -297,7 +296,6 @@
 <translation id="3971865010372729242">როდესაც მისამართთა ზოლში ან საძიებო ველში ტექსტი შეგყავთ, Chromium აგზავნის მას თქვენი ორგანიზაციის საძიებო სისტემაში, ხელოვნურ ინტელექტთან და აგენტის ხელსაწყოებში, რათა მიიღოს შემოთავაზებები.</translation>
 <translation id="3975724895399328945">Google Chrome for Testing-ის შ&amp;ესახებ</translation>
 <translation id="3997429360543082038">ChromiumOS-ის შესახებ</translation>
-<translation id="4010059961270896984">თქვენ მიერ საიტის მონახულებისას Chromium გაუგზავნის URL-ის შენიღბულ ნაწილს <ph name="BEGIN_LINK" />Google Safe Browsing<ph name="END_LINK" />-ს კონფიდენციალურობის სერვერის მეშვეობით, რომელიც მალავს თქვენს IP მისამართს. თუ საიტი რაიმე საეჭვოს მოიმოქმედებს, გაიგზავნება სრული URL-ები და გვერდების კონტენტის ფრაგმენტებიც.</translation>
 <translation id="4016217212818346953">იყავით უსაფრთხოდ პაროლების მმართველთან ერთად</translation>
 <translation id="4019629340646866719">ChromiumOS და <ph name="BEGIN_LINK_LINUX_OSS" />Linux-ის შემუშავების გარემო <ph name="END_LINK_LINUX_OSS" /> მუშაობს <ph name="BEGIN_LINK_CROS_OSS" />ღია კოდის დამატებითი პროგრამული უზრუნველყოფის<ph name="END_LINK_CROS_OSS" /> დამსახურებით.</translation>
 <translation id="4022972681110646219">ეკრანის თარგმნა</translation>
@@ -375,6 +373,7 @@
 <translation id="4786083865378785874">თუ Gemini Chromium-ში გახსნილია, გვერდითი პანელი ღია რჩება ახალი ჩანართების შექმნისას</translation>
 <translation id="479167709087336770">ეს ფუნქცია იყენებს მართლწერის იმ შემმოწმებელს, რომელიც გამოიყენება Google Search-ში. ბრაუზერში თქვენ მიერ აკრეფილი ტექსტი ეგზავნება Google-ს. ამ ქცევის შეცვლა ნებისმიერ დროს შეგიძლიათ პარამეტრებიდან.</translation>
 <translation id="4814736265800133385">Chromium-ის გამოყენება ანგარიშის გარეშე</translation>
+<translation id="4839733921943823254">მალსახმობის ჩამაგრება</translation>
 <translation id="4888717733111232871">Chromium-ის შემავალი წესი დაუშვას mDNS მოძრაობა.</translation>
 <translation id="4893347770495441059">ხელახლა გაშვება &amp;Chromium-ის გასაახლებლად</translation>
 <translation id="4918086044614829423">მიღება</translation>
@@ -458,7 +457,6 @@
 <translation id="5821520528363214608">Chromium-ის მონაცემების თქვენს Google ანგარიშში გამოყენებისა და შენახვისთვის განაახლეთ Chromium</translation>
 <translation id="5824893331272123205">ეს პანელი ვერ ჩაიტვირთა, ხელახლა ცადეთ</translation>
 <translation id="5862307444128926510">მოგესალმებათ Chromium!</translation>
-<translation id="5867606647614813312">ჩართავს დამატებით ფუნქციებს Chromium-ის ყველაზე ძლიერი დაცვის უზრუნველსაყოფად</translation>
 <translation id="5871205389137001634">დააწკაპუნეთ სურათების ძიებიდან გასასვლელად</translation>
 <translation id="5883558403894052917">Chromium-მა აღმოაჩინა, რომ შემდეგი ერთეულები შეიცავს მავნე პროგრამას:</translation>
 <translation id="5889361821821684993">Chromium რეგულარულად ამოწმებს, არის თუ არა თქვენს ბრაუზერში ყველაზე უსაფრთხო პარამეტრები. გაცნობებთ, თუ რაიმეს შემოწმება იქნება საჭირო.</translation>
@@ -760,13 +758,13 @@ Chromium ვერ შეძლებს თქვენი პარამე�
 <translation id="8522801943730206384">პაროლების შემოწმებას Chromium შეძლებს მათი შენახვის შემდეგ</translation>
 <translation id="8525579356836940628">ინსტალაცია გაჩერდა</translation>
 <translation id="8545729292258443488">თან იქონიეთ პაროლები, ჩანართები და სხვა კონტენტი გზაში Chromium-ის მეშვეობით თქვენს <ph name="DEVICE_TYPE" />-ზე</translation>
-<translation id="8548787790260785208">მიიღეთ გაფრთხილება, თუ Chromium აღმოაჩენს თქვენს რომელიმე პაროლს მონაცემთა საჯარო დარღვევაში</translation>
 <translation id="8555465886620020932">სერვისის შეცდომა: <ph name="SERVICE_ERROR" /></translation>
 <translation id="8556055872671007529">Chromium-ის ზოგიერთ ფუნქციასა და გაფართოებას აქვს მალსახმობები. შეგიძლიათ აირჩიოთ მათი ხელახლა ჩართვა.</translation>
 <translation id="8556420416730706394">შეგიძლიათ, ჩაამაგროთ სურათების ძიება მასზე მარტივად წვდომისთვის; დააწკაპუნეთ ჩამაგრების ღილაკს გვერდითი ზოლის ზედა ნაწილში</translation>
 <translation id="856656450041460113">ენების სიაში ძიება</translation>
 <translation id="8576826849825683917">რამდენიმე ორგანიზაცია მართავს Chromium-ს</translation>
 <translation id="8586442755830160949">Copyright <ph name="YEAR" /> The Chromium Authors. ყველა უფლება დაცულია.</translation>
+<translation id="8590782867495422699">Google Search-ის ხელოვნური ინტელექტის რეჟიმის ხელახლა გახსნა</translation>
 <translation id="8619360774459241877">მიმდინარეობს Chromium-ის გაშვება…</translation>
 <translation id="8624541899164515475">პარამეტრები, გაიხსნება ახალ ჩანართში.</translation>
 <translation id="8648201657708811153">Google Chrome for Testing ვერ გახდება თქვენი ნაგულისხმევი ბრაუზერი.</translation>
@@ -817,6 +815,7 @@ Chromium ვერ შეძლებს თქვენი პარამე�
 <translation id="9056398481763999048">გამოიყენეთ Google-ის საუკეთესო AI ხელსაწყოები Chromium აპით თქვენს ტელეფონში</translation>
 <translation id="9057625473949801035"><ph name="DEVICE" />-დან თქვენი პაროლებისა და სხვა კონტენტის მისაღებად გაიარეთ ავტორიზაცია Chromium-ში</translation>
 <translation id="9062666675513499497">შედით Chromium-ში, როცა Google-ის სხვა სერვისებში შედიხართ</translation>
+<translation id="9074041031320636790">წარმატებით შესრულდა! ახლა უკვე მარტივად შეგიძლიათ კითხვების დასმა დათვალიერებისას, Google Search-ის ხელოვნური ინტელექტის რეჟიმით</translation>
 <translation id="9078733879136747090">Chromium ავტომატურად დაიხურა</translation>
 <translation id="9089354809943900324">Chromium მოძველდა</translation>
 <translation id="9093206154853821181">{0,plural, =1{Chromium ხელახლა გაეშვება 1 საათში}other{Chromium ხელახლა გაეშვება # საათში}}</translation>

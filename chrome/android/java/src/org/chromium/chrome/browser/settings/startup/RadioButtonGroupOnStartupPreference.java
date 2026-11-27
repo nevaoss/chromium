@@ -13,6 +13,7 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
+import android.widget.RadioGroup.OnCheckedChangeListener;
 import android.widget.TextView;
 
 import androidx.preference.PreferenceViewHolder;
@@ -21,7 +22,9 @@ import org.chromium.base.Callback;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.homepage.settings.HomepageSettings;
 import org.chromium.chrome.browser.multiwindow.SessionStartupPref;
+import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
 import org.chromium.components.browser_ui.settings.ContainedRadioButtonGroupPreference;
 import org.chromium.components.browser_ui.widget.BrowserUiListMenuUtils;
 import org.chromium.components.browser_ui.widget.ListItemBuilder;
@@ -33,6 +36,10 @@ import org.chromium.ui.listmenu.ListMenuButton;
 import org.chromium.ui.listmenu.ListMenuItemProperties;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.modelutil.PropertyModel;
+import org.chromium.ui.text.ChromeClickableSpan;
+import org.chromium.ui.text.SpanApplier;
+import org.chromium.ui.text.SpanApplier.SpanInfo;
+import org.chromium.ui.widget.ButtonCompat;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -47,7 +54,7 @@ import java.util.Map;
  */
 @NullMarked
 public class RadioButtonGroupOnStartupPreference extends ContainedRadioButtonGroupPreference
-        implements RadioGroup.OnCheckedChangeListener {
+        implements OnCheckedChangeListener {
     private static final int MENU_ID_EDIT = 1;
     private static final int MENU_ID_REMOVE = 2;
 
@@ -59,6 +66,8 @@ public class RadioButtonGroupOnStartupPreference extends ContainedRadioButtonGro
     private @Nullable RadioButtonWithDescription mUrlsPref;
     private @Nullable LinearLayout mStartupPagesSection;
     private @Nullable LinearLayout mStartupPagesContainer;
+    private @Nullable ButtonCompat mAddNewPageButton;
+    private @Nullable ButtonCompat mUseCurrentPagesButton;
     private @SessionStartupPref int mStartupType = SessionStartupPref.LAST;
     private List<String> mStartupUrls = new ArrayList<>();
     private @Nullable OnStartupTypeChangeListener mOnStartupTypeChangeListener;
@@ -82,6 +91,40 @@ public class RadioButtonGroupOnStartupPreference extends ContainedRadioButtonGro
         mUrlsPref = (RadioButtonWithDescription) holder.findViewById(R.id.pref_urls);
         mStartupPagesSection = (LinearLayout) holder.findViewById(R.id.startup_pages_section);
         mStartupPagesContainer = (LinearLayout) holder.findViewById(R.id.startup_pages_container);
+        mAddNewPageButton = (ButtonCompat) holder.findViewById(R.id.add_new_page_button);
+        if (mAddNewPageButton != null) {
+            mAddNewPageButton.setOnClickListener(
+                    v -> {
+                        if (mItemActionListener != null) {
+                            mItemActionListener.onAddNewStartupPage();
+                        }
+                    });
+        }
+        mUseCurrentPagesButton = (ButtonCompat) holder.findViewById(R.id.use_current_pages_button);
+        if (mUseCurrentPagesButton != null) {
+            mUseCurrentPagesButton.setOnClickListener(
+                    v -> {
+                        if (mItemActionListener != null) {
+                            mItemActionListener.onUseCurrentPages();
+                        }
+                    });
+        }
+
+        Context context = getContext();
+        mNewTabPref.setDescriptionText(
+                SpanApplier.applySpans(
+                        context.getString(R.string.on_startup_pref_new_tab_summary),
+                        new SpanInfo(
+                                "<link>",
+                                "</link>",
+                                new ChromeClickableSpan(
+                                        context,
+                                        view ->
+                                                SettingsNavigationFactory.createSettingsNavigation(
+                                                                context)
+                                                        .startSettings(
+                                                                context,
+                                                                HomepageSettings.class)))));
 
         ContainedLinearLayout urlsPrefSection =
                 (ContainedLinearLayout) holder.findViewById(R.id.urls_pref_section);
@@ -100,7 +143,7 @@ public class RadioButtonGroupOnStartupPreference extends ContainedRadioButtonGro
         updateStartupPagesList();
     }
 
-    // RadioGroup.OnCheckedChangeListener implementation.
+    // OnCheckedChangeListener implementation.
     @Override
     public void onCheckedChanged(RadioGroup group, int checkedId) {
         if (checkedId == R.id.pref_new_tab) {
@@ -287,14 +330,26 @@ public class RadioButtonGroupOnStartupPreference extends ContainedRadioButtonGro
         return mStartupPagesContainer;
     }
 
+    /* package */ @Nullable ButtonCompat getAddNewPageButtonForTesting() {
+        return mAddNewPageButton;
+    }
+
+    /* package */ @Nullable ButtonCompat getUseCurrentPagesButtonForTesting() {
+        return mUseCurrentPagesButton;
+    }
+
     /* package */ interface OnStartupTypeChangeListener {
         void onStartupTypeChanged(@SessionStartupPref int startupType);
     }
 
     /* package */ interface StartupPageItemActionListener {
+        void onAddNewStartupPage();
+
         void onEditStartupPage(int index, String url);
 
         void onRemoveStartupPage(int index, String url);
+
+        void onUseCurrentPages();
     }
 
     /* package */ interface FaviconLoader {

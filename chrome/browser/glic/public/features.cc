@@ -269,8 +269,12 @@ BASE_FEATURE(kGeic, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<bool> kGeicEnabledParam{&kGeic, "enabled", true};
 
+BASE_FEATURE(kGeicActuation, base::FEATURE_DISABLED_BY_DEFAULT);
+
 const base::FeatureParam<std::string> kGeicGuestURL{&kGeic, "geic-guest-url",
                                                     ""};
+
+BASE_FEATURE(kGeicFre, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicHotkeyLocalScope,
 #if BUILDFLAG(IS_ANDROID)
@@ -350,5 +354,5 @@ BASE_FEATURE(kGlicShowNotTellTutorials, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<int> kGlicShowNotTellTutorialsArm{
     &kGlicShowNotTellTutorials, "tutorials_arm", 0};
 
-BASE_FEATURE(kGlicSendTabToSelf, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicActivityHub, base::FEATURE_DISABLED_BY_DEFAULT);
 }  // namespace features

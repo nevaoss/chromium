@@ -768,6 +768,7 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="4098552968111329864">Pour sécuriser votre travail sur Chrome, votre organisation pourra consulter ou gérer certaines informations lorsque vous serez connecté à Chrome</translation>
 <translation id="4105527135143631701">Mise à jour du Gestionnaire de mots de passe de Google ouverte</translation>
 <translation id="4107207375883769436">Votre organisation peut avoir besoin de voir et gérer les données de navigation de votre profil professionnel, comme votre historique de navigation et vos mots de passe</translation>
+<translation id="4112868928070921050">Autoriser la connexion de Google Workspace aux services de recherche</translation>
 <translation id="4113030288477039509">Géré par votre administrateur</translation>
 <translation id="4116038641877404294">Téléchargez des pages pour y accéder hors connexion</translation>
 <translation id="4121654769234887259">Vous n'aurez pas besoin de mémoriser ce mot de passe. Il sera enregistré dans le Gestionnaire de mots de passe de Google pour <ph name="USERNAME" />.</translation>
@@ -1788,6 +1789,7 @@ Pour modifier ce paramètre, <ph name="BEGIN_LINK" />supprimez les données Chro
 <translation id="799576009106109668">Vous naviguerez plus rapidement, car le contenu sera chargé de manière proactive en fonction de la page Web que vous êtes en train de consulter</translation>
 <translation id="7997875520309653083">Balayer l'écran depuis le bord droit pour revenir en arrière</translation>
 <translation id="7998918019931843664">Rouvrir un onglet fermé</translation>
+<translation id="8000020256436988724">Barre d'outils</translation>
 <translation id="8001245658307297681">Vous consultez un fichier local</translation>
 <translation id="800155843932969169">Créez et stockez vos mots de passe de manière sécurisée, connectez-vous plus rapidement et identifiez les problèmes de sécurité des mots de passe pour vous protéger</translation>
 <translation id="8004582292198964060">Navigateur</translation>

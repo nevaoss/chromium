@@ -12,7 +12,7 @@ import 'chrome://resources/cr_elements/cr_icon/cr_icon.js';
 import 'chrome://resources/cr_elements/icons.html.js';
 
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
-import type {Device} from 'chrome://resources/cr_components/history/history.mojom-webui.js';
+import type {Device, TimePeriodOption} from 'chrome://resources/cr_components/history/history.mojom-webui.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 
 import {BrowserProxyImpl} from './browser_proxy.js';
@@ -36,6 +36,8 @@ export class HistoryFilterChipsElement extends CrLitElement {
     return {
       showDeviceFilter: {type: Boolean},
       devices: {type: Array},
+      timePeriodOptions: {type: Array},
+      showTimePeriodFilter: {type: Boolean},
       showActorFilter: {type: Boolean},
       userVisits: {type: Boolean},
       actorVisits: {type: Boolean},
@@ -45,6 +47,8 @@ export class HistoryFilterChipsElement extends CrLitElement {
 
   accessor showDeviceFilter: boolean = false;
   accessor devices: Device[] = [];
+  accessor timePeriodOptions: TimePeriodOption[] = [];
+  accessor showTimePeriodFilter: boolean = false;
   accessor showActorFilter: boolean = false;
   // These values are used to filter the history query; true indicates that
   // results for the respective value should be included.
@@ -98,12 +102,15 @@ export class HistoryFilterChipsElement extends CrLitElement {
     this.fireChange_(this.userVisits, this.actorVisits);
   }
 
-  protected onClearAllClick_() {
+  protected async onClearAllClick_() {
     this.userVisits = true;
     this.actorVisits = true;
     this.clientIds = [];
 
     this.fireChange_(this.userVisits, this.actorVisits);
+
+    await this.updateComplete;
+    this.focusFirstFilter_();
   }
 
   protected onUserVisitsClick_() {
@@ -165,6 +172,10 @@ export class HistoryFilterChipsElement extends CrLitElement {
   private isCriticalActionsEnabled_(): boolean {
     return loadTimeData.valueExists('isCriticalActionsEnabled') &&
         loadTimeData.getBoolean('isCriticalActionsEnabled');
+  }
+
+  private focusFirstFilter_() {
+    this.shadowRoot.querySelector('select')?.focus();
   }
 
   private fireChange_(userVisits: boolean, actorVisits: boolean) {

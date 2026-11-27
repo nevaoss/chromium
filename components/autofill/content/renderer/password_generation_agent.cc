@@ -11,6 +11,7 @@
 
 #include "base/check_op.h"
 #include "base/command_line.h"
+#include "base/containers/map_util.h"
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/task/single_thread_task_runner.h"
@@ -480,8 +481,7 @@ void PasswordGenerationAgent::FoundFormEligibleForGeneration(
 
 void PasswordGenerationAgent::TriggeredGeneratePassword(
     TriggeredGeneratePasswordCallback callback) {
-  if (auto* frame = unsafe_render_frame();
-      frame && SetUpTriggeredGeneration()) {
+  if (unsafe_render_frame() && SetUpTriggeredGeneration()) {
     LogMessage(Logger::STRING_GENERATION_RENDERER_SHOW_GENERATION_POPUP);
     auto [current_generation_item, auto_protect] =
         current_generation_item_.GetAndProtect();
@@ -493,9 +493,13 @@ void PasswordGenerationAgent::TriggeredGeneratePassword(
         current_generation_item->generation_element
             .FormControlType()  // nocheck
         == kInputPassword;
+    gfx::Rect bounds =
+        current_generation_item->generation_element.BoundsInWidget();
+    if (content::RenderFrame* render_frame = unsafe_render_frame()) {
+      bounds = render_frame->ConvertViewportToWindow(bounds);
+    }
     password_generation::PasswordGenerationUIData password_generation_ui_data(
-        gfx::RectF(frame->ConvertViewportToWindow(
-            current_generation_item->generation_element.BoundsInWidget())),
+        gfx::RectF(bounds),
         current_generation_item->generation_element.MaxLength(),
         current_generation_item->generation_element.NameForAutofill().Utf16(),
         form_util::GetFieldRendererId(
@@ -523,13 +527,12 @@ bool PasswordGenerationAgent::SetUpTriggeredGeneration() {
       form_util::GetFieldRendererId(last_focused_password_element);
 
   bool is_automatic_generation_available = false;
-  auto it = generation_enabled_fields_.find(last_focused_password_element_id);
-
-  if (it != generation_enabled_fields_.end()) {
+  if (const PasswordFormGenerationData* generation_data = base::FindOrNull(
+          generation_enabled_fields_, last_focused_password_element_id)) {
     is_automatic_generation_available = true;
     MaybeCreateCurrentGenerationItem(
         last_focused_password_element,
-        it->second.confirmation_password_renderer_id, /*form_cache=*/{});
+        generation_data->confirmation_password_renderer_id, /*form_cache=*/{});
   } else {
     auto* frame = unsafe_render_frame();
     blink::WebDocument document =
@@ -570,11 +573,11 @@ bool PasswordGenerationAgent::ShowPasswordGenerationSuggestions(
     const SynchronousFormCache& form_cache) {
   CHECK(element);
 
-  auto it =
-      generation_enabled_fields_.find(form_util::GetFieldRendererId(element));
-  if (it != generation_enabled_fields_.end()) {
+  if (const PasswordFormGenerationData* generation_data = base::FindOrNull(
+          generation_enabled_fields_, form_util::GetFieldRendererId(element))) {
     MaybeCreateCurrentGenerationItem(
-        element, it->second.confirmation_password_renderer_id, form_cache);
+        element, generation_data->confirmation_password_renderer_id,
+        form_cache);
   }
 
   auto [current_generation_item, auto_protect] =
@@ -759,12 +762,16 @@ void PasswordGenerationAgent::AutomaticGenerationAvailable() {
   bool is_generation_element_password_type =
       current_generation_item->generation_element.FormControlType()  // nocheck
       == kInputPassword;
-  if (!unsafe_render_frame() || !unsafe_driver()) {
+  gfx::Rect bounds =
+      current_generation_item->generation_element.BoundsInWidget();
+  if (content::RenderFrame* render_frame = unsafe_render_frame()) {
+    bounds = render_frame->ConvertViewportToWindow(bounds);
+  }
+  if (!unsafe_driver()) {
     return;
   }
   password_generation::PasswordGenerationUIData password_generation_ui_data(
-      gfx::RectF(unsafe_render_frame()->ConvertViewportToWindow(
-          current_generation_item->generation_element.BoundsInWidget())),
+      gfx::RectF(bounds),
       current_generation_item->generation_element.MaxLength(),
       current_generation_item->generation_element.NameForAutofill().Utf16(),
       form_util::GetFieldRendererId(
@@ -783,15 +790,18 @@ void PasswordGenerationAgent::ShowEditingPopup(
   auto [current_generation_item, auto_protect] =
       current_generation_item_.GetAndProtect();
 
-  if (!unsafe_render_frame()) {
-    return;
+  gfx::Rect bounds =
+      current_generation_item->generation_element.BoundsInWidget();
+  if (content::RenderFrame* render_frame = unsafe_render_frame()) {
+    bounds = render_frame->ConvertViewportToWindow(bounds);
   }
-  gfx::RectF bounding_box(unsafe_render_frame()->ConvertViewportToWindow(
-      current_generation_item->generation_element.BoundsInWidget()));
+  gfx::RectF bounding_box(bounds);
 
   std::optional<FormData> form_data = CreateFormDataToPresave(
       current_generation_item->generation_element, form_cache);
-  DCHECK(form_data);
+  if (!form_data) {
+    return;
+  }
 
   FieldRendererId generation_element_renderer_id =
       form_util::GetFieldRendererId(

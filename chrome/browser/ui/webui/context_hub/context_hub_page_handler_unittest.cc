@@ -40,6 +40,7 @@
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/ui/webui/context_hub/context_hub.mojom-features.h"
 #include "chrome/browser/ui/webui/context_hub/context_hub.mojom.h"
+#include "chrome/browser/ui/webui/context_hub/context_hub_ui.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/favicon/core/test/mock_favicon_service.h"
 #include "components/favicon_base/favicon_types.h"
@@ -3299,9 +3300,10 @@ class ContextHubPageHandlerTopicsExportTest : public ContextHubPageHandlerTest {
   }
 
   // Makes the mock HistoryService reply with one Topic containing a visit to
-  // example.com 1 hour ago, that visit, a synced visit to docs.google.com 2
-  // hours ago, a chrome:// visit, and 2 unresolvable Topics. Stores the
-  // options of the visit query in `query_options_`.
+  // example.com 1 hour ago and one 20 days ago, before any export window; the
+  // visit 1 hour ago, a synced visit to docs.google.com 2 hours ago, and a
+  // chrome:// visit; and 2 unresolvable Topics. Stores the options of the
+  // visit query in `query_options_`.
   void ExpectHistoryQueries() {
     const base::Time now = base::Time::Now();
     history::journeys::Journey journey(
@@ -3309,6 +3311,9 @@ class ContextHubPageHandlerTopicsExportTest : public ContextHubPageHandlerTest {
         std::nullopt,
         {history::journeys::JourneyVisit(GURL("https://example.com/a"), u"A",
                                          now - base::Hours(1),
+                                         /*is_foreign=*/false),
+         history::journeys::JourneyVisit(GURL("https://example.com/old"),
+                                         u"Old", now - base::Days(20),
                                          /*is_foreign=*/false)});
     EXPECT_CALL(*GetMockHistoryService(), GetAllJourneys(_, _))
         .WillOnce(
@@ -4695,6 +4700,19 @@ TEST_F(ContextHubPageHandlerTest, StartAndStopSkillRecording_ServiceDisabled) {
   EXPECT_TRUE(session_data->actions.empty());
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+TEST(ContextHubUIConfigTest, IsWebUIEnabled) {
+  content::BrowserTaskEnvironment task_environment;
+  TestingProfile profile;
+  ContextHubUIConfig config;
+
+  EXPECT_TRUE(config.IsWebUIEnabled(&profile));
+
+  Profile* incognito_profile =
+      profile.GetPrimaryOTRProfile(/*create_if_needed=*/true);
+  EXPECT_FALSE(config.IsWebUIEnabled(incognito_profile));
+  EXPECT_FALSE(config.IsWebUIEnabled(nullptr));
+}
 
 }  // namespace
 }  // namespace context_hub

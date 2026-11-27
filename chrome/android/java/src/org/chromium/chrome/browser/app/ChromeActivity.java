@@ -12,10 +12,8 @@ import android.app.Activity;
 import android.app.Fragment;
 import android.app.HandoffActivityData;
 import android.app.HandoffActivityDataRequestInfo;
-import android.app.KeyguardManager;
 import android.app.PictureInPictureUiState;
 import android.app.assist.AssistContent;
-import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetManager;
 import android.content.res.Configuration;
@@ -96,8 +94,8 @@ import org.chromium.chrome.browser.WarmupManager;
 import org.chromium.chrome.browser.ZoomController;
 import org.chromium.chrome.browser.about_settings.AboutChromeSettings;
 import org.chromium.chrome.browser.actor.ActorMetrics;
-import org.chromium.chrome.browser.actor.ActorPictureInPictureController;
 import org.chromium.chrome.browser.actor.ActorUtils;
+import org.chromium.chrome.browser.actor.pip.ActorPictureInPictureController;
 import org.chromium.chrome.browser.app.appmenu.AppMenuPropertiesDelegateImpl;
 import org.chromium.chrome.browser.app.download.DownloadMessageUiDelegate;
 import org.chromium.chrome.browser.app.metrics.LaunchCauseMetrics;
@@ -136,6 +134,7 @@ import org.chromium.chrome.browser.ephemeraltab.EphemeralTabCoordinatorSupplier;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.feedback.FeedbackPolicyManager;
 import org.chromium.chrome.browser.feedback.HelpAndFeedbackLauncherImpl;
+import org.chromium.chrome.browser.feedback.ScreenshotMode;
 import org.chromium.chrome.browser.firstrun.ForcedSigninProcessor;
 import org.chromium.chrome.browser.flags.ActivityType;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -1462,11 +1461,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     private void checkForDeviceLockOnAutomotive() {
         if (DeviceInfo.isAutomotive()) {
-            KeyguardManager keyguardManager =
-                    (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-            RecordHistogram.recordBooleanHistogram(
-                    "Android.Automotive.DeviceLockSet", keyguardManager.isDeviceSecure());
-
             if (mMissingDeviceLockLauncher == null) {
                 var modalDialogManager = getModalDialogManagerSupplier().get();
                 assert modalDialogManager != null;
@@ -3156,7 +3150,12 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                     HelpAndFeedbackLauncherImpl.getHelpContextIdFromUrl(
                             this, url, getCurrentTabModel().isIncognitoBranded());
             HelpAndFeedbackLauncherImpl.getForProfile(currentProfile)
-                    .showFeedback(this, url, helpContextId);
+                    .showFeedback(
+                            this,
+                            url,
+                            /* categoryTag= */ null,
+                            ScreenshotMode.DEFAULT,
+                            helpContextId);
             if (fromMenu) {
                 RecordUserAction.record("MobileMenuReportAnIssue");
             }

@@ -256,7 +256,6 @@
 <translation id="3531741627422851418">Хөдөлгөөнт төхөөрөмж дээр Chromium хөтчийг татах QR код</translation>
 <translation id="354621070532799440">Сануулагч: Google-н аюулгүй байдлын шилдэг онцлогууд таны халаасанд байна</translation>
 <translation id="3561853857681580870">Дэлгэцээ хуваалцахын тулд Системийн тохиргоонд Chromium-д дэлгэцийн үйлдэл бичихийг зөвшөөрнө үү.</translation>
-<translation id="3588112919289558122">Сайжруулсан хамгаалалт нь Chromium-н танихгүй сайтуудын JavaScript-н оновчлолыг унтраадаг</translation>
 <translation id="3597003331831379823">Нэмэлт эрхтэйгээр тохируулгыг ажиллуулж чадсангүй. <ph name="METAINSTALLER_ERROR" /></translation>
 <translation id="3600428265489994557">Chromium-д нэвтрэх</translation>
 <translation id="3639635944603682591">Энэ хэрэглэгчийн хөтчийн өгөгдлийг энэ төхөөрөмжөөс устгана. Өгөгдлийг сэргээхийн тулд Chromium-д <ph name="USER_EMAIL" />-р нэвтэрнэ үү.</translation>
@@ -295,7 +294,6 @@
 <translation id="3971865010372729242">Таныг хаяг оруулах хэсэг, хайх хэсэгт шивэх үед Chromium зөвлөмж авахын тулд таны шивсэн зүйлийг танай байгууллагын хайлт, ХОУ, агентын хэрэгслүүд рүү илгээдэг.</translation>
 <translation id="3975724895399328945">&amp;Google Chrome for Testing-н тухай</translation>
 <translation id="3997429360543082038">ChromiumOS-н тухай</translation>
-<translation id="4010059961270896984">Таныг сайтад зочлоход Chromium таны IP хаягийг нуудаг нууцлалын серверээр дамжуулан URL-н будилуулсан хэсгийг <ph name="BEGIN_LINK" />Google-н аюулгүй хөтөч<ph name="END_LINK" /> рүү илгээнэ. Хэрэв сайт ямар нэг сэжигтэй зүйл хийвэл бүтэн URL, хуудасны контентын багахан хэсгийг мөн илгээнэ.</translation>
 <translation id="4016217212818346953">Нууц үгний менежерээр аюулгүй байгаарай</translation>
 <translation id="4019629340646866719">ChromiumOS-г <ph name="BEGIN_LINK_LINUX_OSS" />Linux-н хөгжүүлэлтийн орчин <ph name="END_LINK_LINUX_OSS" /> болох нэмэлт <ph name="BEGIN_LINK_CROS_OSS" />нээлттэй эх кодын программ хангамжаар<ph name="END_LINK_CROS_OSS" /> боломжтой болгосон.</translation>
 <translation id="4022972681110646219">Дэлгэцийг орчуулах</translation>
@@ -373,6 +371,7 @@
 <translation id="4786083865378785874">Хэрэв Chromium дахь Gemini нээлттэй бол шинэ таб үүсгэхэд хажуугийн самбар нээлттэй хэвээр байна</translation>
 <translation id="479167709087336770">Энэ нь Google хайлтад ашигладаг зөв бичгийн ижил алдаа шалгагчийг ашигладаг. Таны хөтчид бичсэн текстийг Google-д илгээдэг. Та энэ ажиллах төлөвийг хүссэн үедээ тохиргоонд өөрчилж болно</translation>
 <translation id="4814736265800133385">Chromium-г бүртгэлгүйгээр ашиглах</translation>
+<translation id="4839733921943823254">Товчлол бэхлэх</translation>
 <translation id="4888717733111232871">MDNS урсгалыг зөвшөөрөхийн тулд Chromium-д зориулсан хөндлөнгийн дүрэм.</translation>
 <translation id="4893347770495441059">&amp;Chromium-г шинэчлэхийн тулд дахин ачаалах</translation>
 <translation id="4918086044614829423">Хүлээн зөвшөөрөх</translation>
@@ -456,7 +455,6 @@
 <translation id="5821520528363214608">Google Бүртгэлдээ Chromium-н өгөгдлийг ашиглах болон хадгалахын тулд Chromium-г шинэчилнэ үү</translation>
 <translation id="5824893331272123205">Энэ түр зуурын самбарыг ачаалж чадсангүй. Дахин оролдоно уу</translation>
 <translation id="5862307444128926510">Chromium-д тавтай морил</translation>
-<translation id="5867606647614813312">Chromium-н хамгийн хүчтэй хамгаалалтаар хангахын тулд нэмэлт онцлогуудыг асаана</translation>
 <translation id="5871205389137001634">Зурган хайлтаас гарахын тулд товшино уу</translation>
 <translation id="5883558403894052917">Эдгээр зүйл хортой программ агуулж байгааг Chromium олж мэдлээ:</translation>
 <translation id="5889361821821684993">Chromium таны хөтөч хамгийн аюулгүй тохиргоотой болохыг баталгаажуулахаар тогтмол шалгадаг. Та ямар нэг зүйлийг шалгах шаардлагатай бол бид танд мэдэгдэнэ.</translation>
@@ -754,13 +752,13 @@
 <translation id="8522801943730206384">Таныг нууц үгнүүдээ хадгалах үед Chromium тэдгээрийг шалгах боломжтой</translation>
 <translation id="8525579356836940628">Суулгахыг зогсоосон</translation>
 <translation id="8545729292258443488"><ph name="DEVICE_TYPE" /> дээрээ Chromium аппыг ашиглан нууц үг, таб болон бусад зүйлээ явж байх зуураа аваарай</translation>
-<translation id="8548787790260785208">Хэрэв Chromium таны аль нэг нууц үгийг олон нийтийн өгөгдлийн зөрчлөөс олбол сануулга аваарай</translation>
 <translation id="8555465886620020932">Үйлчилгээний алдаа: <ph name="SERVICE_ERROR" />.</translation>
 <translation id="8556055872671007529">Chromium-н зарим онцлог, өргөтгөл товчлолтой ирдэг. Та тэдгээрийг буцааж асааж болно.</translation>
 <translation id="8556420416730706394">Та хялбар хандахын тулд Зурган хайлтыг бэхлэх боломжтой. Хажуугийн самбарын дээд талд байх Бэхлэх товчийг товшино уу</translation>
 <translation id="856656450041460113">Хэлний жагсаалтаас хайх</translation>
 <translation id="8576826849825683917">Олон байгууллага Chromium-г удирддаг</translation>
 <translation id="8586442755830160949">Chromium-ийн зохиогчийн эрх <ph name="YEAR" />. Бүх эрхийг хуулиар хамгаалсан.</translation>
+<translation id="8590782867495422699">Google Хайлтын ХОУ-ы горимыг дахин нээх</translation>
 <translation id="8619360774459241877">Chromium-г эхлүүлж байна...</translation>
 <translation id="8624541899164515475">Тохиргоо, шинэ табд нээгдэнэ.</translation>
 <translation id="8648201657708811153">Google Chrome for Testing-г өгөгдмөл хөтчөө болгох боломжгүй.</translation>
@@ -811,6 +809,7 @@
 <translation id="9056398481763999048">Утсан дээрээ Chromium аппаар Google-н шилдэг ХОУ-ы хэрэгслүүдийг ашиглаарай</translation>
 <translation id="9057625473949801035"><ph name="DEVICE" />-с нууц үг болон бусад зүйлээ авахын тулд Chromium-д нэвтэрнэ үү</translation>
 <translation id="9062666675513499497">Та Google-н бусад үйлчилгээнд нэвтрэх үедээ Chromium-д нэвтэрнэ үү</translation>
+<translation id="9074041031320636790">Амжилттай! Та одоо Google Хайлтын ХОУ-ы горимоор үзэх явцдаа асуулт хялбархан асуух боломжтой</translation>
 <translation id="9078733879136747090">Chromium-г автоматаар хаасан</translation>
 <translation id="9089354809943900324">Chromium хуучирсан байна</translation>
 <translation id="9093206154853821181">{0,plural, =1{Chromium-г 1 цагийн дотор дахин ажиллуулна}other{Chromium-г # цагийн дотор дахин ажиллуулна}}</translation>

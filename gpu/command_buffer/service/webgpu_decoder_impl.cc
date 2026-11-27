@@ -68,6 +68,7 @@
 #include "third_party/skia/include/gpu/ganesh/SkSurfaceGanesh.h"
 #include "third_party/skia/include/gpu/graphite/Context.h"
 #include "ui/gl/gl_context_egl.h"
+#include "ui/gl/gl_implementation.h"
 #include "ui/gl/gl_surface_egl.h"
 
 #if BUILDFLAG(IS_WIN)
@@ -430,6 +431,7 @@ class WebGPUDecoderImpl final : public WebGPUDecoder {
   std::unique_ptr<SharedImageRepresentationFactory>
       shared_image_representation_factory_;
 
+  std::unique_ptr<DawnCachingInterface> dawn_caching_interface_;
   std::unique_ptr<dawn::platform::Platform> dawn_platform_;
   std::unique_ptr<DawnInstance> dawn_instance_;
   std::unique_ptr<DawnServiceMemoryTransferService> memory_transfer_service_;
@@ -1126,10 +1128,11 @@ WebGPUDecoderImpl::WebGPUDecoderImpl(
           std::make_unique<SharedImageRepresentationFactory>(
               shared_image_manager,
               std::move(memory_tracker))),
-      dawn_platform_(new DawnPlatform(
+      dawn_caching_interface_(
           base::FeatureList::IsEnabled(features::kWebGPUBlobCache)
               ? std::move(dawn_caching_interface)
-              : nullptr,
+              : nullptr),
+      dawn_platform_(new DawnPlatform(
           /*progress_reporter=*/nullptr,
           /*uma_prefix=*/"GPU.WebGPU.",
           /*record_cache_count_uma=*/false)),
@@ -1621,6 +1624,23 @@ WGPUFuture WebGPUDecoderImpl::RequestDeviceImpl(
   wgpu::DawnCacheDeviceDescriptor dawn_cache;
   if (!isolation_key_->empty()) {
     dawn_cache.isolationKey = isolation_key_->c_str();
+    if (dawn_caching_interface_) {
+      dawn_cache.SetDawnLoadCacheDataCallback(
+          [](std::string_view key, base::span<uint8_t> value,
+             DawnCachingInterface* caching_interface) -> size_t {
+            if (value.empty()) {
+              return caching_interface->FindKey(key);
+            }
+            return caching_interface->LoadData(key, value);
+          },
+          dawn_caching_interface_.get());
+      dawn_cache.SetDawnStoreCacheDataCallback(
+          [](std::string_view key, base::span<const uint8_t> value,
+             DawnCachingInterface* caching_interface) {
+            caching_interface->StoreData(key, value);
+          },
+          dawn_caching_interface_.get());
+    }
     ChainStruct(desc, &dawn_cache);
   }
 
@@ -1818,6 +1838,26 @@ wgpu::Adapter WebGPUDecoderImpl::CreatePreferredAdapter(
     adapter.GetInfo(&adapter_info);
 
     if (use_blocklist() && IsWebGPUAdapterBlocklisted(adapter).blocked) {
+      return false;
+    }
+
+    // Web-facing Dawn GL backend must run on top of ANGLE. Dawn uses
+    // Chrome's GL setup (EGL display and GL proc addresses), so if Chrome is
+    // using a native (non-ANGLE) EGL/GLES driver, Dawn would talk directly to
+    // that driver. Requiring ANGLE guarantees that Dawn GL inherits all of the
+    // driver bug workarounds and mitigations already implemented in ANGLE.
+    //
+    // TODO(crbug.com/576008842):
+    // Long term (e.g. after WebGL-on-WebGPU), we will probably want to remove
+    // ANGLE from the GPU process and run Dawn GL directly on native GLES.
+    // Before removing this check, all the relevant ANGLE driver workarounds
+    // must first be added to Dawn's GL backend.
+    //
+    // This is only relaxed with --enable-unsafe-webgpu (or
+    // --disable-dawn-features=adapter_blocklist) for local testing.
+    if (adapter_info.backendType == wgpu::BackendType::OpenGLES &&
+        use_blocklist() &&
+        gl::GetGLImplementation() != gl::kGLImplementationEGLANGLE) {
       return false;
     }
 

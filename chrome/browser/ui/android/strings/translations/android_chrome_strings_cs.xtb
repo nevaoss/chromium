@@ -768,6 +768,7 @@ Vaše šifrovaná data mohou číst pouze uživatelé, kteří mají vaši heslo
 <translation id="4098552968111329864">Když budete do Chromu přihlášen, bude moct vaše organizace za účelem zajištění bezpečnosti vaší práce v Chromu zobrazit nebo spravovat určité informace</translation>
 <translation id="4105527135143631701">Otevřel se panel k aktualizaci Správce hesel Google</translation>
 <translation id="4107207375883769436">Vaše organizace může potřebovat vidět a spravovat údaje o prohlížení ve vašem pracovním profilu, jako jsou historie prohlížení a hesla</translation>
+<translation id="4112868928070921050">Souhlas s propojením Google Workspace s vyhledávacími službami</translation>
 <translation id="4113030288477039509">Spravováno vaším administrátorem</translation>
 <translation id="4116038641877404294">Stáhněte si stránky k použití offline</translation>
 <translation id="4121654769234887259">Toto heslo si nebudete muset pamatovat. Uloží se do Správce hesel Google pro účet <ph name="USERNAME" />.</translation>
@@ -1788,6 +1789,7 @@ Pokud toto nastavení chcete změnit, <ph name="BEGIN_LINK" />vymažte data proh
 <translation id="799576009106109668">Budete web moci procházet rychleji, protože se obsah bude načítat proaktivně na základě aktuálně navštívené webové stránky</translation>
 <translation id="7997875520309653083">Přejetím prstem z pravého okraje se vrátíte</translation>
 <translation id="7998918019931843664">Znovu otevřít zavřenou kartu</translation>
+<translation id="8000020256436988724">Lišta</translation>
 <translation id="8001245658307297681">Prohlížíte si místní soubor</translation>
 <translation id="800155843932969169">Bezpečně vytvářejte a ukládejte hesla, přihlašujte se rychleji a identifikujte bezpečnostní problémy s hesly, ať jste v bezpečí</translation>
 <translation id="8004582292198964060">Prohlížeč</translation>

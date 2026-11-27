@@ -118,6 +118,7 @@ Some features may be unavailable and changes to preferences won't be saved.</tra
 <translation id="2039417478970545937">Settings.</translation>
 <translation id="2040220733769034247">Scan the QR code with your phone to download Chrome and sign in to your Google Account.</translation>
 <translation id="2044908892530830113">Show search with Chrome in Mac menu bar and turn on keyboard shortcut</translation>
+<translation id="2050189601866423230">You can pin Google Search AI Mode to ask questions as you browse</translation>
 <translation id="2091012649849228750">To get future Google Chrome updates, you'll need Windows 10 or later. This computer is using Windows 8.</translation>
 <translation id="2094648590148273905">Chrome OS Flex terms</translation>
 <translation id="2094919256425865063">Quit Chrome anyway?</translation>
@@ -143,7 +144,6 @@ Some features may be unavailable and changes to preferences won't be saved.</tra
 <translation id="2216543877350048334">To remove your Google Account from Chrome, sign out</translation>
 <translation id="2236949375853147973">My Activity</translation>
 <translation id="22791603784558743">Close Gemini in Chrome Dev</translation>
-<translation id="2284380654876659752">When you visit a site, Chrome sends an obfuscated portion of the URL to <ph name="BEGIN_LINK" />Google Safe Browsing<ph name="END_LINK" /> through a privacy server that hides your IP address. If a site does something suspicious, full URLs and bits of page content are also sent.</translation>
 <translation id="2290014774651636340">Google API keys are missing. Some functionality of Google Chrome will be disabled.</translation>
 <translation id="2290095356545025170">Are you sure you want to uninstall Google Chrome?</translation>
 <translation id="2295218613066132598">Show Chrome site shortcuts</translation>
@@ -384,7 +384,6 @@ If this page isn't working as expected, try allowing optimisation.</translation>
 <translation id="459622048091363950">Once Chrome has access, websites will be able to ask you for access.</translation>
 <translation id="4598116752460667024">Search for any process from the list.</translation>
 <translation id="4600710005438004015">Chrome couldn't update to the latest version, so you're missing out on new features and security fixes.</translation>
-<translation id="4606805686144157064">Get warned if Chrome finds one of your passwords in a public data breach</translation>
 <translation id="4608435347866444037">Search this image with Google Lens</translation>
 <translation id="4624065194742029982">Chrome Incognito</translation>
 <translation id="4627412468266359539">Optional: Help improve Chrome OS Flex features and performance by automatically sending diagnostic and usage data to Google.</translation>
@@ -401,9 +400,9 @@ If this page isn't working as expected, try allowing optimisation.</translation>
 <translation id="4768676935374695498">Search this video with Google Lens</translation>
 <translation id="479167709087336770">This uses the same spell checker that's used in Google search. Text that you type in the browser is sent to Google. You can always change this behaviour in settings.</translation>
 <translation id="4793679854893018356">Learn how Chrome keeps you safe</translation>
-<translation id="4799870290441980300">Turns on additional features to provide Chrome’s strongest protections</translation>
 <translation id="4828579605166583682">Google Chrome is trying to replace existing passwords. Type in your Windows password to allow this.</translation>
 <translation id="4836321460899997044">Chrome profile</translation>
+<translation id="4839733921943823254">Pin shortcut</translation>
 <translation id="4842397268809523050">Chrome OS Flex could not sync your data because sync is not available for your domain.</translation>
 <translation id="4851866215237571846"><ph name="EXISTING_USER" /> is already signed in.  To keep your browsing separate, sign in to Chrome in your own profile as <ph name="USER_EMAIL_ADDRESS" />.</translation>
 <translation id="4855026984605187434">To share your screen, allow screen recording for Chrome in System Settings</translation>
@@ -560,7 +559,6 @@ Google Chrome is unable to recover your settings.</translation>
 <translation id="6251759518630934363">Warns you about dangerous sites, even ones that Google didn't know about before, by analysing more data from sites than standard protection. You can choose to skip Chrome warnings.</translation>
 <translation id="6277547788421725101">Your parent has turned off 'Permissions for sites, apps and extensions' for Chrome.</translation>
 <translation id="627882678981830918">Customise and control Chrome. Set Chrome as your default.</translation>
-<translation id="6280042952415350607">Enhanced protection turns off JavaScript optimisation for sites that Chrome doesn't recognise</translation>
 <translation id="6288580400488258237">Set Google Chrome as your default browser and pin it to your taskbar</translation>
 <translation id="6291089322031436445">Chrome Dev Apps</translation>
 <translation id="6291549208091401781">Google Chrome is already installed for all users on your computer.</translation>
@@ -774,6 +772,7 @@ Google Chrome is unable to recover your settings.</translation>
 <translation id="8074398340364918139">To search a specific Chrome feature or extension, type its shortcut in the address bar, followed by your selected keyboard key</translation>
 <translation id="8077579734294125741">Other Chrome profiles</translation>
 <translation id="8086881907087796310">Installation failed because your computer does not meet the minimum hardware requirements.</translation>
+<translation id="8110438089258398864">You can reopen Google Search AI Mode to ask questions while you browse</translation>
 <translation id="8113883687556086139">Verify that it's you to use and save Chrome data in your account, <ph name="ACCOUNT_EMAIL" /></translation>
 <translation id="8115695070094288807">Making Chrome yours…</translation>
 <translation id="8118331347066725040">Send feedback for search with Lens</translation>
@@ -830,6 +829,8 @@ New bookmarks can't be saved in your account until you delete some. If you sign 
 <translation id="8555465886620020932">Service error: <ph name="SERVICE_ERROR" />.</translation>
 <translation id="856656450041460113">Search language list</translation>
 <translation id="8575047640889685742">Use your <ph name="BEGIN_LINK" />own passphrase<ph name="END_LINK" /> to encrypt all the Chrome data in your Google Account. Payment methods and addresses from Google Pay won't be encrypted. Browsing history from Chrome won't sync.</translation>
+<translation id="8590782867495422699">Reopen Google Search AI Mode</translation>
+<translation id="8598779894319572882">From the 'Google Search AI Mode' button on the toolbar, you can reopen Google Search AI Mode to ask questions while you browse</translation>
 <translation id="8614913330719544658">Google Chrome is unresponsive. Relaunch now?</translation>
 <translation id="8623450603356630491">Sign in to Chrome on your phone</translation>
 <translation id="8624541899164515475">Settings, opens in new tab.</translation>
@@ -884,6 +885,7 @@ New bookmarks can't be saved in your account until you delete some. If you sign 
 <translation id="9014771989710951291">Multiple organisations manage Chrome</translation>
 <translation id="9018218886431812662">Installation complete</translation>
 <translation id="9066987883552592250">Close Gemini in Chrome Canary</translation>
+<translation id="9074041031320636790">Success! You can now easily ask questions as you browse with Google Search AI Mode</translation>
 <translation id="9090566250983691233">Learn why Chrome blocks some files</translation>
 <translation id="9106236359747881194">Select text to search</translation>
 <translation id="911206726377975832">Also delete your browsing data?</translation>

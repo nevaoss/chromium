@@ -3,8 +3,17 @@
 <head>
   <meta charset="utf-8">
   <title>Tab Picker</title>
+  <script src="color_scheme.js"></script>
   <link rel="stylesheet" href="//resources/css/text_defaults_md.css">
   <style>
+    html {
+      color-scheme: light;
+    }
+
+    html[dark-mode] {
+      color-scheme: light dark;
+    }
+
     html,
     body {
       background: transparent;
@@ -18,12 +27,6 @@
 </head>
 <body>
   <tab-picker-app></tab-picker-app>
-  <!-- Put tab picker first: attach listeners before post
-      message sends any tab events.
-      TODO(crbug.com/571638878) - Pull initial state or cache last state
-      so order of html does not matter here.
-  -->
   <script type="module" src="tab_picker.js"></script>
-  <script type="module" src="post_message_entrypoint.js"></script>
 </body>
 </html>

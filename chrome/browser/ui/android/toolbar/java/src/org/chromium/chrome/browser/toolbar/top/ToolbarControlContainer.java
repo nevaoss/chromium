@@ -87,6 +87,7 @@ import org.chromium.ui.widget.OptimizedFrameLayout;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
@@ -143,7 +144,10 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
     private final Callback<Boolean> mOnXrSpaceModeChanged = this::onXrSpaceModeChanged;
     private final Callback<Resource> mOnResourceCaptureCallback = this::onToolbarCaptureUpdated;
     private final Callback<Integer> mVerticalTabsWidthObserver =
-            width -> updateSystemGestureExclusions();
+            width -> {
+                updateToolbarHorizontalMargins();
+                updateSystemGestureExclusions();
+            };
     private final Callback<Boolean> mVerticalTabsActiveObserver =
             active -> onVerticalTabsActiveChanged();
     private NonNullObservableSupplier<Integer> mVerticalTabsContainerWidthSupplier =
@@ -155,7 +159,8 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
     private @Nullable NonNullObservableSupplier<Boolean> mIsVerticalTabsActiveSupplier;
     private @Nullable View mTopLeftCornerOverlayView;
     private @Nullable StringBuilder mMeasureLogBuilder;
-    private @Nullable Callback<Integer> mToolbarRightMarginCallback;
+    private @Nullable BiConsumer<Integer, Integer> mToolbarHorizontalMarginCallback;
+    private int mLeftMargin;
     private int mRightMargin;
     private int mTopMarginNarrowWidth;
     private int mLastVerticalTabsTopMargin;
@@ -438,9 +443,12 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
         int toolbarViewTopMargin =
                 ChromeFeatureList.sToolbarSnapshotRefactor.isEnabled() ? 0 : tabStripHeight;
         mutateToolbarLayoutParams().topMargin = toolbarViewTopMargin;
-        mutateHairlineLayoutParams().topMargin = toolbarViewTopMargin + mToolbarLayoutHeight;
 
         int toolbarAndTabStripHeight = tabStripHeight + getToolbarHeight();
+        mutateHairlineLayoutParams().topMargin =
+                ChromeFeatureList.sFixToolbarHairlineRegression.isEnabled()
+                        ? toolbarViewTopMargin + mToolbarLayoutHeight
+                        : toolbarAndTabStripHeight;
         if (!applyScrimOverlay) {
             setMinimumHeight(toolbarAndTabStripHeight + getToolbarHairlineHeight());
         }
@@ -462,7 +470,7 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
             findToolbar.setLayoutParams(layoutParams);
         }
         maybeUpdateTempTabStripDrawableBackground(mIncognito, getAppHeaderState());
-        updateToolbarRightOffset();
+        updateToolbarHorizontalMargins();
         updateSystemGestureExclusions();
         updateTopLeftCornerOverlay();
     }
@@ -470,12 +478,16 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         if (ChromeFeatureList.sToolbarSnapshotRefactor.isEnabled() && mToolbarHairline != null) {
-            // Set the hairline's top margin to toolbar view to avoid the hairline's top
-            // margin from becoming too big (e.g. toolbar height + tab strip height).
-            MarginLayoutParams hairlineParams =
-                    (MarginLayoutParams) mToolbarHairline.getLayoutParams();
-            if (hairlineParams.topMargin != mToolbarLayoutHeight) {
-                hairlineParams.topMargin = mToolbarLayoutHeight;
+            // Set the hairline's top margin to toolbar view when anchored to the bottom of the
+            // top toolbar to avoid the hairline's top margin from becoming too big (e.g. toolbar
+            // height + tab strip height). When the toolbar is bottom-anchored, the hairline is
+            // anchored to the top of the toolbar and its top margin must remain 0.
+            CoordinatorLayout.LayoutParams hairlineParams =
+                    (CoordinatorLayout.LayoutParams) mToolbarHairline.getLayoutParams();
+            int targetTopMargin =
+                    hairlineParams.anchorGravity == Gravity.TOP ? 0 : mToolbarLayoutHeight;
+            if (hairlineParams.topMargin != targetTopMargin) {
+                hairlineParams.topMargin = targetTopMargin;
             }
         }
         updateToolbarContainerTopMargin();
@@ -1394,6 +1406,10 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
         mToolbarHairline = hairline;
     }
 
+    int getLeftMarginForTesting() {
+        return mLeftMargin;
+    }
+
     int getRightMarginForTesting() {
         return mRightMargin;
     }
@@ -1412,7 +1428,7 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
 
     @Override
     public void onAppHeaderStateChanged(AppHeaderState newState) {
-        updateToolbarRightOffset();
+        updateToolbarHorizontalMargins();
         updateSystemGestureExclusions();
         updateTopLeftCornerOverlay();
         updateToolbarContainerTopMargin();
@@ -1437,7 +1453,7 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
 
     private void onVerticalTabsActiveChanged() {
         updateTopLeftCornerOverlay();
-        updateToolbarRightOffset();
+        updateToolbarHorizontalMargins();
         updateSystemGestureExclusions();
         updateToolbarContainerTopMargin();
     }
@@ -1523,10 +1539,10 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
         return mTopLeftCornerOverlayView;
     }
 
-    public void setToolbarRightMarginCallback(Callback<Integer> callback) {
-        mToolbarRightMarginCallback = callback;
-        if (mToolbarRightMarginCallback != null) {
-            updateToolbarRightOffset();
+    public void setToolbarHorizontalMarginCallback(BiConsumer<Integer, Integer> callback) {
+        mToolbarHorizontalMarginCallback = callback;
+        if (mToolbarHorizontalMarginCallback != null) {
+            updateToolbarHorizontalMargins();
         }
     }
 
@@ -1546,25 +1562,38 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
         updateToolbarContainerTopMargin();
     }
 
-    /** Updates the toolbar right offset for the current tab strip height. */
-    public void updateToolbarRightOffset() {
+    /**
+     * Updates the toolbar horizontal margins for the current tab strip height and vertical tabs
+     * width.
+     */
+    public void updateToolbarHorizontalMargins() {
+        int leftMargin = 0;
         int rightMargin = 0;
+        int vtWidth = mVerticalTabsContainerWidthSupplier.get();
         AppHeaderState appHeaderState = getAppHeaderState();
         boolean isVerticalTabsActive = VerticalTabUtils.isVerticalTabsEnabled(getContext());
-        if (appHeaderState != null
-                && appHeaderState.isInDesktopWindow()
-                && (isVerticalTabsActive || (mTabStripHeight == 0 && mRightMargin > 0))) {
-            rightMargin = appHeaderState.getRightPadding();
+        if (appHeaderState != null && appHeaderState.isInDesktopWindow()) {
+            if (isVerticalTabsActive) {
+                if (vtWidth > 0) {
+                    leftMargin = Math.max(0, appHeaderState.getLeftPadding() - vtWidth);
+                }
+                rightMargin = appHeaderState.getRightPadding();
+            } else if (mTabStripHeight == 0) {
+                leftMargin = mLeftMargin;
+                rightMargin = mRightMargin;
+            }
         }
-        if (mToolbarRightMarginCallback != null && mRightMargin != rightMargin) {
+        if (mToolbarHorizontalMarginCallback != null
+                && (mLeftMargin != leftMargin || mRightMargin != rightMargin)) {
+            mLeftMargin = leftMargin;
             mRightMargin = rightMargin;
-            mToolbarRightMarginCallback.onResult(rightMargin);
+            mToolbarHorizontalMarginCallback.accept(leftMargin, rightMargin);
         }
     }
 
     /**
      * Sets the supplier for the vertical tabs container width used to define system gesture
-     * exclusion bounds.
+     * exclusion bounds and toolbar left margin.
      */
     public void setVerticalTabsContainerWidthSupplier(
             @Nullable NonNullObservableSupplier<Integer> supplier) {
@@ -1572,6 +1601,7 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
         mVerticalTabsContainerWidthSupplier =
                 supplier != null ? supplier : ObservableSuppliers.createNonNull(0);
         mVerticalTabsContainerWidthSupplier.addSyncObserver(mVerticalTabsWidthObserver);
+        updateToolbarHorizontalMargins();
         updateSystemGestureExclusions();
     }
 

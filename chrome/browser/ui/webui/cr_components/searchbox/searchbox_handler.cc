@@ -346,6 +346,19 @@ bool SearchboxHandler::GetVoiceSearchCoherenceAnySearchboxExperimentEnabled() {
 base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
     Profile* profile,
     WebUIDataSourceOptions options) {
+  base::DictValue dict = GetProfileIndependentWebUIDataSourceDict(
+      {.enable_voice_search = options.enable_voice_search,
+       .enable_lens_search = options.enable_lens_search});
+  dict.Merge(GetProfileDependentWebUIDataSourceDict(
+      profile,
+      {.session_allows_drag_and_drop = options.session_allows_drag_and_drop,
+       .is_lens = options.is_lens}));
+  return dict;
+}
+
+// static
+base::DictValue SearchboxHandler::GetProfileIndependentWebUIDataSourceDict(
+    ProfileIndependentWebUIDataSourceOptions options) {
   base::DictValue dict;
 
   // The WebUI Omnibox code will override this to `true` to adjust various
@@ -362,11 +375,6 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
   dict.Set("forceHideEllipsis", false);
   dict.Set("enableThumbnailSizingTweaks", false);
   dict.Set("enableCsbMotionTweaks", false);
-  dict.Set("keywordSpaceTriggeringEnabled",
-           profile && profile->GetPrefs()
-               ? profile->GetPrefs()->GetBoolean(
-                     omnibox::kKeywordSpaceTriggeringEnabled)
-               : true);
 
   // Returns if ALL composeboxe surfaces' voice coherence is not gated. Includes
   // new metrics, new animation, new submit/stop buttons, no live transcription.
@@ -439,6 +447,8 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
       {"composeboxSmartComposeTabTitle", IDS_NTP_COMPOSE_SMART_COMPOSE_TAB},
       {"composeboxSmartComposeTitle", IDS_NTP_COMPOSE_SMART_COMPOSE_A11Y_LABEL},
       {"composeboxSubmitButtonTitle", IDS_NTP_COMPOSE_SUBMIT_BUTTON_A11Y_LABEL},
+      {"composeboxAimButtonExitTitle", IDS_NTP_COMPOSE_EXIT_A11Y_LABEL},
+      {"composeboxAimButtonSendTitle", IDS_NTP_COMPOSE_SEND_A11Y_LABEL},
       {"composeboxDeleteFileTitle", IDS_NTP_COMPOSE_DELETE_FILE_A11Y_LABEL},
       {"composeboxFileUploadStartedText",
        IDS_NTP_COMPOSE_FILE_UPLOAD_STARTED_A11Y_TEXT},
@@ -526,7 +536,6 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
 
   dict.Set("searchboxVoiceSearch", options.enable_voice_search);
   dict.Set("searchboxLensSearch", options.enable_lens_search);
-  dict.Set("searchboxLensVariations", GetBase64UrlVariations(profile));
   dict.Set("searchboxCr23Theming",
            base::FeatureList::IsEnabled(ntp_features::kRealboxCr23Theming));
   dict.Set("searchboxCr23SteadyStateShadow",
@@ -543,6 +552,36 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
   dict.Set("webuiBrowserVirtualFocusNavigation",
            base::FeatureList::IsEnabled(
                features::kWebuiBrowserVirtualFocusNavigation));
+
+  dict.Set("contextualMenuUsePecApi",
+           base::FeatureList::IsEnabled(omnibox::kAimUsePecApi));
+  dict.Set(
+      "useSearchboxConfigIconIds",
+      base::FeatureList::IsEnabled(omnibox::kAimUseSearchboxConfigIconIds));
+  dict.Set("ShowContextMenuHeaders",
+           ntp_composebox::kShowContextMenuHeaders.Get());
+  dict.Set("composeboxSingleTabMenuItemEnabled",
+           omnibox::IsSingleTabMenuItemInComposeboxEnabled());
+  dict.Set("stsMegaplusShareRelevantOpenTabs",
+           GetSmartTabSharingMegaplusString());
+  dict.Set(
+      "composeboxUnselectMatchOnTabExit",
+      base::FeatureList::IsEnabled(omnibox::kComposeboxUnselectMatchOnTabExit));
+
+  return dict;
+}
+
+// static
+base::DictValue SearchboxHandler::GetProfileDependentWebUIDataSourceDict(
+    Profile* profile,
+    ProfileDependentWebUIDataSourceOptions options) {
+  base::DictValue dict;
+  dict.Set("keywordSpaceTriggeringEnabled",
+           profile && profile->GetPrefs()
+               ? profile->GetPrefs()->GetBoolean(
+                     omnibox::kKeywordSpaceTriggeringEnabled)
+               : true);
+  dict.Set("searchboxLensVariations", GetBase64UrlVariations(profile));
 
   int max_files = omnibox::kDefaultMaxTotalInputs;
   int max_images = max_files;
@@ -575,6 +614,7 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
            l10n_util::GetPluralStringFUTF16(
                IDS_NTP_COMPOSE_MAX_PDFS_REACHED_ERROR, max_pdfs));
 
+  // Callers set this from the contextual search settings of the profile.
   dict.Set("composeboxContextDragAndDropEnabled",
            options.session_allows_drag_and_drop);
 
@@ -589,24 +629,10 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
   // Android.
   dict.Set("searchboxShowComposeAnimation", false);
 #endif
-  dict.Set("contextualMenuUsePecApi",
-           base::FeatureList::IsEnabled(omnibox::kAimUsePecApi));
-  dict.Set(
-      "useSearchboxConfigIconIds",
-      base::FeatureList::IsEnabled(omnibox::kAimUseSearchboxConfigIconIds));
-  dict.Set("ShowContextMenuHeaders",
-           ntp_composebox::kShowContextMenuHeaders.Get());
-  dict.Set("composeboxSingleTabMenuItemEnabled",
-           omnibox::IsSingleTabMenuItemInComposeboxEnabled());
   dict.Set("composeboxSmartTabSharingVisible",
            options.is_lens ? false
                            : contextual_tasks::ContextualTasksContextService::
                                  GetIsSmartTabSharingEnabled(profile));
-  dict.Set("stsMegaplusShareRelevantOpenTabs",
-           GetSmartTabSharingMegaplusString());
-  dict.Set(
-      "composeboxUnselectMatchOnTabExit",
-      base::FeatureList::IsEnabled(omnibox::kComposeboxUnselectMatchOnTabExit));
 
   return dict;
 }
@@ -889,8 +915,8 @@ SearchboxHandler::CreateAutocompleteMatches(
     bookmarks::BookmarkModel* bookmark_model,
     const omnibox::GroupConfigMap& suggestion_groups_map,
     const TemplateURLService* turl_service) const {
-  // Tracks whether the first contextual match has been flagged to force show
-  // its description, ensuring only the first one gets flagged.
+  // Tracks whether the first contextual match has been flagged to always show
+  // its secondary text, ensuring only the first one gets flagged.
   bool flagged_contextual = false;
   std::vector<searchbox::mojom::AutocompleteMatchPtr> matches;
   for (size_t line = 0; line < result.size(); ++line) {
@@ -901,7 +927,7 @@ SearchboxHandler::CreateAutocompleteMatches(
       if (!flagged_contextual && ShouldShowFirstContextualDescription() &&
           match.suggestion_group_id ==
               omnibox::GroupId::GROUP_CONTEXTUAL_SEARCH) {
-        mojom_match.value()->show_contextual_description = true;
+        mojom_match.value()->show_secondary_text_only_on_selection = false;
         flagged_contextual = true;
       }
       std::u16string emphasis_text = match.fill_into_edit;
@@ -1055,7 +1081,6 @@ SearchboxHandler::CreateAutocompleteMatch(
   mojom_match->fill_into_edit = match.fill_into_edit;
   mojom_match->inline_autocompletion = match.inline_autocompletion;
   mojom_match->is_search_type = AutocompleteMatch::IsSearchType(match.type);
-  mojom_match->show_contextual_description = false;
   mojom_match->type = omnibox::AutocompleteMatchTypeToString(match.type);
   mojom_match->supports_deletion = match.SupportsDeletion();
   mojom_match->suggest_template =
@@ -1087,7 +1112,10 @@ SearchboxHandler::CreateAutocompleteMatch(
 
   mojom_match->tail_suggest_common_prefix = match.tail_suggest_common_prefix;
 
-  mojom_match->is_contextual_suggestion = match.IsContextualSearchSuggestion();
+  // Contextual suggestions only show their secondary text on selection or
+  // hover. `CreateAutocompleteMatches()` may override this for the first one.
+  mojom_match->show_secondary_text_only_on_selection =
+      match.IsContextualSearchSuggestion();
 
   if (SupportsKeywordMode()) {
     KeywordState keyword_state;

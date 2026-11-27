@@ -47,8 +47,12 @@ DEFINE_VARIATION_PARAM(kIPHDummyFeature, "IPH_Dummy");
 // DEFINE_VARIATION_PARAM_ANDROID_START
 DEFINE_VARIATION_PARAM(kIPHAccountSettingsHistorySync,
                        "IPH_AccountSettingsHistorySync");
+DEFINE_VARIATION_PARAM(kIPHAndroidBottomBarAddressBar,
+                       "IPH_AndroidBottomBarAddressBar");
 DEFINE_VARIATION_PARAM(kIPHAndroidBottomBarEducation,
                        "IPH_AndroidBottomBarEducation");
+DEFINE_VARIATION_PARAM(kIPHAndroidBottomBarEducationTooltips,
+                       "IPH_AndroidBottomBarEducationTooltips");
 DEFINE_VARIATION_PARAM(kIPHAndroidBottomBarGlic, "IPH_AndroidBottomBarGlic");
 DEFINE_VARIATION_PARAM(kIPHAndroidBottomBarNewTab,
                        "IPH_AndroidBottomBarNewTab");
@@ -91,8 +95,6 @@ DEFINE_VARIATION_PARAM(kIPH_AndroidTipsOptInPromo, "IPH_AndroidTipsOptInPromo");
 DEFINE_VARIATION_PARAM(kIPH_AppLanguagePromo, "IPH_AppLanguagePromo");
 DEFINE_VARIATION_PARAM(kIPH_ArchivedTabsAutoDeletePromo,
                        "IPH_ArchivedTabsAutoDeletePromo");
-DEFINE_VARIATION_PARAM(kIPH_AutofillAmbientAutofillSpiiDisclaimer,
-                       "IPH_AutofillAmbientAutofillSpiiDisclaimer");
 DEFINE_VARIATION_PARAM(kIPH_BlueBubbleCooldownGroup,
                        "IPH_BlueBubbleCooldownGroup");
 DEFINE_VARIATION_PARAM(kIPH_FullscreenSigninPromo, "IPH_FullscreenSigninPromo");
@@ -409,6 +411,8 @@ DEFINE_VARIATION_PARAM(kIPHiOSGeminiImageRemixFeature,
 DEFINE_VARIATION_PARAM(kIPHiOSGeminiWhatCanGeminiDo,
                        "IPHiOSGeminiWhatCanGeminiDo");
 DEFINE_VARIATION_PARAM(kIPHiOSNewIAPromoFeature, "IPH_iOSNewIAPromoFeature");
+DEFINE_VARIATION_PARAM(kIPHiOSBottomOmniboxFeature,
+                       "IPH_iOSBottomOmniboxFeature");
 DEFINE_VARIATION_PARAM(kIPHiOSPinMostVisitedSiteFeature,
                        "IPH_iOSPinMostVisitedSiteFeature");
 #endif  // BUILDFLAG(IS_IOS)
@@ -428,6 +432,8 @@ DEFINE_VARIATION_PARAM(kIPHComposeNewBadgeFeature,
                        "IPH_ComposeNewBadgeFeature");
 DEFINE_VARIATION_PARAM(kIPHContextualTasksEphemeralToolbarButtonFeature,
                        "IPH_ContextualTasksEphemeralToolbarButton");
+DEFINE_VARIATION_PARAM(kIPHContextualTasksPinnedIconChangedFeature,
+                       "IPH_ContextualTasksPinnedIconChanged");
 DEFINE_VARIATION_PARAM(kIPHCriticalActionAppMenuFeature,
                        "IPH_CriticalActionAppMenu");
 DEFINE_VARIATION_PARAM(kIPHCriticalActionFilterChipFeature,
@@ -438,6 +444,7 @@ DEFINE_VARIATION_PARAM(kIPHDesktopCustomizeChromeExperimentFeature,
                        "IPH_DesktopCustomizeChromeExperiment");
 DEFINE_VARIATION_PARAM(kIPHDesktopRealboxContextualSearchFeature,
                        "IPH_DesktopRealboxContextualSearchFeature");
+DEFINE_VARIATION_PARAM(kIPHDictationFeature, "IPH_Dictation");
 DEFINE_VARIATION_PARAM(kIPHDiscardRingFeature, "IPH_DiscardRing");
 DEFINE_VARIATION_PARAM(kIPHDownloadEsbPromoFeature, "IPH_DownloadEsbPromo");
 DEFINE_VARIATION_PARAM(kIPHExplicitBrowserSigninPreferenceRememberedFeature,
@@ -564,6 +571,10 @@ DEFINE_VARIATION_PARAM(kIPHWebUiHelpBubbleTestFeature,
 DEFINE_VARIATION_PARAM(kIPHPriceTrackingInSidePanelFeature,
                        "IPH_PriceTrackingInSidePanel");
 DEFINE_VARIATION_PARAM(kIPHBackNavigationMenuFeature, "IPH_BackNavigationMenu");
+DEFINE_VARIATION_PARAM(kIPHTabGroupsFocusingFeature,
+                       "IPH_TabGroupsFocusingFeature");
+DEFINE_VARIATION_PARAM(kIPHTabGroupsUnfocusingFeature,
+                       "IPH_TabGroupsUnfocusingFeature");
 DEFINE_VARIATION_PARAM(kIPHTabGroupsSaveV2IntroFeature,
                        "IPH_TabGroupsSaveV2Intro");
 DEFINE_VARIATION_PARAM(kIPHTabGroupsSaveV2CloseGroupFeature,
@@ -577,6 +588,8 @@ DEFINE_VARIATION_PARAM(kIPHTabGroupsSharedTabFeedbackFeature,
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_FUCHSIA)
+DEFINE_VARIATION_PARAM(kIPH_AutofillAmbientAutofillSpiiDisclaimer,
+                       "IPH_AutofillAmbientAutofillSpiiDisclaimer");
 DEFINE_VARIATION_PARAM(kIPHAutofillAccountNameEmailSuggestionFeature,
                        "IPH_AutofillAccountNameEmailSuggestion");
 DEFINE_VARIATION_PARAM(kIPHAutofillAiValuablesFeature,
@@ -677,7 +690,6 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPH_AndroidTipsOptInPromo),
         VARIATION_ENTRY(kIPH_AppLanguagePromo),
         VARIATION_ENTRY(kIPH_ArchivedTabsAutoDeletePromo),
-        VARIATION_ENTRY(kIPH_AutofillAmbientAutofillSpiiDisclaimer),
         VARIATION_ENTRY(kIPH_BlueBubbleCooldownGroup),
         VARIATION_ENTRY(kIPH_FullscreenSigninPromo),
         VARIATION_ENTRY(kIPH_InterruptiveIphCooldownGroup),
@@ -694,7 +706,9 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHAdaptiveButtonInTopToolbarCustomizationVoiceSearchFeature),
         VARIATION_ENTRY(kIPHAdaptiveButtonPinGlicToolbarButtonFeature),
         VARIATION_ENTRY(kIPHAimActivationHint),
+        VARIATION_ENTRY(kIPHAndroidBottomBarAddressBar),
         VARIATION_ENTRY(kIPHAndroidBottomBarEducation),
+        VARIATION_ENTRY(kIPHAndroidBottomBarEducationTooltips),
         VARIATION_ENTRY(kIPHAndroidBottomBarGlic),
         VARIATION_ENTRY(kIPHAndroidBottomBarNewTab),
         VARIATION_ENTRY(kIPHAndroidBottomBarPromoDialog),
@@ -816,6 +830,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHiOSAIHubNewBadge),
         VARIATION_ENTRY(kIPHiOSBackendPromoFeature),
         VARIATION_ENTRY(kIPHiOSBackgroundNewBadge),
+        VARIATION_ENTRY(kIPHiOSBottomOmniboxFeature),
         VARIATION_ENTRY(kIPHiOSContextualPanelPriceInsightsFeature),
         VARIATION_ENTRY(kIPHiOSContextualPanelSampleModelFeature),
         VARIATION_ENTRY(kIPHiOSDefaultBrowserBannerPromoFeature),
@@ -893,6 +908,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHComposeMSBBSettingsFeature),
         VARIATION_ENTRY(kIPHComposeNewBadgeFeature),
         VARIATION_ENTRY(kIPHContextualTasksEphemeralToolbarButtonFeature),
+        VARIATION_ENTRY(kIPHContextualTasksPinnedIconChangedFeature),
         VARIATION_ENTRY(kIPHCriticalActionAppMenuFeature),
         VARIATION_ENTRY(kIPHCriticalActionFilterChipFeature),
         VARIATION_ENTRY(kIPHDesktopCustomizeChromeAutoOpenFeature),
@@ -900,6 +916,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHDesktopPwaInstallFeature),
         VARIATION_ENTRY(kIPHDesktopRealboxContextualSearchFeature),
         VARIATION_ENTRY(kIPHDesktopSharedHighlightingFeature),
+        VARIATION_ENTRY(kIPHDictationFeature),
         VARIATION_ENTRY(kIPHDiscardRingFeature),
         VARIATION_ENTRY(kIPHExplicitBrowserSigninPreferenceRememberedFeature),
         VARIATION_ENTRY(kIPHGlassFrameOptInFeature),
@@ -954,8 +971,10 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHSmartTabSharingTryItFeature),
         VARIATION_ENTRY(kIPHSplitViewHorizontalIndirectAccessFeature),
         VARIATION_ENTRY(kIPHTabAudioMutingFeature),
+        VARIATION_ENTRY(kIPHTabGroupsFocusingFeature),
         VARIATION_ENTRY(kIPHTabGroupsSharedTabChangedFeature),
         VARIATION_ENTRY(kIPHTabGroupsSharedTabFeedbackFeature),
+        VARIATION_ENTRY(kIPHTabGroupsUnfocusingFeature),
         VARIATION_ENTRY(kIPHTabScrollButtonFeature),
         VARIATION_ENTRY(kIPHWebUiHelpBubbleTestFeature),
 // keep-sorted end
@@ -965,6 +984,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_FUCHSIA)
 // keep-sorted start case=no
+        VARIATION_ENTRY(kIPH_AutofillAmbientAutofillSpiiDisclaimer),
         VARIATION_ENTRY(kIPHAutofillAccountNameEmailSuggestionFeature),
         VARIATION_ENTRY(kIPHAutofillAiValuablesFeature),
         VARIATION_ENTRY(kIPHAutofillAtMemoryFeature),

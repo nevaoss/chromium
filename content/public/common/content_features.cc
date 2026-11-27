@@ -684,15 +684,10 @@ BASE_FEATURE(kIsolateOrigins, base::FEATURE_DISABLED_BY_DEFAULT);
 const char kIsolateOriginsFieldTrialParamName[] = "OriginsList";
 
 // Enables process isolation for subframe error pages. See
-// https://crbug.com/40134629.
-// TODO(crbug.com/40134629): Enable by default on Android as well.
-BASE_FEATURE(kIsolateSubframeErrorPages,
-#if BUILDFLAG(IS_ANDROID)
-             base::FEATURE_DISABLED_BY_DEFAULT
-#else
-             base::FEATURE_ENABLED_BY_DEFAULT
-#endif
-);
+// https://crbug.com/40134629. Note that subframe error page isolation is still
+// turned off when partial site isolation is disabled, e.g., on low-memory
+// Android devices; see SiteIsolationPolicy::IsErrorPageIsolationEnabled().
+BASE_FEATURE(kIsolateSubframeErrorPages, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
 // Enables the ability to specification a renderer that does not use Java.
@@ -801,6 +796,11 @@ BASE_FEATURE(kOverscrollHistoryNavigation, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Whether web apps can run periodic tasks upon network connectivity.
 BASE_FEATURE(kPeriodicBackgroundSync, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, RenderWidgetHostViewAura::InitAsChild() populates screen_infos_
+// from the display for new windows when initialized without a root window.
+BASE_FEATURE(kPopulateUnattachedAuraScreenInfo,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, PreconnectManager bypasses UI-thread host preresolve and connects
 // sockets directly to the network context for single preconnect requests.

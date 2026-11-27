@@ -10,6 +10,7 @@
 #include <sstream>
 #include <string_view>
 
+#include "base/command_line.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
@@ -72,7 +73,6 @@
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chromeos/constants/chromeos_features.h"
-#include "components/sync/base/features.h"
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 namespace glic::test {
@@ -145,7 +145,6 @@ class InteractiveGlicTestMixin : public T {
          // it.
          {features::kGlicLiveMode, {}},
 #if BUILDFLAG(IS_CHROMEOS)
-         {syncer::kReplaceSyncPromosWithSignInPromos, {}},
          { chromeos::features::kFeatureManagementGlic,
            {} }
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -171,6 +170,15 @@ class InteractiveGlicTestMixin : public T {
                                  std::forward<Args>(args)...) {}
 
   ~InteractiveGlicTestMixin() override = default;
+
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    T::SetUpCommandLine(command_line);
+    // Binds the Glic HTTPS server so the guest URL is known here. Fixtures
+    // that configure its certificate (e.g. `SetCertHostnames()`) must do so
+    // before this, e.g. in their constructor or `SetUp()`.
+    CHECK(glic_test_environment_.InitializeEmbeddedTestServers(
+        &Test::embedded_https_test_server()));
+  }
 
   void SetUpBrowserContextKeyedServices(
       content::BrowserContext* context) override {
@@ -1058,12 +1066,13 @@ class InteractiveGlicTestMixin : public T {
         desc);
   }
 
+  // Must be called before `SetUpCommandLine()`.
   void SetGlicPagePath(const std::string& glic_page_path) {
     glic_test_environment_.SetGlicPagePath(glic_page_path);
   }
 
   // Adds a query param to the URL that will be used to load the mock glic.
-  // Must be called before `SetUpOnMainThread()`. Both `key` and `value` (if
+  // Must be called before `SetUpCommandLine()`. Both `key` and `value` (if
   // specified) will be URL-encoded for safety.
   void AddMockGlicQueryParam(const std::string_view& key,
                              const std::string_view& value = "") {

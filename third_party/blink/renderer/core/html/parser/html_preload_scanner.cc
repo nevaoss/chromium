@@ -86,8 +86,6 @@
 #include "third_party/blink/renderer/platform/network/mime/content_type.h"
 #include "third_party/blink/renderer/platform/network/mime/mime_type_registry.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
-#include "third_party/blink/renderer/platform/wtf/cross_thread_copier_base.h"
-#include "third_party/blink/renderer/platform/wtf/cross_thread_copier_std.h"
 #include "third_party/perfetto/include/perfetto/tracing/track_event_args.h"
 
 namespace blink {
@@ -442,12 +440,6 @@ class TokenPreloadScanner::StartTagScanner {
     if (scanner_type_ == ScannerType::kInsertion)
       request->SetFromInsertionScanner(true);
 
-
-    if (browsing_topics_attr_set_) {
-      DCHECK(is_img);
-      request->SetBrowsingTopicsEligible(true);
-    }
-
     return request;
   }
 
@@ -524,8 +516,6 @@ class TokenPreloadScanner::StartTagScanner {
     } else if (loading_attr_value_ == LoadingAttributeValue::kAuto &&
                Match(attribute_name, html_names::kLoadingAttr)) {
       loading_attr_value_ = GetLoadingAttributeValue(attribute_value);
-    } else if (Match(attribute_name, html_names::kBrowsingtopicsAttr)) {
-      browsing_topics_attr_set_ = true;
     } else if (use_data_src_attr_match_for_image_ &&
                Match(attribute_name, html_names::kDataSrcAttr) &&
                img_src_url_.IsNull()) {
@@ -687,12 +677,13 @@ class TokenPreloadScanner::StartTagScanner {
       ProcessLinkAttribute(attribute_name, attribute_value);
     } else if (Match(tag_impl_, html_names::kInputTag)) {
       ProcessInputAttribute(attribute_name, attribute_value);
-    } else if (Match(tag_impl_, html_names::kSourceTag))
+    } else if (Match(tag_impl_, html_names::kSourceTag)) {
       ProcessSourceAttribute(attribute_name, attribute_value);
-    else if (Match(tag_impl_, html_names::kVideoTag))
+    } else if (Match(tag_impl_, html_names::kVideoTag)) {
       ProcessVideoAttribute(attribute_name, attribute_value);
-    else if (Match(tag_impl_, html_names::kStyleTag))
+    } else if (Match(tag_impl_, html_names::kStyleTag)) {
       ProcessStyleAttribute(attribute_name, attribute_value);
+    }
   }
 
   bool IsLazyLoadImageDeferable(
@@ -922,7 +913,6 @@ class TokenPreloadScanner::StartTagScanner {
   TokenPreloadScanner::ScannerType scanner_type_;
   // For explanation, see TokenPreloadScanner's declaration.
   const HashSet<String>* disabled_image_types_;
-  bool browsing_topics_attr_set_ = false;
   std::optional<float> resource_width_;
   std::optional<float> resource_height_;
   features::LcppPreloadLazyLoadImageType preload_lazy_load_image_type_;

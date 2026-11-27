@@ -201,6 +201,7 @@ source_set("browser_sources") {
     "frame_type.h",
     "fullscreen_types.h",
     "generated_code_cache_settings.h",
+    "global_dom_node_id.cc",
     "global_dom_node_id.h",
     "global_request_id.cc",
     "global_request_id.h",
@@ -563,11 +564,7 @@ source_set("browser_sources") {
   }
 
   if (enable_cdm_provision_fetcher) {
-    sources += [
-      "provision_fetcher_factory.h",
-      "provision_fetcher_impl.cc",
-      "provision_fetcher_impl.h",
-    ]
+    sources += [ "provision_fetcher_factory.h" ]
   }
 
   if (is_linux || is_mac) {
@@ -627,6 +624,7 @@ source_set("browser_sources") {
     "//storage/browser",
     "//third_party/webrtc_overrides:webrtc_component",
     "//ui/base/dragdrop/mojom:mojom_headers",
+    "//ui/base/ime:text_input_types",
     "//ui/base/mojom:ui_base_types",
   ]
   deps = [

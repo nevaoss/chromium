@@ -9,3 +9,9 @@ declare_args() {
   # TODO(neva): Disable build_litert_with_xnnpack for RPi4 (webOS/OSE).
   build_litert_with_xnnpack = current_cpu != "arm" && !is_fuchsia && !is_webos
 }
+
+declare_args() {
+  # This enables building LiteRT with the statically linked ML Drift WebGPU
+  # accelerator.
+  build_litert_with_ml_drift = false
+}

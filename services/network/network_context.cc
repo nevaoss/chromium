@@ -68,6 +68,7 @@
 #include "net/base/isolation_info.h"
 #include "net/base/load_flags.h"
 #include "net/base/net_errors.h"
+#include "net/base/net_info_source_list.h"
 #include "net/base/network_anonymization_key.h"
 #include "net/base/network_delegate.h"
 #include "net/base/network_isolation_key.h"
@@ -103,6 +104,7 @@
 #include "net/http/http_request_headers.h"
 #include "net/http/http_server_properties.h"
 #include "net/http/http_transaction_factory.h"
+#include "net/http/transport_security_state.h"
 #include "net/log/net_log_source_type.h"
 #include "net/net_buildflags.h"
 #include "net/proxy_resolution/configured_proxy_resolution_service.h"
@@ -2204,6 +2206,28 @@ void NetworkContext::ClearBadProxiesCache(
   std::move(callback).Run();
 }
 
+void NetworkContext::GetProxySettings(GetProxySettingsCallback callback) {
+  base::DictValue net_log_values =
+      url_request_context()->proxy_resolution_service()->GetProxyNetLogValues();
+  base::DictValue result;
+  if (base::DictValue* proxy_settings =
+          net_log_values.FindDict(net::kNetInfoProxySettings)) {
+    result = std::move(*proxy_settings);
+  }
+  if (base::ListValue* bad_proxies =
+          net_log_values.FindList(net::kNetInfoBadProxies)) {
+    result.Set(net::kNetInfoBadProxies, std::move(*bad_proxies));
+  }
+  base::TimeDelta time_since_epoch =
+      base::Time::Now() - base::Time::UnixEpoch();
+  base::TimeDelta reference_time_ticks =
+      base::TimeTicks::Now() - base::TimeTicks();
+  result.Set("timeTickOffset",
+             base::NumberToString(
+                 (time_since_epoch - reference_time_ticks).InMilliseconds()));
+  std::move(callback).Run(std::move(result));
+}
+
 void NetworkContext::CreateWebSocket(
     const GURL& url,
     const std::vector<std::string>& requested_protocols,
@@ -2573,12 +2597,11 @@ void NetworkContext::DeleteDynamicDataForHost(
       transport_security_state->DeleteDynamicDataForHost(host));
 }
 
-void NetworkContext::EnableStaticKeyPinningForTesting(
-    EnableStaticKeyPinningForTestingCallback callback) {
+void NetworkContext::ReinitializeKeyPinningForTesting(
+    ReinitializeKeyPinningForTestingCallback callback) {
   net::TransportSecurityState* state =
       url_request_context_->transport_security_state();
-  state->EnableStaticPinsForTesting();
-  state->SetPinningListAlwaysTimelyForTesting(true);
+  state->ReinitializePinningForTesting();
   std::move(callback).Run();
 }
 
@@ -4030,6 +4053,12 @@ void NetworkContext::AddQuicHints(
         canonical_origin, network_anonymization_key, alternative_service,
         base::Time::Max(), quic::ParsedQuicVersionVector());
   }
+}
+
+void NetworkContext::Clone(
+    mojo::PendingReceiver<mojom::NetworkContext> receiver) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  cloned_receivers_.Add(this, std::move(receiver));
 }
 
 void NetworkContext::AddWildcardQuicHints(

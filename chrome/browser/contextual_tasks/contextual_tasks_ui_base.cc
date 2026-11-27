@@ -4,6 +4,7 @@
 
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_base.h"
 
+#include <optional>
 #include <string_view>
 
 #include "base/functional/bind.h"
@@ -13,6 +14,8 @@
 #include "base/strings/string_util.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_context_service_factory.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_internals_page_handler.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_permission_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h"
@@ -22,6 +25,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/entry_point_eligibility_manager.h"
+#include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_avatar_icon_util.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
@@ -112,6 +116,13 @@ void OpenUrlWithDisposition(Profile* profile,
 
 GURL GetProfileAvatarUrl(Profile* profile, const GURL& url) {
   if (auto* identity_manager = IdentityManagerFactory::GetForProfile(profile)) {
+    // Check if user is signed into Chrome. If so, hide the avatar as it is
+    // duplicative with the one in top Chrome.
+    if (identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin)) {
+      return GURL();
+    }
+    // If the user is not signed into Chrome, but signed into Google.com,
+    // return cached avatar (if available; otherwise return generic).
     std::optional<gaia::ListedAccount> account =
         contextual_tasks::GetAccountFromCookieJar(identity_manager, url);
     if (account.has_value() && !account->signed_out && account->valid) {
@@ -123,9 +134,12 @@ GURL GetProfileAvatarUrl(Profile* profile, const GURL& url) {
                                   kProfileAvatarPathPrefix,
                                   account->gaia_id.ToString()}));
       }
+      return GURL(profiles::GetPlaceholderAvatarIconUrl());
     }
   }
-  return GURL(profiles::GetPlaceholderAvatarIconUrl());
+  // If the user is fully signed out in Google + Chrome, do not show the
+  // avatar.
+  return GURL();
 }
 
 // `WebUIDataSource::SetRequestFilter` only supports a single filter callback
@@ -174,8 +188,9 @@ ContextualTasksUIBase::ContextualTasksUIBase(content::WebUI* web_ui)
                               /*enable_chrome_send=*/true,
                               /*enable_chrome_histograms=*/true) {
 #if !BUILDFLAG(IS_ANDROID)
-  if (contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled()) {
-    Profile* profile = GetProfile();
+  Profile* profile = GetProfile();
+  if (contextual_tasks::EntryPointEligibilityManager::IsPinningEligible(
+          profile)) {
     if (auto* model = PinnedToolbarActionsModel::Get(profile)) {
       pinned_toolbar_actions_model_observation_.Observe(model);
     }
@@ -188,7 +203,11 @@ ContextualTasksUIBase::ContextualTasksUIBase(content::WebUI* web_ui)
       kContextualTasksWebUIToolbarElementId,
       kContextualTasksWebUIOverflowMenuElementId,
       kContextualTasksWebUIOverflowMenuPinButtonElementId,
-      kContextualTasksSuperGButtonElementId};
+      kContextualTasksSuperGButtonElementId,
+      // `<contextual-tasks-context-library>` also mounts directly inside
+      // `chrome://contextual-tasks` (pre-rearchitecture `app.ts` and WebUI
+      // Mocha tests), not only in the component extension subframe.
+      kContextualTasksFaviconsElementId};
 #if !BUILDFLAG(IS_ANDROID)
   tracked_element_ids.push_back(
       PermissionChipView::kPermissionRequestChipElementId);
@@ -253,8 +272,18 @@ content::WebUIDataSource* ContextualTasksUIBase::RegisterWebUIDataSource(
     Profile* profile) {
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
       profile, chrome::kChromeUIContextualTasksHost);
-  webui::SetupWebUIDataSource(source, kContextualTasksResources,
-                              IDR_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_HTML);
+  if (contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled()) {
+    webui::SetJSModuleDefaults(source);
+    webui::EnableTrustedTypesCSP(source);
+    for (const auto& resource : kContextualTasksResources) {
+      if (std::string_view(resource.path) != "contextual_tasks.html") {
+        source->AddResourcePath(resource.path, resource.id);
+      }
+    }
+  } else {
+    webui::SetupWebUIDataSource(source, kContextualTasksResources,
+                                IDR_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_HTML);
+  }
 
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::ChildSrc,
@@ -397,8 +426,9 @@ void ContextualTasksUIBase::CreatePageHandler(
   toolbar_page_.Bind(std::move(page));
   toolbar_page_handler_receiver_.Bind(std::move(page_handler));
 #if !BUILDFLAG(IS_ANDROID)
-  if (contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled()) {
-    Profile* profile = GetProfile();
+  Profile* profile = GetProfile();
+  if (contextual_tasks::EntryPointEligibilityManager::IsPinningEligible(
+          profile)) {
     if (auto* model = PinnedToolbarActionsModel::Get(profile)) {
       if (!pinned_toolbar_actions_model_observation_.IsObserving()) {
         pinned_toolbar_actions_model_observation_.Observe(model);
@@ -421,11 +451,12 @@ void ContextualTasksUIBase::CreatePageHandler(
 }
 
 void ContextualTasksUIBase::PinSidePanel() {
-  if (!contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled()) {
-    return;
-  }
 #if !BUILDFLAG(IS_ANDROID)
   Profile* profile = GetProfile();
+  if (!contextual_tasks::EntryPointEligibilityManager::IsPinningEligible(
+          profile)) {
+    return;
+  }
   if (auto* model = PinnedToolbarActionsModel::Get(profile)) {
     model->UpdatePinnedState(kActionSidePanelShowContextualTasks, true);
   }
@@ -433,11 +464,12 @@ void ContextualTasksUIBase::PinSidePanel() {
 }
 
 void ContextualTasksUIBase::UnpinSidePanel() {
-  if (!contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled()) {
-    return;
-  }
 #if !BUILDFLAG(IS_ANDROID)
   Profile* profile = GetProfile();
+  if (!contextual_tasks::EntryPointEligibilityManager::IsPinningEligible(
+          profile)) {
+    return;
+  }
   if (auto* model = PinnedToolbarActionsModel::Get(profile)) {
     model->UpdatePinnedState(kActionSidePanelShowContextualTasks, false);
   }
@@ -508,9 +540,11 @@ void ContextualTasksUIBase::ShowThreadHistory() {
 #if !BUILDFLAG(IS_ANDROID)
 void ContextualTasksUIBase::OnActionsChanged() {
   if (auto* toolbar_page = GetToolbarPageRemote()) {
+    Profile* profile = GetProfile();
     bool effective_pin_state =
-        contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled() &&
-        contextual_tasks::GetEffectivePinState(GetProfile());
+        contextual_tasks::EntryPointEligibilityManager::IsPinningEligible(
+            profile) &&
+        contextual_tasks::GetEffectivePinState(profile);
     toolbar_page->OnSidePanelPinStateChanged(effective_pin_state);
   }
 }
@@ -571,6 +605,18 @@ void ContextualTasksUIBase::CreateNewThread() {
       panel_controller->GetActiveWebContents();
   if (!target_contents) {
     return;
+  }
+
+  // When scoped to the tab, start the new thread in a new task for the active
+  // tab only, so that other tabs sharing the task keep their thread.
+  if (contextual_tasks::ShouldScopeSidePanelStateToTab()) {
+    if (GetWebUIWebContents() != panel_controller->GetToolbarWebContents()) {
+      return;
+    }
+    if (panel_controller->MoveActiveTabToNewThreadIfShared()) {
+      SetThreadTitle(std::nullopt);
+      return;
+    }
   }
 
   std::optional<base::Uuid> task_id;
@@ -669,6 +715,34 @@ void ContextualTasksUIBase::BindInterface(
         pending_receiver) {
   help_bubble_factory_receiver_.reset();
   help_bubble_factory_receiver_.Bind(std::move(pending_receiver));
+}
+
+void ContextualTasksUIBase::BindInterface(
+    mojo::PendingReceiver<contextual_tasks_internals::mojom::
+                              ContextualTasksInternalsPageHandlerFactory>
+        pending_receiver) {
+  contextual_tasks_internals_page_handler_receiver_.reset();
+  contextual_tasks_internals_page_handler_receiver_.Bind(
+      std::move(pending_receiver));
+}
+
+void ContextualTasksUIBase::CreatePageHandler(
+    mojo::PendingRemote<
+        contextual_tasks_internals::mojom::ContextualTasksInternalsPage> page,
+    mojo::PendingReceiver<
+        contextual_tasks_internals::mojom::ContextualTasksInternalsPageHandler>
+        receiver) {
+  Profile* profile = GetProfile();
+  auto* context_service =
+      profile ? ContextualTasksContextServiceFactory::GetForProfile(profile)
+              : nullptr;
+  auto* optimization_guide_keyed_service =
+      profile ? OptimizationGuideKeyedServiceFactory::GetForProfile(profile)
+              : nullptr;
+  contextual_tasks_internals_page_handler_ =
+      std::make_unique<ContextualTasksInternalsPageHandler>(
+          profile, context_service, optimization_guide_keyed_service,
+          std::move(receiver), std::move(page));
 }
 
 void ContextualTasksUIBase::CreateHelpBubbleHandler(

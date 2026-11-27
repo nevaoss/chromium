@@ -158,8 +158,25 @@ class BrowserController {
     // popup hides the location bar, title bar, and window icon, uses
     // app-style header rendering, and uses saved or default window bounds
     // instead of inheriting bounds from the last active browser.
-    // Only allowed when `disposition` is `WindowOpenDisposition::kNewPopup`.
+    // Only allowed when `disposition` is `kNewPopup`.
     bool popup_has_trusted_source = false;
+    // Whether existing-tab matching should ignore the URL path and query (in
+    // addition to the ref) and navigate the matched tab to `url` if its current
+    // URL differs.
+    // Only allowed when `disposition` is `kSingletonTab` or `kSwitchToTab`.
+    bool ignore_path_for_tab_reuse = false;
+  };
+
+  // See OpenCaptivePortalSignin below.
+  enum class CaptivePortalWindowMode {
+    // Opens the URL in a new off-the-record popup window isolated from
+    // regular and incognito browsing (with proxies and secure DNS disabled,
+    // and navigation/window commands restricted).
+    kPopup,
+    // Opens the URL in a new foreground tab in the user's most recently
+    // active non-incognito tabbed browser on the current workspace, or in a
+    // new non-incognito tabbed browser if none exists.
+    kTab,
   };
 
   // See ForEachBrowser below.
@@ -232,6 +249,16 @@ class BrowserController {
   virtual content::WebContents* OpenUrl(const AccountId& account_id,
                                         const GURL& url,
                                         const OpenUrlParams& params) = 0;
+
+  // Opens `url` in a new browser window or tab configured for captive portal
+  // sign-in (e.g. with HTTPS upgrades disabled) for the user identified by
+  // `account_id` according to `mode`, and shows the window.
+  // Returns the WebContents that `url` was opened in, or nullptr if none could
+  // be created.
+  virtual content::WebContents* OpenCaptivePortalSignin(
+      const AccountId& account_id,
+      const GURL& url,
+      CaptivePortalWindowMode mode) = 0;
 
   // Makes a POST request in a new tab in the last active tabbed browser. If no
   // such browser exists, a new one is created. Returns nullptr if the creation

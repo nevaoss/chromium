@@ -162,17 +162,6 @@ inline constexpr base::FeatureParam<double>
 BASE_DECLARE_FEATURE(kSyncTrustedVaultErrorMessageDuration);
 #endif  // BUILDFLAG(IS_ANDROID)
 
-#if BUILDFLAG(IS_IOS)
-// Enables a message improvements to the existing trusted vault error infobar
-// (informing users that fixing the error will help them to start syncing their
-// passwords).
-BASE_DECLARE_FEATURE(kSyncTrustedVaultInfobarMessageImprovements);
-#endif  // BUILDFLAG(IS_IOS)
-
-// If enabled, the new sync dashboard URL will be opened when the user clicks
-// on the "Review your synced data" (or equivalent) entrypoint in settings.
-BASE_DECLARE_FEATURE(kSyncEnableNewSyncDashboardUrl);
-
 // If enabled, use the access token propagated from SyncSchedulerImpl through
 // SyncCycle rather than reading from ServerConnectionManager's cache.
 BASE_DECLARE_FEATURE(kSyncUsePropagatedAccessToken);
@@ -191,19 +180,9 @@ BASE_DECLARE_FEATURE(kAlwaysRegisterSessionsInvalidationsAndroid);
 BASE_DECLARE_FEATURE(kEstimateNewSignInUsersWithFinchAvailablePopulation);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
-// If enabled, computes the web sign-in status based on account in cookies
-// values even if they are stale. This ensures that we log the last known cookie
-// sign-in status for short-lived sessions instead of the default OFF value.
-BASE_DECLARE_FEATURE(kSyncFixWebSigninSessionDurationForShortLivedSessions);
-
 // If enabled, disambiguates duplicate device display names using release
 // channel labels (e.g., "(Canary)").
 BASE_DECLARE_FEATURE(kSyncDisambiguateDeviceNamesWithChannel);
-
-// If enabled, copies selected types preferences from global profile preferences
-// to account-keyed preferences upon a DISABLE_SYNC_ON_CLIENT protocol error
-// before entering transport mode.
-BASE_DECLARE_FEATURE(kSyncCopyPreferencesToTransportModeOnServerForcedDisable);
 
 // Authenticate the Initialization Vector (IV) in Nigori encryption.
 BASE_DECLARE_FEATURE(kSyncNigoriAuthenticateIV);
@@ -241,6 +220,9 @@ BASE_DECLARE_FEATURE(kDeviceTabVisibilitySettings);
 // submenu.
 BASE_DECLARE_FEATURE(kCrossDeviceTabsInAppMenu);
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+
+// If enabled, tracks metrics about the user's storage of data on other devices.
+BASE_DECLARE_FEATURE(kSyncRecordDeviceStatisticsMetrics);
 
 }  // namespace syncer
 

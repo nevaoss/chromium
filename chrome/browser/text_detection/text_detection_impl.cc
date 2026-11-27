@@ -5,20 +5,19 @@
 #include "chrome/browser/text_detection/text_detection_impl.h"
 
 #include <cmath>
-#include <memory>
 #include <utility>
 #include <vector>
 
 #include "base/check.h"
 #include "base/check_op.h"
 #include "base/functional/bind.h"
+#include "base/memory/self_deleting.h"
+#include "base/notreached.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/screen_ai/public/optical_character_recognizer.h"
 #include "content/public/browser/render_frame_host.h"
 #include "mojo/public/cpp/bindings/callback_helpers.h"
 #include "services/screen_ai/public/mojom/screen_ai_service.mojom.h"
-#include "ui/gfx/geometry/point_f.h"
-#include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/rect_f.h"
 #include "ui/gfx/geometry/transform.h"
 
@@ -39,7 +38,8 @@ void TextDetectionImpl::Create(
   }
   // The object is bound to the lifetime of `frame_host`'s current document
   // and the Mojo connection via `content::DocumentService`.
-  new TextDetectionImpl(*frame_host, profile, std::move(receiver));
+  base::MakeSelfDeleting<TextDetectionImpl>(*frame_host, profile,
+                                            std::move(receiver));
 }
 
 // static
@@ -47,15 +47,16 @@ TextDetectionImpl* TextDetectionImpl::CreateForTesting(
     content::RenderFrameHost* frame_host,
     scoped_refptr<screen_ai::OpticalCharacterRecognizer> ocr,
     mojo::PendingReceiver<shape_detection::mojom::TextDetection> receiver) {
-  return new TextDetectionImpl(*frame_host, std::move(ocr),
-                               std::move(receiver));
+  return base::MakeSelfDeleting<TextDetectionImpl>(*frame_host, std::move(ocr),
+                                                   std::move(receiver));
 }
 
 TextDetectionImpl::TextDetectionImpl(
     content::RenderFrameHost& render_frame_host,
     Profile* profile,
-    mojo::PendingReceiver<shape_detection::mojom::TextDetection> receiver)
-    : DocumentService(render_frame_host, std::move(receiver)) {
+    mojo::PendingReceiver<shape_detection::mojom::TextDetection> receiver,
+    base::SelfDeletingPassKey key)
+    : DocumentService(render_frame_host, std::move(receiver), key) {
   ocr_ = screen_ai::OpticalCharacterRecognizer::CreateWithStatusCallback(
       profile, screen_ai::mojom::OcrClientType::kTextDetectionApi,
       base::BindOnce(&TextDetectionImpl::OnOcrInitialized,
@@ -66,12 +67,13 @@ TextDetectionImpl::TextDetectionImpl(
 TextDetectionImpl::TextDetectionImpl(
     content::RenderFrameHost& render_frame_host,
     scoped_refptr<screen_ai::OpticalCharacterRecognizer> ocr,
-    mojo::PendingReceiver<shape_detection::mojom::TextDetection> receiver)
-    : DocumentService(render_frame_host, std::move(receiver)),
+    mojo::PendingReceiver<shape_detection::mojom::TextDetection> receiver,
+    base::SelfDeletingPassKey key)
+    : DocumentService(render_frame_host, std::move(receiver), key),
       ocr_(std::move(ocr)) {
   CHECK(ocr_);
   if (ocr_->StatusAvailableForTesting()) {
-    ocr_ready_ = ocr_->is_ready();
+    ocr_status_ = ocr_->is_ready() ? OcrStatus::kReady : OcrStatus::kFailed;
   }
 }
 
@@ -82,7 +84,7 @@ void TextDetectionImpl::SimulateOcrInitializationForTesting(bool successful) {
 }
 
 void TextDetectionImpl::OnOcrInitialized(bool successful) {
-  ocr_ready_ = successful;
+  ocr_status_ = successful ? OcrStatus::kReady : OcrStatus::kFailed;
 
   if (pending_ensure_ready_callback_) {
     std::move(pending_ensure_ready_callback_).Run(successful);
@@ -118,11 +120,18 @@ void TextDetectionImpl::EnsureReady(EnsureReadyCallback callback) {
 
   auto safe_callback =
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), false);
-  if (ocr_ready_.has_value()) {
-    std::move(safe_callback).Run(*ocr_ready_);
-    return;
+  switch (ocr_status_) {
+    case OcrStatus::kPending:
+      pending_ensure_ready_callback_ = std::move(safe_callback);
+      return;
+    case OcrStatus::kReady:
+      std::move(safe_callback).Run(true);
+      return;
+    case OcrStatus::kFailed:
+      std::move(safe_callback).Run(false);
+      return;
   }
-  pending_ensure_ready_callback_ = std::move(safe_callback);
+  NOTREACHED();
 }
 
 void TextDetectionImpl::Detect(const SkBitmap& bitmap,
@@ -139,7 +148,7 @@ void TextDetectionImpl::Detect(const SkBitmap& bitmap,
     return;
   }
 
-  if (ocr_ready_ == false) {
+  if (ocr_status_ == OcrStatus::kFailed) {
     // OCR failed to initialize or device is not compatible.
     // TODO(crbug.com/570081637): The Detect() error handling spec is not
     // finalized yet, so we currently return empty results. Revisit this once
@@ -159,12 +168,13 @@ void TextDetectionImpl::Detect(const SkBitmap& bitmap,
   }
 
   ++pending_requests_;
-  if (!ocr_ready_.has_value()) {
+  if (ocr_status_ == OcrStatus::kPending) {
     // OCR initialization or component download is still in progress.
     queued_requests_.emplace_back(bitmap, std::move(safe_callback));
     return;
   }
 
+  CHECK_EQ(ocr_status_, OcrStatus::kReady);
   DispatchOcrRequest(bitmap, std::move(safe_callback));
 }
 
@@ -203,7 +213,7 @@ void TextDetectionImpl::OnOcrResults(
     // rotation angle around the top-left corner (x, y). Apply this rotation
     // to obtain the actual oriented polygon corner points and the enclosing
     // axis-aligned bounding box required by the Web API.
-    gfx::Rect box = line->bounding_box;
+    gfx::RectF box(line->bounding_box);
     gfx::Transform transform;
     if (std::isfinite(line->bounding_box_angle) &&
         line->bounding_box_angle != 0.0f) {
@@ -214,15 +224,11 @@ void TextDetectionImpl::OnOcrResults(
     // Per
     // https://wicg.github.io/shape-detection-api/text.html#detectedtext-section:
     // Enumerate corner points clockwise starting from top-left.
-    result->corner_points.push_back(
-        transform.MapPoint(gfx::PointF(box.x(), box.y())));
-    result->corner_points.push_back(
-        transform.MapPoint(gfx::PointF(box.right(), box.y())));
-    result->corner_points.push_back(
-        transform.MapPoint(gfx::PointF(box.right(), box.bottom())));
-    result->corner_points.push_back(
-        transform.MapPoint(gfx::PointF(box.x(), box.bottom())));
-    result->bounding_box = transform.MapRect(gfx::RectF(box));
+    result->corner_points.push_back(transform.MapPoint(box.origin()));
+    result->corner_points.push_back(transform.MapPoint(box.top_right()));
+    result->corner_points.push_back(transform.MapPoint(box.bottom_right()));
+    result->corner_points.push_back(transform.MapPoint(box.bottom_left()));
+    result->bounding_box = transform.MapRect(box);
     results.push_back(std::move(result));
   }
 

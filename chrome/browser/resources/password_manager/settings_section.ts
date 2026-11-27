@@ -18,12 +18,12 @@ import './shared_style.css.js';
 import './site_favicon.js';
 import './user_utils_mixin.js';
 
-import {PrefsMixin} from '/shared/settings/prefs/prefs_mixin.js';
+import {PrefServiceObserverMixin} from '/shared/settings/prefs2/pref_service_observer_mixin.js';
+import {WebUiListenerMixin} from '/shared/settings/web_ui_listener_mixin.js';
 import {HelpBubbleMixin} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin.js';
 import type {CrLinkRowElement} from 'chrome://resources/cr_elements/cr_link_row/cr_link_row.js';
 import type {CrToastElement} from 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
-import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
 import {assert, assertNotReached} from 'chrome://resources/js/assert.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {OpenWindowProxyImpl} from 'chrome://resources/js/open_window_proxy.js';
@@ -35,8 +35,9 @@ import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bu
 import {PasskeysBrowserProxyImpl} from './passkeys_browser_proxy.js';
 // </if>
 import type {ActorLoginPermission} from './password_manager.mojom-webui.js';
+import {PasswordManagerActionableError} from './password_manager.mojom-webui.js';
 import type {BlockedSite, BlockedSitesListChangedListener, CredentialsChangedListener} from './password_manager_proxy.js';
-import {PasswordManagerActionableError, PasswordManagerImpl} from './password_manager_proxy.js';
+import {PasswordManagerImpl} from './password_manager_proxy.js';
 import {isSavingNewPasswordsBlockedByMandatoryPolicy} from './prefs/policy_utils.js';
 import type {PrefToggleButtonElement} from './prefs/pref_toggle_button.js';
 import type {Route} from './router.js';
@@ -61,8 +62,9 @@ const PASSWORD_MANAGER_ADD_SHORTCUT_ELEMENT_ID =
 const PASSWORD_MANAGER_ADD_SHORTCUT_CUSTOM_EVENT_ID =
     'PasswordManagerUI::kAddShortcutCustomEventId';
 
-const SettingsSectionElementBase = HelpBubbleMixin(RouteObserverMixin(
-    PrefsMixin(UserUtilMixin(WebUiListenerMixin(I18nMixin(PolymerElement))))));
+const SettingsSectionElementBase =
+    HelpBubbleMixin(RouteObserverMixin(PrefServiceObserverMixin(
+        UserUtilMixin(WebUiListenerMixin(I18nMixin(PolymerElement))))));
 
 export class SettingsSectionElement extends SettingsSectionElementBase {
   static get is() {
@@ -135,10 +137,12 @@ export class SettingsSectionElement extends SettingsSectionElementBase {
         value: false,
       },
 
+      credentialsEnableServicePref_: Object,
+
       passwordSavingBlockedByPolicy_: {
         type: Boolean,
         computed: 'computePasswordSavingBlockedByPolicy_(' +
-            'prefs.credentials_enable_service.*)',
+            'credentialsEnableServicePref_)',
       },
 
       /** The visibility state of the trusted vault banner. */
@@ -214,6 +218,8 @@ export class SettingsSectionElement extends SettingsSectionElementBase {
   declare private isBiometricAuthenticationForFillingToggleVisible_: boolean;
   // </if>
   declare private hasPasskeys_: boolean;
+  declare private credentialsEnableServicePref_:
+      chrome.settingsPrivate.PrefObject<boolean>|undefined;
   declare private passwordSavingBlockedByPolicy_: boolean;
   declare private hasPasswordsToExport_: boolean;
   declare private isAutomatedPasswordChangeVisible_: boolean;
@@ -246,6 +252,9 @@ export class SettingsSectionElement extends SettingsSectionElementBase {
 
   override connectedCallback() {
     super.connectedCallback();
+
+    this.mirrorPref(
+        'credentials_enable_service', 'credentialsEnableServicePref_');
 
     const updateLocalPasswordCount = (localPasswordCount: number) => {
       this.updateLocalPasswordCount_(localPasswordCount);
@@ -464,8 +473,9 @@ export class SettingsSectionElement extends SettingsSectionElementBase {
   // </if>
 
   private computePasswordSavingBlockedByPolicy_(): boolean {
+    assert(this.credentialsEnableServicePref_);
     return isSavingNewPasswordsBlockedByMandatoryPolicy(
-        this.getPref<boolean>('credentials_enable_service'));
+        this.credentialsEnableServicePref_);
   }
 
   private computeShouldShowActorLoginPermissions_(

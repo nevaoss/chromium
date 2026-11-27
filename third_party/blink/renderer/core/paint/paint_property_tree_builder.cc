@@ -98,6 +98,7 @@
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 #include "third_party/blink/renderer/platform/wtf/wtf_size_t.h"
 #include "third_party/skia/include/core/SkRRect.h"
+#include "ui/gfx/geometry/outsets.h"
 #include "ui/gfx/geometry/outsets_f.h"
 #include "ui/gfx/geometry/point3_f.h"
 #include "ui/gfx/geometry/transform.h"
@@ -548,13 +549,7 @@ static bool NeedsScrollAndScrollTranslation(
 }
 
 static bool NeedsReplacedContentTransform(const LayoutObject& object) {
-  if (object.IsSVGRoot())
-    return true;
-
-  if (auto* layout_embedded_object = DynamicTo<LayoutEmbeddedContent>(object))
-    return layout_embedded_object->FrozenFrameSize().has_value();
-
-  return false;
+  return object.IsSVGRoot();
 }
 
 static bool NeedsPaintOffsetTranslationForOverflowControls(
@@ -2685,10 +2680,12 @@ static void UpdateFilterEffect(
     }
     PaintLayer* layer = To<LayoutBoxModelObject>(object).Layer();
 #if DCHECK_IS_ON()
-    // We should have already updated the reference box.
-    auto reference_box = layer->FilterReferenceBox();
-    layer->UpdateFilterReferenceBox();
-    DCHECK_EQ(reference_box, layer->FilterReferenceBox());
+    if (!PrePaintDisableSideEffectsScope::IsDisabled()) {
+      // We should have already updated the reference box.
+      auto reference_box = layer->FilterReferenceBox();
+      layer->UpdateFilterReferenceBox();
+      DCHECK_EQ(reference_box, layer->FilterReferenceBox());
+    }
 #endif
     layer->UpdateCompositorFilterOperationsForFilter(filter_info.operations);
     filter_info.output_bounds = filter_info.operations.MapRect(
@@ -3383,8 +3380,9 @@ void FragmentPaintPropertyTreeBuilder::UpdateOverflowClip() {
               LayoutReplaced::PreSnappedRectForPersistentSizing(content_rect);
         }
         // LayoutReplaced clips the foreground by rounded content box.
-        const PhysicalBoxStrut border_padding =
-            replaced.BorderOutsets() + replaced.PaddingOutsets();
+        const gfx::Outsets border_padding =
+            (replaced.BorderOutsets() + replaced.PaddingOutsets())
+                .ToRoundedOutsets();
         auto clip_rect =
             ContouredBorderGeometry::PixelSnappedContouredBorderWithOutsets(
                 replaced.Style(), content_rect, -border_padding)
@@ -3508,15 +3506,9 @@ void FragmentPaintPropertyTreeBuilder::UpdateReplacedContentTransform() {
   if (NeedsPaintPropertyUpdate() && !NeedsReplacedContentTransform(object_)) {
     OnClearTransform(properties_->ClearReplacedContentTransform());
   } else if (NeedsPaintPropertyUpdate()) {
-    AffineTransform content_to_parent_space;
-    if (object_.IsSVGRoot()) {
-      content_to_parent_space =
-          SVGRootPainter(To<LayoutSVGRoot>(object_))
-              .TransformToPixelSnappedBorderBox(context_.current.paint_offset);
-    } else if (object_.IsLayoutEmbeddedContent()) {
-      content_to_parent_space =
-          To<LayoutEmbeddedContent>(object_).EmbeddedContentTransform();
-    }
+    AffineTransform content_to_parent_space =
+        SVGRootPainter(To<LayoutSVGRoot>(object_))
+            .TransformToPixelSnappedBorderBox(context_.current.paint_offset);
     if (!content_to_parent_space.IsIdentity()) {
       TransformPaintPropertyNode::State state;
       state.transform_and_origin = {content_to_parent_space.ToTransform()};
@@ -4857,6 +4849,12 @@ void PaintPropertyTreeBuilder::UpdateForSelf() {
   if (!PrePaintDisableSideEffectsScope::IsDisabled()) {
     object_.GetMutableForPainting()
         .SetShouldAssumePaintOffsetTranslationForLayoutShiftTracking(false);
+    if ((!pre_paint_info_ || pre_paint_info_->is_last_for_node) &&
+        object_.NeedsPaintPropertyUpdate() && object_.HasLayer()) {
+      To<LayoutBoxModelObject>(object_)
+          .Layer()
+          ->ClearFilterAndBackdropFilterOnEffectNodeDirty();
+    }
   }
 }
 

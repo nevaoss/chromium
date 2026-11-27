@@ -4,6 +4,7 @@
 
 package org.chromium.chrome.browser.ui.browser_window;
 
+import static android.Manifest.permission.REPOSITION_SELF_WINDOWS;
 import static android.os.Looper.getMainLooper;
 
 import static org.junit.Assert.assertEquals;
@@ -11,6 +12,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeFalse;
@@ -32,15 +34,14 @@ import static org.chromium.build.NullUtil.assertNonNull;
 import static org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTaskUnitTestSupport.DEFAULT_CURRENT_WINDOW_BOUNDS_IN_PX;
 import static org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTaskUnitTestSupport.DEFAULT_MAXIMIZED_WINDOW_BOUNDS_IN_PX;
 import static org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTaskUnitTestSupport.FAKE_NATIVE_ANDROID_BROWSER_WINDOW_PTR;
+import static org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTaskUnitTestSupport.getFakeNativeAndroidBrowserWindowPtr;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
-import android.app.role.RoleManager;
 import android.content.Context;
 import android.graphics.Rect;
 import android.os.Build;
-import android.os.Process;
 import android.util.Pair;
 import android.view.WindowMetrics;
 
@@ -55,12 +56,11 @@ import org.mockito.InOrder;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.Robolectric;
+import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
-import org.robolectric.shadows.ShadowRoleManager;
 
 import org.chromium.base.ActivityState;
 import org.chromium.base.ApplicationStatus;
-import org.chromium.base.ContextUtils;
 import org.chromium.base.FakeTimeTestRule;
 import org.chromium.base.Promise;
 import org.chromium.base.TimeUtils;
@@ -223,12 +223,18 @@ public class ChromeAndroidTaskImplUnitTest {
 
     @Before
     public void setUp() {
-        ShadowRoleManager.addRoleHolder(
-                RoleManager.ROLE_BROWSER,
-                ContextUtils.getApplicationContext().getPackageName(),
-                Process.myUserHandle());
+        setRepositionPermission(true);
         var multiInstanceOrchestrator = mock(MultiInstanceOrchestrator.class);
         MultiInstanceOrchestratorFactory.setInstanceForTesting(multiInstanceOrchestrator);
+    }
+
+    private static void setRepositionPermission(boolean granted) {
+        var shadowApp = shadowOf(RuntimeEnvironment.getApplication());
+        if (granted) {
+            shadowApp.grantPermissions(REPOSITION_SELF_WINDOWS);
+        } else {
+            shadowApp.denyPermissions(REPOSITION_SELF_WINDOWS);
+        }
     }
 
     @Test
@@ -1041,6 +1047,7 @@ public class ChromeAndroidTaskImplUnitTest {
         // Assert.
         assertEquals(1, testFeature.mInitInfoHistory.size());
         assertEquals(0, testFeature.mInitInfoHistory.get(0).nativeBrowserWindowPtr);
+        assertNull(testFeature.mInitInfoHistory.get(0).nativeBrowserWindow);
     }
 
     @Test
@@ -1069,9 +1076,37 @@ public class ChromeAndroidTaskImplUnitTest {
         assertEquals(1, testFeature.mInitInfoHistory.size());
         InitInfo initInfo = testFeature.mInitInfoHistory.get(0);
         assertEquals(FAKE_NATIVE_ANDROID_BROWSER_WINDOW_PTR, initInfo.nativeBrowserWindowPtr);
+        assertEquals(
+                FAKE_NATIVE_ANDROID_BROWSER_WINDOW_PTR,
+                getFakeNativeAndroidBrowserWindowPtr(initInfo.nativeBrowserWindow));
         assertTrue(initInfo.isVisible);
         assertEquals(DEFAULT_CURRENT_WINDOW_BOUNDS_IN_PX, initInfo.boundsInPx);
         assertEquals(displayId, initInfo.displayId);
+    }
+
+    @Test
+    public void addFeature_initInfoHoldsSameNativeBrowserWindowAsTask() {
+        // Arrange.
+        var chromeAndroidTaskWithMockDeps = createChromeAndroidTaskWithMockDeps(/* taskId= */ 1);
+        var chromeAndroidTask = chromeAndroidTaskWithMockDeps.mChromeAndroidTask;
+        var profile = chromeAndroidTaskWithMockDeps.mMockProfile;
+        var activityWindowAndroid =
+                chromeAndroidTaskWithMockDeps
+                        .mActivityWindowAndroidMocks
+                        .mMockActivityWindowAndroid;
+        var testFeature = new TestChromeAndroidTaskFeature(chromeAndroidTask);
+
+        // Act.
+        chromeAndroidTask.addFeature(
+                new ChromeAndroidTaskFeatureKey(
+                        TestChromeAndroidTaskFeature.class, profile, activityWindowAndroid),
+                () -> testFeature);
+
+        // Assert.
+        assertEquals(1, testFeature.mInitInfoHistory.size());
+        assertSame(
+                chromeAndroidTask.getOrCreateNativeBrowserWindow(profile),
+                testFeature.mInitInfoHistory.get(0).nativeBrowserWindow);
     }
 
     @Test
@@ -1301,6 +1336,115 @@ public class ChromeAndroidTaskImplUnitTest {
         assertThrows(
                 AssertionError.class,
                 () -> chromeAndroidTask.getNativeBrowserWindowPtr(profile, activity));
+    }
+
+    @Test
+    public void getOrCreateNativeBrowserWindow_returnsPtrForAliveTask() {
+        // Arrange.
+        var chromeAndroidTaskWithMockDeps = createChromeAndroidTaskWithMockDeps(/* taskId= */ 1);
+        var chromeAndroidTask = chromeAndroidTaskWithMockDeps.mChromeAndroidTask;
+        var profile = chromeAndroidTaskWithMockDeps.mMockProfile;
+
+        // Act.
+        var nativeBrowserWindow = chromeAndroidTask.getOrCreateNativeBrowserWindow(profile);
+
+        // Assert.
+        assertEquals(
+                FAKE_NATIVE_ANDROID_BROWSER_WINDOW_PTR,
+                getFakeNativeAndroidBrowserWindowPtr(nativeBrowserWindow));
+        assertEquals(
+                chromeAndroidTask.getOrCreateNativeBrowserWindowPtr(profile),
+                getFakeNativeAndroidBrowserWindowPtr(nativeBrowserWindow));
+    }
+
+    @Test
+    public void getOrCreateNativeBrowserWindow_returnsPtrForPendingTask() {
+        // Arrange.
+        ChromeAndroidTaskUnitTestSupport.createMockAndroidBrowserWindowNatives();
+        var pendingTaskInfo = ChromeAndroidTaskUnitTestSupport.createPendingTaskInfo();
+        var profile = pendingTaskInfo.mCreateParams.getProfile();
+        var chromeAndroidTask = new ChromeAndroidTaskImpl(pendingTaskInfo);
+
+        // Act.
+        var nativeBrowserWindow = chromeAndroidTask.getOrCreateNativeBrowserWindow(profile);
+
+        // Assert.
+        assertEquals(
+                FAKE_NATIVE_ANDROID_BROWSER_WINDOW_PTR,
+                getFakeNativeAndroidBrowserWindowPtr(nativeBrowserWindow));
+    }
+
+    @Test
+    public void getOrCreateNativeBrowserWindow_calledAfterTaskDestroyed_throwsException() {
+        // Arrange.
+        var chromeAndroidTaskWithMockDeps = createChromeAndroidTaskWithMockDeps(/* taskId= */ 1);
+        var chromeAndroidTask = chromeAndroidTaskWithMockDeps.mChromeAndroidTask;
+        var profile = chromeAndroidTaskWithMockDeps.mMockProfile;
+        chromeAndroidTask.destroy();
+
+        // Act & Assert.
+        assertThrows(
+                AssertionError.class,
+                () -> chromeAndroidTask.getOrCreateNativeBrowserWindow(profile));
+    }
+
+    @Test
+    public void getNativeBrowserWindow_returnsPtrForRegisteredActivity() {
+        // Arrange.
+        var chromeAndroidTaskWithMockDeps = createChromeAndroidTaskWithMockDeps(/* taskId= */ 1);
+        var chromeAndroidTask = chromeAndroidTaskWithMockDeps.mChromeAndroidTask;
+        var profile = chromeAndroidTaskWithMockDeps.mMockProfile;
+        var activity =
+                chromeAndroidTaskWithMockDeps
+                        .mActivityScopedObjects
+                        .mActivityWindowAndroid
+                        .getActivity()
+                        .get();
+
+        // Act.
+        var nativeBrowserWindow = chromeAndroidTask.getNativeBrowserWindow(profile, activity);
+
+        // Assert.
+        assertEquals(
+                FAKE_NATIVE_ANDROID_BROWSER_WINDOW_PTR,
+                getFakeNativeAndroidBrowserWindowPtr(nativeBrowserWindow));
+        assertSame(chromeAndroidTask.getOrCreateNativeBrowserWindow(profile), nativeBrowserWindow);
+    }
+
+    @Test
+    public void getNativeBrowserWindow_returnsNullForUnregisteredActivity() {
+        // Arrange.
+        var chromeAndroidTaskWithMockDeps = createChromeAndroidTaskWithMockDeps(/* taskId= */ 1);
+        var chromeAndroidTask = chromeAndroidTaskWithMockDeps.mChromeAndroidTask;
+        var profile = chromeAndroidTaskWithMockDeps.mMockProfile;
+        var unregisteredActivity = Robolectric.buildActivity(Activity.class).get();
+
+        // Act.
+        var nativeBrowserWindow =
+                chromeAndroidTask.getNativeBrowserWindow(profile, unregisteredActivity);
+
+        // Assert.
+        assertNull(nativeBrowserWindow);
+    }
+
+    @Test
+    public void getNativeBrowserWindow_calledAfterTaskDestroyed_throwsException() {
+        // Arrange.
+        var chromeAndroidTaskWithMockDeps = createChromeAndroidTaskWithMockDeps(/* taskId= */ 1);
+        var chromeAndroidTask = chromeAndroidTaskWithMockDeps.mChromeAndroidTask;
+        var profile = chromeAndroidTaskWithMockDeps.mMockProfile;
+        var activity =
+                chromeAndroidTaskWithMockDeps
+                        .mActivityScopedObjects
+                        .mActivityWindowAndroid
+                        .getActivity()
+                        .get();
+        chromeAndroidTask.destroy();
+
+        // Act & Assert.
+        assertThrows(
+                AssertionError.class,
+                () -> chromeAndroidTask.getNativeBrowserWindow(profile, activity));
     }
 
     @Test
@@ -1938,16 +2082,12 @@ public class ChromeAndroidTaskImplUnitTest {
 
     @Test
     @Config(sdk = Build.VERSION_CODES.CINNAMON_BUN)
-    public void canResize_notBrowserRole_returnsBrowserRoleNotHeld() {
+    public void canResize_noRepositionPermission_returnsBrowserRoleNotHeld() {
         // Arrange.
         var chromeAndroidTaskWithMockDeps = createChromeAndroidTaskWithMockDeps(/* taskId= */ 1);
         var chromeAndroidTask = chromeAndroidTaskWithMockDeps.mChromeAndroidTask;
 
-        // Remove the ROLE_BROWSER that was added in setUp()
-        ShadowRoleManager.removeRoleHolder(
-                RoleManager.ROLE_BROWSER,
-                ContextUtils.getApplicationContext().getPackageName(),
-                Process.myUserHandle());
+        setRepositionPermission(false);
 
         // Act & Assert.
         assertEquals(
@@ -1966,6 +2106,18 @@ public class ChromeAndroidTaskImplUnitTest {
         // Act & Assert.
         assertEquals(
                 WindowResizePrecheckResult.NOT_A_FREEFORM_WINDOW, chromeAndroidTask.canResize());
+    }
+
+    @Test
+    public void isFreeformWindow_followsAppHeaderState() {
+        var chromeAndroidTask =
+                createChromeAndroidTaskWithMockDeps(/* taskId= */ 1).mChromeAndroidTask;
+
+        AppHeaderUtils.setAppInDesktopWindowForTesting(true);
+        assertTrue(chromeAndroidTask.isFreeformWindow());
+
+        AppHeaderUtils.setAppInDesktopWindowForTesting(false);
+        assertFalse(chromeAndroidTask.isFreeformWindow());
     }
 
     @Test

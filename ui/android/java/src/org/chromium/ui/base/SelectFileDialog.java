@@ -1033,16 +1033,25 @@ public class SelectFileDialog implements WindowAndroid.IntentCallback, PhotoPick
         }
     }
 
+    private static boolean isVirtualDocumentPath(String path) {
+        return path.equals("/SAF") || path.startsWith("/SAF/");
+    }
+
     /**
      * Canonicalises a caller-supplied file path with realpath() and returns it only if it is an
-     * absolute path that names an existing regular file that is not in procfs. Returns null
-     * otherwise.
+     * absolute path that names an existing regular file outside procfs and virtual document paths.
+     * Returns null otherwise.
      */
     private static @Nullable String resolveRegularFilePath(@Nullable String path) {
-        if (TextUtils.isEmpty(path) || !path.startsWith("/")) return null;
+        if (TextUtils.isEmpty(path) || !path.startsWith("/") || isVirtualDocumentPath(path)) {
+            return null;
+        }
         String resolved = FileUtils.getAbsoluteFilePath(path);
         // Reject paths such as /proc/self/maps that resolve into procfs.
-        if (resolved.isEmpty() || resolved.startsWith("/proc/") || !new File(resolved).isFile()) {
+        if (resolved.isEmpty()
+                || resolved.startsWith("/proc/")
+                || isVirtualDocumentPath(resolved)
+                || !new File(resolved).isFile()) {
             return null;
         }
         return resolved;
@@ -1050,8 +1059,19 @@ public class SelectFileDialog implements WindowAndroid.IntentCallback, PhotoPick
 
     public static boolean isContentUriUnderAppDir(Uri uri, Context context) {
         assert !ThreadUtils.runningOnUiThread();
-        try (ParcelFileDescriptor pfd = context.getContentResolver().openFileDescriptor(uri, "r")) {
-            assumeNonNull(pfd);
+        // Re-parse the URI string since native opens the string form via Uri.parse().
+        Uri normalized = uri.normalizeScheme();
+        Uri parsed = Uri.parse(normalized.toString());
+        if (uri.isOpaque()
+                || parsed.isOpaque()
+                || TextUtils.isEmpty(parsed.getAuthority())
+                || !TextUtils.equals(normalized.getAuthority(), parsed.getAuthority())
+                || ContentUriUtils.isUriFromThisApp(parsed, context)) {
+            return true;
+        }
+        try (ParcelFileDescriptor pfd =
+                context.getContentResolver().openFileDescriptor(parsed, "r")) {
+            if (pfd == null) return false;
             int fd = pfd.getFd();
             // Use the file descriptor to find out the read file path thru symbolic link.
             Path fdPath = Paths.get("/proc/self/fd/" + fd);

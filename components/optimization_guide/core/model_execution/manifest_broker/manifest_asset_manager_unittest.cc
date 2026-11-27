@@ -25,8 +25,8 @@
 #include "components/optimization_guide/core/model_execution/manifest_broker/test/fake_manifest_broker.h"
 #include "components/optimization_guide/core/model_execution/manifest_broker/test/manifest_component_directory.h"
 #include "components/optimization_guide/core/model_execution/manifest_broker/test/test_manifest_asset_manager_component_state.h"
-#include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
 #include "components/optimization_guide/core/model_execution/on_device_model_names.h"
+#include "components/optimization_guide/core/model_execution/on_device_prefs.h"
 #include "components/optimization_guide/core/model_execution/test/mock_download_progress_observer.h"
 #include "components/optimization_guide/core/model_execution/usage_tracker.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
@@ -365,26 +365,6 @@ TEST_F(ManifestAssetManagerTest, RegistersComponentsForActiveUseCases) {
   EXPECT_FALSE(component_state_.IsRegistered(test_asset.public_key));
   EXPECT_FALSE(
       component_state_.WasOnDemandUpdateRequested(test_asset.public_key));
-}
-
-// TODO(crbug.com/489511499): Remove RegistersComponentsForLegacyFeatureUsage
-// once legacy integer keys are no longer supported.
-// Test that the manager registers components for feature usage keyed on
-// mojom::OnDeviceFeature without triggering on-demand downloads.
-TEST_F(ManifestAssetManagerTest, RegistersComponentsForLegacyFeatureUsage) {
-  DummyAsset asset = DummyAsset::For("test");
-  ::prefs::ScopedDictionaryPrefUpdate update(
-      &local_state_.local_state(),
-      model_execution::prefs::localstate::kLastUsageByFeature);
-  update->Set(base::NumberToString(static_cast<uint64_t>(
-                  ToModelExecutionFeatureProto(mojom::OnDeviceFeature::kTest))),
-              base::TimeToValue(base::Time::Now()));
-
-  UpdateManifest(DummyManifest().Add(asset));
-  Startup();
-
-  EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
-  EXPECT_FALSE(component_state_.WasOnDemandUpdateRequested(asset.public_key));
 }
 
 TEST_F(ManifestAssetManagerTest,
@@ -1064,6 +1044,15 @@ TEST_F(ManifestAssetManagerTest, DoesNotInstallWhenNoEligibleUseCaseUse) {
 }
 
 TEST_F(ManifestAssetManagerTest, UninstallModels) {
+  // Disable auto-remove to verify manual UninstallModels() still uninstalls
+  // assets and does not permanently enable background eviction afterwards.
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kOnDeviceModelEviction);
+  local_state_.local_state().SetBoolean(
+      model_execution::prefs::localstate::
+          kOnDeviceAiAutoRemoveUnusedModelsEnabled,
+      false);
+
   DummyAsset asset = DummyAsset::For("compose");
   usage_tracker_.RaisePriority(asset.use_case,
                                UsageTracker::Priority::kUserBlocking);
@@ -1072,9 +1061,62 @@ TEST_F(ManifestAssetManagerTest, UninstallModels) {
 
   EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
 
+  base::HistogramTester histogram_tester;
   manifest_broker_state_->UninstallModels();
 
   EXPECT_TRUE(component_state_.WaitForUninstall(asset.public_key));
+  histogram_tester.ExpectUniqueSample(
+      "OptimizationGuide.ModelExecution.OnDeviceModelUninstallReason.Unknown",
+      Manifest::UninstallReason::kUserRequested, 1);
+
+  // Re-install the asset and advance past the 30-day retention period. Because
+  // auto-remove is still false, background eviction must remain disabled.
+  task_environment_.FastForwardBy(base::Seconds(2));
+  MakeAssetsInstallable(DummyManifest().Add(asset));
+  manifest_broker_state_->SetUseCaseRequested(asset.use_case, true);
+  EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
+  EXPECT_EQ(component_state_.GetRegistrationCount(asset.public_key), 2);
+  task_environment_.FastForwardBy(base::Days(31));
+  UpdateManifest(DummyManifest().Add(asset));
+  task_environment_.RunUntilIdle();
+  EXPECT_FALSE(component_state_.WasUninstallRequested(asset.public_key));
+}
+
+TEST_F(ManifestAssetManagerTest,
+       UninstallCapabilityRetainsOtherExpiredModelsWhenAutoRemoveDisabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kOnDeviceModelEviction);
+  local_state_.local_state().SetBoolean(
+      model_execution::prefs::localstate::
+          kOnDeviceAiAutoRemoveUnusedModelsEnabled,
+      false);
+
+  DummyAsset compose_asset = DummyAsset::For("compose");
+  DummyAsset test_asset = DummyAsset::For("test");
+  usage_tracker_.RaisePriority(compose_asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
+  usage_tracker_.RaisePriority(test_asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
+  MakeAssetsInstallable(DummyManifest().Add(compose_asset).Add(test_asset));
+  Startup();
+
+  EXPECT_TRUE(
+      component_state_.WaitForRegistration(compose_asset.ToInstallTarget()));
+  EXPECT_TRUE(
+      component_state_.WaitForRegistration(test_asset.ToInstallTarget()));
+
+  // Advance past the 30-day retention period so `test_asset` is kEvictable,
+  // but retained because auto-remove is disabled.
+  task_environment_.FastForwardBy(base::Days(31));
+
+  base::HistogramTester histogram_tester;
+  manifest_broker_state_->UninstallCapability(compose_asset.asset_id);
+
+  EXPECT_TRUE(component_state_.WaitForUninstall(compose_asset.public_key));
+  EXPECT_FALSE(component_state_.WasUninstallRequested(test_asset.public_key));
+  histogram_tester.ExpectUniqueSample(
+      "OptimizationGuide.ModelExecution.OnDeviceModelUninstallReason.Unknown",
+      Manifest::UninstallReason::kUserRequested, 1);
 }
 
 TEST_F(ManifestAssetManagerTest, SetUseCaseRequestedFalseUninstallsUseCase) {
@@ -1506,88 +1548,6 @@ TEST_F(ManifestAssetManagerTest, OrphanedAssetScanDisabledByFeature) {
 // SessionBeforeAndAfterModelUpdate
 // UpdatingSafetyModelEnablesModels
 // SessionRequiresSafetyModel
-
-TEST(AssetPrioritiesTest, RaiseAndIsAtLeast) {
-  AssetPriorities priorities;
-
-  priorities.Raise(AssetPriority::kEvictable, {"evictable_asset"});
-  priorities.Raise(AssetPriority::kRetain, {"retain_asset"});
-  priorities.Raise(AssetPriority::kSpeculative, {"speculative_asset"});
-  priorities.Raise(AssetPriority::kBestEffort, {"best_effort_asset"});
-  priorities.Raise(AssetPriority::kUserBlocking, {"user_blocking_asset"});
-
-  EXPECT_TRUE(
-      priorities.IsAtLeast(AssetPriority::kEvictable, "evictable_asset"));
-  EXPECT_FALSE(priorities.IsAtLeast(AssetPriority::kRetain, "evictable_asset"));
-
-  EXPECT_TRUE(priorities.IsAtLeast(AssetPriority::kEvictable, "retain_asset"));
-  EXPECT_TRUE(priorities.IsAtLeast(AssetPriority::kRetain, "retain_asset"));
-  EXPECT_FALSE(
-      priorities.IsAtLeast(AssetPriority::kSpeculative, "retain_asset"));
-  EXPECT_FALSE(
-      priorities.IsAtLeast(AssetPriority::kBestEffort, "retain_asset"));
-  EXPECT_FALSE(
-      priorities.IsAtLeast(AssetPriority::kUserBlocking, "retain_asset"));
-
-  EXPECT_TRUE(
-      priorities.IsAtLeast(AssetPriority::kEvictable, "speculative_asset"));
-  EXPECT_TRUE(
-      priorities.IsAtLeast(AssetPriority::kRetain, "speculative_asset"));
-  EXPECT_TRUE(priorities.IsAtLeast(AssetPriority::kSpeculative,
-                                   "speculative_asset"));
-  EXPECT_FALSE(
-      priorities.IsAtLeast(AssetPriority::kBestEffort, "speculative_asset"));
-  EXPECT_FALSE(
-      priorities.IsAtLeast(AssetPriority::kUserBlocking, "speculative_asset"));
-
-  EXPECT_TRUE(
-      priorities.IsAtLeast(AssetPriority::kEvictable, "best_effort_asset"));
-  EXPECT_TRUE(
-      priorities.IsAtLeast(AssetPriority::kRetain, "best_effort_asset"));
-  EXPECT_TRUE(
-      priorities.IsAtLeast(AssetPriority::kSpeculative, "best_effort_asset"));
-  EXPECT_TRUE(
-      priorities.IsAtLeast(AssetPriority::kBestEffort, "best_effort_asset"));
-  EXPECT_FALSE(
-      priorities.IsAtLeast(AssetPriority::kUserBlocking, "best_effort_asset"));
-
-  EXPECT_TRUE(
-      priorities.IsAtLeast(AssetPriority::kEvictable, "user_blocking_asset"));
-  EXPECT_TRUE(
-      priorities.IsAtLeast(AssetPriority::kRetain, "user_blocking_asset"));
-  EXPECT_TRUE(
-      priorities.IsAtLeast(AssetPriority::kSpeculative, "user_blocking_asset"));
-  EXPECT_TRUE(
-      priorities.IsAtLeast(AssetPriority::kBestEffort, "user_blocking_asset"));
-  EXPECT_TRUE(
-      priorities.IsAtLeast(AssetPriority::kUserBlocking, "user_blocking_asset"));
-
-  // Unknown assets default to kEvictable.
-  EXPECT_TRUE(priorities.IsAtLeast(AssetPriority::kEvictable, "unknown_asset"));
-  EXPECT_FALSE(priorities.IsAtLeast(AssetPriority::kRetain, "unknown_asset"));
-  EXPECT_FALSE(
-      priorities.IsAtLeast(AssetPriority::kSpeculative, "unknown_asset"));
-
-  // Raising to a lower priority does not decrease existing priority.
-  priorities.Raise(AssetPriority::kSpeculative, {"user_blocking_asset"});
-  EXPECT_TRUE(
-      priorities.IsAtLeast(AssetPriority::kUserBlocking, "user_blocking_asset"));
-
-  // Raising to a higher priority increases priority.
-  priorities.Raise(AssetPriority::kUserBlocking, {"best_effort_asset"});
-  EXPECT_TRUE(
-      priorities.IsAtLeast(AssetPriority::kUserBlocking, "best_effort_asset"));
-
-  priorities.Clear();
-  EXPECT_TRUE(priorities.IsAtLeast(AssetPriority::kEvictable, "retain_asset"));
-  EXPECT_FALSE(priorities.IsAtLeast(AssetPriority::kRetain, "retain_asset"));
-  EXPECT_FALSE(
-      priorities.IsAtLeast(AssetPriority::kSpeculative, "speculative_asset"));
-  EXPECT_FALSE(
-      priorities.IsAtLeast(AssetPriority::kSpeculative, "best_effort_asset"));
-  EXPECT_FALSE(
-      priorities.IsAtLeast(AssetPriority::kSpeculative, "user_blocking_asset"));
-}
 
 TEST_F(ManifestAssetManagerTest, DeferPendingAssetsUntilRegistered) {
   DummyAsset asset = DummyAsset::For("compose");

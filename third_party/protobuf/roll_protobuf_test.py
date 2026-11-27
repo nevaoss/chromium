@@ -6,10 +6,14 @@
 """Hermetic unit tests for //third_party/protobuf/roll_protobuf.py."""
 
 from collections.abc import Mapping
+import dataclasses
+import difflib
 import io
 import json
 import os
+import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -764,6 +768,57 @@ class RollProtobufTest(unittest.TestCase):
                 upstream_revision=commit_hash,
                 applied_patches=('0001-update-value.patch', ),
             ), verification_result)
+
+    def testCheckTreeIgnoresDeveloperGlobalGitConfiguration(self):
+        # core.autocrlf writes CRLF in `git archive` output and
+        # apply.whitespace=fix strips trailing whitespace from patches.
+        patched_message_header = ('int Value() { return 1; }\n'
+                                  'int Other() { return 2; }   \n')
+        patch_content = ('diff --git a/src/google/protobuf/message.h '
+                         'b/src/google/protobuf/message.h\n'
+                         '--- a/src/google/protobuf/message.h\n'
+                         '+++ b/src/google/protobuf/message.h\n'
+                         '@@ -1 +1,2 @@\n'
+                         ' int Value() { return 1; }\n'
+                         '+int Other() { return 2; }   \n')
+        upstream_directory, chromium_directory, commit_hash = (
+            _CreateUpstreamAndChromiumRepositories(
+                self.temporary_directory,
+                upstream_files={
+                    'src/google/protobuf/message.h':
+                    ('int Value() { return 1; }\n'),
+                },
+                chromium_files={
+                    'patches/0001-add-other.patch': patch_content,
+                    'src/google/protobuf/message.h': patched_message_header,
+                },
+            ))
+        _WriteFilesToDirectory(
+            self.temporary_directory,
+            {
+                'gitconfig': ('[core]\n\tautocrlf = true\n'
+                              '[apply]\n\twhitespace = fix\n'),
+            },
+        )
+
+        with mock.patch.dict(
+                os.environ, {
+                    'GIT_CONFIG_GLOBAL':
+                    os.path.join(self.temporary_directory, 'gitconfig'),
+                }):
+            verification_result = (
+                roll_protobuf.CheckTreeMatchesPatchedUpstream(
+                    protobuf_directory=chromium_directory,
+                    upstream_repository_path=upstream_directory,
+                ))
+
+        self.assertEqual(
+            roll_protobuf.TreeVerificationResult(
+                upstream_revision=commit_hash,
+                applied_patches=('0001-add-other.patch', ),
+            ),
+            verification_result,
+        )
 
     def testCheckTreeDetectsSourceModificationWhenPatchFileIsMissing(self):
         # Simulate https://crrev.com/c/8422202: message.h was updated in the
@@ -1543,6 +1598,1597 @@ class RollProtobufTest(unittest.TestCase):
                 'src/google/protobuf/descriptor.pb.cc': False,
                 'src/google/protobuf/arena.h': False,
             }, classification_by_path)
+
+
+def _NumberedLines(name: str, **overrides: str) -> str:
+    """Returns 12 lines 'name line N', replacing any `lineN='...'` overrides."""
+    return ''.join(f'{overrides.get(f"line{n}", f"{name} line {n}")}\n'
+                   for n in range(1, 13))
+
+
+_PLAN_SOURCE_DIRECTORY = 'src/google/protobuf'
+# '[1]' is a glob character class; git must treat it literally.
+_PLAN_CLEAN_PATH = f'{_PLAN_SOURCE_DIRECTORY}/clean[1].cc'
+_PLAN_EMPTY_PATH = f'{_PLAN_SOURCE_DIRECTORY}/empty.cc'
+_PLAN_CONFLICT_PATH = f'{_PLAN_SOURCE_DIRECTORY}/conflict.cc'
+_PLAN_RENAMED_PATH = f'{_PLAN_SOURCE_DIRECTORY}/renamed.cc'
+_PLAN_MOVED_PATH = f'{_PLAN_SOURCE_DIRECTORY}/moved.cc'
+_PLAN_ADDED_PATH = f'{_PLAN_SOURCE_DIRECTORY}/added.cc'
+_PLAN_PATCH_ADDED_PATH = f'{_PLAN_SOURCE_DIRECTORY}/chromium_added.cc'
+
+_PLAN_CLEAN_PATCH = '0001-clean.patch'
+_PLAN_EMPTY_PATCH = '0002-empty.patch'
+_PLAN_CONFLICT_PATCH = '0003-conflict.patch'
+_PLAN_MISSING_FILE_PATCH = '0004-missing-file.patch'
+_PLAN_STACKED_PATCH = '0005-stacked-on-clean.patch'
+
+# Upstream's own .gitignore ignores every fixture source file, so scratch
+# repositories only see them if files are added with --force.
+_PLAN_UPSTREAM_GITIGNORE = '*.cc\n'
+
+
+def _FileListsCmake(*relative_paths: str) -> str:
+    """Returns a src/file_lists.cmake listing relative_paths in libprotobuf."""
+    entries = ''.join(f'  ${{protobuf_SOURCE_DIR}}/{relative_path}\n'
+                      for relative_path in relative_paths)
+    return f'set(libprotobuf_srcs\n{entries})\n'
+
+
+_PLAN_OLD_UPSTREAM_FILES = {
+    _PLAN_CLEAN_PATH: _NumberedLines('clean'),
+    _PLAN_EMPTY_PATH: _NumberedLines('empty'),
+    _PLAN_CONFLICT_PATH: _NumberedLines('conflict'),
+    _PLAN_RENAMED_PATH: _NumberedLines('renamed'),
+    'src/file_lists.cmake': _FileListsCmake(_PLAN_CLEAN_PATH),
+    '.gitignore': _PLAN_UPSTREAM_GITIGNORE,
+}
+
+_PLAN_CLEAN_PATCHED_CONTENT = _NumberedLines(
+    'clean',
+    line6='clean line 6 (chromium)',
+    line10='clean line 10 (upstreamed)',
+)
+
+# Patches 0001-0004 each edit line 6 of their own file, against old upstream.
+# 0001 also edits line 10 the way new upstream does, so it shrinks on replay.
+# Patch 0005 edits line 7 of clean.cc on top of 0001, so it only applies
+# cleanly if the replay kept 0001, and adds chromium_added.cc, a file only
+# Chromium has, with trailing whitespace that `apply.whitespace` would reject.
+_PLAN_PATCHED_FILES_BY_PATCH_NAME = {
+    _PLAN_CLEAN_PATCH: {
+        _PLAN_CLEAN_PATH: _PLAN_CLEAN_PATCHED_CONTENT
+    },
+    _PLAN_EMPTY_PATCH: {
+        _PLAN_EMPTY_PATH:
+        _NumberedLines('empty', line6='empty line 6 (upstreamed)'),
+    },
+    _PLAN_CONFLICT_PATCH: {
+        _PLAN_CONFLICT_PATH:
+        _NumberedLines('conflict', line6='conflict line 6 (chromium)'),
+    },
+    _PLAN_MISSING_FILE_PATCH: {
+        _PLAN_RENAMED_PATH:
+        _NumberedLines('renamed', line6='renamed line 6 (chromium)'),
+    },
+}
+
+# New upstream:
+# - clean.cc changes line 3, inside 0001's context but not its change, so a
+#   plain `git apply` fails and only the three-way merge applies it cleanly,
+#   and makes 0001's line 10 change itself;
+# - empty.cc already contains 0002's change;
+# - conflict.cc changes the line 0003 changes, differently;
+# - renamed.cc moves to moved.cc unchanged, which `git apply -3` cannot follow;
+# - added.cc is new and listed in src/file_lists.cmake.
+_PLAN_NEW_UPSTREAM_FILES = {
+    _PLAN_CLEAN_PATH:
+    _NumberedLines(
+        'clean',
+        line3='clean line 3 (upstream)',
+        line10='clean line 10 (upstreamed)',
+    ),
+    _PLAN_EMPTY_PATH:
+    _NumberedLines('empty', line6='empty line 6 (upstreamed)'),
+    _PLAN_CONFLICT_PATH:
+    _NumberedLines('conflict', line6='conflict line 6 (upstream)'),
+    _PLAN_MOVED_PATH:
+    _PLAN_OLD_UPSTREAM_FILES[_PLAN_RENAMED_PATH],
+    _PLAN_ADDED_PATH:
+    '// added upstream\n',
+    'src/file_lists.cmake':
+    _FileListsCmake(_PLAN_CLEAN_PATH, _PLAN_ADDED_PATH),
+    '.gitignore':
+    _PLAN_UPSTREAM_GITIGNORE,
+}
+
+
+@dataclasses.dataclass(frozen=True)
+class _PlanFixture:
+    """Paths and commits of a fake upstream and Chromium protobuf directory."""
+
+    upstream_directory: str
+    protobuf_directory: str
+    old_commit: str
+    new_commit: str
+
+    def PatchPaths(self) -> list[str]:
+        return roll_protobuf.ListTopLevelPatchPaths(self.protobuf_directory)
+
+
+def _MakePatch(old_files: Mapping[str, str],
+               patched_files: Mapping[str, str]) -> str:
+    """Returns the unified diff that turns old_files into patched_files."""
+    return ''.join(
+        line for path, new_text in patched_files.items()
+        for line in difflib.unified_diff(
+            old_files.get(path, '').splitlines(keepends=True),
+            new_text.splitlines(keepends=True),
+            fromfile=f'a/{path}' if path in old_files else '/dev/null',
+            tofile=f'b/{path}',
+        ))
+
+
+def _CreatePlanFixture(temporary_directory: str) -> _PlanFixture:
+    """Builds an upstream repository with two versions and five patches.
+
+    Against new upstream the patches come out, in order, CLEAN, EMPTY,
+    CONFLICT, MISSING_FILE and CLEAN.
+    """
+    upstream_directory = os.path.join(temporary_directory, 'upstream')
+    old_commit = _InitializeGitRepositoryWithFiles(upstream_directory,
+                                                   _PLAN_OLD_UPSTREAM_FILES)
+    _RunGitCommand(upstream_directory,
+                   ['mv', _PLAN_RENAMED_PATH, _PLAN_MOVED_PATH])
+    _WriteFilesToDirectory(upstream_directory, _PLAN_NEW_UPSTREAM_FILES)
+    _RunGitCommand(upstream_directory, ['add', '-A', '.'])
+    _RunGitCommand(upstream_directory, ['commit', '--quiet', '-m', 'New'])
+    new_commit = _RunGitCommand(upstream_directory, ['rev-parse', 'HEAD'])
+
+    chromium_files = {
+        'README.chromium':
+        f'Revision: {old_commit}\n',
+        'proto_sources.gni': ('sources = [\n'
+                              f'  "{_PLAN_CLEAN_PATH}",\n'
+                              f'  "{_PLAN_PATCH_ADDED_PATH}",\n'
+                              f'  "{_PLAN_RENAMED_PATH}",\n'
+                              ']\n'),
+        'BUILD.gn':
+        '',
+        **{
+            f'patches/{patch_name}':
+            _MakePatch(_PLAN_OLD_UPSTREAM_FILES, patched_files)
+            for patch_name, patched_files in _PLAN_PATCHED_FILES_BY_PATCH_NAME.items(
+            )
+        },
+        f'patches/{_PLAN_STACKED_PATCH}':
+        _MakePatch(
+            {
+                **_PLAN_OLD_UPSTREAM_FILES, _PLAN_CLEAN_PATH:
+                _PLAN_CLEAN_PATCHED_CONTENT
+            },
+            {
+                _PLAN_CLEAN_PATH:
+                _NumberedLines(
+                    'clean',
+                    line6='clean line 6 (chromium)',
+                    line7='clean line 7 (chromium)',
+                    line10='clean line 10 (upstreamed)',
+                ),
+                _PLAN_PATCH_ADDED_PATH:
+                '// added by a Chromium patch   \n',
+            },
+        ),
+    }
+    protobuf_directory = os.path.join(temporary_directory, 'chromium')
+    _InitializeGitRepositoryWithFiles(protobuf_directory, chromium_files)
+    return _PlanFixture(
+        upstream_directory=upstream_directory,
+        protobuf_directory=protobuf_directory,
+        old_commit=old_commit,
+        new_commit=new_commit,
+    )
+
+
+class RollProtobufPlanTest(unittest.TestCase):
+    """Proves `plan` classifies patches like a real roll would, read-only."""
+
+    def setUp(self):
+        super().setUp()
+        self.enterContext(
+            mock.patch.dict(
+                os.environ,
+                {
+                    'GIT_CONFIG_GLOBAL': os.devnull,
+                    'GIT_CONFIG_NOSYSTEM': '1',
+                },
+            ))
+        self.temporary_directory = self.enterContext(
+            tempfile.TemporaryDirectory())
+        self.fixture = _CreatePlanFixture(self.temporary_directory)
+
+    def _BuildPatchChain(self) -> roll_protobuf.PatchChain:
+        return roll_protobuf.BuildPatchChain(
+            upstream_repository_path=self.fixture.upstream_directory,
+            old_upstream_commit=self.fixture.old_commit,
+            patch_paths=self.fixture.PatchPaths(),
+            chain_directory=os.path.join(self.temporary_directory, 'chain'),
+        )
+
+    def testBuildPatchChainExportsFullPreimageAndPostimageBlobIds(self):
+        patch_chain = self._BuildPatchChain()
+
+        self.assertRegex(patch_chain.patches[0].diff.decode(),
+                         r'(?m)^index [0-9a-f]{40}\.\.[0-9a-f]{40} 100644$')
+
+    def testBuildPatchChainRaisesWhenPatchDoesNotApplyToOldUpstream(self):
+        broken_patch_path = os.path.join(self.fixture.protobuf_directory,
+                                         'patches', '0005-broken.patch')
+        _WriteFilesToDirectory(
+            self.fixture.protobuf_directory,
+            {
+                'patches/0005-broken.patch': (f'--- a/{_PLAN_CLEAN_PATH}\n'
+                                              f'+++ b/{_PLAN_CLEAN_PATH}\n'
+                                              '@@ -1 +1 @@\n'
+                                              '-no such line\n'
+                                              '+replacement\n'),
+            },
+        )
+
+        with self.assertRaisesRegex(roll_protobuf.RollProtobufError,
+                                    r'0005-broken\.patch does not apply'):
+            roll_protobuf.BuildPatchChain(
+                upstream_repository_path=self.fixture.upstream_directory,
+                old_upstream_commit=self.fixture.old_commit,
+                patch_paths=[*self.fixture.PatchPaths(), broken_patch_path],
+                chain_directory=os.path.join(self.temporary_directory,
+                                             'chain'),
+            )
+
+    def testBuildPatchChainRecordsPreimageBlobsAndChangedLineCountPerPatch(
+            self):
+        patch_chain = self._BuildPatchChain()
+
+        self.assertEqual(
+            {
+                _PLAN_CLEAN_PATCH: ((_PLAN_CLEAN_PATH, ), 4),
+                _PLAN_EMPTY_PATCH: ((_PLAN_EMPTY_PATH, ), 2),
+                _PLAN_CONFLICT_PATCH: ((_PLAN_CONFLICT_PATH, ), 2),
+                _PLAN_MISSING_FILE_PATCH: ((_PLAN_RENAMED_PATH, ), 2),
+                _PLAN_STACKED_PATCH: ((_PLAN_CLEAN_PATH, ), 3),
+            }, {
+                chain_patch.patch_name: (
+                    tuple(chain_patch.preimage_blobs),
+                    chain_patch.changed_line_count,
+                )
+                for chain_patch in patch_chain.patches
+            })
+
+    def testBuildPatchChainTakesPreimageFromEarlierPatchesNotOldUpstream(self):
+        patch_chain = self._BuildPatchChain()
+        clean_after_first_patch_blob_id = subprocess.run(
+            ['git', 'hash-object', '--stdin'],
+            input=_PLAN_CLEAN_PATCHED_CONTENT.encode(),
+            capture_output=True,
+            check=True,
+        ).stdout.decode().strip()
+
+        self.assertEqual(
+            clean_after_first_patch_blob_id,
+            patch_chain.patches[4].preimage_blobs[_PLAN_CLEAN_PATH])
+
+    def _CreateNewUpstreamCheckout(self, prefix: str = '') -> str:
+        checkout_directory = os.path.join(self.temporary_directory, 'replay')
+        _InitializeGitRepositoryWithFiles(
+            checkout_directory,
+            {
+                f'{prefix}/{path}' if prefix else path: content
+                for path, content in _PLAN_NEW_UPSTREAM_FILES.items()
+            },
+        )
+        return checkout_directory
+
+    def testCopyPreimageBlobsCopiesOnlyBlobsTheDestinationLacks(self):
+        patch_chain = self._BuildPatchChain()
+        replay_directory = self._CreateNewUpstreamCheckout()
+        old_upstream_preimage_blob_ids = [
+            blob_id for chain_patch in patch_chain.patches[:4]
+            for blob_id in chain_patch.preimage_blobs.values()
+        ]
+
+        first_copied_blob_ids = roll_protobuf.CopyPreimageBlobs(
+            patch_chain.repository_directory,
+            replay_directory,
+            [
+                *reversed(old_upstream_preimage_blob_ids),
+                *old_upstream_preimage_blob_ids,
+            ],
+        )
+        second_copied_blob_ids = roll_protobuf.CopyPreimageBlobs(
+            patch_chain.repository_directory,
+            replay_directory,
+            old_upstream_preimage_blob_ids,
+        )
+
+        expected_copied_blob_ids = tuple(
+            sorted(blob_id for chain_patch in patch_chain.patches[:3]
+                   for blob_id in chain_patch.preimage_blobs.values()))
+        self.assertEqual((expected_copied_blob_ids, ()),
+                         (first_copied_blob_ids, second_copied_blob_ids))
+
+    def testApplyChainPatchThreeWayClassifiesCleanEmptyAndConflictingPatches(
+            self):
+        patch_chain = self._BuildPatchChain()
+        replay_directory = self._CreateNewUpstreamCheckout()
+
+        patch_results = []
+        for chain_patch in patch_chain.patches[:3]:
+            roll_protobuf.CopyPreimageBlobs(
+                patch_chain.repository_directory,
+                replay_directory,
+                chain_patch.preimage_blobs.values(),
+            )
+            patch_results.append(
+                roll_protobuf.ApplyChainPatchThreeWay(replay_directory,
+                                                      chain_patch))
+            _RunGitCommand(replay_directory,
+                           ['reset', '--quiet', '--hard', 'HEAD'])
+
+        self.assertEqual([
+            roll_protobuf.PatchReplayResult(
+                patch_name=_PLAN_CLEAN_PATCH,
+                status=roll_protobuf.PatchReplayStatus.CLEAN,
+                changed_line_count_before=4,
+                changed_line_count_after=2,
+            ),
+            roll_protobuf.PatchReplayResult(
+                patch_name=_PLAN_EMPTY_PATCH,
+                status=roll_protobuf.PatchReplayStatus.EMPTY,
+                changed_line_count_before=2,
+            ),
+            roll_protobuf.PatchReplayResult(
+                patch_name=_PLAN_CONFLICT_PATCH,
+                status=roll_protobuf.PatchReplayStatus.CONFLICT,
+                changed_line_count_before=2,
+                conflicted_files=(roll_protobuf.ConflictedFile(
+                    path=_PLAN_CONFLICT_PATH, conflict_region_count=1), ),
+            ),
+        ], patch_results)
+
+    def testApplyChainPatchThreeWayAppliesUnderDirectoryPrefix(self):
+        patch_chain = self._BuildPatchChain()
+        checkout_directory = self._CreateNewUpstreamCheckout(
+            'third_party/protobuf')
+        clean_patch = patch_chain.patches[0]
+        roll_protobuf.CopyPreimageBlobs(
+            patch_chain.repository_directory,
+            checkout_directory,
+            clean_patch.preimage_blobs.values(),
+        )
+
+        patch_result = roll_protobuf.ApplyChainPatchThreeWay(
+            checkout_directory,
+            clean_patch,
+            directory_prefix='./third_party/protobuf/',
+        )
+
+        self.assertEqual((roll_protobuf.PatchReplayStatus.CLEAN,
+                          f'third_party/protobuf/{_PLAN_CLEAN_PATH}'),
+                         (patch_result.status,
+                          _RunGitCommand(checkout_directory,
+                                         ['diff', '--cached', '--name-only'])))
+
+    def testApplyChainPatchThreeWayNamesUpstreamRelativePathWhenMissing(self):
+        patch_chain = self._BuildPatchChain()
+        checkout_directory = self._CreateNewUpstreamCheckout(
+            'third_party/protobuf')
+
+        patch_result = roll_protobuf.ApplyChainPatchThreeWay(
+            checkout_directory,
+            patch_chain.patches[3],
+            directory_prefix='./third_party/protobuf/',
+        )
+
+        self.assertEqual((roll_protobuf.PatchReplayStatus.MISSING_FILE,
+                          (_PLAN_RENAMED_PATH, )),
+                         (patch_result.status, patch_result.missing_files))
+
+    def testApplyChainPatchThreeWayReportsErrorWithGitDiagnostics(self):
+        unparseable_patch = roll_protobuf.ChainPatch(
+            patch_name='0009-unparseable.patch',
+            diff=b'this is not a diff\n',
+            preimage_blobs={},
+            changed_line_count=0,
+        )
+        replay_directory = self._CreateNewUpstreamCheckout()
+
+        patch_result = roll_protobuf.ApplyChainPatchThreeWay(
+            replay_directory, unparseable_patch)
+
+        self.assertEqual((roll_protobuf.PatchReplayStatus.ERROR, True),
+                         (patch_result.status, 'No valid patches in input'
+                          in (patch_result.error_message or '')))
+
+    def _PlanRoll(self,
+                  to_revision: str | None = None) -> roll_protobuf.RollPlan:
+        return roll_protobuf.PlanRoll(
+            to_revision=to_revision or self.fixture.new_commit,
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+        )
+
+    def testPlanRollReplaysPatchChainOntoNewUpstream(self):
+        roll_plan = self._PlanRoll()
+
+        self.assertEqual(3, roll_plan.copied_blob_count)
+        self.assertEqual(
+            (
+                roll_protobuf.PatchReplayResult(
+                    patch_name=_PLAN_CLEAN_PATCH,
+                    status=roll_protobuf.PatchReplayStatus.CLEAN,
+                    changed_line_count_before=4,
+                    changed_line_count_after=2,
+                ),
+                roll_protobuf.PatchReplayResult(
+                    patch_name=_PLAN_EMPTY_PATCH,
+                    status=roll_protobuf.PatchReplayStatus.EMPTY,
+                    changed_line_count_before=2,
+                ),
+                roll_protobuf.PatchReplayResult(
+                    patch_name=_PLAN_CONFLICT_PATCH,
+                    status=roll_protobuf.PatchReplayStatus.CONFLICT,
+                    changed_line_count_before=2,
+                    conflicted_files=(roll_protobuf.ConflictedFile(
+                        path=_PLAN_CONFLICT_PATH, conflict_region_count=1), ),
+                ),
+                roll_protobuf.PatchReplayResult(
+                    patch_name=_PLAN_MISSING_FILE_PATCH,
+                    status=roll_protobuf.PatchReplayStatus.MISSING_FILE,
+                    changed_line_count_before=2,
+                    missing_files=(_PLAN_RENAMED_PATH, ),
+                ),
+                roll_protobuf.PatchReplayResult(
+                    patch_name=_PLAN_STACKED_PATCH,
+                    status=roll_protobuf.PatchReplayStatus.CLEAN,
+                    changed_line_count_before=3,
+                    changed_line_count_after=3,
+                ),
+            ),
+            roll_plan.patch_results,
+        )
+
+    def testPlanRollReportsUpstreamFileAddedToFileLists(self):
+        roll_plan = self._PlanRoll()
+
+        self.assertEqual(
+            {
+                'added_files': [{
+                    'path': _PLAN_ADDED_PATH,
+                    'upstream_lists': ['libprotobuf_srcs'],
+                    'chromium_sibling_count': 3,
+                }],
+                'removed_files': [_PLAN_RENAMED_PATH],
+            }, roll_plan.file_lists_diff.ToDictionary())
+
+    def testPlanRollSkipsFileListsReportWhenNewUpstreamLacksFileListsCmake(
+            self):
+        _RunGitCommand(self.fixture.upstream_directory,
+                       ['rm', '--quiet', 'src/file_lists.cmake'])
+        _RunGitCommand(self.fixture.upstream_directory,
+                       ['commit', '--quiet', '-m', 'Drop file_lists.cmake'])
+        to_revision = _RunGitCommand(self.fixture.upstream_directory,
+                                     ['rev-parse', 'HEAD'])
+
+        roll_plan = self._PlanRoll(to_revision)
+
+        self.assertIsNone(roll_plan.file_lists_diff)
+
+    def testPlanRollLeavesProtobufDirectoryAndUpstreamRepositoryUntouched(
+            self):
+
+        def SnapshotRepository(repository_directory: str) -> tuple[str, str]:
+            return (
+                _RunGitCommand(repository_directory,
+                               ['status', '--porcelain', '-uall']),
+                _RunGitCommand(repository_directory, ['for-each-ref']),
+            )
+
+        protobuf_before = SnapshotRepository(self.fixture.protobuf_directory)
+        upstream_before = SnapshotRepository(self.fixture.upstream_directory)
+
+        self._PlanRoll()
+
+        self.assertEqual((protobuf_before, upstream_before),
+                         (SnapshotRepository(self.fixture.protobuf_directory),
+                          SnapshotRepository(self.fixture.upstream_directory)))
+
+    @_SkipOnWindows('Git hooks need an executable shell script.')
+    def testPlanRollIgnoresDeveloperGlobalGitConfiguration(self):
+        hooks_directory = os.path.join(self.temporary_directory, 'hooks')
+        for hook_name in ('pre-commit', 'commit-msg', 'pre-applypatch'):
+            hook_path = os.path.join(hooks_directory, hook_name)
+            _WriteFilesToDirectory(hooks_directory,
+                                   {hook_name: '#!/bin/sh\nexit 1\n'})
+            os.chmod(hook_path, 0o755)
+        global_config_path = os.path.join(self.temporary_directory,
+                                          'gitconfig')
+        _WriteFilesToDirectory(
+            self.temporary_directory,
+            {
+                'gitconfig': ('[core]\n'
+                              f'\thooksPath = {hooks_directory}\n'
+                              '[commit]\n\tgpgsign = true\n'
+                              '[diff]\n\tnoprefix = true\n'
+                              '[merge]\n\tconflictStyle = diff3\n'
+                              '[apply]\n\twhitespace = error-all\n'),
+            },
+        )
+        baseline_plan = self._PlanRoll()
+
+        with mock.patch.dict(
+                os.environ, {
+                    'GIT_CONFIG_GLOBAL': global_config_path,
+                    'GIT_CONFIG_COUNT': '1',
+                    'GIT_CONFIG_KEY_0': 'core.autocrlf',
+                    'GIT_CONFIG_VALUE_0': 'true',
+                    'GIT_CONFIG_PARAMETERS': "'diff.noprefix'='true'",
+                }):
+            configured_plan = self._PlanRoll()
+
+        self.assertEqual(baseline_plan, configured_plan)
+
+    def testFormatRollPlanReportDescribesEachPatchOnItsOwnLine(self):
+        report_lines = roll_protobuf.FormatRollPlanReport(
+            self._PlanRoll()).splitlines()
+
+        self.assertEqual([
+            f'  CLEAN         {_PLAN_CLEAN_PATCH}: 4 -> 2 changed lines',
+            f'  EMPTY         {_PLAN_EMPTY_PATCH}: already upstream',
+            f'  CONFLICT      {_PLAN_CONFLICT_PATCH}: '
+            f'{_PLAN_CONFLICT_PATH} (1 region(s))',
+            f'  MISSING_FILE  {_PLAN_MISSING_FILE_PATCH}: not in new '
+            f'upstream (renamed or deleted?): {_PLAN_RENAMED_PATH}',
+            f'  CLEAN         {_PLAN_STACKED_PATCH}: 3 -> 3 changed lines',
+        ], report_lines[2:7])
+
+    def testFormatRollPlanReportFlagsConflictWithoutMarkersAsBinary(self):
+        roll_plan = roll_protobuf.RollPlan(
+            old_revision='v1',
+            old_commit='1' * 40,
+            new_revision='v2',
+            new_commit='2' * 40,
+            patch_results=(roll_protobuf.PatchReplayResult(
+                patch_name='0001-binary.patch',
+                status=roll_protobuf.PatchReplayStatus.CONFLICT,
+                changed_line_count_before=0,
+                conflicted_files=(roll_protobuf.ConflictedFile(
+                    path='image.png', conflict_region_count=0), ),
+            ), ),
+            copied_blob_count=0,
+            file_lists_diff=None,
+        )
+
+        self.assertIn(
+            '0001-binary.patch: image.png (no conflict markers, binary?)',
+            roll_protobuf.FormatRollPlanReport(roll_plan))
+
+    def testFormatRollPlanReportSaysWhyFileListReportIsMissing(self):
+        roll_plan = roll_protobuf.RollPlan(
+            old_revision='v1',
+            old_commit='1' * 40,
+            new_revision='v2',
+            new_commit='2' * 40,
+            patch_results=(),
+            copied_blob_count=0,
+            file_lists_diff=None,
+        )
+
+        self.assertIn(
+            'No patches; copied 0 preimage blob(s).\n\n'
+            'Skipped the upstream file-list report: src/file_lists.cmake is '
+            'missing from the old or new version.',
+            roll_protobuf.FormatRollPlanReport(roll_plan))
+
+    def testMainPlanPrintsStatusCountsAndCopiedBlobCount(self):
+        exit_code, stdout, _ = _RunMain(
+            'plan',
+            '--to',
+            self.fixture.new_commit,
+            '--protobuf-dir',
+            self.fixture.protobuf_directory,
+            '--upstream-repo',
+            self.fixture.upstream_directory,
+        )
+
+        self.assertEqual(roll_protobuf.EXIT_CODE_SUCCESS, exit_code)
+        self.assertIn(
+            '2 CLEAN, 1 EMPTY, 1 CONFLICT, 1 MISSING_FILE; copied 3 '
+            'preimage blob(s).\n\n'
+            'Upstream files added in src/file_lists.cmake',
+            stdout,
+        )
+
+    def testMainPlanOutputsPatchCountsAsJson(self):
+        _, stdout, _ = _RunMain(
+            'plan',
+            '--to',
+            self.fixture.new_commit,
+            '--protobuf-dir',
+            self.fixture.protobuf_directory,
+            '--upstream-repo',
+            self.fixture.upstream_directory,
+            '--json',
+        )
+
+        self.assertEqual(
+            {
+                'CLEAN': 2,
+                'EMPTY': 1,
+                'CONFLICT': 1,
+                'MISSING_FILE': 1,
+            },
+            json.loads(stdout)['patch_counts'],
+        )
+
+    def testMainPlanExitsOneAndNamesRevisionWhenTargetIsUnknown(self):
+        exit_code, _, stderr = _RunMain(
+            'plan',
+            '--to',
+            'v999.0',
+            '--protobuf-dir',
+            self.fixture.protobuf_directory,
+            '--upstream-repo',
+            self.fixture.upstream_directory,
+        )
+
+        self.assertEqual(roll_protobuf.EXIT_CODE_ERROR, exit_code)
+        self.assertIn('Revision v999.0 not found', stderr)
+
+
+class RollProtobufStartTest(unittest.TestCase):
+    """Proves checkout-modifying roll commands (prepare, start, status, abort)."""
+
+    def setUp(self):
+        super().setUp()
+        self.enterContext(
+            mock.patch.dict(
+                os.environ,
+                {
+                    'GIT_CONFIG_GLOBAL': os.devnull,
+                    'GIT_CONFIG_NOSYSTEM': '1',
+                },
+            ))
+        self.temporary_directory = self.enterContext(
+            tempfile.TemporaryDirectory())
+        seed = _CreatePlanFixture(os.path.join(self.temporary_directory, 's'))
+        _WriteFilesToDirectory(
+            seed.upstream_directory,
+            {
+                '.gitignore': '*.Swp\n',
+                'version.json': '{"37.x": {"protoc_version": "37.0"}}\n',
+            },
+        )
+        _RunGitCommand(seed.upstream_directory, ['add', '-A', '.'])
+        _RunGitCommand(seed.upstream_directory,
+                       ['commit', '--quiet', '--amend', '--no-edit'])
+        new_commit = _RunGitCommand(seed.upstream_directory,
+                                    ['rev-parse', 'HEAD'])
+        _RunGitCommand(seed.upstream_directory, ['tag', 'v37.0', new_commit])
+        self.repository_root = os.path.join(self.temporary_directory, 'repo')
+        protobuf_directory = os.path.join(self.repository_root, 'third_party',
+                                          'protobuf')
+        shutil.copytree(seed.protobuf_directory,
+                        protobuf_directory,
+                        ignore=shutil.ignore_patterns('.git'))
+        _RunGitCommand(self.repository_root, ['init', '--quiet'])
+        _WriteFilesToDirectory(
+            self.repository_root,
+            {
+                '.gitignore':
+                '*.targets\n',
+                'OTHER_CHROMIUM_FILE':
+                'outside third_party/protobuf\n',
+                'third_party/protobuf/README.chromium':
+                ('Name: Protocol Buffers\n'
+                 'Version: 36.0\n'
+                 'CPEPrefix: cpe:/a:google:protobuf:36.0\n'
+                 f'Revision: {seed.old_commit}\n'),
+            },
+        )
+        _RunGitCommand(self.repository_root, ['add', '-f', '.'])
+        _RunGitCommand(self.repository_root,
+                       ['commit', '--quiet', '-m', 'Initial checkout'])
+        self.fixture = dataclasses.replace(
+            seed,
+            protobuf_directory=protobuf_directory,
+            new_commit=new_commit,
+        )
+
+    def testPrepareRollWritesChainPatchesPreimageBlobsAndStateJson(self):
+        start_head = _RunGitCommand(self.repository_root,
+                                    ['rev-parse', 'HEAD'])
+
+        state = roll_protobuf.PrepareRoll(
+            to_revision='v37.0',
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+        )
+        second_state = roll_protobuf.PrepareRoll(
+            to_revision='v37.0',
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+        )
+        loaded_state = roll_protobuf.LoadRollState(
+            self.fixture.protobuf_directory)
+
+        self.assertEqual((state, state), (second_state, loaded_state))
+        self.assertEqual(
+            ('prepared', start_head, 'v37.0', self.fixture.new_commit, 5, 5),
+            (
+                state.phase,
+                state.start_commit,
+                state.new_revision,
+                state.new_commit,
+                len(state.patches),
+                state.copied_blob_count,
+            ),
+        )
+        for chain_patch in state.patches:
+            for blob_id in chain_patch.preimage_blobs.values():
+                self.assertEqual(
+                    'blob',
+                    _RunGitCommand(self.repository_root,
+                                   ['cat-file', '-t', blob_id]),
+                )
+
+    def testPrepareRollRejectsActiveRollAndLoadRollStateRoundTripsResults(
+            self):
+        state = roll_protobuf.PrepareRoll(
+            to_revision='v37.0',
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+        )
+        conflict_state = dataclasses.replace(
+            state,
+            phase='conflict',
+            current_index=2,
+            conflict_files=(f'third_party/protobuf/{_PLAN_CONFLICT_PATH}', ),
+            patch_results=(roll_protobuf.PatchReplayResult(
+                patch_name=_PLAN_CONFLICT_PATCH,
+                status=roll_protobuf.PatchReplayStatus.CONFLICT,
+                changed_line_count_before=2,
+                conflicted_files=(roll_protobuf.ConflictedFile(
+                    path=f'third_party/protobuf/{_PLAN_CONFLICT_PATH}',
+                    conflict_region_count=1,
+                ), ),
+            ), ),
+        )
+        checkout = roll_protobuf._ResolveCheckoutPaths(
+            self.fixture.protobuf_directory)
+        roll_protobuf._SaveRollState(checkout, conflict_state)
+
+        self.assertEqual(
+            conflict_state,
+            roll_protobuf.LoadRollState(self.fixture.protobuf_directory))
+        with self.assertRaisesRegex(
+                roll_protobuf.RollProtobufError,
+                r'already in progress \(phase: conflict\)'):
+            roll_protobuf.PrepareRoll(
+                to_revision='v37.0',
+                protobuf_directory=self.fixture.protobuf_directory,
+                upstream_repository_path=self.fixture.upstream_directory,
+            )
+        os.remove(os.path.join(checkout.chain_directory, _PLAN_CLEAN_PATCH))
+        with self.assertRaisesRegex(roll_protobuf.RollProtobufError,
+                                    r'Corrupt roll state'):
+            roll_protobuf.LoadRollState(self.fixture.protobuf_directory)
+
+    def testLoadRollStateReturnsNoneWhenNoRollIsInProgress(self):
+        self.assertIsNone(
+            roll_protobuf.LoadRollState(self.fixture.protobuf_directory))
+        with self.assertRaisesRegex(roll_protobuf.RollProtobufError,
+                                    r'is not inside a git working tree'):
+            roll_protobuf.LoadRollState(self.temporary_directory)
+
+    def testLoadRollStateRaisesWhenStateJsonIsCorrupt(self):
+        checkout = roll_protobuf._ResolveCheckoutPaths(
+            self.fixture.protobuf_directory)
+        os.makedirs(checkout.roll_state_directory, exist_ok=True)
+        pathlib.Path(checkout.state_file_path).write_text('{not valid json',
+                                                          encoding='utf-8')
+
+        with self.assertRaisesRegex(roll_protobuf.RollProtobufError,
+                                    r'Corrupt roll state'):
+            roll_protobuf.LoadRollState(self.fixture.protobuf_directory)
+
+    def testImportUpstreamReleaseReplacesUpstreamFilesAndUpdatesReadme(self):
+        _WriteFilesToDirectory(
+            self.fixture.upstream_directory,
+            {
+                'compatibility/smoke/Test.java': '// deleted during roll\n',
+                'src/google/protobuf/any.pb.cc': '// deleted WKT\n',
+                'csharp/Google.Protobuf.targets': '<Project/>\n',
+                'version.json': '{"37.x": {"protoc_version": "37.0-dev"}}\n',
+            },
+        )
+        _RunGitCommand(self.fixture.upstream_directory, ['add', '-A', '.'])
+        _RunGitCommand(self.fixture.upstream_directory,
+                       ['commit', '--quiet', '--amend', '--no-edit'])
+        new_commit = _RunGitCommand(self.fixture.upstream_directory,
+                                    ['rev-parse', 'HEAD'])
+        _WriteFilesToDirectory(
+            self.fixture.protobuf_directory,
+            {
+                'patches/0001-clean.md': '# Notes on 0001\n',
+                'patches/protobuf_v25/0001-bazel.patch': '// old subdir\n',
+                'python/google/protobuf/descriptor_pb2.py': '# bootstrap\n',
+            },
+        )
+
+        import_commit = roll_protobuf.ImportUpstreamRelease(
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+            to_revision='v37.0',
+            new_commit=new_commit,
+        )
+
+        present_files = roll_protobuf._ListRegularFilesInDirectory(
+            self.fixture.protobuf_directory)
+        readme_text = pathlib.Path(
+            self.fixture.protobuf_directory,
+            'README.chromium').read_text(encoding='utf-8')
+        commit_subject = _RunGitCommand(self.repository_root,
+                                        ['log', '-1', '--format=%s'])
+
+        self.assertEqual(
+            _RunGitCommand(self.repository_root, ['rev-parse', 'HEAD']),
+            import_commit)
+        self.assertEqual('Import upstream protobuf v37.0 (unmodified)',
+                         commit_subject)
+        self.assertIn(_PLAN_ADDED_PATH, present_files)
+        self.assertIn('patches/0001-clean.patch', present_files)
+        self.assertIn('patches/0001-clean.md', present_files)
+        self.assertIn('python/google/protobuf/descriptor_pb2.py',
+                      present_files)
+        self.assertNotIn('compatibility/smoke/Test.java', present_files)
+        self.assertNotIn('src/google/protobuf/any.pb.cc', present_files)
+        self.assertNotIn('patches/protobuf_v25/0001-bazel.patch',
+                         present_files)
+        self.assertNotIn('csharp/Google.Protobuf.targets', present_files)
+        for removed_directory in ('compatibility', 'csharp',
+                                  'patches/protobuf_v25'):
+            self.assertFalse(
+                os.path.exists(
+                    os.path.join(self.fixture.protobuf_directory,
+                                 removed_directory)))
+        self.assertEqual(
+            ('Name: Protocol Buffers\n'
+             'Version: 37.0\n'
+             'CPEPrefix: cpe:/a:google:protobuf:37.0\n'
+             f'Revision: {new_commit}\n'),
+            readme_text,
+        )
+        self.assertTrue(
+            os.path.isfile(
+                os.path.join(self.repository_root, 'OTHER_CHROMIUM_FILE')))
+
+    def testImportUpstreamReleaseReadsProtocVersionFromVersionJsonForCommitSha(
+            self):
+        roll_protobuf.ImportUpstreamRelease(
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+            to_revision=self.fixture.new_commit,
+            new_commit=self.fixture.new_commit,
+        )
+
+        readme_text = pathlib.Path(
+            self.fixture.protobuf_directory,
+            'README.chromium').read_text(encoding='utf-8')
+
+        self.assertIn('Version: 37.0\nCPEPrefix: cpe:/a:google:protobuf:37.0',
+                      readme_text)
+
+    def testStartRollRefusesWhenWorkingTreeHasUncommittedChanges(self):
+        _WriteFilesToDirectory(self.repository_root,
+                               {'OTHER_CHROMIUM_FILE': 'dirty edit\n'})
+
+        with self.assertRaisesRegex(roll_protobuf.RollProtobufError,
+                                    r'Working tree has uncommitted changes'):
+            roll_protobuf.StartRoll(
+                to_revision='v37.0',
+                protobuf_directory=self.fixture.protobuf_directory,
+                upstream_repository_path=self.fixture.upstream_directory,
+            )
+
+        self.assertIsNone(
+            roll_protobuf.LoadRollState(self.fixture.protobuf_directory))
+
+    def testStartRollCommitsCleanAndEmptyPatchesAndStopsAtFirstConflict(self):
+        state = roll_protobuf.StartRoll(
+            to_revision='v37.0',
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+        )
+
+        recent_subjects = _RunGitCommand(
+            self.repository_root, ['log', '-3', '--format=%s']).splitlines()
+        conflicted_text = pathlib.Path(
+            self.fixture.protobuf_directory,
+            *_PLAN_CONFLICT_PATH.split('/')).read_text(encoding='utf-8')
+
+        self.assertEqual(('conflict', 2), (state.phase, state.current_index))
+        self.assertEqual(
+            [
+                f'Drop patches/{_PLAN_EMPTY_PATCH} (already upstream)',
+                f'Apply patches/{_PLAN_CLEAN_PATCH}',
+                'Import upstream protobuf v37.0 (unmodified)',
+            ],
+            recent_subjects,
+        )
+        self.assertFalse(
+            os.path.exists(
+                os.path.join(self.fixture.protobuf_directory, 'patches',
+                             _PLAN_EMPTY_PATCH)))
+        self.assertIn('<<<<<<< ', conflicted_text)
+
+    def testStartRollRefreshedPatchReverseAppliesToItsOwnCommit(self):
+        for patch_name in (_PLAN_CONFLICT_PATCH, _PLAN_MISSING_FILE_PATCH):
+            os.remove(
+                os.path.join(self.fixture.protobuf_directory, 'patches',
+                             patch_name))
+        _RunGitCommand(self.repository_root, ['add', '-A', '.'])
+        _RunGitCommand(self.repository_root,
+                       ['commit', '--quiet', '-m', 'Keep clean/empty patches'])
+
+        state = roll_protobuf.StartRoll(
+            to_revision='v37.0',
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+        )
+
+        self.assertEqual('replayed', state.phase)
+        refreshed_patch_path = os.path.join(self.fixture.protobuf_directory,
+                                            'patches', _PLAN_CLEAN_PATCH)
+        _RunGitCommand(self.repository_root, ['checkout', '--quiet', 'HEAD~1'])
+        _RunGitCommand(
+            self.repository_root,
+            [
+                'apply', '--check', '-R', '--directory=third_party/protobuf',
+                refreshed_patch_path
+            ],
+        )
+
+    def testGetRollStatusReportsIdlePreparedConflictAndReplayedStates(self):
+        idle_status = roll_protobuf.GetRollStatus(
+            self.fixture.protobuf_directory)
+        prepared_state = roll_protobuf.PrepareRoll(
+            to_revision='v37.0',
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+        )
+        prepared_status = roll_protobuf.GetRollStatus(
+            self.fixture.protobuf_directory)
+        conflict_state = roll_protobuf.StartRoll(
+            to_revision='v37.0',
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+        )
+        conflict_status = roll_protobuf.GetRollStatus(
+            self.fixture.protobuf_directory)
+        roll_protobuf._SaveRollState(
+            roll_protobuf._ResolveCheckoutPaths(
+                self.fixture.protobuf_directory),
+            dataclasses.replace(conflict_state, phase='replayed'))
+        replayed_status = roll_protobuf.GetRollStatus(
+            self.fixture.protobuf_directory)
+
+        self.assertEqual(
+            ('idle', 'prepared', 'conflict', 'replayed', 5),
+            (idle_status.state, prepared_status.state, conflict_status.state,
+             replayed_status.state, replayed_status.index))
+        self.assertEqual(
+            {
+                'state':
+                'conflict',
+                'index':
+                3,
+                'total':
+                5,
+                'patch':
+                _PLAN_CONFLICT_PATCH,
+                'files': [f'third_party/protobuf/{_PLAN_CONFLICT_PATH}'],
+                'next': [
+                    'roll_protobuf.py continue',
+                    'roll_protobuf.py drop --reason <why>',
+                    'roll_protobuf.py abort',
+                ],
+            },
+            conflict_status.ToDictionary(),
+        )
+        self.assertIn('Prepared roll',
+                      roll_protobuf.FormatRollStateReport(prepared_state))
+        self.assertIn(f'Stopped at [3/5] patches/{_PLAN_CONFLICT_PATCH}.',
+                      roll_protobuf.FormatRollStateReport(conflict_state))
+        self.assertIn(f'  third_party/protobuf/{_PLAN_CONFLICT_PATH}\nNext: ',
+                      roll_protobuf.FormatRollStatusReport(conflict_status))
+
+    def testAbortRollRestoresExactStartingCommitAndDeletesRollState(self):
+        _WriteFilesToDirectory(self.repository_root,
+                               {'.gitignore': '*.targets\n*.orig\n'})
+        _RunGitCommand(self.repository_root,
+                       ['commit', '--quiet', '-am', 'Ignore .orig'])
+        start_commit = _RunGitCommand(self.repository_root,
+                                      ['rev-parse', 'HEAD'])
+        roll_protobuf.StartRoll(
+            to_revision='v37.0',
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+        )
+        _WriteFilesToDirectory(
+            self.fixture.protobuf_directory,
+            {
+                'src/untracked.tmp': 'scratch\n',
+                'src/untracked_dir/untracked.orig': 'leftover\n',
+            },
+        )
+
+        roll_protobuf.AbortRoll(self.fixture.protobuf_directory)
+
+        self.assertEqual(
+            (start_commit, '', None),
+            (
+                _RunGitCommand(self.repository_root, ['rev-parse', 'HEAD']),
+                _RunGitCommand(self.repository_root,
+                               ['status', '--porcelain', '-uall']),
+                roll_protobuf.LoadRollState(self.fixture.protobuf_directory),
+            ),
+        )
+        self.assertFalse(
+            os.path.exists(
+                os.path.join(self.fixture.protobuf_directory, 'src',
+                             'untracked_dir')))
+
+    def testAbortRollRaisesWhenNoRollIsInProgress(self):
+        with self.assertRaisesRegex(roll_protobuf.RollProtobufError,
+                                    r'No protobuf roll is in progress'):
+            roll_protobuf.AbortRoll(self.fixture.protobuf_directory)
+
+    def testMainStartExitsTwoOnConflictAndStatusAndAbortCleanUp(self):
+        start_commit = _RunGitCommand(self.repository_root,
+                                      ['rev-parse', 'HEAD'])
+
+        start_code, start_stdout, _ = _RunMain(
+            'start',
+            '--to',
+            'v37.0',
+            '--protobuf-dir',
+            self.fixture.protobuf_directory,
+            '--upstream-repo',
+            self.fixture.upstream_directory,
+        )
+        status_code, status_stdout, _ = _RunMain(
+            'status',
+            '--protobuf-dir',
+            self.fixture.protobuf_directory,
+            '--json',
+        )
+        abort_code, abort_stdout, _ = _RunMain(
+            'abort',
+            '--protobuf-dir',
+            self.fixture.protobuf_directory,
+        )
+
+        self.assertEqual(
+            (
+                roll_protobuf.EXIT_CODE_CONFLICT,
+                roll_protobuf.EXIT_CODE_SUCCESS,
+                roll_protobuf.EXIT_CODE_SUCCESS,
+            ),
+            (start_code, status_code, abort_code),
+        )
+        self.assertIn('Doing it by hand', start_stdout)
+        self.assertEqual('conflict', json.loads(status_stdout)['state'])
+        self.assertEqual(
+            f'Aborted roll to v37.0 and reset to {start_commit}.',
+            abort_stdout,
+        )
+
+    def testMainPrepareAndCleanStartExitZero(self):
+        for patch_name in (_PLAN_CONFLICT_PATCH, _PLAN_MISSING_FILE_PATCH):
+            os.remove(
+                os.path.join(self.fixture.protobuf_directory, 'patches',
+                             patch_name))
+        _RunGitCommand(self.repository_root, ['add', '-A', '.'])
+        _RunGitCommand(self.repository_root,
+                       ['commit', '--quiet', '-m', 'Drop conflicting patches'])
+
+        prepare_code, prepare_stdout, _ = _RunMain(
+            'prepare',
+            '--to',
+            'v37.0',
+            '--protobuf-dir',
+            self.fixture.protobuf_directory,
+            '--upstream-repo',
+            self.fixture.upstream_directory,
+        )
+        start_code, start_stdout, _ = _RunMain(
+            'start',
+            '--to',
+            'v37.0',
+            '--protobuf-dir',
+            self.fixture.protobuf_directory,
+            '--upstream-repo',
+            self.fixture.upstream_directory,
+        )
+        status_code, status_stdout, _ = _RunMain(
+            'status',
+            '--protobuf-dir',
+            self.fixture.protobuf_directory,
+        )
+
+        self.assertEqual(
+            (
+                roll_protobuf.EXIT_CODE_SUCCESS,
+                roll_protobuf.EXIT_CODE_SUCCESS,
+                roll_protobuf.EXIT_CODE_SUCCESS,
+            ),
+            (prepare_code, start_code, status_code),
+        )
+        self.assertIn('Prepared roll', prepare_stdout)
+        self.assertIn('Replayed all 3 patch(es).', start_stdout)
+        self.assertIn('State: replayed (3/3 patch(es)).', status_stdout)
+
+    def testContinueRollCommitsResolvedConflictRefreshesPatchAndAdvances(self):
+        roll_protobuf.StartRoll(
+            to_revision='v37.0',
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+        )
+        _WriteFilesToDirectory(
+            self.fixture.protobuf_directory,
+            {
+                _PLAN_CONFLICT_PATH:
+                _NumberedLines('conflict', line6='conflict line 6 (resolved)')
+            },
+        )
+
+        state = roll_protobuf.ContinueRoll(self.fixture.protobuf_directory)
+        refreshed_patch = pathlib.Path(
+            self.fixture.protobuf_directory, 'patches',
+            _PLAN_CONFLICT_PATCH).read_text(encoding='utf-8')
+
+        self.assertEqual(('conflict', 3), (state.phase, state.current_index))
+        self.assertEqual(
+            roll_protobuf.PatchReplayResult(
+                patch_name=_PLAN_CONFLICT_PATCH,
+                status=roll_protobuf.PatchReplayStatus.CLEAN,
+                changed_line_count_before=2,
+                changed_line_count_after=2,
+            ),
+            state.patch_results[2],
+        )
+        self.assertIn('+conflict line 6 (resolved)', refreshed_patch)
+        self.assertEqual(
+            f'Apply patches/{_PLAN_CONFLICT_PATCH}',
+            _RunGitCommand(self.repository_root, ['log', '-1', '--format=%s']),
+        )
+
+    def testContinueRollHandlesBinaryConflictsSpacedAddedPathsAndSetextHeadings(
+            self):
+        spaced_path = 'src/added space_\u00e9.cc'
+        binary_path = 'src/blob.bin'
+        # Add binary_path to both old and new upstream so a binary patch hunk
+        # conflicts on v37.0 without writing text conflict markers.
+        _RunGitCommand(self.fixture.upstream_directory,
+                       ['checkout', '--quiet', self.fixture.old_commit])
+        pathlib.Path(self.fixture.upstream_directory,
+                     *binary_path.split('/')).write_bytes(b'\x00\x01old\xff')
+        _RunGitCommand(self.fixture.upstream_directory, ['add', binary_path])
+        _RunGitCommand(self.fixture.upstream_directory,
+                       ['commit', '--quiet', '--amend', '--no-edit'])
+        old_commit = _RunGitCommand(self.fixture.upstream_directory,
+                                    ['rev-parse', 'HEAD'])
+
+        # Generate a binary + spaced-added-path + text-conflict patch on old_commit.
+        _WriteFilesToDirectory(
+            self.fixture.upstream_directory,
+            {
+                _PLAN_CONFLICT_PATH:
+                _NumberedLines('conflict', line6='conflict line 6 (chromium)'),
+                spaced_path:
+                '// added file with space and UTF-8\n',
+            },
+        )
+        pathlib.Path(
+            self.fixture.upstream_directory,
+            *binary_path.split('/')).write_bytes(b'\x00\x01patched\xff')
+        _RunGitCommand(self.fixture.upstream_directory,
+                       ['add', '-f', '-A', '.'])
+        _RunGitCommand(self.fixture.upstream_directory,
+                       ['commit', '--quiet', '-m', 'Patch candidate'])
+        patch_bytes = roll_protobuf._RunScratchGit(
+            self.fixture.upstream_directory, 'diff', '--binary',
+            '--no-renames', 'HEAD~1', 'HEAD').stdout
+
+        _RunGitCommand(self.fixture.upstream_directory,
+                       ['checkout', '--quiet', self.fixture.new_commit])
+        pathlib.Path(self.fixture.upstream_directory,
+                     *binary_path.split('/')).write_bytes(b'\x00\x01new\xff')
+        _RunGitCommand(self.fixture.upstream_directory, ['add', binary_path])
+        _RunGitCommand(self.fixture.upstream_directory,
+                       ['commit', '--quiet', '--amend', '--no-edit'])
+        new_commit = _RunGitCommand(self.fixture.upstream_directory,
+                                    ['rev-parse', 'HEAD'])
+        _RunGitCommand(self.fixture.upstream_directory,
+                       ['tag', '-f', 'v37.0', new_commit])
+
+        pathlib.Path(self.fixture.protobuf_directory, 'patches',
+                     _PLAN_CONFLICT_PATCH).write_bytes(patch_bytes)
+        _WriteFilesToDirectory(
+            self.fixture.protobuf_directory,
+            {
+                'README.chromium': ('Name: Protocol Buffers\n'
+                                    'Version: 36.0\n'
+                                    'CPEPrefix: cpe:/a:google:protobuf:36.0\n'
+                                    f'Revision: {old_commit}\n'),
+            },
+        )
+        _RunGitCommand(self.repository_root, ['add', '-A', '.'])
+        _RunGitCommand(self.repository_root,
+                       ['commit', '--quiet', '-m', 'Update conflict fixture'])
+
+        roll_protobuf.StartRoll(
+            to_revision='v37.0',
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+        )
+        _WriteFilesToDirectory(
+            self.fixture.protobuf_directory,
+            {_PLAN_CONFLICT_PATH: '||||||| base\nresolved\n'},
+        )
+        with self.assertRaisesRegex(roll_protobuf.RollProtobufError,
+                                    r'Unresolved conflict markers remain'):
+            roll_protobuf.ContinueRoll(self.fixture.protobuf_directory)
+
+        # Markdown Setext H1 (`=======`) must not false-positive as a marker,
+        # while the untouched unmerged binary file must still block continue.
+        _WriteFilesToDirectory(
+            self.fixture.protobuf_directory,
+            {_PLAN_CONFLICT_PATH: 'Heading\n=======\nresolved\n'},
+        )
+        with self.assertRaisesRegex(roll_protobuf.RollProtobufError,
+                                    r'Unresolved unmerged files remain'):
+            roll_protobuf.ContinueRoll(self.fixture.protobuf_directory)
+
+        pathlib.Path(
+            self.fixture.protobuf_directory,
+            *binary_path.split('/')).write_bytes(b'\x00\x01merged\xff')
+        target_protobuf_dir = self.fixture.protobuf_directory
+        if sys.platform != 'win32':
+            target_protobuf_dir = os.path.join(self.temporary_directory,
+                                               'protobuf_link')
+            os.symlink(self.fixture.protobuf_directory, target_protobuf_dir)
+
+        state = roll_protobuf.ContinueRoll(target_protobuf_dir)
+        refreshed_patch = pathlib.Path(self.fixture.protobuf_directory,
+                                       'patches',
+                                       _PLAN_CONFLICT_PATCH).read_bytes()
+
+        self.assertEqual(('conflict', 3), (state.phase, state.current_index))
+        self.assertTrue(
+            os.path.isfile(
+                os.path.join(self.fixture.protobuf_directory,
+                             *spaced_path.split('/'))))
+        self.assertIn(b'GIT binary patch', refreshed_patch)
+        roll_protobuf._RunScratchGit(
+            self.repository_root,
+            'apply',
+            '--check',
+            '-R',
+            '--unidiff-zero',
+            '--directory=third_party/protobuf',
+            '-',
+            input_bytes=refreshed_patch,
+        )
+
+    def testContinueRollRefusesMarkersRejectFilesUnexpectedHeadAndExtraFiles(
+            self):
+
+        def AssertContinueRaises(pattern: str) -> None:
+            with self.assertRaisesRegex(roll_protobuf.RollProtobufError,
+                                        pattern):
+                roll_protobuf.ContinueRoll(self.fixture.protobuf_directory)
+
+        AssertContinueRaises(r'No conflicting protobuf patch is waiting')
+        roll_protobuf.StartRoll(
+            to_revision='v37.0',
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+        )
+        AssertContinueRaises(r'Unresolved conflict markers remain')
+        _WriteFilesToDirectory(
+            self.fixture.protobuf_directory,
+            {
+                _PLAN_CONFLICT_PATH:
+                _PLAN_NEW_UPSTREAM_FILES[_PLAN_CONFLICT_PATH]
+            },
+        )
+        AssertContinueRaises(r'No changes remain')
+
+        _WriteFilesToDirectory(
+            self.fixture.protobuf_directory,
+            {
+                _PLAN_CONFLICT_PATH:
+                _NumberedLines('conflict', line6='conflict line 6 (resolved)'),
+                'src/leftover.rej':
+                '@@ -1 +1 @@\n',
+            },
+        )
+        AssertContinueRaises(r'Remove \.rej and \.orig files')
+        os.remove(
+            os.path.join(self.fixture.protobuf_directory, 'src',
+                         'leftover.rej'))
+
+        _WriteFilesToDirectory(self.repository_root,
+                               {'OTHER_CHROMIUM_FILE': 'staged outside\n'})
+        _RunGitCommand(self.repository_root, ['add', 'OTHER_CHROMIUM_FILE'])
+        AssertContinueRaises(r'Staged changes outside //third_party/protobuf')
+        _RunGitCommand(self.repository_root,
+                       ['checkout', 'HEAD', '--', 'OTHER_CHROMIUM_FILE'])
+
+        _WriteFilesToDirectory(self.fixture.protobuf_directory,
+                               {'BUILD.gn': '# accidental edit\n'})
+        with self.assertRaisesRegex(
+                roll_protobuf.RollProtobufError,
+                r'Chromium-owned or bootstrap-generated files'):
+            roll_protobuf.ContinueRoll(self.fixture.protobuf_directory,
+                                       allow_extra_files=True)
+        _WriteFilesToDirectory(self.fixture.protobuf_directory,
+                               {'BUILD.gn': ''})
+
+        _WriteFilesToDirectory(self.fixture.protobuf_directory,
+                               {'src/unrelated.cc': '// extra\n'})
+        AssertContinueRaises(r'Modified files not touched by')
+
+        state = roll_protobuf.ContinueRoll(self.fixture.protobuf_directory,
+                                           allow_extra_files=True)
+        self.assertEqual(('conflict', 3), (state.phase, state.current_index))
+
+        _RunGitCommand(self.repository_root,
+                       ['commit', '--quiet', '--allow-empty', '-m', 'Manual'])
+        AssertContinueRaises(r'run `roll_protobuf\.py resume`')
+
+    def testDropCurrentPatchDeletesPatchCommitsReasonAndReplaysRemaining(self):
+        _WriteFilesToDirectory(self.repository_root,
+                               {'.gitignore': '*.targets\n*.orig\n'})
+        _RunGitCommand(self.repository_root,
+                       ['commit', '--quiet', '-am', 'Ignore .orig'])
+        roll_protobuf.StartRoll(
+            to_revision='v37.0',
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+        )
+        for invalid_reason in ('   ', 'line 1\nline 2', 'line 1\rline 2'):
+            with self.assertRaisesRegex(roll_protobuf.RollProtobufError,
+                                        r'non-empty --reason'):
+                roll_protobuf.DropCurrentPatch(invalid_reason,
+                                               self.fixture.protobuf_directory)
+
+        _WriteFilesToDirectory(
+            self.fixture.protobuf_directory,
+            {
+                'src/leftover.rej': '@@ -1 +1 @@\n',
+                'src/new_dir/leftover.orig': '// backup\n',
+                'src/untracked.tmp': '// scratch\n',
+            },
+        )
+        _WriteFilesToDirectory(self.repository_root,
+                               {'OTHER_CHROMIUM_FILE': 'staged outside\n'})
+        _RunGitCommand(self.repository_root, ['add', 'OTHER_CHROMIUM_FILE'])
+        with self.assertRaisesRegex(
+                roll_protobuf.RollProtobufError,
+                r'Staged changes outside //third_party/protobuf.*'
+                r'OTHER_CHROMIUM_FILE'):
+            roll_protobuf.DropCurrentPatch('obsolete in v37',
+                                           self.fixture.protobuf_directory)
+        self.assertTrue(
+            os.path.exists(
+                os.path.join(self.fixture.protobuf_directory, 'src',
+                             'untracked.tmp')))
+        _RunGitCommand(self.repository_root,
+                       ['checkout', 'HEAD', '--', 'OTHER_CHROMIUM_FILE'])
+
+        after_first_drop = roll_protobuf.DropCurrentPatch(
+            'obsolete in v37', self.fixture.protobuf_directory)
+        final_state = roll_protobuf.DropCurrentPatch(
+            'file removed upstream', self.fixture.protobuf_directory)
+        recent_subjects = _RunGitCommand(
+            self.repository_root, ['log', '-3', '--format=%s']).splitlines()
+
+        self.assertEqual(
+            ('conflict', 3),
+            (after_first_drop.phase, after_first_drop.current_index))
+        self.assertEqual(('replayed', 5),
+                         (final_state.phase, final_state.current_index))
+        self.assertEqual(
+            final_state,
+            roll_protobuf.LoadRollState(self.fixture.protobuf_directory))
+        self.assertEqual(
+            [
+                f'Apply patches/{_PLAN_STACKED_PATCH}',
+                f'Drop patches/{_PLAN_MISSING_FILE_PATCH} (file removed upstream)',
+                f'Drop patches/{_PLAN_CONFLICT_PATCH} (obsolete in v37)',
+            ],
+            recent_subjects,
+        )
+        self.assertEqual(
+            _PLAN_NEW_UPSTREAM_FILES[_PLAN_CONFLICT_PATH],
+            pathlib.Path(
+                self.fixture.protobuf_directory,
+                *_PLAN_CONFLICT_PATH.split('/')).read_text(encoding='utf-8'),
+        )
+        for cleaned_entry in ('leftover.rej', 'new_dir', 'untracked.tmp'):
+            self.assertFalse(
+                os.path.exists(
+                    os.path.join(self.fixture.protobuf_directory, 'src',
+                                 cleaned_entry)))
+        for dropped_patch in (_PLAN_CONFLICT_PATCH, _PLAN_MISSING_FILE_PATCH):
+            self.assertFalse(
+                os.path.exists(
+                    os.path.join(self.fixture.protobuf_directory, 'patches',
+                                 dropped_patch)))
+        with self.assertRaisesRegex(
+                roll_protobuf.RollProtobufError,
+                r'No conflicting protobuf patch is waiting for '
+                r'`roll_protobuf\.py drop`'):
+            roll_protobuf.DropCurrentPatch('already replayed',
+                                           self.fixture.protobuf_directory)
+        self.assertIn('dropped (obsolete in v37)',
+                      roll_protobuf.FormatRollStateReport(final_state))
+
+    def testResumeRollReconcilesManualApplyAndDropCommitsAndFinishesRoll(self):
+        roll_protobuf.StartRoll(
+            to_revision='v37.0',
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+        )
+        _WriteFilesToDirectory(
+            self.fixture.protobuf_directory,
+            {
+                _PLAN_CONFLICT_PATH:
+                _NumberedLines('conflict', line6='conflict line 6 (manual)')
+            },
+        )
+        _RunGitCommand(
+            self.repository_root,
+            ['add', '--', f'third_party/protobuf/{_PLAN_CONFLICT_PATH}'])
+        _RunGitCommand(self.repository_root, [
+            'commit', '--quiet', '-m', f'Apply patches/{_PLAN_CONFLICT_PATCH}'
+        ])
+        refreshed = _RunGitCommand(
+            self.repository_root,
+            ['diff', 'HEAD~1', 'HEAD', '--relative=third_party/protobuf'])
+        pathlib.Path(self.fixture.protobuf_directory, 'patches',
+                     _PLAN_CONFLICT_PATCH).write_text(refreshed + '\n',
+                                                      encoding='utf-8',
+                                                      newline='\n')
+        _RunGitCommand(
+            self.repository_root,
+            [
+                'commit', '--quiet', '--amend', '--no-edit',
+                f'third_party/protobuf/patches/{_PLAN_CONFLICT_PATCH}'
+            ],
+        )
+        _RunGitCommand(
+            self.repository_root,
+            [
+                'rm', '--quiet',
+                f'third_party/protobuf/patches/{_PLAN_MISSING_FILE_PATCH}'
+            ],
+        )
+        _RunGitCommand(
+            self.repository_root,
+            [
+                'commit', '--quiet', '-m',
+                f'Drop patches/{_PLAN_MISSING_FILE_PATCH} (file removed upstream)'
+            ],
+        )
+
+        state = roll_protobuf.ResumeRoll(self.fixture.protobuf_directory)
+
+        self.assertEqual(('replayed', 5), (state.phase, state.current_index))
+        self.assertEqual(
+            [
+                ('CLEAN', 2, None),
+                ('EMPTY', None, None),
+                ('CLEAN', 2, None),
+                ('DROPPED', None, 'file removed upstream'),
+                ('CLEAN', 3, None),
+            ],
+            [(
+                result.status.value,
+                result.changed_line_count_after,
+                result.error_message,
+            ) for result in state.patch_results],
+        )
+
+    def testResumeRollRejectsDirtyWorkingTreeAndUnexpectedCommitSubjects(self):
+        roll_protobuf.StartRoll(
+            to_revision='v37.0',
+            protobuf_directory=self.fixture.protobuf_directory,
+            upstream_repository_path=self.fixture.upstream_directory,
+        )
+        with self.assertRaisesRegex(roll_protobuf.RollProtobufError,
+                                    r'Working tree has uncommitted changes'):
+            roll_protobuf.ResumeRoll(self.fixture.protobuf_directory)
+
+        _RunGitCommand(self.repository_root,
+                       ['reset', '--quiet', '--hard', 'HEAD'])
+        _RunGitCommand(
+            self.repository_root,
+            ['commit', '--quiet', '--allow-empty', '-m', 'Wrong subject'])
+        with self.assertRaisesRegex(roll_protobuf.RollProtobufError,
+                                    r'Unexpected commit subject'):
+            roll_protobuf.ResumeRoll(self.fixture.protobuf_directory)
+
+    def testMainContinueAndDropCompleteRollEndToEnd(self):
+        start_code, _, _ = _RunMain('start', '--to', 'v37.0', '--protobuf-dir',
+                                    self.fixture.protobuf_directory,
+                                    '--upstream-repo',
+                                    self.fixture.upstream_directory)
+        _WriteFilesToDirectory(
+            self.fixture.protobuf_directory, {
+                _PLAN_CONFLICT_PATH:
+                _NumberedLines('conflict', line6='conflict line 6 (cli)'),
+                'src/extra_cli.cc':
+                'extra\n'
+            })
+        continue_code, continue_stdout, _ = _RunMain(
+            'continue', '--allow-extra-files', '--protobuf-dir',
+            self.fixture.protobuf_directory)
+        drop_code, drop_stdout, _ = _RunMain('drop', '--reason',
+                                             'no longer needed in v37',
+                                             '--protobuf-dir',
+                                             self.fixture.protobuf_directory,
+                                             '--json')
+        drop_payload = json.loads(drop_stdout)
+
+        self.assertEqual((roll_protobuf.EXIT_CODE_CONFLICT,
+                          roll_protobuf.EXIT_CODE_CONFLICT,
+                          roll_protobuf.EXIT_CODE_SUCCESS),
+                         (start_code, continue_code, drop_code))
+        self.assertIn(f'Stopped at [4/5] patches/{_PLAN_MISSING_FILE_PATCH}.',
+                      continue_stdout)
+        self.assertIn('`roll_protobuf.py drop --reason "<why>"`',
+                      continue_stdout)
+        self.assertEqual(
+            ('replayed', 'no longer needed in v37'),
+            (drop_payload['phase'], drop_payload['patch_results'][3]['error']))
+
+    def testMainResumeFinishesRollAfterManualCommit(self):
+        _RunMain('start', '--to', 'v37.0', '--protobuf-dir',
+                 self.fixture.protobuf_directory, '--upstream-repo',
+                 self.fixture.upstream_directory)
+        _RunGitCommand(self.repository_root,
+                       ['reset', '--quiet', '--hard', 'HEAD'])
+        resume_outcomes = []
+        for patch_name in (_PLAN_CONFLICT_PATCH, _PLAN_MISSING_FILE_PATCH):
+            _RunGitCommand(self.repository_root, [
+                'rm', '--quiet', f'third_party/protobuf/patches/{patch_name}'
+            ])
+            _RunGitCommand(self.repository_root, [
+                'commit', '--quiet', '-m',
+                f'Drop patches/{patch_name} (manual drop)'
+            ])
+            resume_outcomes.append(
+                _RunMain('resume', '--protobuf-dir',
+                         self.fixture.protobuf_directory))
+
+        self.assertEqual([
+            roll_protobuf.EXIT_CODE_CONFLICT, roll_protobuf.EXIT_CODE_SUCCESS
+        ], [code for code, _, _ in resume_outcomes])
+        self.assertIn(f'Stopped at [4/5] patches/{_PLAN_MISSING_FILE_PATCH}.',
+                      resume_outcomes[0][1])
+        self.assertIn('Replayed all 5 patch(es).', resume_outcomes[1][1])
 
 
 if __name__ == '__main__':

@@ -11,7 +11,6 @@
 #include "base/check_is_test.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
-#include "base/logging.h"
 #include "base/values.h"
 #include "chrome/browser/enterprise/platform_auth/platform_auth_provider_manager.h"
 #include "chrome/common/pref_names.h"
@@ -20,13 +19,10 @@
 #include "components/prefs/pref_service.h"
 
 #if BUILDFLAG(IS_MAC)
-#include "base/feature_list.h"
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chrome/browser/enterprise/platform_auth/extensible_enterprise_sso_metadata.h"
 #include "chrome/browser/enterprise/platform_auth/extensible_enterprise_sso_prefs_handler.h"
 #include "chrome/browser/enterprise/platform_auth/extensible_enterprise_sso_provider_mac.h"
-#include "chrome/browser/enterprise/platform_auth/platform_auth_features.h"
-#include "components/enterprise/platform_auth/platform_auth_features.h"
 #include "components/policy/core/common/management/management_service.h"
 #endif  //  BUILFLAG(IS_MAC)
 
@@ -84,30 +80,29 @@ const char* PlatformAuthPolicyObserver::GetPrefName() {
 }
 
 void PlatformAuthPolicyObserver::OnPrefChanged() {
-  // 0 == Disabled
-  // 1 == Enabled
-  const bool enabled =
-#if BUILDFLAG(IS_MAC)
-      base::FeatureList::IsEnabled(
-          enterprise_auth::kEnableExtensibleEnterpriseSSO) &&
-      policy::ManagementServiceFactory::GetForPlatform()->IsManaged() &&
-#endif
-      pref_change_registrar_.prefs()->GetInteger(GetPrefName()) != 0;
+  enterprise_auth::PlatformAuthProviderManager::EnableOrDisableIfNecessary(
+      pref_change_registrar_.prefs());
 
 #if BUILDFLAG(IS_MAC)
-  if (base::FeatureList::IsEnabled(enterprise_auth::kOktaSSO) && enabled &&
-      !prefs_handler_) {
+  UpdateSsoPrefsHandler();
+#endif
+}
+
+#if BUILDFLAG(IS_MAC)
+void PlatformAuthPolicyObserver::UpdateSsoPrefsHandler() {
+  const bool should_be_enabled =
+      policy::ManagementServiceFactory::GetForPlatform()->IsManaged() &&
+      pref_change_registrar_.prefs()->GetInteger(GetPrefName()) != 0;
+
+  // Depending on the conditions either create or destroy the
+  // ExtensibleEnterpriseSSOPrefsHandler.
+  if (should_be_enabled && !prefs_handler_) {
     prefs_handler_ =
         std::make_unique<enterprise_auth::ExtensibleEnterpriseSSOPrefsHandler>(
             pref_change_registrar_.prefs());
     prefs_handler_->UpdatePrefs();
-  } else if (base::FeatureList::IsEnabled(enterprise_auth::kOktaSSO) &&
-             !enabled && prefs_handler_) {
+  } else if (!should_be_enabled && prefs_handler_) {
     prefs_handler_.reset();
   }
-#endif
-
-  VLOG(1) << "PlatformAuthProviderManager enabled: " << enabled;
-  enterprise_auth::PlatformAuthProviderManager::GetInstance().SetEnabled(
-      enabled, base::OnceClosure());
 }
+#endif

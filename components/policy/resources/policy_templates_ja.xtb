@@ -1456,6 +1456,23 @@ Click-to-Call 機能を有効にします。この機能により、ログイン
       このポリシーでは、トップレベルのドキュメントのオリジン（通常、アドレスバーにも表示されるページの URL）がいずれかのパターンに一致するかどうかに基づいて、JavaScript がブロックされます。そのため、このポリシーはウェブ サプライ チェーン攻撃の軽減には適していません。たとえば、パターン「https://[*.]foo.com/」を指定した場合、https://example.com でホストされているページで https://www.foo.com/example.js から読み込まれたスクリプトの実行を防ぐことはできません。また、パターン「https://example.com/」を指定した場合、https://example.com のドキュメントが最上位のドキュメントでなく、別のオリジン（https://www.bar.com）でホストされているページにサブフレームとして埋め込まれている場合、スクリプトの実行を防ぐことはできません。</translation>
 <translation id="1942015922182679826">復号できないパスワードの削除を有効にする</translation>
 <translation id="1942626390957213764">デスクトップ共有ハブを無効にする</translation>
+<translation id="1943243146727870858">リストの ID プロバイダに対して、<ph name="EXTENSIBLE_ENTERPRISE_SSO_PRODUCT_NAME" /> を使用したシングル サインオン（SSO）を無効にします。
+
+値 <ph name="POLICY_VALUE_ALL" /> を追加すると、SSO でサポートされているすべての ID プロバイダが無効になります。
+
+値 <ph name="POLICY_VALUE_MICROSOFT" /> を追加すると、Chrome で Microsoft® クラウド ID プロバイダのシングル サインオンのサポートが無効になります。
+
+このポリシーを未設定のままにした場合、<ph name="PRODUCT_NAME" /> でサポートされているすべての ID プロバイダが有効になります。
+
+<ph name="PRODUCT_NAME" /> で有効化され、管理者によってデバイスに設定された ID プロバイダを使用して、<ph name="EXTENSIBLE_ENTERPRISE_SSO_PRODUCT_NAME" /> をサポートする任意のアプリケーションでログインしたユーザーは、その ID プロバイダを使用してウェブ プロパティに自動ログインできます。ユーザーの認証情報に関する情報は、認証イベントごとにユーザーのクラウド ID プロバイダに送信されます。
+
+注:
+
+<ph name="PRODUCT_NAME" /> は、シークレット モードまたはゲストモードでの <ph name="EXTENSIBLE_ENTERPRISE_SSO_PRODUCT_NAME" /> を使用したシングル サインオンをサポートしていません。
+
+<ph name="PRODUCT_NAME" /> は、Microsoft、Okta、Ping の <ph name="EXTENSIBLE_ENTERPRISE_SSO_PRODUCT_NAME" /> を使用したシングル サインオンのみサポートしています。
+
+この機能は <ph name="MAC_OS_NAME" /> 10.15 以降で利用できます。</translation>
 <translation id="1943628907052340534">ユーザーが <ph name="MS_WIN_NAME" /> にログインしたときに <ph name="PRODUCT_NAME" /> を開かない</translation>
 <translation id="194407941132272412">すべてのウェブサイトでサイト分離を無効にするが、ユーザーが有効化できるようにする</translation>
 <translation id="1945994447126139909">この企業向けのポリシーは一時的な適用を想定しており、<ph name="PRODUCT_NAME" /> バージョン 88 で削除される予定です。Chrome のデフォルトのリファラー ポリシーは、Chrome 85 安定版の公開に向けた段階的措置として、現在の「no-referrer-when-downgrade」からさらに安全な「strict-origin-when-cross-origin」に変更され、セキュリティが強化されます。
@@ -3369,6 +3386,8 @@ false に設定した場合、教師はこの機能にアクセスできませ�
 <translation id="3146711617256415776">「選択して読み上げ」の使用時に Enhanced Network のテキスト読み上げ音声を許可しない</translation>
 <translation id="315013437951136266"><ph name="IP_PROTECTION_NAME" /> 機能を有効にする。</translation>
 <translation id="3150351525324499342">デフォルトで <ph name="PRODUCT_NAME" /> アイコンをツールバーに表示しないが、ユーザーが選択できるようにする</translation>
+<translation id="3151501327418961907">このポリシーを 0 に設定するか未設定のままにした場合、<ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> ポリシーと <ph name="PROXY_PROVISIONING_DOMAINS_POLICY_NAME" /> ポリシーは、管理対象ブラウザの関連付けられたユーザーのユーザー スコープでのみ適用されます。
+このポリシーを 1 に設定した場合、関連付けられていないユーザーであっても、<ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> ポリシーと <ph name="PROXY_PROVISIONING_DOMAINS_POLICY_NAME" /> ポリシーが該当のユーザー スコープで適用されます。</translation>
 <translation id="3152135410085709340">PDF ビューアで file:// URL へのローカル ファイル アクセスを許可するサイトを指定する</translation>
 <translation id="3152425128389603870">統合デスクトップを使用可能にし、デフォルトで有効にする</translation>
 <translation id="3159375329008977062">ユーザーは UI から Crostini コンテナを書き出しおよび読み込みできます</translation>
@@ -4176,6 +4195,21 @@ HTTPS 用の RSA 証明書に両方を含める必要があります。</transla
 <translation id="370314752761795411"><ph name="MS_WIN_NAME" /> へのログイン時に <ph name="PRODUCT_NAME" /> を起動する</translation>
 <translation id="3711895659073496551">停止する</translation>
 <translation id="3712861436661566358">プロファイル分離を強制適用する</translation>
+<translation id="3715589988915487768"><ph name="PRODUCT_NAME" /> がプロキシ構成を動的に取得するために使用するプロビジョニング ドメイン（PvD）のリストを設定します。
+
+このポリシーでは、RFC 8801（「プロビジョニング ドメイン名とデータの検出」）で定義されているプロビジョニング ドメインを表すドメイン名またはリソース URI のリストを指定できます。ブラウザは、各 PvD について、既知のエンドポイント パス「https://[<ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />]/.well-known/pvd」に HTTPS リクエストを送信して、対応する JSON 構成を解決します。
+
+リストの各エントリでは、以下を指定します。
+
+* <ph name="PROXY_PROVISIONING_DOMAINS_PVD_ID" />: プロビジョニング ドメインの識別子（ドメイン名）。
+
+* <ph name="PROXY_PROVISIONING_DOMAINS_AUTH_CONFIG" />: オプションの認証構成。未構成または「なし」に設定した場合、認証は行われません。「profile_bearer_token」に設定した場合、ブラウザはログインしているメイン アカウントの指定されたスコープで OAuth2 アクセス トークンを取得し、「Authorization」ヘッダーに「Bearer」トークンとして付加します。
+
+* <ph name="PROXY_PROVISIONING_DOMAINS_EXTRA_HEADERS" />: PvD エンドポイントをクエリする際に含めるカスタム HTTP ヘッダーのオプションのリスト。「profile_id」（デバイス上のブラウザ プロファイルの安定した一意の ID を表し、プロファイルごとの構成のターゲティングを可能にする）や「accept_language」（ブラウザの優先言語を表す）などの動的な値を挿入できます。
+
+取得した構成は、RFC 8801 スキーマに従って解析されます。PvD の JSON ペイロードのプロキシ構成関連のルーティング ルールとプロキシのみが適用されます。このポリシーを未設定のままにした場合、プロビジョニング ドメインはクエリされず、プロキシ構成の取得にも使用されません。
+
+このポリシーをユーザーレベルで設定できるのは、ユーザーがブラウザに関連付けられている場合、ブラウザが管理対象外の場合、または <ph name="ENABLE_PROXY_OVERRIDE_RULES_FOR_ALL_USERS_POLICY_NAME" /> ポリシーが 1 に設定されている場合のみです。</translation>
 <translation id="3719826155360621982">ホームページ</translation>
 <translation id="3724039569609354541">ウェブサイトがネットワーク エンドポイントにリクエストできるかどうかを指定する場合にデフォルトの動作を使用する</translation>
 <translation id="3726715125055227414">このポリシーでは、<ph name="PRODUCT_OS_NAME" /> で優先する TLS 1.3 の鍵交換アルゴリズム（サポートされているグループ）の順序を指定し、ログイン画面からネットワーク リクエストを行う際に、特定のコンプライアンス体制で承認されたアルゴリズムの優先順序を反映するように設定します。
@@ -5399,6 +5433,27 @@ WebSQL は M112 で削除されました。</translation>
 適用される上限は <ph name="ALLOW_SOCKET_POOL_SIZE_RANDOMIZATION_FOR_PROXIES_POLICY_NAME" /> の影響を受けることにご注意ください。</translation>
 <translation id="4528981768990874684"><ph name="IP_PROTECTION_NAME" /> 機能を無効にする。</translation>
 <translation id="453031441196755904">このポリシーはサポートを終了しました。</translation>
+<translation id="4531088355818260318">このポリシーでは、特定の URL パターンに一致するウェブ リクエストにカスタム HTTP ヘッダーを挿入するルールのリストを定義できます。このポリシーで設定したヘッダーは、リクエストに最初に存在していたヘッダーや、ユーザーまたは拡張機能によって試行された変更より優先されます。
+
+このポリシーの一般的なユースケースは、カスタム ヘッダー（例: <ph name="EXAMPLE_HEADER_NAME" />）を挿入してテナントのアクセス制御を適用することです。
+
+このポリシーでは、ルールのリストを指定できます。各ルールの構成要素:
+
+* <ph name="PATTERNS_KEY" />: 対象とする URL パターンのリスト。URL パターンの指定方法（https://support.google.com/chrome/a?p=url_blocklist_filter_format）をご確認ください。
+
+* <ph name="HEADERS_KEY" />: 挿入するヘッダーのオブジェクトのリスト。各オブジェクトの構成要素は次のとおりです。
+
+  * <ph name="HEADER_NAME_KEY" />: 挿入するヘッダーの名前。
+
+  * <ph name="HEADER_VALUE_KEY" />: 挿入するヘッダーの値。
+
+リクエストに複数のルールが一致する場合、一致したすべてのルールのヘッダーが適用されます。同じ名前のヘッダーが複数ある場合は、URL パターンの指定が最も詳細なヘッダーが適用されます。パターンの詳細度が同じ場合は、リストで最後のほうに指定されたパターンが適用されます。
+
+ヘッダー名は RFC 2616（https://www.rfc-editor.org/rfc/rfc2616）に準拠している必要があります。ヘッダー値に NUL、CR、LF 記号を含めることはできません。個々のヘッダーのサイズは 8 KB 以下である必要があります。無効なヘッダーと URL パターンは無視されます。
+
+このポリシーで指定できる URL パターンは、すべてのルールを合わせて最大 500 件です。各ルールには最大 20 個のヘッダーを含めることができます。これらの上限を超えるパターンとヘッダーは無視されます。
+
+注: URL パターンが暗号化されていないスキーム（http://、ws://、またはスキームが省略されている場合）に一致する場合、設定されたヘッダーは暗号化されていないチャネルを介して書式なしテキストで送信され、ネットワークを監視している第三者に見られる可能性があります。機密性の高い、または識別可能なヘッダー値を保護するには、URL パターンを暗号化されたスキーム（https:// または wss://）に制限してください。</translation>
 <translation id="4531706050939927436">Android アプリを強制的にインストールするには、Google 管理コンソールで Google Play からのインストールを指定します。Android アプリでこのポリシーは使用されません。</translation>
 <translation id="4534500438517478692">Android の制限名:</translation>
 <translation id="4541530620466526913">デバイスのローカル アカウント</translation>
@@ -6848,6 +6903,7 @@ false に設定した場合、教師はこの機能にアクセスできませ�
 
       このポリシーを false に設定するか未設定のままにした場合、この情報は報告されません。
       このポリシーを true に設定した場合、デバイスのアプリケーションと使用に関する情報が報告されます。</translation>
+<translation id="5418723809273651607">Ping® クラウド ID プロバイダ</translation>
 <translation id="5420245232720940848">Thunderbolt / USB4 周辺機器の PCIe トンネリングを無効にする（周辺機器の機能は制限されます）</translation>
 <translation id="5420673997623782432">すべてのクライアントに対してシステムの位置情報へのアクセスをブロックする</translation>
 <translation id="5420774177427557782">この構成を使用する VM について、インストールと実行を許可する（<ph name="INSTALL_ALLOWED" />）、実行を許可してインストールを許可しない（<ph name="RUN_ALLOWED" />）、実行を許可しない（<ph name="BLOCKED" />）のいずれかを指定します。VM をインストールするには、installer_image_x86_64 キーも設定する必要があります。構成を完全に削除すると、暗黙的に <ph name="BLOCKED" /> に設定され、ポリシーの設定なしで VM を実行できなくなります。</translation>
@@ -11203,6 +11259,7 @@ false に設定した場合、管理対象のネットワークに接続され�
 
 ポリシーを有効に設定するか未設定のままにした場合は、このページにアクセスできます。
 ポリシーを無効に設定した場合、このページはブロックされます。</translation>
+<translation id="8266506455952754231"><ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> ポリシーと <ph name="PROXY_PROVISIONING_DOMAINS_POLICY_NAME" /> ポリシーを設定できる管理対象ユーザーを制御する。</translation>
 <translation id="8266778278542911985">このポリシーを 3 に設定した場合、ウェブサイトによるシリアルポートへのアクセス要求が許可されます。このポリシーを 2 に設定した場合、シリアルポートへのアクセスは拒否されます。
 
       このポリシーを未設定のままにした場合、ウェブサイトによるアクセス要求は許可されますが、ユーザーはこの設定を変更できます。</translation>

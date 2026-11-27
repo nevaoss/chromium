@@ -282,6 +282,8 @@ class CORE_EXPORT TextControlElement : public HTMLFormControlElementWithState {
 
   void SetLastChangeWasNotUserEdit() { last_change_was_user_edit_ = false; }
   void AdjustPlaceholderBreakElement();
+  // Updates aria-hidden of the placeholder break element for `value`.
+  void UpdatePlaceholderBreakAriaHidden(const String& value);
   String ValueWithHardLineBreaks() const;
 
   void CloneNonAttributePropertiesFrom(const Element&,
@@ -353,10 +355,6 @@ class CORE_EXPORT TextControlElement : public HTMLFormControlElementWithState {
   void ScheduleSelectionchangeEventOnThisOrDocument();
   void DisabledOrReadonlyAttributeChanged(const QualifiedName&);
 
-  // Called in dispatchFocusEvent(), after placeholder process, before calling
-  // parent's dispatchFocusEvent().
-  virtual void HandleFocusEvent(Element* /* oldFocusedNode */,
-                                mojom::blink::FocusType) {}
   // Called in dispatchBlurEvent(), after placeholder process, before calling
   // parent's dispatchBlurEvent().
   virtual void HandleBlurEvent() {}

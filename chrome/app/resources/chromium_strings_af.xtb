@@ -258,7 +258,6 @@ Sommige kenmerke kan dalk nie beskikbaar wees nie en veranderings aan voorkeure 
 <translation id="3531741627422851418">QR-kode om Chromium-blaaier op mobiele toestelle af te laai</translation>
 <translation id="354621070532799440">Onthounota: Google se beste veiligheidkenmerke in jou sak</translation>
 <translation id="3561853857681580870">Om jou skerm te deel, moet jy skermopname vir Chromium in Stelselinstellings toelaat.</translation>
-<translation id="3588112919289558122">Verbeterde beskerming skakel JavaScript-optimering af vir werwe wat Chromium nie herken nie</translation>
 <translation id="3597003331831379823">Kon nie opstelling met verhoogde voorregte laat loop nie. <ph name="METAINSTALLER_ERROR" /></translation>
 <translation id="3600428265489994557">Meld by Chromium aan</translation>
 <translation id="3639635944603682591">Hierdie persoon se blaaierdata sal van hierdie toestel af uitgevee word. Meld as <ph name="USER_EMAIL" /> by Chromium aan om die data te herwin.</translation>
@@ -297,7 +296,6 @@ Sommige kenmerke kan dalk nie beskikbaar wees nie en veranderings aan voorkeure 
 <translation id="3971865010372729242">Wanneer jy in die adresbalk of soekkassie tik, stuur Chromium dit wat jy tik na jou organisasie se soek-, KI- en agentnutsgoed om voorstelle te kry.</translation>
 <translation id="3975724895399328945">Meer oor &amp;Google Chrome-toetsweergawe</translation>
 <translation id="3997429360543082038">Meer oor Chromium-bedryfstelsel</translation>
-<translation id="4010059961270896984">Wanneer jy ’n werf besoek, stuur Chromium ’n verdoeselde gedeelte van die URL na <ph name="BEGIN_LINK" />Google Veiligblaai<ph name="END_LINK" /> toe deur ’n privaatheidbediener wat jou IP-adres versteek. As ’n webwerf iets verdag doen, word volledige URL’e en stukkies van die bladsyinhoud ook gestuur.</translation>
 <translation id="4016217212818346953">Bly veilig met Wagwoordbestuurder</translation>
 <translation id="4019629340646866719">Chromium-bedryfstelsel word moontlik gemaak deur bykomende <ph name="BEGIN_LINK_CROS_OSS" />oopbronsagteware<ph name="END_LINK_CROS_OSS" />, soos die geval ook is met <ph name="BEGIN_LINK_LINUX_OSS" />Linux-ontwikkelingomgewing<ph name="END_LINK_LINUX_OSS" />.</translation>
 <translation id="4022972681110646219">Vertaal skerm</translation>
@@ -375,6 +373,7 @@ Sommige kenmerke kan dalk nie beskikbaar wees nie en veranderings aan voorkeure 
 <translation id="4786083865378785874">As Gemini in Chromium oop is, bly die kantpaneel oop wanneer nuwe oortjies geskep word</translation>
 <translation id="479167709087336770">Dit gebruik dieselfde speltoetser wat in Google-soektog gebruik word. Teks wat jy in die blaaier tik, word na Google toe gestuur. Jy kan altyd hierdie gedrag in instellings verander.</translation>
 <translation id="4814736265800133385">Gebruik Chromium sonder 'n rekening</translation>
+<translation id="4839733921943823254">Speld kortpad vas</translation>
 <translation id="4888717733111232871">Inkomende reël vir Chromium om mDNS-verkeer toe te laat.</translation>
 <translation id="4893347770495441059">Begin weer om &amp;Chromium op te dateer</translation>
 <translation id="4918086044614829423">Aanvaar</translation>
@@ -458,7 +457,6 @@ Probeer om optimering toe te laat as hierdie bladsy nie werk soos verwag nie.</t
 <translation id="5821520528363214608">Dateer Chromium op om Chromium-data in jou Google-rekening te gebruik en te stoor</translation>
 <translation id="5824893331272123205">Kon nie hierdie paneel laai nie, probeer weer</translation>
 <translation id="5862307444128926510">Welkom by Chromium</translation>
-<translation id="5867606647614813312">Skakel bykomende kenmerke aan om Chromium se sterkste beskermings te verskaf</translation>
 <translation id="5871205389137001634">Klik om uit Prentsoektog te gaan</translation>
 <translation id="5883558403894052917">Chromium het bevind dat hierdie items wanware bevat:</translation>
 <translation id="5889361821821684993">Chromium kontroleer gereeld om seker te maak jou blaaier het die veiligste instellings. Ons sal jou laat weet as jy enigiets moet nagaan.</translation>
@@ -760,13 +758,13 @@ Chromium kan nie jou instellings herwin nie.</translation>
 <translation id="8522801943730206384">Chromium kan jou wagwoorde nagaan wanneer jy hulle stoor</translation>
 <translation id="8525579356836940628">Installering is gestop</translation>
 <translation id="8545729292258443488">Neem jou wagwoorde, oortjies en meer saam met jou terwyl jy aan die beweeg is met die Chromium-app op jou <ph name="DEVICE_TYPE" /></translation>
-<translation id="8548787790260785208">Kry ’n waarskuwing as Chromium een van jou wagwoorde in ’n publieke dataskending vind</translation>
 <translation id="8555465886620020932">Diensfout: <ph name="SERVICE_ERROR" />.</translation>
 <translation id="8556055872671007529">Sommige Chromium-kenmerke en -uitbreidings kom met kortpaaie. Jy kan kies om hulle weer aan te skakel.</translation>
 <translation id="8556420416730706394">Jy kan Prentsoektog vir vinnige toegang vasspeld; klik die Speld Vas-knoppie boaan die kantpaneel</translation>
 <translation id="856656450041460113">Deursoek lys tale</translation>
 <translation id="8576826849825683917">Veelvuldige organisasies bestuur Chromium</translation>
 <translation id="8586442755830160949">Kopiereg <ph name="YEAR" /> Die Chromium-outeurs. Alle regte voorbehou.</translation>
+<translation id="8590782867495422699">Maak Google Search KI-modus weer oop</translation>
 <translation id="8619360774459241877">Begin tans Chromium …</translation>
 <translation id="8624541899164515475">Instellings; maak in nuwe oortjie oop.</translation>
 <translation id="8648201657708811153">Google Chrome-toetsweergawe kan nie jou verstekblaaier gemaak word nie.</translation>
@@ -817,6 +815,7 @@ Chromium kan nie jou instellings herwin nie.</translation>
 <translation id="9056398481763999048">Gebruik Google se beste KI-nutsgoed met die Chromium-app op jou foon</translation>
 <translation id="9057625473949801035">Meld aan by Chromium om jou wagwoorde en meer van <ph name="DEVICE" /> af te kry</translation>
 <translation id="9062666675513499497">Meld aan by Chromium wanneer jy by ander Google-dienste aanmeld</translation>
+<translation id="9074041031320636790">Sukses! Jy kan nou maklik vrae vra terwyl jy blaai met Google Search KI-modus</translation>
 <translation id="9078733879136747090">Chromium is outomaties toegemaak</translation>
 <translation id="9089354809943900324">Chromium is verouderd</translation>
 <translation id="9093206154853821181">{0,plural, =1{Chromium sal oor 'n uur herbegin}other{Chromium sal oor # uur herbegin}}</translation>

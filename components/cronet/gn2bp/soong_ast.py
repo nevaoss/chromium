@@ -509,6 +509,7 @@ class CcModule(Module):
         'cflags',
         'include_dirs',
         'local_include_dirs',
+        'extra_include_dir_deps',
         'header_libs',
         'strip',
         'stl',
@@ -545,6 +546,7 @@ class CcModule(Module):
         self.cflags = list()
         self.include_dirs = set()
         self.local_include_dirs = set()
+        self.extra_include_dir_deps = set()
         self.header_libs = set()
         self.strip = dict()
         self.stl = None
@@ -711,6 +713,7 @@ class CrubitModule(Module):
         'namespace',
         'stem',
         'source_stem',
+        'source_subdir',
         'rustlibs',
         'min_sdk_version',
     }
@@ -724,6 +727,7 @@ class CrubitModule(Module):
         self.namespace = None
         self.stem = None
         self.source_stem = None
+        self.source_subdir = None
         self.rustlibs = set()
         self.min_sdk_version = None
         self._initialize_targets(RustTarget)

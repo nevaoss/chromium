@@ -71,12 +71,15 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/mojom/window_features/window_features.mojom.h"
 #include "ui/base/page_transition_types.h"
+#include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
 #include "ui/base/window_open_disposition.h"
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/device_info.h"
 #else
+#include "chrome/browser/themes/theme_service.h"
+#include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #endif
 
@@ -3260,6 +3263,31 @@ TEST_F(ContextualTasksUiServiceTest, IsAllowedSidePanelUrl) {
       GURL("file:///path/to/test.pdf")));
 }
 
+TEST_F(ContextualTasksUiServiceTest, IsRestorableSidePanelUrl) {
+  EXPECT_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
+      .WillRepeatedly(testing::Return(false));
+
+  // AI URLs and valid search results pages, like a Lens search, can be loaded
+  // again.
+  EXPECT_TRUE(
+      service_for_nav_->IsRestorableSidePanelUrl(GURL("https://g.ai/")));
+  EXPECT_TRUE(service_for_nav_->IsRestorableSidePanelUrl(
+      GURL("https://www.google.com/search?q=query")));
+  EXPECT_TRUE(service_for_nav_->IsRestorableSidePanelUrl(
+      GURL("https://www.google.com/search?lns_mode=un")));
+
+  // Pages that the side panel only shows temporarily can't.
+  EXPECT_FALSE(service_for_nav_->IsRestorableSidePanelUrl(
+      GURL("https://login.corp.google.com/signin")));
+  EXPECT_FALSE(service_for_nav_->IsRestorableSidePanelUrl(GURL(
+      "https://www.google.com/sorry/index?continue=https://www.google.com/")));
+
+  // Pages that the side panel doesn't allow can't either.
+  EXPECT_FALSE(service_for_nav_->IsRestorableSidePanelUrl(
+      GURL("https://www.example.com")));
+  EXPECT_FALSE(service_for_nav_->IsRestorableSidePanelUrl(GURL("about:blank")));
+}
+
 TEST_F(ContextualTasksUiServiceTest,
        HandleNavigation_PostRearchitecture_NotInSidePanel) {
   base::test::ScopedFeatureList scoped_feature_list(
@@ -3702,7 +3730,7 @@ TEST_F(
 
   webui::SetBrowserWindowInterface(panel_contents.get(), &browser);
 
-  service_for_nav_->SetIsWebContentsInSidePanelForTesting(true);
+  service_for_nav_->SetSidePanelWebContentsForTesting(panel_contents.get());
 
   // Even though the active tab already has `organic_url` open and is associated
   // with the task, clicking an organic search result link without text
@@ -4162,7 +4190,7 @@ TEST_F(
 
   webui::SetBrowserWindowInterface(panel_contents.get(), &browser);
 
-  service_for_nav_->SetIsWebContentsInSidePanelForTesting(true);
+  service_for_nav_->SetSidePanelWebContentsForTesting(panel_contents.get());
 
   GURL organic_url("https://example.com/organic_result");
 
@@ -4215,6 +4243,9 @@ TEST_F(ContextualTasksUiServiceTest, HandleNavigation_DisplayUrlRewritten) {
 // click.
 TEST_F(ContextualTasksUiServiceTest,
        HandleNavigation_ForwardButtonEnterCobrowseOnLink) {
+  ON_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
+      .WillByDefault(Return(false));
+
   auto web_contents = content::WebContentsTester::CreateTestWebContents(
       profile_.get(), content::SiteInstance::Create(profile_.get()));
   content::WebContentsTester::For(web_contents.get())
@@ -4225,9 +4256,6 @@ TEST_F(ContextualTasksUiServiceTest,
   content::WebContentsTester::For(web_contents.get())
       ->CommitPendingNavigation();
   web_contents->GetController().GoForward();
-
-  ON_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
-      .WillByDefault(Return(false));
 
   base::RunLoop run_loop;
   GURL navigated_url("https://example.com");
@@ -4252,6 +4280,9 @@ TEST_F(ContextualTasksUiServiceTest,
 // typed.
 TEST_F(ContextualTasksUiServiceTest,
        HandleNavigation_ForwardButtonNotEnterCobrowseOnType) {
+  ON_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
+      .WillByDefault(Return(false));
+
   auto web_contents = content::WebContentsTester::CreateTestWebContents(
       profile_.get(), content::SiteInstance::Create(profile_.get()));
   content::WebContentsTester::For(web_contents.get())
@@ -4262,9 +4293,6 @@ TEST_F(ContextualTasksUiServiceTest,
   content::WebContentsTester::For(web_contents.get())
       ->CommitPendingNavigation();
   web_contents->GetController().GoForward();
-
-  ON_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
-      .WillByDefault(Return(false));
 
   GURL navigated_url("https://example.com");
   EXPECT_FALSE(service_for_nav_->HandleNavigation(
@@ -4283,6 +4311,9 @@ TEST_F(ContextualTasksUiServiceTest,
 // click.
 TEST_F(ContextualTasksUiServiceTest,
        HandleNavigation_BackButtonNotEnterCobrowseOnLink) {
+  ON_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
+      .WillByDefault(Return(false));
+
   auto web_contents = content::WebContentsTester::CreateTestWebContents(
       profile_.get(), content::SiteInstance::Create(profile_.get()));
   content::WebContentsTester::For(web_contents.get())
@@ -4290,9 +4321,6 @@ TEST_F(ContextualTasksUiServiceTest,
   content::WebContentsTester::For(web_contents.get())
       ->NavigateAndCommit(GURL("chrome://contextual-tasks"));
   web_contents->GetController().GoBack();
-
-  ON_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
-      .WillByDefault(Return(false));
 
   GURL navigated_url("https://example.com");
   EXPECT_FALSE(service_for_nav_->HandleNavigation(
@@ -4409,6 +4437,87 @@ TEST_F(ContextualTasksUiServiceTest,
   histogram_tester.ExpectUniqueSample(
       "ContextualTasks.BackButton.UserAction.NavigatedFromSidePanelToFullTab",
       true, 1);
+}
+
+// Regression test for crbug.com/576958456: `MoveTaskUiToNewTab()` may destroy
+// the side panel `WebContents` synchronously (e.g. when the panel is showing a
+// non-AI page). The back button handler must not use it afterwards.
+TEST_F(ContextualTasksUiServiceTest,
+       HandleNavigation_BackButtonExpandsSidePanel_SidePanelContentsDestroyed) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(
+      kContextualTasksBackButtonExpandsSidePanel);
+
+  tabs::TabModel::PreventFeatureInitializationForTesting prevent_feature_init;
+
+  NiceMock<MockBrowserWindowInterface> mock_browser_window;
+  ON_CALL(mock_browser_window, GetProfile())
+      .WillByDefault(Return(profile_.get()));
+  ON_CALL(testing::Const(mock_browser_window), GetProfile())
+      .WillByDefault(Return(profile_.get()));
+  ui::UnownedUserDataHost unowned_user_data_host;
+  ON_CALL(mock_browser_window, GetUnownedUserDataHost())
+      .WillByDefault(ReturnRef(unowned_user_data_host));
+
+  NiceMock<MockTabListInterface> mock_tab_list;
+  auto tab_list_registration =
+      std::make_unique<ui::ScopedUnownedUserData<TabListInterface>>(
+          unowned_user_data_host, mock_tab_list);
+
+  TestTabStripModelDelegate delegate;
+  delegate.SetBrowserWindowInterface(&mock_browser_window);
+  TabStripModel tab_strip_model(&delegate, profile_.get());
+  ON_CALL(mock_browser_window, GetTabStripModel())
+      .WillByDefault(Return(&tab_strip_model));
+
+  std::unique_ptr<content::WebContents> side_panel_contents =
+      content::WebContentsTester::CreateTestWebContents(
+          profile_.get(), content::SiteInstance::Create(profile_.get()));
+  content::WebContentsTester::For(side_panel_contents.get())
+      ->NavigateAndCommit(GURL("chrome://contextual-tasks"));
+
+  NiceMock<MockContextualTasksPanelController> mock_controller(
+      &mock_browser_window);
+  ON_CALL(mock_controller, IsPanelOpenForContextualTask())
+      .WillByDefault(Return(true));
+  ON_CALL(mock_controller, GetActiveWebContents())
+      .WillByDefault(
+          [&side_panel_contents]() { return side_panel_contents.get(); });
+  // Simulate the non-AI branch of `MoveTaskUiToNewTab()`, which closes the
+  // panel and frees the cached side panel `WebContents`.
+  EXPECT_CALL(mock_controller, MoveTaskUiToNewTab())
+      .WillOnce([&side_panel_contents]() { side_panel_contents.reset(); });
+
+  std::unique_ptr<content::WebContents> web_contents =
+      content::WebContentsTester::CreateTestWebContents(
+          profile_.get(), content::SiteInstance::Create(profile_.get()));
+  content::WebContentsTester::For(web_contents.get())
+      ->SetLastCommittedURL(GURL("https://example.com"));
+  tab_strip_model.AppendWebContents(std::move(web_contents), true);
+  ASSERT_EQ(tab_strip_model.count(), 1);
+  tabs::TabInterface* tab = tab_strip_model.GetTabAtIndex(0);
+
+  EXPECT_TRUE(service_for_nav_->HandleNavigationImpl(
+      CreateOpenUrlParams(
+          GURL("chrome://contextual-tasks"), false,
+          ui::PageTransitionFromInt(
+              ui::PageTransition::PAGE_TRANSITION_LINK |
+              ui::PageTransition::PAGE_TRANSITION_FORWARD_BACK)),
+      tab->GetContents(), tab,
+      /*is_from_embedded_page=*/false,
+      /*from_can_create_window=*/false,
+      /*is_same_site_or_from_ui=*/true, false, std::nullopt, std::nullopt,
+      blink::mojom::WindowFeatures()));
+
+  base::RunLoop run_loop;
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, run_loop.QuitClosure());
+  run_loop.Run();
+
+  // The side panel `WebContents` was destroyed, and the original tab is still
+  // closed as part of expanding the side panel.
+  EXPECT_FALSE(side_panel_contents);
+  EXPECT_EQ(tab_strip_model.count(), 0);
 }
 #endif
 
@@ -5456,5 +5565,62 @@ TEST_F(ContextualTasksUiServiceTest,
 
   real_service_->DestroyClosedSidePanel(&mock_browser_window);
 }
+
+#if !BUILDFLAG(IS_ANDROID)
+TEST_F(ContextualTasksUiServiceTest, SidePanelUrlChangesSyncStaleCsParam) {
+  ThemeService* theme_service =
+      ThemeServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(theme_service, nullptr);
+  std::unique_ptr<content::WebContents> panel_contents =
+      content::WebContentsTester::CreateTestWebContents(
+          profile_.get(), content::SiteInstance::Create(profile_.get()));
+  service_for_nav_->SetIsWebContentsInSidePanelForTesting(true);
+  ON_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
+      .WillByDefault(Return(true));
+
+  theme_service->SetBrowserColorScheme(
+      ThemeService::BrowserColorScheme::kLight);
+  const GURL stale_light_url = service_for_nav_->AddRequiredSidePanelUrlChanges(
+      GURL("https://www.google.com/search?udm=50&q=test"),
+      panel_contents.get());
+  std::string cs_value;
+  ASSERT_TRUE(net::GetValueForKeyInQuery(stale_light_url, "cs", &cs_value));
+  ASSERT_EQ(cs_value, "0");
+  EXPECT_FALSE(service_for_nav_->ShouldAddRequiredSidePanelUrlChanges(
+      CreateOpenUrlParams(stale_light_url, /*is_renderer_initiated=*/true),
+      panel_contents.get()));
+
+  theme_service->SetBrowserColorScheme(ThemeService::BrowserColorScheme::kDark);
+  EXPECT_TRUE(service_for_nav_->ShouldAddRequiredSidePanelUrlChanges(
+      CreateOpenUrlParams(stale_light_url, /*is_renderer_initiated=*/true),
+      panel_contents.get()));
+  GURL updated_dark = service_for_nav_->AddRequiredSidePanelUrlChanges(
+      stale_light_url, panel_contents.get());
+  EXPECT_TRUE(net::GetValueForKeyInQuery(updated_dark, "cs", &cs_value));
+  EXPECT_EQ(cs_value, "1");
+  EXPECT_FALSE(service_for_nav_->ShouldAddRequiredSidePanelUrlChanges(
+      CreateOpenUrlParams(updated_dark, /*is_renderer_initiated=*/true),
+      panel_contents.get()));
+
+  theme_service->SetBrowserColorScheme(
+      ThemeService::BrowserColorScheme::kLight);
+  EXPECT_TRUE(service_for_nav_->ShouldAddRequiredSidePanelUrlChanges(
+      CreateOpenUrlParams(updated_dark, /*is_renderer_initiated=*/true),
+      panel_contents.get()));
+  GURL updated_light = service_for_nav_->AddRequiredSidePanelUrlChanges(
+      updated_dark, panel_contents.get());
+  EXPECT_TRUE(net::GetValueForKeyInQuery(updated_light, "cs", &cs_value));
+  EXPECT_EQ(cs_value, "0");
+
+  const GURL signin_url("https://login.corp.google.com/request");
+  EXPECT_EQ(signin_url, service_for_nav_->AddRequiredSidePanelUrlChanges(
+                            signin_url, panel_contents.get()));
+  const GURL captcha_url(
+      "https://www.google.com/sorry/index?continue=https://www.google.com/"
+      "search");
+  EXPECT_EQ(captcha_url, service_for_nav_->AddRequiredSidePanelUrlChanges(
+                             captcha_url, panel_contents.get()));
+}
+#endif  // !BUILDFLAG(IS_ANDROID)
 
 }  // namespace contextual_tasks

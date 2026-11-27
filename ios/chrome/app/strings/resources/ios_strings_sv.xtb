@@ -325,6 +325,7 @@
 <translation id="1925706052394657380">Öppna inställningarna för <ph name="BEGIN_BOLD" />standardappar<ph name="END_BOLD" /> i iOS</translation>
 <translation id="1938871630297275912">{count,plural, =1{En länk har tagits emot}other{{count} länkar har tagits emot}}</translation>
 <translation id="1941314575388338491">Tryck snabbt två gånger om du vill kopiera informationen.</translation>
+<translation id="1942483019269000450">För att fortsätta med uppgiften kan Gemini be Google Wallet att fylla i dina kreditkortsuppgifter</translation>
 <translation id="1943478190258551035">Meny → Inställningar</translation>
 <translation id="1944477975050820119">Få förslag i realtid som kan hjälpa dig att hitta nya sätt att surfa med AI. <ph name="BEGIN_LINK" />Läs mer<ph name="END_LINK" /></translation>
 <translation id="1952728750904661634">Logga in med ett hanterat konto</translation>
@@ -365,6 +366,7 @@
 <translation id="20485545164632846">nytt objekt</translation>
 <translation id="2049727122989709386">Samma lösenord används för <ph name="COUNT" /> konton</translation>
 <translation id="205013082884273671">Sök efter vad som helst på skärmen</translation>
+<translation id="2053311407685904414">Välj adress</translation>
 <translation id="2054044186557130763">Logga in som <ph name="NAME" /> <ph name="EMAIL" />, som hanteras av organisationen.</translation>
 <translation id="2059166748188874810">Kommun</translation>
 <translation id="2060638295449304809">Adressen sparas bara på den här enheten. Om du vill använda det på dina andra enheter sparar du det i Google-kontot <ph name="USER_EMAIL" /></translation>
@@ -465,6 +467,7 @@
 <translation id="2359043044084662842">Översätt</translation>
 <translation id="2359808026110333948">Fortsätt</translation>
 <translation id="2360196772093551345">Använd mobilversion</translation>
+<translation id="2360272811987888433">Manuell inloggning</translation>
 <translation id="2362083820973145409">Inloggad som <ph name="USER_NAME" />. <ph name="USER_EMAIL" />. Öppnar inställningarna.</translation>
 <translation id="2367025302166767427">Det gick inte att fylla i dina uppgifter</translation>
 <translation id="2371084566192454134">Flikar och flikgrupper</translation>
@@ -773,11 +776,13 @@
 <translation id="3404232721752787413">Spara i Google Foto</translation>
 <translation id="3406506285180498376">Dela sidan …</translation>
 <translation id="340669334496430859">Senast ändrad</translation>
+<translation id="3407832712016477396">Gemini kan använda Google Lösenordshantering för att logga in åt dig</translation>
 <translation id="3409785640040772790">Maps</translation>
 <translation id="3416023309465857378">25 okt 2023</translation>
 <translation id="3419787211763835342">Hjälp till att göra förbättrad autofyll bättre</translation>
 <translation id="3422958112451181446">Håll ditt favoritverktyg nedtryckt för att fästa det här</translation>
 <translation id="3430407169377889553">Använd Gemini med försiktighet och ta kontrollen om det behövs. Du ansvarar för det Gemini gör när den utför uppgifter.</translation>
+<translation id="3432601291244612633">Stäng sidan</translation>
 <translation id="3435738964857648380">Säkerhet</translation>
 <translation id="3441673211568148613">Håll ditt surfande privat</translation>
 <translation id="3445288400492335833"><ph name="MINUTES" /> min</translation>
@@ -1049,6 +1054,8 @@
 <translation id="4290920330097335010">Tillåt aldrig</translation>
 <translation id="4293154608148215505">din mobil</translation>
 <translation id="4294506173142861371">Vill du logga in som <ph name="FIRST_NAME" />?</translation>
+<translation id="4297031046690565608">Ange manuellt</translation>
+<translation id="4297418774230471285">Välj personliga uppgifter</translation>
 <translation id="4302061870579014542">Ange position</translation>
 <translation id="4304713468139749426">Lösenordshantering</translation>
 <translation id="4309403553630140242">Dubbeltryck för mer information</translation>
@@ -1387,6 +1394,7 @@
 <translation id="5315029634103634221">Gemini är AI och den kan göra misstag. <ph name="BEGIN_LINK" />Mer om relevant data som skickas till Google<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">Inget att importera</translation>
 <translation id="5316356981864168850"><ph name="INDEX" /> av <ph name="NUM_SUGGESTIONS" /></translation>
+<translation id="5316823130598991834">Logga in på <ph name="SITE_DOMAIN" /></translation>
 <translation id="5317780077021120954">Spara</translation>
 <translation id="5318298563956633672">Du bevakar redan den här produkten.</translation>
 <translation id="5327248766486351172">Namn</translation>
@@ -1934,6 +1942,7 @@ Byt till <ph name="OTHER_EMAIL" /> om du vill fortsätta på datorn. Du får lö
 <translation id="6946722113367118030">Tänker</translation>
 <translation id="6947751977892029882">Något gick fel med den här inställningen. Uppdatera och starta om Chrome och iOS och försök igen. Om felet kvarstår kanske din iPhone inte har stöd för den här inställningen.</translation>
 <translation id="6950522403736391608">Dolda</translation>
+<translation id="6957084631403333422">Testa en fokuserad ny flik-sida</translation>
 <translation id="695965663642079255">Spara och hantera betalningsuppgifter för att betala snabbare</translation>
 <translation id="6962809930976936328">Få insikter med Gemini</translation>
 <translation id="6964300328304469089"><ph name="NAME" />, <ph name="EMAIL" /> är valt just nu. Välj ett konto.</translation>
@@ -2171,6 +2180,7 @@ Du kan starta om när som helst.</translation>
 <translation id="7724085059277147439">{count,plural, =1{Objektet har sparats i Google-kontot {email}}other{Objekten har sparats i Google-kontot {email}}}</translation>
 <translation id="7729458878441927652">Synkronisera flikar och historik om du vill se flikar från dina andra enheter</translation>
 <translation id="7730020510075123961">Nej, sammanfoga data</translation>
+<translation id="7730937523779541003">Fokuserad ny flik-sida har tillämpats</translation>
 <translation id="7733646263819020771"><ph name="BOOKMRK_NAME" />. Bara på den här enheten.</translation>
 <translation id="7737550920399185748">Foton på startsidan från ditt fotobibliotek synkroniseras inte på dina enheter.</translation>
 <translation id="7738120385185846461">Rapportera ett problem …</translation>
@@ -2206,6 +2216,7 @@ Du kan starta om när som helst.</translation>
 <translation id="7839994177130598711">Dina familjemedlemmar kan nu använda ditt användarnamn och lösenord när de loggar in på <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> med Google Lösenordshantering.</translation>
 <translation id="7841180087127694526">Sök efter kopierad text</translation>
 <translation id="7841418003178675048">Välj vilka kort som visas på sidan Ny flik.</translation>
+<translation id="7842369010458597654">Fyller i betalningsuppgifter</translation>
 <translation id="7845466610722898">Visa läslista</translation>
 <translation id="7846161022626028328">Något gick fel. Försök igen.</translation>
 <translation id="784623644169604270">Ingen aktivitet nyligen</translation>
@@ -2613,6 +2624,7 @@ Du kan starta om när som helst.</translation>
 <translation id="9032405509996909363">Bekräfta att du vill radera webbinformation</translation>
 <translation id="9038526468059454274">Sammanfatta med</translation>
 <translation id="9039373489628511875">Bandbredd</translation>
+<translation id="9042363670218758847">Byt till en layout utformad för snabbsökningar</translation>
 <translation id="9042893549633094279">Integritet och säkerhet</translation>
 <translation id="9044703854323320868">Gmail-meddelande <ph name="INDEX" /></translation>
 <translation id="9055291197094969722">Skapa flikgrupper för att ordna dina öppna flikar och vara produktiv</translation>

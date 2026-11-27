@@ -118,6 +118,7 @@ Sommige kenmerke kan dalk nie beskikbaar wees nie en veranderings aan voorkeure 
 <translation id="2039417478970545937">Instellings.</translation>
 <translation id="2040220733769034247">Skandeer die QR-kode met jou foon om Chrome af te laai en by jou Google-rekening aan te meld.</translation>
 <translation id="2044908892530830113">Wys Soek met Chrome in Mac-kieslysbalk en skakel kortpadsleutel aan</translation>
+<translation id="2050189601866423230">Jy kan Google Search KI-modus vasspeld om vrae te vra terwyl jy blaai</translation>
 <translation id="2091012649849228750">Jy het Windows 10 of nuwer nodig om in die toekoms Google Chrome-opdaterings te kry. Hierdie rekenaar gebruik Windows 8.</translation>
 <translation id="2094648590148273905">Chrome OS Flex-bepalings</translation>
 <translation id="2094919256425865063">Verlaat Chrome in elk geval?</translation>
@@ -143,7 +144,6 @@ Sommige kenmerke kan dalk nie beskikbaar wees nie en veranderings aan voorkeure 
 <translation id="2216543877350048334">Meld af om jou Google-rekening uit Chrome te verwyder</translation>
 <translation id="2236949375853147973">My aktiwiteit</translation>
 <translation id="22791603784558743">Maak Gemini in Chrome Dev toe</translation>
-<translation id="2284380654876659752">Wanneer jy ’n werf besoek, stuur Chrome ’n verdoeselde gedeelte van die URL na <ph name="BEGIN_LINK" />Google Veiligblaai<ph name="END_LINK" /> toe deur ’n privaatheidbediener wat jou IP-adres versteek. As ’n webwerf iets verdag doen, word volledige URL’e en stukkies van die bladsyinhoud ook gestuur.</translation>
 <translation id="2290014774651636340">Google API-sleutels ontbreek. Sommige funksies van Google Chrome sal gedeaktiveer word.</translation>
 <translation id="2290095356545025170">Is jy seker jy wil Google Chrome deïnstalleer?</translation>
 <translation id="2295218613066132598">Wys Chrome-werfkortpaaie</translation>
@@ -384,7 +384,6 @@ Probeer om optimering toe te laat as hierdie bladsy nie werk soos verwag nie.</t
 <translation id="459622048091363950">Sodra Chrome toegang het, sal webwerwe jou kan vra vir toegang.</translation>
 <translation id="4598116752460667024">Soek enige proses op die lys.</translation>
 <translation id="4600710005438004015">Chrome kon nie na die nuutste weergawe opdateer nie en daarom het jy nie nuwe kenmerke en sekuriteitregstellings nie.</translation>
-<translation id="4606805686144157064">Kry ’n waarskuwing as Chrome een van jou wagwoorde in ’n publieke dataskending vind</translation>
 <translation id="4608435347866444037">Soek hierdie prent met Google Lens</translation>
 <translation id="4624065194742029982">Chrome Incognito</translation>
 <translation id="4627412468266359539">Opsioneel: Help om Chrome OS Flex-kenmerke en -werkverrigting beter te maak deur outomaties diagnostiese en gebruiksdata na Google toe te stuur.</translation>
@@ -401,9 +400,9 @@ Probeer om optimering toe te laat as hierdie bladsy nie werk soos verwag nie.</t
 <translation id="4768676935374695498">Soek hierdie video met Google Lens</translation>
 <translation id="479167709087336770">Dit gebruik dieselfde speltoetser wat in Google-soektog gebruik word. Teks wat jy in die blaaier tik, word na Google toe gestuur. Jy kan altyd hierdie gedrag in instellings verander.</translation>
 <translation id="4793679854893018356">Vinnd uit hoe Chrome jou veilig hou</translation>
-<translation id="4799870290441980300">Skakel bykomende kenmerke aan om Chrome se sterkste beskerming te verskaf</translation>
 <translation id="4828579605166583682">Google Chrome probeer tans bestaande wagwoorde vervang. Tik jou Windows-wagwoord in om dit toe te laat.</translation>
 <translation id="4836321460899997044">Chrome-profiel</translation>
+<translation id="4839733921943823254">Speld kortpad vas</translation>
 <translation id="4842397268809523050">Chrome OS Flex kon nie jou data sinkroniseer nie omdat sinkronisering nie vir jou domein beskikbaar is nie.</translation>
 <translation id="4851866215237571846"><ph name="EXISTING_USER" /> is reeds aangemeld.  Meld in jou eie profiel as <ph name="USER_EMAIL_ADDRESS" /> by Chrome aan om jou blaai-aktiwiteit apart te hou.</translation>
 <translation id="4855026984605187434">Om jou skerm te deel, moet jy skermopname vir Chrome in Stelselinstellings toelaat.</translation>
@@ -560,7 +559,6 @@ Google Chrome kan nie jou instellings terugstel nie.</translation>
 <translation id="6251759518630934363">Waarsku jou oor gevaarlike werwe – selfs werwe waarvan Google nie voorheen geweet het nie – deur meer data van werwe te ontleed as standaardbeskerming. Jy kan kies om Chrome-waarskuwings oor te slaan.</translation>
 <translation id="6277547788421725101">Jou ouer het “Toestemmings vir werwe, apps en uitbreidings” vir Chrome afgeskakel</translation>
 <translation id="627882678981830918">Pasmaak en beheer Chrome. Stel Chrome as jou verstek.</translation>
-<translation id="6280042952415350607">Verbeterde beskerming skakel JavaScript-optimering af vir werwe wat Chrome nie herken nie</translation>
 <translation id="6288580400488258237">Stel Google Chrome as jou verstekblaaier en speld dit aan jou taakbalk vas</translation>
 <translation id="6291089322031436445">Chrome Dev-programme</translation>
 <translation id="6291549208091401781">Google Chrome is reeds vir alle gebruikers op jou rekenaar geïnstalleer.</translation>
@@ -774,6 +772,7 @@ Google Chrome kan nie jou instellings terugstel nie.</translation>
 <translation id="8074398340364918139">Om ’n spesifieke Chrome-kenmerk of -uitbreiding te soek, moet jy sy kortpad in die adresbalk tik, gevolg deur jou gekose sleutelbordsleutel</translation>
 <translation id="8077579734294125741">Ander Chrome-profiele</translation>
 <translation id="8086881907087796310">Installering het misluk omdat jou rekenaar nie aan die minimum hardewarevereistes voldoen nie.</translation>
+<translation id="8110438089258398864">Jy kan Google Search KI-modus heropen om vrae te vra terwyl jy blaai</translation>
 <translation id="8113883687556086139">Verifieer dat dit jy is om Chrome-data in jou rekening, <ph name="ACCOUNT_EMAIL" />, te gebruik en te stoor</translation>
 <translation id="8115695070094288807">Maak tans Chrome joune …</translation>
 <translation id="8118331347066725040">Stuur terugvoer vir soektog met Lens</translation>
@@ -830,6 +829,8 @@ Nuwe boekmerke kan nie in jou rekening gestoor word totdat jy sommige uitvee nie
 <translation id="8555465886620020932">Diensfout: <ph name="SERVICE_ERROR" />.</translation>
 <translation id="856656450041460113">Deursoek lys tale</translation>
 <translation id="8575047640889685742">Gebruik jou <ph name="BEGIN_LINK" />eie wagfrase<ph name="END_LINK" /> om al die Chrome-data in jou Google-rekening te enkripteer. Betaalmetodes en adresse van Google Pay af sal nie geënkripteer word nie. Blaaigeskiedenis van Chrome af sal nie sinkroniseer nie.</translation>
+<translation id="8590782867495422699">Maak Google Search KI-modus weer oop</translation>
+<translation id="8598779894319572882">Jy kan Google Search KI-modus vanaf die “Google Search KI-modus”-knoppie op die nutsbalk heropen om vrae te vra terwyl jy blaai</translation>
 <translation id="8614913330719544658">Google Chrome reageer nie. Herbegin nou?</translation>
 <translation id="8623450603356630491">Meld aan by Chrome op jou foon</translation>
 <translation id="8624541899164515475">Instellings; maak in nuwe oortjie oop.</translation>
@@ -884,6 +885,7 @@ Nuwe boekmerke kan nie in jou rekening gestoor word totdat jy sommige uitvee nie
 <translation id="9014771989710951291">Veelvuldige organisasies bestuur Chrome</translation>
 <translation id="9018218886431812662">Installering is voltooi</translation>
 <translation id="9066987883552592250">Maak Gemini in Chrome Kanarie toe</translation>
+<translation id="9074041031320636790">Sukses! Jy kan nou maklik vrae vra terwyl jy blaai met Google Search KI-modus</translation>
 <translation id="9090566250983691233">Vind uit hoekom Chrome sommige lêers blokkeer</translation>
 <translation id="9106236359747881194">Kies teks om te soek</translation>
 <translation id="911206726377975832">Vee ook jou blaaidata uit?</translation>

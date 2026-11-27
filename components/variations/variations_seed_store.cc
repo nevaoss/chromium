@@ -194,17 +194,6 @@ base::OnceCallback<void(Args...)> CallbackUmaHistogramTimer(
       base::TimeTicks::Now());
 }
 
-#if BUILDFLAG(IS_ANDROID)
-// Marks seed storing as successful on the Java side to avoid repeated seed
-// fetches. Called only on first run.
-void MarkVariationsSeedAsStoredIfEmptySeed(
-    SeedReaderWriter::ReadSeedDataResult read_result) {
-  if (read_result.result == LoadSeedResult::kEmpty) {
-    android::MarkVariationsSeedAsStored();
-  }
-}
-#endif  // BUILDFLAG(IS_ANDROID)
-
 }  // namespace
 
 class VariationsSeedStore::TwoSeedReader
@@ -524,6 +513,13 @@ void VariationsSeedStore::RecordLastFetchTime(base::Time fetch_time) {
 void VariationsSeedStore::UpdateSeedDateAndLogDayChange(base::Time seed_date) {
   LogSeedDayChange(seed_date);
   seed_reader_writer_->SetSeedDate(seed_date);
+}
+
+bool VariationsSeedStore::UpdateSessionCountryAndGeoLevel1(
+    std::string_view country_code,
+    std::string_view geo_level1) {
+  return seed_reader_writer_->SetSessionCountryAndGeoLevel1(country_code,
+                                                            geo_level1);
 }
 
 UpdateSeedDateResult VariationsSeedStore::GetSeedDateUpdateResult(
@@ -916,10 +912,8 @@ void VariationsSeedStore::StoreValidatedSeed(
 #if BUILDFLAG(IS_ANDROID)
   // If currently we do not have any stored seed, then we mark seed storing as
   // successful on the Java side to avoid repeated seed fetches.
-  if (use_first_run_prefs_) {
-    ReadSeedData(/*done_callback=*/base::BindOnce(
-                     &MarkVariationsSeedAsStoredIfEmptySeed),
-                 SeedType::LATEST, require_synchronous);
+  if (use_first_run_prefs_ && seed_reader_writer_->IsEmpty()) {
+    android::MarkVariationsSeedAsStored();
   }
 #endif  // BUILDFLAG(IS_ANDROID)
 

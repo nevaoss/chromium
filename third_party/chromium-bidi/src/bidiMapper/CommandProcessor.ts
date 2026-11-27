@@ -124,7 +124,6 @@ export class CommandProcessor extends EventEmitter<CommandProcessorEventsMap> {
     this.#browsingContextProcessor = new BrowsingContextProcessor(
       browserCdpClient,
       browsingContextStorage,
-      userContextStorage,
       contextConfigStorage,
       eventManager,
     );
@@ -134,11 +133,7 @@ export class CommandProcessor extends EventEmitter<CommandProcessorEventsMap> {
       cdpConnection,
       browserCdpClient,
     );
-    this.#emulationProcessor = new EmulationProcessor(
-      browsingContextStorage,
-      userContextStorage,
-      contextConfigStorage,
-    );
+    this.#emulationProcessor = new EmulationProcessor(contextConfigStorage);
     this.#inputProcessor = new InputProcessor(browsingContextStorage);
     this.#networkProcessor = new NetworkProcessor(
       browsingContextStorage,
@@ -310,9 +305,8 @@ export class CommandProcessor extends EventEmitter<CommandProcessorEventsMap> {
           this.#parser.parseReloadParams(command.params),
         );
       case 'browsingContext.setBypassCSP':
-        this.#parser.parseSetBypassCspParams(command.params);
-        throw new UnsupportedOperationException(
-          `Method ${command.method} is not implemented.`,
+        return await this.#browsingContextProcessor.setBypassCSP(
+          this.#parser.parseSetBypassCspParams(command.params),
         );
       case 'browsingContext.setViewport':
         return await this.#browsingContextProcessor.setViewport(
@@ -361,11 +355,10 @@ export class CommandProcessor extends EventEmitter<CommandProcessorEventsMap> {
       // Emulation module
       // keep-sorted start block=yes
       case 'emulation.setForcedColorsModeThemeOverride':
-        this.#parser.parseSetForcedColorsModeThemeOverrideParams(
-          command.params,
-        );
-        throw new UnsupportedOperationException(
-          `Method ${command.method} is not implemented.`,
+        return await this.#emulationProcessor.setForcedColorsModeThemeOverride(
+          this.#parser.parseSetForcedColorsModeThemeOverrideParams(
+            command.params,
+          ),
         );
       case 'emulation.setGeolocationOverride':
         return await this.#emulationProcessor.setGeolocationOverride(

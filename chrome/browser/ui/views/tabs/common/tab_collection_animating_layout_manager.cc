@@ -90,7 +90,7 @@ bool TabCollectionAnimatingLayoutManager::Delegate::
 
 void TabCollectionAnimatingLayoutManager::Delegate::OnAnimationEnded() {}
 
-bool TabCollectionAnimatingLayoutManager::Delegate::IsAnimationAllowed() {
+bool TabCollectionAnimatingLayoutManager::Delegate::ShouldAnimateLayout() {
   return true;
 }
 
@@ -596,7 +596,11 @@ bool TabCollectionAnimatingLayoutManager::RecalculateTarget() {
       IsVerticalOrWrappingVertically()
           ? current_layout_.host_size.width() != new_target.host_size.width()
           : current_layout_.host_size.height() != new_target.host_size.height();
-  if (!delegate_->IsAnimationAllowed() || cross_axis_changed) {
+  const bool started_in_current_turn =
+      is_animating_ && animation_coordinator_->current_offset() ==
+                           animation_coordinator_->starting_offset();
+  if ((!delegate_->ShouldAnimateLayout() && !started_in_current_turn) ||
+      cross_axis_changed) {
     current_layout_ = new_target;
     SetStartingLayout(new_target);
     SetTargetLayout(new_target);

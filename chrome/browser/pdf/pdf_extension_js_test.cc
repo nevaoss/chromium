@@ -155,6 +155,41 @@ class PDFExtensionJSTest : public base::test::WithFeatureOverride,
   bool UseOopif() const override { return GetParam(); }
 };
 
+// TODO(crbug.com/572671898): Rename back to `PDFExtensionJSTest` once all tests
+// have been migrated to Mocha.
+class PDFExtensionJSMochaTest : public WebUIMochaBrowserTest {
+ protected:
+  PDFExtensionJSMochaTest() {
+    set_test_loader_host(extension_misc::kPdfExtensionId);
+  }
+
+  void SetUpOnMainThread() override {
+    WebUIMochaBrowserTest::SetUpOnMainThread();
+    ASSERT_TRUE(embedded_test_server()->InitializeAndListen());
+    embedded_test_server()->StartAcceptingConnections();
+  }
+
+  void RunMochaTest(const std::string& filename,
+                    const std::string& pdf_filename) {
+    GURL url(embedded_test_server()->GetURL("/pdf/" + pdf_filename));
+    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+    content::WebContents* web_contents = GetActiveWebContents();
+    ASSERT_TRUE(web_contents);
+    ASSERT_TRUE(pdf_extension_test_util::EnsurePDFHasLoaded(web_contents));
+
+    content::RenderFrameHost* extension_host =
+        pdf_extension_test_util::GetOnlyPdfExtensionHost(web_contents);
+    ASSERT_TRUE(extension_host);
+
+    ASSERT_TRUE(RunTestOnRenderFrameHost(extension_host, "pdf/" + filename,
+                                         "mocha.run()"));
+  }
+
+  content::WebContents* GetActiveWebContents() {
+    return browser()->tab_strip_model()->GetActiveWebContents();
+  }
+};
+
 IN_PROC_BROWSER_TEST_P(PDFExtensionJSTest, Basic) {
   RunTestsInJsModule("basic_test.js", "test.pdf");
   EXPECT_EQ(1, CountPDFProcesses());
@@ -192,8 +227,8 @@ IN_PROC_BROWSER_TEST_P(PDFExtensionJSTest, ParamsParser) {
   RunTestsInJsModule("params_parser_test.js", "test.pdf");
 }
 
-IN_PROC_BROWSER_TEST_P(PDFExtensionJSTest, ZoomManager) {
-  RunTestsInJsModule("zoom_manager_test.js", "test.pdf");
+IN_PROC_BROWSER_TEST_F(PDFExtensionJSMochaTest, ZoomManager) {
+  RunMochaTest("zoom_manager_test.js", "test.pdf");
 }
 
 IN_PROC_BROWSER_TEST_P(PDFExtensionJSTest, GestureDetector) {
@@ -226,41 +261,6 @@ IN_PROC_BROWSER_TEST_P(PDFExtensionJSTest, DownloadControls) {
   RunTestsInJsModule("download_controls_test.js", "test.pdf");
 }
 
-// TODO(crbug.com/572671898): Rename back to `PDFExtensionJSTest` once all tests
-// have been migrated to Mocha.
-class PDFExtensionJSMochaTest : public WebUIMochaBrowserTest {
- protected:
-  PDFExtensionJSMochaTest() {
-    set_test_loader_host(extension_misc::kPdfExtensionId);
-  }
-
-  void SetUpOnMainThread() override {
-    WebUIMochaBrowserTest::SetUpOnMainThread();
-    ASSERT_TRUE(embedded_test_server()->InitializeAndListen());
-    embedded_test_server()->StartAcceptingConnections();
-  }
-
-  void RunMochaTest(const std::string& filename,
-                    const std::string& pdf_filename) {
-    GURL url(embedded_test_server()->GetURL("/pdf/" + pdf_filename));
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
-    content::WebContents* web_contents = GetActiveWebContents();
-    ASSERT_TRUE(web_contents);
-    ASSERT_TRUE(pdf_extension_test_util::EnsurePDFHasLoaded(web_contents));
-
-    content::RenderFrameHost* extension_host =
-        pdf_extension_test_util::GetOnlyPdfExtensionHost(web_contents);
-    ASSERT_TRUE(extension_host);
-
-    ASSERT_TRUE(RunTestOnRenderFrameHost(extension_host, "pdf/" + filename,
-                                         "mocha.run()"));
-  }
-
-  content::WebContents* GetActiveWebContents() {
-    return browser()->tab_strip_model()->GetActiveWebContents();
-  }
-};
-
 IN_PROC_BROWSER_TEST_F(PDFExtensionJSMochaTest, Title) {
   RunMochaTest("title_test.js", "test-title.pdf");
 }
@@ -286,8 +286,8 @@ IN_PROC_BROWSER_TEST_P(PDFExtensionJSTest, Metrics) {
   RunTestsInJsModule("metrics_test.js", "test.pdf");
 }
 
-IN_PROC_BROWSER_TEST_P(PDFExtensionJSTest, ViewerPasswordDialog) {
-  RunTestsInJsModule("viewer_password_dialog_test.js", "encrypted.pdf");
+IN_PROC_BROWSER_TEST_F(PDFExtensionJSMochaTest, ViewerPasswordDialog) {
+  RunMochaTest("viewer_password_dialog_test.js", "encrypted.pdf");
 }
 
 IN_PROC_BROWSER_TEST_P(PDFExtensionJSTest, ViewerSearchify) {
@@ -382,9 +382,9 @@ IN_PROC_BROWSER_TEST_P(PDFExtensionJSTest, ViewerFilePicker) {
   RunTestsInJsModule("viewer_file_picker_test.js", "test.pdf");
 }
 
-// PDFExtensionJSTest with forced Pacific Time Zone.
-class PDFExtensionPacificTimeZoneJSTest : public PDFExtensionJSTest {
-  // This will apply to the new processes spawned within RunTestsInJsModule(),
+// PDFExtensionJSMochaTest with forced Pacific Time Zone.
+class PDFExtensionPacificTimeZoneJSMochaTest : public PDFExtensionJSMochaTest {
+  // This will apply to the new processes spawned within RunMochaTest(),
   // thus consistently running the test in a well known time zone.
   // ScopedTimeZone needs to be created before the test setup. ScopedTimeZone
   // overrides TimeZoneMonitor binder in DeviceService so the test setup creates
@@ -392,11 +392,11 @@ class PDFExtensionPacificTimeZoneJSTest : public PDFExtensionJSTest {
   content::ScopedTimeZone scoped_time_zone_{"America/Los_Angeles"};
 };
 
-IN_PROC_BROWSER_TEST_P(PDFExtensionPacificTimeZoneJSTest,
+IN_PROC_BROWSER_TEST_F(PDFExtensionPacificTimeZoneJSMochaTest,
                        ViewerPropertiesDialog) {
   // The properties dialog formats some values based on locale.
   base::test::ScopedRestoreICUDefaultLocale scoped_locale{"en_US"};
-  RunTestsInJsModule("viewer_properties_dialog_test.js", "document_info.pdf");
+  RunMochaTest("viewer_properties_dialog_test.js", "document_info.pdf");
 }
 
 class PDFExtensionContentSettingJSTest : public PDFExtensionJSTest {
@@ -652,8 +652,8 @@ IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2Test, Ink2Manager) {
   RunTestsInJsModule("ink2_manager_test.js", "test.pdf");
 }
 
-IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2Test, UndoRedoStack) {
-  RunTestsInJsModule("undo_redo_stack_test.js", "test.pdf");
+IN_PROC_BROWSER_TEST_F(PDFExtensionJSMochaTest, UndoRedoStack) {
+  RunMochaTest("undo_redo_stack_test.js", "test.pdf");
 }
 
 IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2Test, Ink2AnnotationBrushMixin) {
@@ -822,6 +822,10 @@ IN_PROC_BROWSER_TEST_F(PDFExtensionJSInk2SignaturesTest,
   RunMochaTest("ink2_signature_bottom_toolbar_test.js", "test.pdf");
 }
 
+IN_PROC_BROWSER_TEST_F(PDFExtensionJSInk2SignaturesTest, Ink2SignaturesDialog) {
+  RunMochaTest("ink2_signature_dialog_test.js", "test.pdf");
+}
+
 IN_PROC_BROWSER_TEST_F(PDFExtensionJSInk2SignaturesTest,
                        Ink2SignaturesSidePanel) {
   // The window must be at least 960px to show the side panel.
@@ -935,7 +939,6 @@ IN_PROC_BROWSER_TEST_P(PDFExtensionJSInk2SaveToDriveBeforeUnloadTest,
 // TODO(crbug.com/40268279): Stop testing both modes after OOPIF PDF viewer
 // launches.
 INSTANTIATE_FEATURE_OVERRIDE_TEST_SUITE(PDFExtensionJSTest);
-INSTANTIATE_FEATURE_OVERRIDE_TEST_SUITE(PDFExtensionPacificTimeZoneJSTest);
 INSTANTIATE_FEATURE_OVERRIDE_TEST_SUITE(PDFExtensionContentSettingJSTest);
 INSTANTIATE_FEATURE_OVERRIDE_TEST_SUITE(PDFExtensionWebUICodeCacheJSTest);
 INSTANTIATE_FEATURE_OVERRIDE_TEST_SUITE(PDFExtensionServiceWorkerJSTest);

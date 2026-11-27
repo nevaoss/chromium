@@ -18,11 +18,11 @@
 #include "components/android_autofill/browser/android_autofill_features.h"
 #include "components/android_autofill/browser/android_autofill_manager.h"
 #include "components/android_autofill/browser/android_autofill_provider_bridge.h"
+#include "components/android_autofill/browser/autofill_type_util.h"
 #include "components/android_autofill/browser/form_data_android.h"
 #include "components/autofill/android/touch_to_fill_keyboard_suppressor.h"
 #include "components/autofill/content/browser/content_autofill_client.h"
 #include "components/autofill/content/browser/content_autofill_driver.h"
-#include "components/autofill/core/browser/autofill_server_prediction.h"
 #include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/common/autocomplete_parsing_util.h"
 #include "components/autofill/core/common/autofill_constants.h"
@@ -31,7 +31,6 @@
 #include "components/autofill/core/common/form_field_data.h"
 #include "components/autofill/core/common/signatures.h"
 #include "components/autofill/core/common/unique_ids.h"
-#include "components/password_manager/core/browser/form_parsing/form_data_parser.h"
 #include "components/password_manager/core/browser/password_form.h"
 #include "components/webauthn/android/webauthn_cred_man_delegate_factory.h"
 #include "content/public/browser/browser_thread.h"
@@ -58,32 +57,6 @@ constexpr int kMinimumSdkVersionForPrefillRequests =
     base::android::android_info::SDK_VERSION_U;
 
 constexpr base::TimeDelta kKeyboardSuppressionTimeout = base::Seconds(1);
-
-std::unique_ptr<PasswordForm> ParseToPasswordForm(
-    const FormStructure& form_structure) {
-  // Transform the predictions data to a format the `FormDataParser` can handle
-  // and parse the form.
-  FormData form_data = form_structure.ToFormData();
-  auto autofill_predictions =
-      base::MakeFlatMap<FieldGlobalId, AutofillServerPrediction>(
-          form_structure, /*comp=*/{},
-          /*proj=*/[](const std::unique_ptr<AutofillField>& field) {
-            return std::make_pair(field->global_id(),
-                                  AutofillServerPrediction(*field));
-          });
-  password_manager::FormDataParser parser;
-  parser.set_server_predictions(password_manager::ConvertToFormPredictions(
-      form_data, autofill_predictions));
-  // On Chrome, the parser can use stored usernames to identify a filled
-  // username field by the value it contains. Since we do not have access to
-  // credentials, we leave it empty.
-  // UKM source id is required for recording metrics for parsing with the
-  // clientside TFLite model, and TFLite is not available on WebView.
-  return parser.Parse(form_data,
-                      password_manager::FormDataParser::Mode::kFilling,
-                      /*stored_usernames=*/{},
-                      /*ukm_source_id=*/std::nullopt);
-}
 
 // Returns whether we should attempt to cache provider responses for this form.
 // Currently, that is the case iff we diagnose it to be a login form.
@@ -405,12 +378,7 @@ void AndroidAutofillProvider::UpdateCurrentField(
        field.datalist_options().empty())) {
     bridge_->HideDatalistPopup();
   }
-  session_state_->current_field = {
-      field.global_id(),
-      manager ? manager->ComputeFieldTypeGroupForField(form.global_id(),
-                                                       field.global_id())
-              : FieldTypeGroup::kNoGroup,
-      field.origin()};
+  session_state_->current_field = {field.global_id(), field.origin()};
 }
 
 void AndroidAutofillProvider::OnAutofillAvailable() {
@@ -422,7 +390,6 @@ void AndroidAutofillProvider::OnAutofillAvailable() {
     session_state_->form->UpdateFromJava();
     FillOrPreviewForm(session_state_->manager.get(),
                       session_state_->form->form(),
-                      session_state_->current_field.group,
                       session_state_->current_field.origin);
   }
 }
@@ -450,6 +417,11 @@ void AndroidAutofillProvider::OnShowBottomSheetResult(
   was_bottom_sheet_just_shown_ = is_shown;
 
   if (is_shown) {
+    if (session_state_ && session_state_->manager && session_state_->form) {
+      session_state_->manager->OnDidShowSuggestions(
+          session_state_->form->form().global_id(),
+          session_state_->current_field.id);
+    }
     base::UmaHistogramEnumeration(
         kPrefillRequestStateUma,
         PrefillRequestState::kRequestSentStructureProvidedBottomSheetShown);
@@ -470,6 +442,15 @@ void AndroidAutofillProvider::OnShowBottomSheetResult(
           ? PrefillRequestState::
                 kRequestSentStructureProvidedBottomSheetNotShown
           : PrefillRequestState::kRequestSentStructureNotProvided);
+}
+
+void AndroidAutofillProvider::OnDidShowSuggestions() {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  if (session_state_ && session_state_->manager && session_state_->form) {
+    session_state_->manager->OnDidShowSuggestions(
+        session_state_->form->form().global_id(),
+        session_state_->current_field.id);
+  }
 }
 
 bool AndroidAutofillProvider::HasPasskeyRequest() {
@@ -588,16 +569,6 @@ void AndroidAutofillProvider::OnFormSubmitted(AndroidAutofillManager* manager,
     return;
   }
   CHECK(session_state_ && session_state_->manager);
-
-  if (const FormStructure* form_structure =
-          session_state_->manager->FindCachedFormById(form.global_id());
-      source == mojom::SubmissionSource::DOM_MUTATION_AFTER_AUTOFILL &&
-      (!form_structure ||
-       !base::FeatureList::IsEnabled(
-           features::kAutofillAcceptDomMutationAfterAutofillSubmission) ||
-       !ParseToPasswordForm(*form_structure))) {
-    return;
-  }
 
   FireSuccessfulSubmission(source);
 }
@@ -741,6 +712,10 @@ bool AndroidAutofillProvider::GetCachedIsAutofilled(
   const FormFieldData* cached_field =
       session_state_->form->form().FindFieldByGlobalId(field.global_id());
   return cached_field && cached_field->is_autofilled_according_to_renderer();
+}
+
+bool AndroidAutofillProvider::IsAutofillDisabled() const {
+  return bridge_->IsAutofillDisabled();
 }
 
 bool AndroidAutofillProvider::IntendsToShowBottomSheet(

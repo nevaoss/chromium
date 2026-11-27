@@ -1919,10 +1919,6 @@ void HTMLInputElement::OnSearch() {
   input_type_->DispatchSearchEvent();
 }
 
-void HTMLInputElement::UpdateClearButtonVisibility() {
-  input_type_view_->UpdateClearButtonVisibility();
-}
-
 bool HTMLInputElement::IsInnerEditorValueEmpty() const {
   return input_type_view_->IsInnerEditorValueEmpty();
 }
@@ -2342,13 +2338,6 @@ RadioButtonGroupScope* HTMLInputElement::GetRadioButtonGroupScope() const {
   return nullptr;
 }
 
-unsigned HTMLInputElement::SizeOfRadioGroup() const {
-  RadioButtonGroupScope* scope = GetRadioButtonGroupScope();
-  if (!scope)
-    return 0;
-  return scope->GroupSizeFor(this);
-}
-
 inline void HTMLInputElement::AddToRadioButtonGroup() {
   if (RadioButtonGroupScope* scope = GetRadioButtonGroupScope())
     scope->AddButton(this);
@@ -2437,6 +2426,12 @@ OpaqueRange* HTMLInputElement::createValueRange(
   }
   return TextControlElement::createValueRange(start_offset, end_offset,
                                               exception_state);
+}
+
+void HTMLInputElement::ClosePopupView() {
+  if (input_type_view_) {
+    input_type_view_->ClosePopupView();
+  }
 }
 
 bool HTMLInputElement::SetupDateTimeChooserParameters(
@@ -2773,7 +2768,7 @@ bool HTMLInputElement::IsBaseAppearanceCombobox() const {
 }
 
 HTMLSelectElement* HTMLInputElement::FilterTarget() const {
-  if (!RuntimeEnabledFeatures::FilterableSelectEnabled()) {
+  if (!RuntimeEnabledFeatures::FilterableSelectEnabled() || !IsTextField()) {
     return nullptr;
   }
   if (nearest_ancestor_select_) {

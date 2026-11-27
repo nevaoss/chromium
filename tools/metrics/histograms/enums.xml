@@ -1380,7 +1380,7 @@ uploading your change for review.  These are checked by presubmit scripts.
   <int value="3" label="Dispatch to the handler failed"/>
 </enum>
 
-<!-- LINT.ThenChange(//components/browser_actuator/internal/metrics_utils.h:DownstreamPayloadDropReason) -->
+<!-- LINT.ThenChange(//components/browser_actuator/internal/transport/metrics_utils.h:DownstreamPayloadDropReason) -->
 
 <!-- LINT.IfChange(BrowserProfileType) -->
 
@@ -6449,6 +6449,11 @@ shown properly on the user-facing crash UI.
   <int value="3" label="Consumer manual launch (deprecated in M136)"/>
 </enum>
 
+<enum name="KioskLaunchWatchdogAction">
+  <int value="0" label="Reboot device"/>
+  <int value="1" label="Reboots exhausted (no action)"/>
+</enum>
+
 <enum name="KioskLowDiskSeverity">
   <int value="0" label="None"/>
   <int value="1" label="Medium severity"/>
@@ -8449,6 +8454,7 @@ from previous Chrome versions.
   <int value="-1961931929" label="ContextualSuggestionsBottomSheet:enabled"/>
   <int value="-1961755742" label="LightweightReactions:enabled"/>
   <int value="-1961648833" label="show_summary"/>
+  <int value="-1961308150" label="GeicFre:enabled"/>
   <int value="-1961102654" label="WebNotesStylize:enabled"/>
   <int value="-1961062505" label="VrBrowsingInCustomTab:disabled"/>
   <int value="-1961040358" label="SyncSharedTabGroupAccountData:enabled"/>
@@ -10514,6 +10520,7 @@ from previous Chrome versions.
   <int value="-1348040371" label="ScanAppStickySettings:disabled"/>
   <int value="-1346817340" label="EarlyBodyLoad:disabled"/>
   <int value="-1346722635" label="gesture-selection"/>
+  <int value="-1346360917" label="NtpComponentExtension:enabled"/>
   <int value="-1346261029" label="PageInfoAboutThisSiteMoreLangs:disabled"/>
   <int value="-1346055284" label="WebSerialWiredDevicesAndroid:enabled"/>
   <int value="-1345931804" label="TabbedAppOverflowMenuIcons:disabled"/>
@@ -10611,6 +10618,7 @@ from previous Chrome versions.
   <int value="-1317768255" label="PermissionStorageAccessAPI:enabled"/>
   <int value="-1316769004" label="CrossOriginOpenerPolicyReporting:disabled"/>
   <int value="-1316242662" label="AimUrlInterceptPassthrough:disabled"/>
+  <int value="-1315953775" label="SmartCardContextRelease:disabled"/>
   <int value="-1315894943" label="HappyEyeballsV3:enabled"/>
   <int value="-1315862295" label="GlicMITabContextMenu:disabled"/>
   <int value="-1315812099"
@@ -10991,6 +10999,7 @@ from previous Chrome versions.
   <int value="-1203742042" label="enable-gesture-selection"/>
   <int value="-1202556733" label="PermissionStorageAccessAPI:disabled"/>
   <int value="-1201741587" label="DataReductionProxyDecidesTransform:disabled"/>
+  <int value="-1201632303" label="NtpComponentExtension:disabled"/>
   <int value="-1201183153" label="enable-centered-app-list"/>
   <int value="-1200367807" label="DesktopFlingCurveOnAndroid:enabled"/>
   <int value="-1200367345" label="SyncAutofillWalletCredentialData:enabled"/>
@@ -11070,6 +11079,7 @@ from previous Chrome versions.
   <int value="-1177230990" label="PrefetchAndroidFonts:enabled"/>
   <int value="-1177219752"
       label="DropUnrecognizedTemplateUrlParameters:disabled"/>
+  <int value="-1176984750" label="SmartCardContextRelease:enabled"/>
   <int value="-1176748003"
       label="FramebustingNeedsSameOriginOrUserGesture:disabled"/>
   <int value="-1176658463" label="linked-accounts:disabled"/>
@@ -13335,6 +13345,7 @@ from previous Chrome versions.
   <int value="-500187265"
       label="NtpFeatureOptimizationDismissModulesRemoval:enabled"/>
   <int value="-500107766" label="OmniboxShortcutsAndroid:disabled"/>
+  <int value="-500094648" label="GeicFre:disabled"/>
   <int value="-500044371" label="ShowFeaturedEnterpriseSiteSearchIPH:enabled"/>
   <int value="-499923792" label="MigrateSyncingUserToSignedIn:disabled"/>
   <int value="-499723386" label="EnableFilesAppCopyImage:disabled"/>
@@ -13493,6 +13504,7 @@ from previous Chrome versions.
   <int value="-456321929" label="ForceEnableSystemAec:disabled"/>
   <int value="-455823639" label="RetainOmniboxOnFocus:disabled"/>
   <int value="-455413094" label="FilesJsModules:enabled"/>
+  <int value="-455380666" label="MediaCaptureElementPreview:disabled"/>
   <int value="-455203267" label="use_new_features_summary"/>
   <int value="-454549390" label="force-high-performance-gpu"/>
   <int value="-454532863" label="CryptographyComplianceCnsa:disabled"/>
@@ -15409,6 +15421,7 @@ from previous Chrome versions.
   <int value="122959683" label="WebViewJavaJsBridgeMojo:enabled"/>
   <int value="123008918" label="EnableProtoApiForClassifyUrl:disabled"/>
   <int value="123097915" label="FaviconsFromWebManifest:enabled"/>
+  <int value="123379194" label="MediaCaptureElementPreview:enabled"/>
   <int value="124466324" label="TabStripLinkDragDrop:disabled"/>
   <int value="124590378" label="LensStandalone:disabled"/>
   <int value="125403592" label="PaymentLinkDetection:enabled"/>
@@ -24494,6 +24507,21 @@ Called by update_net_error_codes.py.-->
   <int value="123" label="ENOMEDIUM">No medium found</int>
 </enum>
 
+<!-- LINT.IfChange(PopupLaunchOutcome) -->
+
+<enum name="PopupLaunchOutcome">
+  <int value="0" label="Launched as movable task"/>
+  <int value="1" label="Launched as non-movable task (no permission)"/>
+  <int value="2" label="Launched as non-movable task (below API 37)"/>
+  <int value="3"
+      label="Launched as non-movable task (after infeasible options retry)"/>
+  <int value="4" label="Fallback to tab"/>
+  <int value="5" label="Failed (infeasible activity options)"/>
+  <int value="6" label="Failed (security exception)"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/android/java/src/org/chromium/chrome/browser/app/tab_activity_glue/PopupCreatorImpl.java:PopupLaunchOutcome) -->
+
 <enum name="PopupSafeBrowsingStatus">
   <int value="0" label="Popup has no safe-browsing status"/>
   <int value="1"
@@ -25191,6 +25219,7 @@ Called by update_net_error_codes.py.-->
   <int value="88" label="kPrerenderHostReused"/>
   <int value="89" label="kFormSubmitWhenPrerendering"/>
   <int value="90" label="kCrossDocumentRestart"/>
+  <int value="91" label="kPrefetchFailedCrossOriginSubframe"/>
 </enum>
 
 <enum name="PrintPreviewFailureType">
@@ -25298,6 +25327,20 @@ Called by update_net_error_codes.py.-->
 </enum>
 
 <!-- LINT.ThenChange(//components/private_ai/status_code.h:StatusCode) -->
+
+<!-- LINT.IfChange(PrivateAiTlsHandshakeStatus) -->
+
+<enum name="PrivateAiTlsHandshakeStatus">
+  <summary>
+    Outcome of a Private AI TLS handshake attempt, as reported by the Oak
+    session service.
+  </summary>
+  <int value="0" label="Success"/>
+  <int value="1" label="Certificate verification failed"/>
+  <int value="2" label="Protocol error"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/private_ai/tls_secure_channel_impl.h:TlsHandshakeStatus) -->
 
 <enum name="ProcessType2">
   <summary>
@@ -27913,6 +27956,8 @@ Called by update_net_error_codes.py.-->
   <int value="3" label="Request is cancelled."/>
 </enum>
 
+<!-- LINT.IfChange(TipIdentifier) -->
+
 <enum name="TipIdentifier">
   <int value="0" label="Unknown"/>
   <int value="1" label="LensSearch"/>
@@ -27922,7 +27967,12 @@ Called by update_net_error_codes.py.-->
   <int value="5" label="SavePasswords"/>
   <int value="6" label="AutofillPasswords"/>
   <int value="7" label="EnhancedSafeBrowsing"/>
+  <int value="8" label="NTPTheme"/>
+  <int value="9" label="TipsNotifications"/>
+  <int value="10" label="NTPCustomization"/>
 </enum>
+
+<!-- LINT.ThenChange(/components/segmentation_platform/embedder/home_modules/tips_manager/constants.h:TipIdentifier) -->
 
 <enum name="TokenStateOnRegistrationRequest">
   <int value="0" label="Token was empty"/>

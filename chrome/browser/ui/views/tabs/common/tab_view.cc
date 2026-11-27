@@ -540,7 +540,7 @@ void TabView::Layout(PassKey) {
   alert_indicator_->UpdateAlertIndicatorAnimation();
   if (orientation_ == TabStripOrientation::kHorizontal) {
     icon_->ResizeDiscardIndicatorRadiusForWidth(
-        width() - 2 * tab_styling()->tab_style()->GetBottomCornerRadius());
+        width() - 2 * tab_styling()->tab_style()->GetBottomExtensionWidth());
   }
 }
 
@@ -848,6 +848,7 @@ void TabView::AddedToWidget() {
           &TabView::OnFrameActiveStateChanged, base::Unretained(this)));
 
   OnTabStateChanged();
+  UpdateClipPathAndRoundedCorners();
 
   // Recompute accessible name when the structure changes.
   UpdateAccessibleName();
@@ -922,7 +923,7 @@ void TabView::OnBoundsChanged(const gfx::Rect& previous_bounds) {
 
 void TabView::UpdateParentLayer() {
   views::View::UpdateParentLayer();
-  if (layer()) {
+  if (orientation_ == TabStripOrientation::kVertical && layer()) {
     UpdateLayerRoundedCorners();
   }
 }
@@ -936,6 +937,15 @@ void TabView::OnViewFocused(views::View* observed_view) {
 void TabView::OnViewBlurred(views::View* observed_view) {
   if (observed_view == close_button_) {
     InvalidateLayout();
+  }
+}
+
+void TabView::UpdateClipPathAndRoundedCorners() {
+  if (orientation_ == TabStripOrientation::kVertical) {
+    SetClipPath(GetPath());
+    if (layer()) {
+      UpdateLayerRoundedCorners();
+    }
   }
 }
 
@@ -1076,8 +1086,8 @@ void TabView::ResetCollectionNode() {
 void TabView::UpdateAccessibleName() {
   CHECK(collection_node_);
 
-  std::u16string name =
-      tabs::GetAccessibleTabLabel(GetTabInterface(), /*is_for_tab=*/true);
+  std::u16string name = tabs::GetAccessibleTabLabel(
+      GetTabInterface(), /*is_for_tab=*/true, &data());
   if (!name.empty()) {
     GetViewAccessibility().SetName(name);
   } else {

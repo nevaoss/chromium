@@ -503,16 +503,6 @@
         <category android:name="android.intent.category.DEFAULT"/>
       </intent-filter>  # DIFF-ANCHOR: 9c5197e9
     </activity>  # DIFF-ANCHOR: aea75380
-    <activity  # DIFF-ANCHOR: 1d9b4077
-        android:name="org.chromium.components.media_router.caf.remoting.CafExpandedControllerActivity"
-        android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc|screenLayout|smallestScreenSize"
-        android:excludeFromRecents="true"
-        android:hardwareAccelerated="true"
-        android:label="Chrome.CafExpandedControllerActivity"
-        android:launchMode="singleTask"
-        android:noHistory="true"
-        android:theme="@style/Theme.Chromium.Activity">
-    </activity>  # DIFF-ANCHOR: 1d9b4077
     <activity  # DIFF-ANCHOR: 5d3091ca
         android:name="org.chromium.components.webxr.XrHostActivity"
         android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc|screenLayout|smallestScreenSize|uiMode|navigation|density|touchscreen|colorMode|fontScale|fontWeightAdjustment"
@@ -771,15 +761,15 @@
         android:name="com.google.android.gms.cast.framework.media.MediaIntentReceiver"
         android:exported="false">
     </receiver>  # DIFF-ANCHOR: 0a6f8fa5
-    <receiver  # DIFF-ANCHOR: 83f0ffb6
-        android:name="org.chromium.chrome.browser.actor.ActorBroadcastReceiver"
+    <receiver  # DIFF-ANCHOR: edbae1e9
+        android:name="org.chromium.chrome.browser.actor.notifications.ActorBroadcastReceiver"
         android:exported="false">
       <intent-filter>  # DIFF-ANCHOR: 43c058ef
         <action android:name="org.chromium.chrome.browser.actor.ACTION_CANCEL"/>
         <action android:name="org.chromium.chrome.browser.actor.ACTION_PAUSE"/>
         <action android:name="org.chromium.chrome.browser.actor.ACTION_RESUME"/>
       </intent-filter>  # DIFF-ANCHOR: 43c058ef
-    </receiver>  # DIFF-ANCHOR: 83f0ffb6
+    </receiver>  # DIFF-ANCHOR: edbae1e9
     <receiver  # DIFF-ANCHOR: 68e22783
         android:name="org.chromium.chrome.browser.announcement.AnnouncementNotificationManager$Receiver"
         android:exported="false">

@@ -1,0 +1,40 @@
+From 0b04dd6fd15f87430dd34c4dab7861f027c5e9ad Mon Sep 17 00:00:00 2001
+From: Alexander Lapshenkov <alexander.lapshenkov@lge.com>
+Date: Thu, 26 Nov 2026 22:39:20 +0300
+Subject: [PATCH] [build][webos] 158.0.8127.0~1: V8: Build Torque before
+ v8_initializers
+
+v8_initializers compiles sources that include Torque-generated headers, but
+the dependencies of the target did not order those compilations after the
+run_torque action. A clean build started to fail with the error:
+
+  torque-generated/exported-macros-assembler.h: file not found
+
+To avoid this error :run_torque is added to the deps of v8_initializers.
+gn now emits inputdeps with the action, and every compilation of the target
+waits for the generated headers.
+
+Test Scenario:
+
+1. Start mksnapshot-cross-aarch64 build:
+   . oe-init-build-env
+   bitbake -c cleanall mksnapshot-cross-aarch64
+   bitbake mksnapshot-cross-aarch64
+2. Check that v8 build success.
+
+Issue: NEVA-11578
+---
+ BUILD.gn | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index 0f374d70817..1e50fb72fba 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -3786,2 +3786,3 @@ v8_cluster_source_set("v8_initializers") {
+   deps = [
++    ":run_torque",
+     ":torque_generated_initializers",
+--
+2.34.1
+

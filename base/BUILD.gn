@@ -214,6 +214,10 @@ source_set("asan_raw_ptr_service") {
     if (use_asan_backup_ref_ptr_v2) {
       deps += [ "//build/config/sanitizers:sanitizer_shared_hooks" ]
       configs -= [ "//build/config/sanitizers:default_sanitizer_flags" ]
+      sources += [
+        "memory/reentrancy_guard.cc",
+        "memory/reentrancy_guard.h",
+      ]
     }
 
     deps += [
@@ -316,6 +320,7 @@ component("base") {
     "containers/linked_list.cc",
     "containers/linked_list.h",
     "containers/lru_cache.h",
+    "containers/lru_cache_internal.cc",
     "containers/lru_cache_internal.h",
     "containers/map_util.h",
     "containers/ring_buffer.h",
@@ -2666,7 +2671,7 @@ if (enable_rust_api_from_cpp) {
     # `//net`, etc) can't use `rust_api_from_cpp` yet.  For more details see
     # the "Caveats" section in `//docs/rust/crubit/README.md`.
     #
-    # TODO(crbug.com/40226863): Remove `visibility` restrictions after Cronet
+    # TODO(https://crbug.com/576651451): Make publicly visible after Cronet
     # supports both Crubit directions.
     visibility = [ "//build/rust/tests/test_rust_api_from_cpp:*" ]
   }
@@ -2700,7 +2705,6 @@ source_set("file_path_shim") {
 }
 
 rust_static_library("file_path") {
-  crate_name = "base_file_path"
   crate_root = "files/file_path.rs"
   sources = [ "files/file_path.rs" ]
   allow_unsafe = true
@@ -3262,7 +3266,7 @@ if (enable_rust_translit) {
     visibility = [ ":i18n" ]
     deps = [
       "//third_party/rust/icu_casemap/v2:lib",
-      "//third_party/rust/icu_experimental/v0_5:lib",
+      "//third_party/rust/icu_experimental/v0_7:lib",
       "//third_party/rust/icu_locale_core/v2:lib",
       "//third_party/rust/icu_normalizer/v2:lib",
       "//third_party/rust/icu_properties/v2:lib",
@@ -3366,6 +3370,7 @@ executable("containers_memory_benchmark") {
 
 test("base_perftests") {
   sources = [
+    "base64_perftest.cc",
     "byte_conversions_perftest.cc",
     "hash/hash_perftest.cc",
     "i18n/language_tag_perftest.cc",
@@ -4330,7 +4335,10 @@ test("base_unittests") {
   }
 
   if (is_asan) {
-    sources += [ "memory/raw_ptr_asan_unittest.cc" ]
+    sources += [
+      "memory/raw_ptr_asan_unittest.cc",
+      "memory/reentrancy_guard_unittest.cc",
+    ]
   }
 
   if (is_ios) {

@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'chrome://webui-toolbar.top-chrome/app.js';
+import 'chrome://webui-toolbar.top-chrome/webui_toolbar.js';
 
 import {isMac} from 'chrome://resources/js/platform.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 import {hasStyle, microtasksFinished} from 'chrome://webui-test/test_util.js';
-import {BrowserProxyImpl, IconTable, IconType, LhsChipIdentifier, PointerProxyImpl, SecurityChipRole} from 'chrome://webui-toolbar.top-chrome/app.js';
-import type {IconFromTableElement, LocationIconElement, PointerProxy} from 'chrome://webui-toolbar.top-chrome/app.js';
+import {BrowserProxyImpl, IconTable, IconType, LhsChipIdentifier, PointerProxyImpl, SecurityChipRole} from 'chrome://webui-toolbar.top-chrome/webui_toolbar.js';
+import type {IconFromTableElement, LocationIconElement, PointerProxy} from 'chrome://webui-toolbar.top-chrome/webui_toolbar.js';
 
 import {TestToolbarUiHandler} from './test_toolbar_browser_proxy.js';
 
@@ -42,6 +42,14 @@ suite('LocationIconTest', function() {
 
     locationIcon = document.createElement('location-icon');
     document.body.appendChild(locationIcon);
+  });
+
+  teardown(function() {
+    // Fake colors set by the IPH pulse test.
+    const rootStyle = document.documentElement.style;
+    rootStyle.removeProperty('--color-omnibox-icon-pressed');
+    rootStyle.removeProperty('--color-omnibox-security-chip-ink-drop-ripple');
+    rootStyle.removeProperty('--color-button-feature-attention-highlight');
   });
 
   test('Render text', async function() {
@@ -625,4 +633,71 @@ suite('LocationIconTest', function() {
     await microtasksFinished();
     assertFalse(chip.classList.contains('help-anchor-highlight'));
   });
+
+  test(
+      'IPH pulse paints the pressed color over the attention color',
+      async function() {
+        const PRESSED_COLOR = 'rgb(1, 2, 3)';
+        const DANGEROUS_PRESSED_COLOR = 'rgb(4, 5, 6)';
+        const ATTENTION_COLOR = 'rgb(7, 8, 9)';
+        const rootStyle = document.documentElement.style;
+        rootStyle.setProperty('--color-omnibox-icon-pressed', PRESSED_COLOR);
+        rootStyle.setProperty(
+            '--color-omnibox-security-chip-ink-drop-ripple',
+            DANGEROUS_PRESSED_COLOR);
+        rootStyle.setProperty(
+            '--color-button-feature-attention-highlight', ATTENTION_COLOR);
+
+        const setState =
+            async (isClickable: boolean, isTextDangerous: boolean) => {
+          locationIcon.state = {
+            icon: {handleId: 0n},
+            securityLevel: 0,
+            text: isTextDangerous ? 'Dangerous' : '',
+            tooltip: '',
+            isClickable,
+            isTextDangerous,
+            isVisible: true,
+            isContextMenuVisible: false,
+            accessibilityState: {
+              role: SecurityChipRole.kButton,
+              label: '',
+              description: '',
+            },
+          };
+          await microtasksFinished();
+        };
+        const innerButton = locationIcon.$.button.$.button;
+        const getPulseStyle = () =>
+            window.getComputedStyle(innerButton, '::before');
+
+        locationIcon.hasHelpBubble = true;
+        const pressedGradient = (color: string) => `linear-gradient(${color})`;
+
+        await setState(/*isClickable=*/ true, /*isTextDangerous=*/ false);
+        assertEquals('pulse', getPulseStyle().animationName);
+        assertEquals(ATTENTION_COLOR, getPulseStyle().backgroundColor);
+        assertEquals(
+            pressedGradient(PRESSED_COLOR), getPulseStyle().backgroundImage);
+
+        // The pulse already paints the pressed color, so the chip's own pressed
+        // layer stays hidden during the IPH (e.g. while the anchor is
+        // highlighted).
+        locationIcon.$.button.toggleAttribute('is-menu-open', true);
+        assertEquals(
+            '0', window.getComputedStyle(innerButton, '::after').opacity);
+        locationIcon.$.button.toggleAttribute('is-menu-open', false);
+
+        await setState(/*isClickable=*/ true, /*isTextDangerous=*/ true);
+        assertEquals(
+            pressedGradient(DANGEROUS_PRESSED_COLOR),
+            getPulseStyle().backgroundImage);
+
+        // Like the pressed layer, there is no pressed color when the icon is
+        // not clickable.
+        await setState(/*isClickable=*/ false, /*isTextDangerous=*/ false);
+        assertEquals(
+            pressedGradient('rgba(0, 0, 0, 0)'),
+            getPulseStyle().backgroundImage);
+      });
 });

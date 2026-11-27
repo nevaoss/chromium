@@ -128,6 +128,9 @@ declare namespace chrome {
     // Whether the Read Anything Translate Entry Point feature flag is enabled.
     let isReadAnythingTranslateEntryPointEnabled: boolean;
 
+    // Whether the Read Anything Send Feedback feature flag is enabled.
+    let isReadAnythingSendFeedbackEnabled: boolean;
+
     // Whether the Read Anything Read Aloud Experimental Playback UI flag is
     // enabled.
     let isReadAnythingReadAloudExperimentalPlaybackUiEnabled: boolean;
@@ -153,6 +156,11 @@ declare namespace chrome {
     // Whether the active tab's contents are currently translated. Only kept up
     // to date when isTranslatePdfEnabled is true.
     let isContentTranslated: boolean;
+
+    // Whether the browser is waiting for the distilled content to be
+    // translated. While true, content should stay hidden behind the loading
+    // screen.
+    let isAwaitingTranslation: boolean;
 
     // Fonts supported by the user's current language.
     let supportedFonts: string[];
@@ -431,6 +439,11 @@ declare namespace chrome {
     function onPresentationStateReceived(presentationState: number): void;
 
     function onPinStateReceived(pinState: boolean): void;
+
+    // Called when the browser starts or stops waiting for the distilled
+    // content to be translated. While awaiting, content should stay hidden
+    // behind the loading screen.
+    function onAwaitingTranslationChanged(awaiting: boolean): void;
 
     // Display the empty state page to tell the user we can't distill the page.
     function showEmpty(): void;

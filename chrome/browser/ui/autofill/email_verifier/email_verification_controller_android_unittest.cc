@@ -23,7 +23,6 @@
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "components/autofill/core/browser/foundations/autofill_client.h"
 #include "components/messages/android/message_enums.h"
-#include "components/strings/grit/components_strings.h"
 #include "content/public/browser/web_contents.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -35,6 +34,8 @@
 
 namespace autofill {
 namespace {
+
+using CompletionStatus = EmailVerificationController::CompletionStatus;
 
 class MockEmailVerificationBottomSheetBridge
     : public EmailVerificationBottomSheetBridge {
@@ -68,6 +69,10 @@ class EmailVerificationControllerAndroidTest
   void SetUp() override {
     ChromeRenderViewHostTestHarness::SetUp();
     window_ = ui::WindowAndroid::CreateForTesting();
+    // Attach the native view to `window_` so
+    // `EmailVerificationBottomSheetBridge::RequestShowContent()` sees a
+    // top-level native window.
+    window_->get()->AddChild(web_contents()->GetNativeView());
     evp_controller_ =
         std::make_unique<EmailVerificationControllerAndroid>(web_contents());
     test_api(*evp_controller_)
@@ -92,14 +97,6 @@ class EmailVerificationControllerAndroidTest
   void ShowPopup(base::OnceCallback<
                      void(AutofillClient::EmailVerificationPermissionUiStatus)>
                      ui_callback = base::DoNothing()) {
-    // Attach the native view to `window_` in `ShowPopup()` rather than
-    // `SetUp()` so `EmailVerificationBottomSheetBridge::RequestShowContent()`
-    // sees a top-level native window, while `ShowLoadingToast()` tests do not
-    // pass an unthemed test `WindowAndroid` into
-    // `MessageWrapper.showLoadingSpinner()`.
-    if (!web_contents()->GetTopLevelNativeWindow()) {
-      window_->get()->AddChild(web_contents()->GetNativeView());
-    }
     EXPECT_CALL(*bridge_, ShowJavaBottomSheet);
     evp_controller_->ShowPopup(gfx::RectF(0, 0, 10, 10),
                                url::Origin::Create(GURL("https://google.com")),
@@ -163,10 +160,6 @@ TEST_F(EmailVerificationControllerAndroidTest,
       ui_callback;
   ShowPopup(ui_callback.Get());
 
-  // Detach from the unthemed test `WindowAndroid` before `ShowLoadingToast()`
-  // invokes `MessageWrapper.showLoadingSpinner()`.
-  web_contents()->GetNativeView()->RemoveFromParent();
-
   // Calling ShowLoadingToast while the first-run prompt is still awaiting a
   // decision dismisses the open bottom sheet.
   EXPECT_CALL(*bridge_, HideJavaBottomSheet);
@@ -212,17 +205,19 @@ TEST_F(EmailVerificationControllerAndroidTest,
           AutofillClient::EmailVerificationPermissionUiStatus::kUserAborted));
   EXPECT_FALSE(test_api(*evp_controller_).loading_start_time().has_value());
 
-  // When the response arrives at 200ms, neither HidePopup nor ShowVerifiedToast
-  // waits for the remaining 600ms, and HideJavaBottomSheet() is not called
-  // again since the bottom sheet was already dismissed.
+  // When the response arrives at 200ms, neither HidePopup() nor
+  // HidePopup(CompletionStatus::kVerified) waits for the remaining 600ms, and
+  // HideJavaBottomSheet() is not called again since the bottom sheet was
+  // already dismissed.
   task_environment()->FastForwardBy(base::Milliseconds(100));
   EXPECT_CALL(*bridge_, HideJavaBottomSheet).Times(0);
   evp_controller_->HidePopup();
   EXPECT_FALSE(test_api(*evp_controller_).is_hide_popup_timer_running());
 
   EXPECT_CALL(mock_message_controller_, Show);
-  evp_controller_->ShowVerifiedToast(GURL("https://google.com"));
-  EXPECT_FALSE(test_api(*evp_controller_).is_toast_timer_running());
+  evp_controller_->HidePopup(CompletionStatus::kVerified,
+                             GURL("https://google.com"));
+  EXPECT_FALSE(test_api(*evp_controller_).is_hide_popup_timer_running());
 }
 
 TEST_F(EmailVerificationControllerAndroidTest,
@@ -231,13 +226,12 @@ TEST_F(EmailVerificationControllerAndroidTest,
 
   bridge_->OnUiAccepted(/*env=*/nullptr);
 
-  // Response arrives at 200ms (< 800ms), scheduling both hide_popup_timer_ and
-  // toast_timer_ for the remaining 600ms.
+  // Response arrives at 200ms (< 800ms), scheduling hide_popup_timer_ for the
+  // remaining 600ms.
   task_environment()->FastForwardBy(base::Milliseconds(200));
-  evp_controller_->HidePopup();
-  evp_controller_->ShowVerifiedToast(GURL("https://google.com"));
+  evp_controller_->HidePopup(CompletionStatus::kVerified,
+                             GURL("https://google.com"));
   EXPECT_TRUE(test_api(*evp_controller_).is_hide_popup_timer_running());
-  EXPECT_TRUE(test_api(*evp_controller_).is_toast_timer_running());
 
   // User swipes away the bottom sheet at 300ms. The pending verified message
   // fires immediately instead of waiting another 500ms.
@@ -248,7 +242,6 @@ TEST_F(EmailVerificationControllerAndroidTest,
       static_cast<int>(
           AutofillClient::EmailVerificationPermissionUiStatus::kUserAborted));
   EXPECT_FALSE(test_api(*evp_controller_).is_hide_popup_timer_running());
-  EXPECT_FALSE(test_api(*evp_controller_).is_toast_timer_running());
 }
 
 TEST_F(EmailVerificationControllerAndroidTest,
@@ -335,7 +328,8 @@ TEST_F(EmailVerificationControllerAndroidTest,
         shown_model = std::move(model);
       });
 
-  evp_controller_->ShowVerifiedToast(GURL("https://google.com"));
+  evp_controller_->HidePopup(CompletionStatus::kVerified,
+                             GURL("https://google.com"));
   ASSERT_TRUE(shown_model);
 
   EXPECT_CALL(open_settings_callback_, Run);
@@ -349,9 +343,9 @@ TEST_F(EmailVerificationControllerAndroidTest,
       first_ui_callback;
   ShowPopup(first_ui_callback.Get());
 
-  // A second ShowPopup call while the first prompt is in kShowing dismisses
-  // the first sheet (calling HideJavaBottomSheet on bridge) and requests the
-  // new sheet.
+  // A second ShowPopup call while the first prompt is showing dismisses the
+  // first sheet (calling HideJavaBottomSheet on bridge) and requests the new
+  // sheet.
   testing::InSequence s;
   EXPECT_CALL(*bridge_, HideJavaBottomSheet);
   EXPECT_CALL(first_ui_callback,
@@ -360,8 +354,6 @@ TEST_F(EmailVerificationControllerAndroidTest,
   evp_controller_->ShowPopup(gfx::RectF(0, 0, 10, 10),
                              url::Origin::Create(GURL("https://google.com")),
                              u"other@example.com", base::DoNothing());
-  EXPECT_EQ(test_api(*evp_controller_).prompt_state(),
-            EmailVerificationControllerTestApi::PromptState::kShowing);
 }
 
 TEST_F(EmailVerificationControllerAndroidTest,
@@ -372,10 +364,9 @@ TEST_F(EmailVerificationControllerAndroidTest,
 
   // Verification response arrives at 200ms (< 800ms).
   task_environment()->FastForwardBy(base::Milliseconds(200));
-  evp_controller_->HidePopup();
-  evp_controller_->ShowVerifiedToast(GURL("https://google.com"));
+  evp_controller_->HidePopup(CompletionStatus::kVerified,
+                             GURL("https://google.com"));
   EXPECT_TRUE(test_api(*evp_controller_).is_hide_popup_timer_running());
-  EXPECT_TRUE(test_api(*evp_controller_).is_toast_timer_running());
 
   // Message should NOT be shown before the 800ms minimum loading duration.
   EXPECT_CALL(mock_message_controller_, Show).Times(0);
@@ -386,14 +377,14 @@ TEST_F(EmailVerificationControllerAndroidTest,
   EXPECT_CALL(mock_message_controller_, Show);
   task_environment()->FastForwardBy(base::Milliseconds(1));
   EXPECT_FALSE(test_api(*evp_controller_).is_hide_popup_timer_running());
-  EXPECT_FALSE(test_api(*evp_controller_).is_toast_timer_running());
 }
 
 TEST_F(EmailVerificationControllerAndroidTest,
        ShowVerifiedToastDoesNotShowWhenWebContentsHidden) {
   web_contents()->WasHidden();
   EXPECT_CALL(mock_message_controller_, Show).Times(0);
-  evp_controller_->ShowVerifiedToast(GURL("https://google.com"));
+  evp_controller_->HidePopup(CompletionStatus::kVerified,
+                             GURL("https://google.com"));
 }
 
 TEST_F(EmailVerificationControllerAndroidTest,
@@ -404,7 +395,7 @@ TEST_F(EmailVerificationControllerAndroidTest,
         shown_model = std::move(model);
       });
 
-  evp_controller_->ShowErrorToast();
+  evp_controller_->HidePopup(CompletionStatus::kError);
   ASSERT_TRUE(shown_model);
   EXPECT_EQ(shown_model->GetType(),
             AutofillMessageModel::Type::kEmailVerificationError);
@@ -416,14 +407,12 @@ TEST_F(EmailVerificationControllerAndroidTest,
        ShowErrorToastDoesNotShowWhenWebContentsHidden) {
   web_contents()->WasHidden();
   EXPECT_CALL(mock_message_controller_, Show).Times(0);
-  evp_controller_->ShowErrorToast();
+  evp_controller_->HidePopup(CompletionStatus::kError);
 }
 
 TEST_F(EmailVerificationControllerAndroidTest,
        ShowLoadingToastEnqueuesLoadingMessage) {
   std::unique_ptr<AutofillMessageModel> shown_model;
-  EXPECT_CALL(mock_message_controller_,
-              Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE));
   EXPECT_CALL(mock_message_controller_, Show)
       .WillOnce([&shown_model](std::unique_ptr<AutofillMessageModel> model) {
         shown_model = std::move(model);
@@ -435,8 +424,10 @@ TEST_F(EmailVerificationControllerAndroidTest,
             AutofillMessageModel::Type::kEmailVerificationLoading);
   EXPECT_EQ(test_api(*shown_model).GetMessage().GetTitle(),
             l10n_util::GetStringUTF16(IDS_EMAIL_VERIFICATION_LOADING));
-  EXPECT_EQ(test_api(*shown_model).GetMessage().GetPrimaryButtonText(),
-            l10n_util::GetStringUTF16(IDS_CANCEL));
+  EXPECT_TRUE(
+      test_api(*shown_model).GetMessage().GetPrimaryButtonText().empty());
+  EXPECT_EQ(test_api(*shown_model).GetMessage().GetPrimaryWidgetAppearance(),
+            messages::PrimaryWidgetAppearance::PROGRESS_SPINNER);
 }
 
 TEST_F(EmailVerificationControllerAndroidTest,
@@ -447,36 +438,9 @@ TEST_F(EmailVerificationControllerAndroidTest,
 }
 
 TEST_F(EmailVerificationControllerAndroidTest,
-       UserCancelWhileInFlightInvokesCancelCallback) {
-  std::unique_ptr<AutofillMessageModel> loading_model;
-  EXPECT_CALL(mock_message_controller_,
-              Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE));
-  EXPECT_CALL(mock_message_controller_, Show)
-      .WillOnce([&loading_model](std::unique_ptr<AutofillMessageModel> model) {
-        loading_model = std::move(model);
-      });
-
-  base::MockCallback<base::OnceClosure> cancel_callback;
-  evp_controller_->ShowLoadingToast(cancel_callback.Get());
-  ASSERT_TRUE(loading_model);
-  EXPECT_TRUE(test_api(*evp_controller_).loading_start_time().has_value());
-  testing::Mock::VerifyAndClearExpectations(&mock_message_controller_);
-
-  // User taps "Cancel" at 400ms while verification is still in flight. The
-  // Android Messages framework runs OnActionClicked() followed by
-  // OnDismissed(PRIMARY_ACTION); cancel_callback must run exactly once.
-  task_environment()->FastForwardBy(base::Milliseconds(400));
-  EXPECT_CALL(cancel_callback, Run).Times(1);
-  loading_model->OnActionClicked();
-  loading_model->OnDismissed(messages::DismissReason::PRIMARY_ACTION);
-  EXPECT_FALSE(test_api(*evp_controller_).loading_start_time().has_value());
-}
-
-TEST_F(EmailVerificationControllerAndroidTest,
        GestureDismissWhileInFlightInvokesCancelCallback) {
   std::unique_ptr<AutofillMessageModel> loading_model;
-  EXPECT_CALL(mock_message_controller_,
-              Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE));
+  EXPECT_CALL(mock_message_controller_, Dismiss).Times(0);
   EXPECT_CALL(mock_message_controller_, Show)
       .WillOnce([&loading_model](std::unique_ptr<AutofillMessageModel> model) {
         loading_model = std::move(model);
@@ -496,10 +460,9 @@ TEST_F(EmailVerificationControllerAndroidTest,
 }
 
 TEST_F(EmailVerificationControllerAndroidTest,
-       ShowLoadingToastWhileLoadingToastDismissesPreviousLoadingMessage) {
+       FeatureDismissWhileInFlightDoesNotInvokeCancelCallback) {
   std::unique_ptr<AutofillMessageModel> loading_model;
-  EXPECT_CALL(mock_message_controller_,
-              Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE));
+  EXPECT_CALL(mock_message_controller_, Dismiss).Times(0);
   EXPECT_CALL(mock_message_controller_, Show)
       .WillOnce([&loading_model](std::unique_ptr<AutofillMessageModel> model) {
         loading_model = std::move(model);
@@ -510,32 +473,83 @@ TEST_F(EmailVerificationControllerAndroidTest,
   ASSERT_TRUE(loading_model);
   testing::Mock::VerifyAndClearExpectations(&mock_message_controller_);
 
-  // Calling ShowLoadingToast again while the loading message banner is active
-  // preempts the in-flight verification (invoking cancel_callback once) and
-  // dismisses the previous banner with DISMISSED_BY_FEATURE without invoking
-  // cancel_callback a second time.
+  // A programmatic dismissal (e.g. replacement by a subsequent EVP UI state)
+  // must not be treated as a user cancellation.
+  EXPECT_CALL(cancel_callback, Run).Times(0);
+  loading_model->OnDismissed(messages::DismissReason::DISMISSED_BY_FEATURE);
+  EXPECT_TRUE(test_api(*evp_controller_).loading_start_time().has_value());
+}
+
+TEST_F(EmailVerificationControllerAndroidTest,
+       ShowPopupDismissesActiveLoadingMessage) {
+  std::unique_ptr<AutofillMessageModel> loading_model;
+  EXPECT_CALL(mock_message_controller_, Dismiss).Times(0);
+  EXPECT_CALL(mock_message_controller_, Show)
+      .WillOnce([&loading_model](std::unique_ptr<AutofillMessageModel> model) {
+        loading_model = std::move(model);
+      });
+
+  base::MockCallback<base::OnceClosure> cancel_callback;
+  evp_controller_->ShowLoadingToast(cancel_callback.Get());
+  ASSERT_TRUE(loading_model);
+  testing::Mock::VerifyAndClearExpectations(&mock_message_controller_);
+
+  // Calling ShowPopup while the loading message banner is active preempts the
+  // in-flight verification (invoking cancel_callback once) and dismisses the
+  // message banner with DISMISSED_BY_FEATURE without invoking cancel_callback
+  // a second time.
   EXPECT_CALL(cancel_callback, Run).Times(1);
   EXPECT_CALL(mock_message_controller_,
               Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE))
       .WillOnce([&loading_model](messages::DismissReason reason) {
         loading_model->OnDismissed(reason);
       });
+  ShowPopup();
+}
+
+TEST_F(EmailVerificationControllerAndroidTest,
+       HidePopupWhileLoadingToastDismissesLoadingMessageAfterMinimumDuration) {
+  EXPECT_CALL(mock_message_controller_, Show);
+  evp_controller_->ShowLoadingToast(base::DoNothing());
+  testing::Mock::VerifyAndClearExpectations(&mock_message_controller_);
+
+  // Calling HidePopup at 200ms (< 800ms) defers dismissing the loading message.
+  task_environment()->FastForwardBy(base::Milliseconds(200));
+  EXPECT_CALL(mock_message_controller_, Dismiss).Times(0);
+  evp_controller_->HidePopup();
+  EXPECT_TRUE(test_api(*evp_controller_).is_hide_popup_timer_running());
+
+  // At 800ms, the loading message is dismissed.
+  EXPECT_CALL(mock_message_controller_,
+              Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE));
+  task_environment()->FastForwardBy(base::Milliseconds(600));
+  EXPECT_FALSE(test_api(*evp_controller_).is_hide_popup_timer_running());
+}
+
+TEST_F(EmailVerificationControllerAndroidTest,
+       ShowLoadingToastWhileLoadingToastDismissesPreviousLoadingMessage) {
+  EXPECT_CALL(mock_message_controller_, Show);
+  evp_controller_->ShowLoadingToast(base::DoNothing());
+  testing::Mock::VerifyAndClearExpectations(&mock_message_controller_);
+
+  testing::InSequence s;
+  EXPECT_CALL(mock_message_controller_,
+              Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE));
   EXPECT_CALL(mock_message_controller_, Show);
   evp_controller_->ShowLoadingToast(base::DoNothing());
 }
 
 TEST_F(EmailVerificationControllerAndroidTest,
        ShowLoadingToastThenVerifiedToastDelaysAndDismissesLoadingMessage) {
-  EXPECT_CALL(mock_message_controller_,
-              Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE));
   EXPECT_CALL(mock_message_controller_, Show);
   evp_controller_->ShowLoadingToast(base::DoNothing());
   testing::Mock::VerifyAndClearExpectations(&mock_message_controller_);
 
   // Verification response arrives at 200ms (< 800ms).
   task_environment()->FastForwardBy(base::Milliseconds(200));
-  evp_controller_->ShowVerifiedToast(GURL("https://google.com"));
-  EXPECT_TRUE(test_api(*evp_controller_).is_toast_timer_running());
+  evp_controller_->HidePopup(CompletionStatus::kVerified,
+                             GURL("https://google.com"));
+  EXPECT_TRUE(test_api(*evp_controller_).is_hide_popup_timer_running());
 
   // Neither dismissal of the loading message nor display of the verified
   // message should happen before 800ms.
@@ -562,16 +576,14 @@ TEST_F(EmailVerificationControllerAndroidTest,
 
 TEST_F(EmailVerificationControllerAndroidTest,
        ShowLoadingToastThenErrorToastDelaysAndDismissesLoadingMessage) {
-  EXPECT_CALL(mock_message_controller_,
-              Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE));
   EXPECT_CALL(mock_message_controller_, Show);
   evp_controller_->ShowLoadingToast(base::DoNothing());
   testing::Mock::VerifyAndClearExpectations(&mock_message_controller_);
 
   // Error response arrives at 200ms (< 800ms).
   task_environment()->FastForwardBy(base::Milliseconds(200));
-  evp_controller_->ShowErrorToast();
-  EXPECT_TRUE(test_api(*evp_controller_).is_toast_timer_running());
+  evp_controller_->HidePopup(CompletionStatus::kError);
+  EXPECT_TRUE(test_api(*evp_controller_).is_hide_popup_timer_running());
 
   // Neither dismissal of the loading message nor display of the error message
   // should happen before 800ms.
@@ -598,8 +610,6 @@ TEST_F(EmailVerificationControllerAndroidTest,
 
 TEST_F(EmailVerificationControllerAndroidTest,
        ShowLoadingToastThenHiddenWebContentsStillDismissesLoadingMessage) {
-  EXPECT_CALL(mock_message_controller_,
-              Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE));
   EXPECT_CALL(mock_message_controller_, Show);
   evp_controller_->ShowLoadingToast(base::DoNothing());
   testing::Mock::VerifyAndClearExpectations(&mock_message_controller_);
@@ -613,14 +623,13 @@ TEST_F(EmailVerificationControllerAndroidTest,
   EXPECT_CALL(mock_message_controller_,
               Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE));
   EXPECT_CALL(mock_message_controller_, Show).Times(0);
-  evp_controller_->ShowVerifiedToast(GURL("https://google.com"));
+  evp_controller_->HidePopup(CompletionStatus::kVerified,
+                             GURL("https://google.com"));
 }
 
 TEST_F(
     EmailVerificationControllerAndroidTest,
     ShowLoadingToastThenHiddenWebContentsStillDismissesLoadingMessageOnError) {
-  EXPECT_CALL(mock_message_controller_,
-              Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE));
   EXPECT_CALL(mock_message_controller_, Show);
   evp_controller_->ShowLoadingToast(base::DoNothing());
   testing::Mock::VerifyAndClearExpectations(&mock_message_controller_);
@@ -634,7 +643,7 @@ TEST_F(
   EXPECT_CALL(mock_message_controller_,
               Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE));
   EXPECT_CALL(mock_message_controller_, Show).Times(0);
-  evp_controller_->ShowErrorToast();
+  evp_controller_->HidePopup(CompletionStatus::kError);
 }
 
 }  // namespace

@@ -257,7 +257,6 @@
 <translation id="3531741627422851418">QR-код для спампоўвання браўзера Chromium на мабільныя прылады</translation>
 <translation id="354621070532799440">Напамін: найлепшыя функцыі бяспекі Google заўсёды з вамі</translation>
 <translation id="3561853857681580870">Каб абагуліць экран, у сістэмных наладах дазвольце браўзеру Chromium запіс экрана.</translation>
-<translation id="3588112919289558122">Пры выкарыстанні палепшанай абароны аптымізацыя JavaScript адключаецца для сайтаў, якія не распазнаюцца Chromium</translation>
 <translation id="3597003331831379823">Не ўдалося запусціць наладжванне з пашыранымі правамі. <ph name="METAINSTALLER_ERROR" /></translation>
 <translation id="3600428265489994557">Увайдзіце ў Chromium</translation>
 <translation id="3639635944603682591">Даныя аб прагледжаных гэтым карыстальнікам старонках будуць выдалены з прылады. Каб аднавіць гэтыя даныя, увайдзіце ў Chromium як <ph name="USER_EMAIL" />.</translation>
@@ -296,7 +295,6 @@
 <translation id="3971865010372729242">Калі вы ўводзіце тэкст у адрасным радку або ў полі пошуку, Chromium адпраўляе гэта змесціва ў інструменты пошуку, штучнага інтэлекту і агентаў вашай арганізацыі, каб вы маглі атрымліваць прапановы.</translation>
 <translation id="3975724895399328945">Пра &amp;Google Chrome for Testing</translation>
 <translation id="3997429360543082038">Пра Chromium OS</translation>
-<translation id="4010059961270896984">Калі вы наведваеце сайт, Chromium адпраўляе абфускаваную частку URL-адраса ў сэрвіс <ph name="BEGIN_LINK" />Google Бяспечны прагляд<ph name="END_LINK" /> праз сервер прыватнасці, які хавае ваш IP-адрас. Калі сайт робіць нешта падазронае, таксама адпраўляюцца поўныя URL-адрасы і фрагменты змесціва на старонцы.</translation>
 <translation id="4016217212818346953">Заставайцеся ў бяспецы дзякуючы Менеджару пароляў</translation>
 <translation id="4019629340646866719">Chromium OS, як і <ph name="BEGIN_LINK_LINUX_OSS" />асяроддзе распрацоўкі Linux<ph name="END_LINK_LINUX_OSS" />, працуе дзякуючы дадатковаму <ph name="BEGIN_LINK_CROS_OSS" />праграмнаму забеспячэнню з адкрытым зыходным кодам<ph name="END_LINK_CROS_OSS" />.</translation>
 <translation id="4022972681110646219">Перакласці экран</translation>
@@ -374,6 +372,7 @@
 <translation id="4786083865378785874">Калі сэрвіс Gemini ў Chromium адкрыты, падчас стварэння новых укладак бакавая панэль будзе заставацца адкрытай</translation>
 <translation id="479167709087336770">Гэта функцыя выкарыстоўвае тую ж праверку правапісу, што ў Google Пошуку. Уведзены ў браўзер тэкст адпраўляецца ў Google. Гэта можна змяніць у наладах.</translation>
 <translation id="4814736265800133385">Выкарыстоўваць Chromium без уліковага запісу</translation>
+<translation id="4839733921943823254">Замацаваць ярлык</translation>
 <translation id="4888717733111232871">Уваходнае правіла для Chromium, якое дазваляе трафік mDNS.</translation>
 <translation id="4893347770495441059">Перазапусціць, каб абнавіць &amp;Chromium</translation>
 <translation id="4918086044614829423">Прыняць</translation>
@@ -457,7 +456,6 @@
 <translation id="5821520528363214608">Абнавіце Chromium, каб захоўваць і выкарыстоўваць даныя Chromium ва Уліковым запісе Google</translation>
 <translation id="5824893331272123205">Не ўдалося загрузіць гэту панэль. Паўтарыце спробу.</translation>
 <translation id="5862307444128926510">Вас вітае Chromium</translation>
-<translation id="5867606647614813312">Уключае дадатковыя функцыі, якія забяспечваюць максімальную абарону ў Chromium</translation>
 <translation id="5871205389137001634">Націсніце, каб выйсці з пошуку відарысаў</translation>
 <translation id="5883558403894052917">Браўзер Chromium выявіў, што наступныя элементы змяшчаюць шкоднае ПЗ:</translation>
 <translation id="5889361821821684993">Chromium пастаянна сочыць за тым, каб у вашым браўзеры былі самыя бяспечныя налады. Мы паведамім вам, калі нешта будзе патрабаваць вашай увагі.</translation>
@@ -759,13 +757,13 @@
 <translation id="8522801943730206384">Chromium можа правяраць толькі захаваныя паролі</translation>
 <translation id="8525579356836940628">Усталяванне спынена</translation>
 <translation id="8545729292258443488">Зручны доступ у дарозе да пароляў, укладак і іншых даных у праграме Chromium на прыладзе "<ph name="DEVICE_TYPE" />"</translation>
-<translation id="8548787790260785208">Калі Chromium выявіць, што адзін з вашых пароляў аказаўся сярод агульнадаступных даных у выніку ўцечкі, вы атрымаеце папярэджанне</translation>
 <translation id="8555465886620020932">Памылка службы: <ph name="SERVICE_ERROR" />.</translation>
 <translation id="8556055872671007529">Для некаторых функцый і пашырэнняў Chromium наладжаны хуткія каманды. Вы можаце зноў уключыць іх.</translation>
 <translation id="8556420416730706394">Для зручнага доступу можна замацаваць пошук відарысаў: націсніце кнопку "Замацаваць" уверсе бакавой панэлі</translation>
 <translation id="856656450041460113">Пошук у спісе моў</translation>
 <translation id="8576826849825683917">Некалькі арганізацый кіруюць браўзерам Chromium</translation>
 <translation id="8586442755830160949">Аўтарскія правы: стваральнікі Chromium, <ph name="YEAR" />. Усе правы абароненыя.</translation>
+<translation id="8590782867495422699">Паўторна адкрыць рэжым AI у Google Пошуку</translation>
 <translation id="8619360774459241877">Ідзе запуск Chromium...</translation>
 <translation id="8624541899164515475">Налады (адкрыюцца ў новай укладцы).</translation>
 <translation id="8648201657708811153">Google Chrome for Testing нельга зрабіць стандартным браўзерам.</translation>
@@ -816,6 +814,7 @@
 <translation id="9056398481763999048">Выкарыстоўвайце лепшыя інструменты на аснове AI ад Google – у праграме Chromium на тэлефоне</translation>
 <translation id="9057625473949801035">Каб атрымаць доступ да сваіх пароляў і іншых даных з прылады "<ph name="DEVICE" />", увайдзіце ў Chromium</translation>
 <translation id="9062666675513499497">Уваходзіць у Chromium пры ўваходзе ў іншыя сэрвісы Google</translation>
+<translation id="9074041031320636790">Гатова! Цяпер вы можаце задаваць пытанні падчас прагляду вэб-старонак з дапамогай рэжыму AI ў Google Пошуку</translation>
 <translation id="9078733879136747090">Chromium аўтаматычна закрыты</translation>
 <translation id="9089354809943900324">Chromium састарэў</translation>
 <translation id="9093206154853821181">{0,plural, =1{Chromium будзе перазапушчаны праз гадзіну}one{Chromium будзе перазапушчаны праз # гадзіну}few{Chromium будзе перазапушчаны праз # гадзіны}many{Chromium будзе перазапушчаны праз # гадзін}other{Chromium будзе перазапушчаны праз # гадзіны}}</translation>

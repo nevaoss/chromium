@@ -68,7 +68,6 @@
 #include "third_party/blink/renderer/platform/scheduler/public/event_loop.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
 #include "third_party/blink/renderer/platform/supplementable.h"
-#include "third_party/blink/renderer/platform/wtf/cross_thread_copier.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/blink/renderer/platform/wtf/math_extras.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
@@ -317,32 +316,12 @@ void OffscreenCanvas::SetSize(gfx::Size size) {
     frame_dispatcher_->Reshape(Size());
   }
 
-  if (!context_) {
-    return;
-  }
-  if (context_->IsRenderingContext2D()) {
-    if (size_ != old_size && context_->isContextLost()) {
-      context_->RestoreFromInvalidSizeIfNeeded();
+  if (context_) {
+    if (context_->IsRenderingContext2D()) {
+      origin_clean_ = true;
     }
 
-    // Setting size of a canvas also resets it.
-    context_->Reset();
-    origin_clean_ = true;
-    context_->DidDraw(CanvasPerformanceMonitor::DrawType::kOther);
-  } else if (context_->IsWebGL()) {
     context_->Reshape(old_size, Size());
-  } else if (context_->IsWebGPU()) {
-    if (old_size != size_) {
-      context_->Reshape(old_size, Size());
-      context_->DidDraw(CanvasPerformanceMonitor::DrawType::kOther);
-    }
-  } else if (context_->IsImageBitmapRenderingContext()) {
-    if (old_size != size_) {
-      context_->Reset();
-      context_->DidDraw(CanvasPerformanceMonitor::DrawType::kOther);
-    }
-  } else {
-    NOTREACHED();
   }
 }
 
@@ -617,8 +596,9 @@ CanvasRenderingContext* OffscreenCanvas::GetCanvasRenderingContext(
     const CanvasContextCreationAttributesCore& attributes) {
   DCHECK_EQ(execution_context, GetTopExecutionContext());
 
-  if (execution_context->IsContextDestroyed())
+  if (execution_context->IsContextDestroyed()) {
     return nullptr;
+  }
 
   // Unknown type.
   if (rendering_api == CanvasRenderingContext::CanvasRenderingAPI::kUnknown)
@@ -640,24 +620,36 @@ CanvasRenderingContext* OffscreenCanvas::GetCanvasRenderingContext(
           this, "OffscreenCanvas has an existing context of a different type");
       return nullptr;
     }
-  } else {
-    // Tell the debugger about the attempt to create an offscreen
-    // canvas context even if it will fail, to ease debugging.
-    probe::DidCreateOffscreenCanvasContext(this);
-
-    CanvasContextCreationAttributesCore recomputed_attributes = attributes;
-    if (!allow_high_performance_power_preference_) {
-      recomputed_attributes.power_preference =
-          CanvasContextCreationAttributesCore::PowerPreference::kLowPower;
-    }
-
-    context_ = factory->Create(execution_context, this, recomputed_attributes);
-    if (context_) {
-      context_->RecordUKMCanvasRenderingAPI();
-      context_->RecordUMACanvasRenderingAPI();
-    }
+    return context_.Get();
   }
 
+  // Tell the debugger about the attempt to create an offscreen
+  // canvas context even if it will fail, to ease debugging.
+  probe::DidCreateOffscreenCanvasContext(this);
+
+  CanvasContextCreationAttributesCore recomputed_attributes = attributes;
+  if (!allow_high_performance_power_preference_) {
+    recomputed_attributes.power_preference =
+        CanvasContextCreationAttributesCore::PowerPreference::kLowPower;
+  }
+
+  // Do not assign `context_` directly: `factory->Create()` can synchronously
+  // dispatch events (such as "webglcontextcreationerror"), allowing an event
+  // listener to reentrantly call `getContext()` or transfer (neuter) this
+  // OffscreenCanvas while `Create()` is still on the stack.
+  CanvasRenderingContext* context =
+      factory->Create(execution_context, this, recomputed_attributes);
+  if (!context) {
+    return nullptr;
+  }
+  if (context_ || is_neutered_ || disposing_) {
+    context->Dispose();
+    return nullptr;
+  }
+
+  context_ = context;
+  context_->RecordUKMCanvasRenderingAPI();
+  context_->RecordUMACanvasRenderingAPI();
   return context_.Get();
 }
 
@@ -785,25 +777,26 @@ bool OffscreenCanvas::BeginFrame() {
 bool OffscreenCanvas::PushFrameIfNeeded() {
   if (needs_push_frame_ && context_) {
     bool should_call_push_frame = false;
-    scoped_refptr<CanvasResource> canvas_resource =
+    scoped_refptr<ExportedCanvasResource> exported_resource =
         context_->GetResourceForPushFrame(should_call_push_frame);
+
     if (should_call_push_frame) {
-      return PushFrame(std::move(canvas_resource));
+      return PushFrame(std::move(exported_resource));
     }
   }
   return false;
 }
 
 bool OffscreenCanvas::PushFrame(
-    scoped_refptr<CanvasResource>&& canvas_resource) {
+    scoped_refptr<ExportedCanvasResource>&& exported_resource) {
   TRACE_EVENT0("blink", "OffscreenCanvas::PushFrame");
   DCHECK(needs_push_frame_);
   needs_push_frame_ = false;
 
-  if (!canvas_resource) {
+  if (!exported_resource) {
     return false;
   }
-  canvas_resource->SetOriginClean(OriginClean());
+  exported_resource->SetOriginClean(OriginClean());
   current_frame_damage_rect_.Intersect(gfx::Rect(Size()));
 
   // We can't submit empty CompositorFrames, but contexts not always obeys it
@@ -811,9 +804,6 @@ bool OffscreenCanvas::PushFrame(
   if (Size().IsEmpty()) {
     return false;
   }
-
-  auto exported_resource =
-      base::MakeRefCounted<ExportedCanvasResource>(std::move(canvas_resource));
 
   auto* dispatcher = GetOrCreateResourceDispatcher();
   if (placeholder_client_) {

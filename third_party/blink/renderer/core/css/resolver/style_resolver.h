@@ -297,8 +297,6 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
     return computed_style_bytes_used_;
   }
 
-  void ApplyTriggerData(StyleResolverState& state);
-
   void Trace(Visitor*) const;
 
  private:
@@ -393,6 +391,12 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
   void ExpandInheritedVisitedProperties(StyleResolverState& state);
 
   void PropagateStyleBuilderFlags(const StyleResolverState& state);
+
+  // Inspect the difference of properties supported for precomputing :hover
+  // styles and return true if the compositor can update the differences.
+  // Otherwise, return false.
+  bool ValidPrecomputedHoverDiff(const ComputedStyleBuilder& builder,
+                                 const ComputedStyle& style);
 
   enum UASheetCacheKeyIndex {
     kHTMLUASheet,

@@ -80,7 +80,11 @@ export class SearchboxMatchElement extends CrLitElement {
         reflect: true,
       },
 
-      showContextualDescription: {
+      /**
+       * Whether the secondary text is only shown while the match is selected
+       * or hovered.
+       */
+      showSecondaryTextOnlyOnSelection: {
         type: Boolean,
         reflect: true,
       },
@@ -138,11 +142,6 @@ export class SearchboxMatchElement extends CrLitElement {
       // Private properties
       //========================================================================
 
-      isContextualSuggestion_: {
-        type: Boolean,
-        reflect: true,
-      },
-
       isTopChromeSearchbox_: {
         type: Boolean,
         reflect: true,
@@ -181,7 +180,7 @@ export class SearchboxMatchElement extends CrLitElement {
 
   override accessor ariaLabel: string = '';
   accessor hasAction: boolean = false;
-  accessor showContextualDescription: boolean = false;
+  accessor showSecondaryTextOnlyOnSelection: boolean = false;
   accessor hasImage: boolean = false;
   accessor hasKeywordChip: boolean = false;
   accessor isEntitySuggestion: boolean = false;
@@ -194,7 +193,6 @@ export class SearchboxMatchElement extends CrLitElement {
   accessor showEllipsis: boolean = false;
   accessor virtualFocusEnabled: boolean = false;
   accessor resultSequenceId: number = 0;
-  private accessor isContextualSuggestion_: boolean = false;
   private accessor isTopChromeSearchbox_: boolean =
       loadTimeData.getBoolean('isTopChromeSearchbox');
   private accessor isLensSearchbox_: boolean =
@@ -230,7 +228,8 @@ export class SearchboxMatchElement extends CrLitElement {
       this.hasAction = this.computeHasAction_();
       this.hasKeywordChip = this.computeHasKeywordChip_();
       this.hasImage = this.computeHasImage_();
-      this.isContextualSuggestion_ = this.computeIsContextualSuggestion_();
+      this.showSecondaryTextOnlyOnSelection =
+          this.match.showSecondaryTextOnlyOnSelection;
       this.isEntitySuggestion = this.computeIsEntitySuggestion_();
       this.secondaryTextPlacement = this.computeSecondaryTextPlacement_();
       this.removeButtonAriaLabel_ = this.computeRemoveButtonAriaLabel_();
@@ -423,10 +422,6 @@ export class SearchboxMatchElement extends CrLitElement {
     return this.match && !!this.match.suggestTemplate.image?.url;
   }
 
-  private computeIsContextualSuggestion_(): boolean {
-    return this.match.isContextualSuggestion;
-  }
-
   private computeIsEntitySuggestion_(): boolean {
     return this.match && this.match.type === ENTITY_MATCH_TYPE;
   }
@@ -480,18 +475,30 @@ export class SearchboxMatchElement extends CrLitElement {
 
   /**
    * Maps the color and weight of a FormattedString fragment to CSS classes.
-   * Colors without a CSS class yet are rendered with the default color.
+   * Each suggest color gets a class named after the color token it maps to.
+   * Other colors get no class and keep the default color.
    */
   private getFragmentCssClasses_(fragment: FormattedStringFragment): string[] {
     const classes = [];
-    if (fragment.color === ColorType.kOnSurfaceDeemphasis) {
-      classes.push('dim');
+    switch (fragment.color) {
+      case ColorType.kSuggestQueryText:
+        classes.push('color-on-surface');
+        break;
+      case ColorType.kSuggestHintText:
+        classes.push('color-on-surface-subtle');
+        break;
+      case ColorType.kSuggestActionHigh:
+        classes.push('color-primary');
+        // The URL layout rules key on `url`. Only URLs get ACTION_HIGH for now,
+        // so ACTION_HIGH text gets `url` too.
+        // TODO(crbug.com/574634127): Mark URLs without relying on the color.
+        classes.push('url');
+        break;
+      default:
+        break;
     }
     if (fragment.isBolded) {
       classes.push('match');
-    }
-    if (fragment.color === ColorType.kPrimary) {
-      classes.push('url');
     }
     return classes;
   }

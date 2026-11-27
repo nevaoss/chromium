@@ -6,22 +6,20 @@
 
 #include <algorithm>
 #include <iterator>
-#include <memory>
 #include <string>
 #include <string_view>
-#include <utility>
 
-#include "base/check.h"
 #include "base/command_line.h"
 #include "base/feature_list.h"
-#include "base/supports_user_data.h"
 #include "base/types/expected.h"
 #include "chrome/browser/glic/gemini_enterprise/geic_url_allowlist.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/public/features.h"
+#include "chrome/browser/metrics/variations/google_groups_manager_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/common/chrome_switches.h"
 #include "components/prefs/pref_service.h"
+#include "components/variations/service/google_groups_manager.h"
 #include "content/public/browser/browser_context.h"
 #include "net/base/url_util.h"
 #include "url/gurl.h"
@@ -30,20 +28,6 @@
 namespace geic {
 
 namespace {
-
-const void* const kLatchedGeicConfigKey = &kLatchedGeicConfigKey;
-
-// Per-profile latched GEiC configuration stored on `BrowserContext` via
-// `base::SupportsUserData`. Initialized on the first call to
-// `IsGeicEnabled(browser_context)` or `GetGeicGuestUrl(browser_context)`. An
-// empty `guest_url` means GEiC is disabled for the profile.
-struct LatchedGeicConfig : public base::SupportsUserData::Data {
-  explicit LatchedGeicConfig(GURL url) : guest_url(std::move(url)) {}
-
-  bool is_geic_enabled() const { return !guest_url.is_empty(); }
-
-  const GURL guest_url;
-};
 
 // Although `GeminiEnterpriseUrlPolicyHandler` validates the policy URL's
 // syntax, scheme and host when applying the enterprise policy, we validate the
@@ -122,6 +106,26 @@ base::expected<GURL, GuestUrlError> GetPolicyGuestUrl(
              : base::unexpected(GuestUrlError::kUnset);
 }
 
+base::expected<GURL, GuestUrlError> GetFinchGuestUrl(
+    content::BrowserContext* browser_context) {
+  if (browser_context) {
+    const GoogleGroupsManager* google_groups_manager =
+        GoogleGroupsManagerFactory::GetForBrowserContext(browser_context);
+    if (google_groups_manager &&
+        !google_groups_manager->IsFeatureEnabledForProfile(features::kGeic)) {
+      return base::unexpected(GuestUrlError::kUnset);
+    }
+  }
+  return ToGuestUrl(features::kGeicGuestURL.Get());
+}
+
+}  // namespace
+
+bool IsGeicEnabledByFeature() {
+  return base::FeatureList::IsEnabled(features::kGeic) &&
+         features::kGeicEnabledParam.Get();
+}
+
 GURL ResolveGeicGuestUrl(content::BrowserContext* browser_context) {
   if (!IsGeicEnabledByFeature()) {
     return GURL();
@@ -131,7 +135,7 @@ GURL ResolveGeicGuestUrl(content::BrowserContext* browser_context) {
       ToGuestUrl(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
           kGeicGuestURLSwitch)),
       GetPolicyGuestUrl(browser_context),
-      ToGuestUrl(features::kGeicGuestURL.Get()),
+      GetFinchGuestUrl(browser_context),
   };
   // The first set candidate wins, even if it is invalid, so that an invalid
   // higher-priority source doesn't silently fall through.
@@ -143,38 +147,6 @@ GURL ResolveGeicGuestUrl(content::BrowserContext* browser_context) {
   return it != std::end(candidates) && it->has_value()
              ? CanonicalizeGuestUrl(it->value())
              : GURL();
-}
-
-// Returns the GEiC config for `browser_context`, resolving and latching it on
-// the first call. Both enabled and disabled results are latched, so the answer
-// does not change for the lifetime of `browser_context`.
-const LatchedGeicConfig& GetOrLatchConfig(
-    content::BrowserContext* browser_context) {
-  CHECK(browser_context);
-  auto* config = static_cast<LatchedGeicConfig*>(
-      browser_context->GetUserData(kLatchedGeicConfigKey));
-  if (!config) {
-    auto created = std::make_unique<LatchedGeicConfig>(
-        ResolveGeicGuestUrl(browser_context));
-    config = created.get();
-    browser_context->SetUserData(kLatchedGeicConfigKey, std::move(created));
-  }
-  return *config;
-}
-
-}  // namespace
-
-bool IsGeicEnabledByFeature() {
-  return base::FeatureList::IsEnabled(features::kGeic) &&
-         features::kGeicEnabledParam.Get();
-}
-
-bool IsGeicEnabled(content::BrowserContext* browser_context) {
-  return GetOrLatchConfig(browser_context).is_geic_enabled();
-}
-
-GURL GetGeicGuestUrl(content::BrowserContext* browser_context) {
-  return GetOrLatchConfig(browser_context).guest_url;
 }
 
 }  // namespace geic

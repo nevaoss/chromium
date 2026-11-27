@@ -37,6 +37,7 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.util.Property;
 import android.view.ContextThemeWrapper;
 import android.view.KeyEvent;
@@ -48,6 +49,7 @@ import android.widget.TextView;
 
 import androidx.test.core.app.ApplicationProvider;
 
+import org.jni_zero.JniUniquePtr;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -94,11 +96,11 @@ import org.chromium.chrome.browser.omnibox.SearchEngineService.SearchEngineNameO
 import org.chromium.chrome.browser.omnibox.UrlBar.ScrollType;
 import org.chromium.chrome.browser.omnibox.fusebox.ComposeboxQueryControllerBridge;
 import org.chromium.chrome.browser.omnibox.fusebox.ComposeboxQueryControllerBridgeJni;
+import org.chromium.chrome.browser.omnibox.fusebox.Fusebox.FuseboxLayoutMode;
+import org.chromium.chrome.browser.omnibox.fusebox.Fusebox.FuseboxState;
+import org.chromium.chrome.browser.omnibox.fusebox.Fusebox.PopupState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentModelList;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.PopupState;
 import org.chromium.chrome.browser.omnibox.geo.GeolocationHeader;
 import org.chromium.chrome.browser.omnibox.status.StatusCoordinator;
 import org.chromium.chrome.browser.omnibox.status.StatusProperties.StatusIconResource;
@@ -215,6 +217,7 @@ public class LocationBarMediatorUnitTest {
     @Mock private UrlBarCoordinator mUrlCoordinator;
     @Mock private StatusCoordinator mStatusCoordinator;
     @Mock private Natives mPrerenderJni;
+    @Mock private JniUniquePtr<OmniboxPrerender.NativeOmniboxPrerender> mNativeOmniboxPrerender;
     @Mock private TextView mView;
     @Mock private View mTabView;
     @Mock private KeyEvent mKeyEvent;
@@ -260,7 +263,6 @@ public class LocationBarMediatorUnitTest {
     @Captor private ArgumentCaptor<Callback<Boolean>> mOnInteractionCompletedCallbackCaptor;
     @Captor private ArgumentCaptor<Runnable> mOnPickerInteractionSucceededCallbackCaptor;
     @Captor private ArgumentCaptor<UrlBarData> mUrlBarDataCaptor;
-    @Captor private ArgumentCaptor<OmniboxPrerender> mOmniboxPrerenderCaptor;
     @Captor private ArgumentCaptor<FuseboxSessionState> mFuseboxSessionStateCaptor;
     @Captor private ArgumentCaptor<Boolean> mBooleanCaptor;
     @Captor private ArgumentCaptor<SearchEngineNameObserver> mObserverCaptor;
@@ -426,6 +428,7 @@ public class LocationBarMediatorUnitTest {
         lenient().doReturn(true).when(mWindow).isActive();
         lenient().doReturn(new WeakReference<>(mActivity)).when(mWindowAndroid).getActivity();
         OmniboxPrerenderJni.setInstanceForTesting(mPrerenderJni);
+        lenient().doReturn(mNativeOmniboxPrerender).when(mPrerenderJni).init();
         PreloadPagesSettingsBridgeJni.setInstanceForTesting(mPreloadPagesSettingsJni);
         lenient().doReturn(mProfile).when(mTab).getProfile();
         lenient()
@@ -743,6 +746,13 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
+    public void testDestroy_destroysOmniboxPrerender() {
+        mMediator.onFinishNativeInitialization();
+        mMediator.destroy();
+        verify(mNativeOmniboxPrerender).destroy();
+    }
+
+    @Test
     public void testDestroyEndsInput() {
         AutocompleteInput input = mSessionState.getAutocompleteInput();
 
@@ -1001,10 +1011,9 @@ public class LocationBarMediatorUnitTest {
     @Test
     @SuppressWarnings("DirectInvocationOnMock")
     public void testOnSuggestionsChanged() {
-        doReturn(123L).when(mPrerenderJni).init(mOmniboxPrerenderCaptor.capture());
         mMediator.onFinishNativeInitialization();
         mProfileSupplier.set(mProfile);
-        verify(mPrerenderJni).initializeForProfile(123L, mProfile);
+        verify(mPrerenderJni).initializeForProfile(mNativeOmniboxPrerender, mProfile);
 
         doReturn(PreloadPagesState.NO_PRELOADING)
                 .when(mPreloadPagesSettingsJni)
@@ -1018,7 +1027,7 @@ public class LocationBarMediatorUnitTest {
                         .build(),
                 true);
         verify(mPrerenderJni, never())
-                .prerenderMaybe(anyLong(), anyString(), anyString(), anyLong(), any(), any());
+                .prerenderMaybe(any(), anyString(), anyString(), anyLong(), any(), any());
 
         doReturn(PreloadPagesState.STANDARD_PRELOADING)
                 .when(mPreloadPagesSettingsJni)
@@ -1043,7 +1052,13 @@ public class LocationBarMediatorUnitTest {
                         .build();
         mMediator.onSuggestionsChanged(defaultMatch, /* hasSuggestions= */ true);
         verify(mPrerenderJni)
-                .prerenderMaybe(123L, "text", JUnitTestGURLs.RED_1.getSpec(), 456L, mProfile, mTab);
+                .prerenderMaybe(
+                        mNativeOmniboxPrerender,
+                        "text",
+                        JUnitTestGURLs.RED_1.getSpec(),
+                        456L,
+                        mProfile,
+                        mTab);
         verify(mUrlCoordinator)
                 .setAutocompleteText("text", "textWithAutocomplete", "additionalText", null);
 
@@ -3967,6 +3982,43 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
+    public void testReparenting_releasesParentFocusOnlyWhenLocationBarIsFocused() {
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+        mFuseboxLayoutModeSupplier.set(FuseboxLayoutMode.SUGGESTIONS_POPOVER);
+
+        doReturn(mLocationBarParent).when(mLocationBarLayout).getParent();
+        doReturn(mSuggestionsContainer).when(mAutocompleteCoordinator).getSuggestionsContainer();
+        doReturn(mDropdown).when(mSuggestionsContainer).takeDropdownView();
+        doReturn(new MarginLayoutParams(-2, -2)).when(mLocationBarLayout).getLayoutParams();
+        doReturn(mPlaceholder)
+                .when(mLocationBarLayout)
+                .findViewById(R.id.suggestions_container_placeholder);
+
+        // Toolbar focus is held by the location bar: release it so removeView() keeps the UrlBar
+        // focused (and the IME composition intact). The release must precede removeView(), which
+        // would otherwise unfocus the subtree first; assert that at the time removeView() runs.
+        doReturn(mLocationBarLayout).when(mLocationBarParent).getFocusedChild();
+        doAnswer(
+                        inv -> {
+                            verify(mLocationBarParent).clearChildFocus(mLocationBarLayout);
+                            return null;
+                        })
+                .when(mLocationBarParent)
+                .removeView(mLocationBarLayout);
+        mSessionState.getAutocompleteInput().setDisplayState(DisplayState.SUGGESTIONS);
+        mMediator.handleUrlFocusAnimation(/* hasFocus= */ true);
+        verify(mLocationBarParent).removeView(mLocationBarLayout);
+
+        // Focus moved to another window branch (e.g. web contents) before leaving SUGGESTIONS:
+        // the focus chain must not be cleared, or the focused view would be orphaned.
+        doReturn(null).when(mSuggestionsContainer).getFocusedChild();
+        mMediator.endInput();
+        verify(mSuggestionsContainer, never()).clearChildFocus(any());
+        verify(mSuggestionsContainer).removeView(mLocationBarLayout);
+    }
+
+    @Test
     public void testReparentToToolbar_preservesFocusInStandby() {
         mMediator.onFinishNativeInitialization();
         mProfileSupplier.set(mProfile);
@@ -4221,6 +4273,7 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
+    @DisableFeatures(OmniboxFeatureList.OMNIBOX_PREFETCH_SELECTED_SUGGESTIONS_OMT_ANDROID)
     public void testIsKeyboardSuppressed() {
         SettableNonNullObservableSupplier<Integer> popupStateSupplier =
                 ObservableSuppliers.createNonNull(PopupState.HIDDEN);
@@ -4236,6 +4289,42 @@ public class LocationBarMediatorUnitTest {
 
         // 3. Popup state is BOTTOM -> suppressed
         popupStateSupplier.set(PopupState.BOTTOM);
+        assertTrue(mMediator.isKeyboardSuppressed());
+
+        // 4. Suggestions dropdown scrolled -> not suppressed when feature is disabled
+        popupStateSupplier.set(PopupState.HIDDEN);
+        mMediator.onSuggestionDropdownScroll();
+        assertFalse(mMediator.isKeyboardSuppressed());
+    }
+
+    @Test
+    @Config(sdk = Build.VERSION_CODES.BAKLAVA)
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_PREFETCH_SELECTED_SUGGESTIONS_OMT_ANDROID)
+    public void testIsKeyboardSuppressed_omtPrefetchEnabled() {
+        SettableNonNullObservableSupplier<Integer> popupStateSupplier =
+                ObservableSuppliers.createNonNull(PopupState.HIDDEN);
+        doReturn(popupStateSupplier).when(mFuseboxCoordinator).getPopupStateSupplier();
+
+        // 1. Suggestions dropdown scrolled -> suppressed
+        mMediator.onSuggestionDropdownScroll();
+        assertTrue(mMediator.isKeyboardSuppressed());
+
+        // 2. Suggestions dropdown overscrolled to top -> not suppressed
+        mMediator.onSuggestionDropdownOverscrolledToTop();
+        assertFalse(mMediator.isKeyboardSuppressed());
+
+        // 3. Suggestions dropdown scrolled, then UrlBar touched -> not suppressed
+        mMediator.onSuggestionDropdownScroll();
+        assertTrue(mMediator.isKeyboardSuppressed());
+        mMediator.onUrlBarTouchDown();
+        assertFalse(mMediator.isKeyboardSuppressed());
+
+        // 4. Suggestions dropdown scrolled, then input session suspended -> not suppressed
+        mMediator.beginInput(mSessionState.getAutocompleteInput());
+        mMediator.onSuggestionDropdownScroll();
+        assertTrue(mMediator.isKeyboardSuppressed());
+        mMediator.suspendInput();
+        assertFalse(mMediator.isKeyboardSuppressed());
     }
 
     @Test

@@ -43,6 +43,7 @@ export function getHtml(this: GlicSelectionOverlayElement) {
             .screenshotDataUri="${this.screenshotDataUri}"
             .selectionOverlayRect="${this.selectionOverlayRect}"
             .borderGlowEnabled="${this.enableBorderGlow}"
+            ?skip-scrim-transition="${this.skipIntroAnimation}"
             region-stroke-color1="#FFFFFF"
             region-stroke-color2="#FFFFFF"
             region-stroke-color3="#FFFFFF"
@@ -72,9 +73,17 @@ export function getHtml(this: GlicSelectionOverlayElement) {
                 type="text"
                 placeholder="$i18n{askGemini}"
                 aria-label="$i18n{askGemini}"
+                @input="${this.onPromptInput}"
                 @keydown="${this.onInputKeydown}"
                 @pointerdown="${this.onPromptPointerdown}"
                 autocomplete="off">
+            <cr-icon-button id="submitPromptButton"
+                ?hidden="${!this.hasPromptText}"
+                title="$i18n{submitPrompt}"
+                aria-label="$i18n{submitPrompt}"
+                @click="${this.onSubmitPromptClick}"
+                @pointerdown="${this.onPromptPointerdown}">
+            </cr-icon-button>
           </div>
         ` : ''}
 
@@ -93,12 +102,12 @@ export function getHtml(this: GlicSelectionOverlayElement) {
             </cr-button>
           `)}
           ${!this.enableSelectionOverlayPromptBox ? html`
-            <cr-button id="closeRegionButton"
-                class="close-region-button"
-                title="$i18n{close}"
-                aria-label="$i18n{close}"
-                @click="${this.onCloseRegionClick}">
-              <div class="close-region-icon"></div>
+            <cr-button id="settingsButton"
+                class="settings-button"
+                title="$i18n{settings}"
+                aria-label="$i18n{settings}"
+                @click="${this.onSettingsClick}">
+              <div class="settings-icon"></div>
             </cr-button>
           ` : ''}
         </div>

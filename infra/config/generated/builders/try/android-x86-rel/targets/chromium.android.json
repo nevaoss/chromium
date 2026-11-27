@@ -56,7 +56,7 @@
       {
         "args": [
           "--avd-config=../../tools/android/avd/proto/android_29_google_apis_x86.textpb",
-          "--test-launcher-filter-file=../../testing/buildbot/filters/android.emulator_10.android_browsertests.filter",
+          "--test-launcher-filter-file=../../testing/buildbot/filters/android.emulator_10.android_browsertests.filter;../../testing/buildbot/filters/android.phone.android_browsertests.filter",
           "--gs-results-bucket=chromium-result-details",
           "--recover-devices"
         ],
@@ -925,8 +925,7 @@
         "precommit_args": [
           "--gerrit-issue=${patch_issue}",
           "--gerrit-patchset=${patch_set}",
-          "--buildbucket-id=${buildbucket_build_id}",
-          "--bypass-skia-gold-functionality"
+          "--buildbucket-id=${buildbucket_build_id}"
         ],
         "resultdb": {
           "enable": true,
@@ -985,8 +984,7 @@
         "precommit_args": [
           "--gerrit-issue=${patch_issue}",
           "--gerrit-patchset=${patch_set}",
-          "--buildbucket-id=${buildbucket_build_id}",
-          "--bypass-skia-gold-functionality"
+          "--buildbucket-id=${buildbucket_build_id}"
         ],
         "resultdb": {
           "enable": true,

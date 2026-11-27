@@ -179,21 +179,17 @@ TabAndroid* TabModelJniBridge::DuplicateTab(JNIEnv* env, TabAndroid* tab) {
 
 void TabModelJniBridge::MoveTabToWindowForTesting(
     TabAndroid* tab,
-    int64_t native_browser_window_ptr,
+    BrowserWindowInterface* browser_window,
     int new_index) {
-  SessionID destination_window_id =
-      reinterpret_cast<BrowserWindowInterface*>(native_browser_window_ptr)
-          ->GetSessionID();
+  SessionID destination_window_id = browser_window->GetSessionID();
   MoveTabToWindow(tab->GetHandle(), destination_window_id, new_index);
 }
 
 bool TabModelJniBridge::MoveTabGroupToWindowForTesting(
     const base::Token& group_id,
-    int64_t native_browser_window_ptr,
+    BrowserWindowInterface* browser_window,
     int new_index) {
-  SessionID destination_window_id =
-      reinterpret_cast<BrowserWindowInterface*>(native_browser_window_ptr)
-          ->GetSessionID();
+  SessionID destination_window_id = browser_window->GetSessionID();
   return MoveTabGroupToWindow(tab_groups::TabGroupId::FromRawToken(group_id),
                               destination_window_id, new_index);
 }
@@ -562,12 +558,24 @@ void TabModelJniBridge::ActivateTab(tabs::TabHandle tab) {
 tabs::TabInterface* TabModelJniBridge::OpenTab(const GURL& url,
                                                int index,
                                                bool foreground) {
+  return OpenTab(url, index,
+                 foreground
+                     ? TabLaunchType::FROM_TAB_LIST_INTERFACE
+                     : TabLaunchType::FROM_TAB_LIST_INTERFACE_BACKGROUND);
+}
+
+tabs::TabInterface* TabModelJniBridge::OpenTab(const GURL& url,
+                                               int index,
+                                               TabLaunchType launch_type) {
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> jobj = java_object_.get(env);
 
   tabs::TabInterface* tab = Java_TabModelJniBridge_openTabProgrammatically(
-      env, jobj, url, index, foreground);
-  if (foreground && tab) {
+      env, jobj, url, index, static_cast<int>(launch_type));
+  // Assume that background tabs opened via OpenTab can only come from
+  // FROM_TAB_LIST_INTERFACE_BACKGROUND (all other callers of OpenTab open
+  // foreground tabs).
+  if (launch_type != TabLaunchType::FROM_TAB_LIST_INTERFACE_BACKGROUND && tab) {
     ActivateTab(tab->GetHandle());
   }
   return tab;
@@ -995,7 +1003,7 @@ TabModelJniBridge::~TabModelJniBridge() {
   }
 
   if (GetTabModelType() == TabModelType::kArchived) {
-    TabModelList::SetArchivedTabModel(nullptr);
+    TabModelList::RemoveArchivedTabModel(this);
   } else {
     TabModelList::RemoveTabModel(this);
   }

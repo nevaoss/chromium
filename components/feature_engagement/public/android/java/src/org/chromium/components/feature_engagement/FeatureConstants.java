@@ -28,7 +28,9 @@ import java.lang.annotation.RetentionPolicy;
     FeatureConstants.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_VOICE_SEARCH_FEATURE,
     FeatureConstants.ADAPTIVE_BUTTON_PIN_GLIC_TOOLBAR_BUTTON_FEATURE,
     FeatureConstants.AIM_ACTIVATION_HINT,
+    FeatureConstants.ANDROID_BOTTOM_BAR_ADDRESS_BAR,
     FeatureConstants.ANDROID_BOTTOM_BAR_EDUCATION,
+    FeatureConstants.ANDROID_BOTTOM_BAR_EDUCATION_TOOLTIPS,
     FeatureConstants.ANDROID_BOTTOM_BAR_GLIC,
     FeatureConstants.ANDROID_BOTTOM_BAR_NEW_TAB,
     FeatureConstants.ANDROID_BOTTOM_BAR_PROMO_DIALOG,
@@ -182,8 +184,16 @@ public @interface FeatureConstants {
     /** A hint to activate AI Mode on Android Desktop via keystrokes. */
     String AIM_ACTIVATION_HINT = "IPH_AimActivationHint";
 
+    /**
+     * Nudges the user to move the top address bar to the bottom in the bottom bar education flow.
+     */
+    String ANDROID_BOTTOM_BAR_ADDRESS_BAR = "IPH_AndroidBottomBarAddressBar";
+
     /** Bottom bar education bubble and tooltips. */
     String ANDROID_BOTTOM_BAR_EDUCATION = "IPH_AndroidBottomBarEducation";
+
+    /** Bottom bar education tooltip tour shown after the user opts in. */
+    String ANDROID_BOTTOM_BAR_EDUCATION_TOOLTIPS = "IPH_AndroidBottomBarEducationTooltips";
 
     /** Describes the GLIC button on the new bottom bar. */
     String ANDROID_BOTTOM_BAR_GLIC = "IPH_AndroidBottomBarGlic";

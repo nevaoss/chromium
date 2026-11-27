@@ -5697,8 +5697,9 @@ TEST_F(NetworkContextResolveHostTest, NetworkAnonymizationKey) {
             raw_resolver->last_request_network_anonymization_key());
 }
 
-// Revoke fenced frame network but the resolve request is without the
-// NetworkAnonymizationKey. The request should succeed.
+// Revoke network access for a given `network_restrictions_id`, but the resolve
+// request is given an empty NetworkAnonymizationKey. The request should
+// succeed.
 TEST_F(NetworkContextResolveHostTest,
        SchemeHostPortRestrictNetworkWithoutNetworkAnonymizationKey) {
   const GURL url = GURL("https://sync.test");
@@ -7891,6 +7892,40 @@ TEST_F(NetworkContextTest, ClearBadProxiesCache) {
 
   // Verify all cleared.
   EXPECT_EQ(0UL, proxy_resolution_service->proxy_retry_info().size());
+}
+
+TEST_F(NetworkContextTest, GetProxySettings) {
+  mojom::NetworkContextParamsPtr context_params =
+      CreateNetworkContextParamsForTesting();
+  net::ProxyConfig proxy_config;
+  proxy_config.proxy_rules().ParseFromString("http=proxy.example.com:8080");
+  proxy_config.proxy_rules().bypass_rules.ParseFromString("*.local");
+  context_params->initial_proxy_config = net::ProxyConfigWithAnnotation(
+      proxy_config, TRAFFIC_ANNOTATION_FOR_TESTS);
+  std::unique_ptr<NetworkContext> network_context =
+      CreateContextWithParams(std::move(context_params));
+
+  base::test::TestFuture<void> reload_future;
+  network_context->ForceReloadProxyConfig(reload_future.GetCallback());
+  ASSERT_TRUE(reload_future.Wait());
+
+  base::test::TestFuture<base::DictValue> future;
+  network_context->GetProxySettings(future.GetCallback());
+  const base::DictValue& proxy_settings = future.Get();
+
+  base::Value expected_config_value = proxy_config.ToValue();
+  const base::DictValue* effective = proxy_settings.FindDict("effective");
+  ASSERT_TRUE(effective);
+  EXPECT_EQ(expected_config_value, *effective);
+
+  const base::DictValue* original = proxy_settings.FindDict("original");
+  ASSERT_TRUE(original);
+  EXPECT_EQ(expected_config_value, *original);
+
+  const base::ListValue* bad_proxies = proxy_settings.FindList("badProxies");
+  ASSERT_TRUE(bad_proxies);
+  EXPECT_TRUE(bad_proxies->empty());
+  EXPECT_TRUE(proxy_settings.FindString("timeTickOffset"));
 }
 
 // This is a test ProxyErrorClient that records the sequence of calls made to
@@ -10180,23 +10215,6 @@ TEST_F(NetworkContextTest,
   // Since the split_auth_cache_by_network_anonymization_key is being set to
   // false expect this to also be false.
   ASSERT_FALSE(cache->key_server_entries_by_network_anonymization_key());
-}
-
-TEST_F(NetworkContextTest, EnableTrustTokensForFledge) {
-  std::unique_ptr<NetworkContext> network_context =
-      CreateContextWithParams(CreateNetworkContextParamsForTesting());
-
-  EXPECT_TRUE(network_context->trust_token_store());
-
-  base::RunLoop run_loop;
-  bool success = false;
-  network_context->trust_token_store()->ExecuteOrEnqueue(
-      base::BindLambdaForTesting([&](TrustTokenStore* store) {
-        success = !!store;
-        run_loop.Quit();
-      }));
-  run_loop.Run();
-  EXPECT_TRUE(success);
 }
 
 TEST_F(NetworkContextTestWithMockTime, EnableTrustTokensWithStoreOnDisk) {
@@ -13998,6 +14016,163 @@ TEST_F(NetworkContextTest, RegisterHttpCacheClientTransientKey) {
   EXPECT_TRUE(receiver_pipe->QuerySignalsState().peer_closed());
 }
 #endif  // BUILDFLAG(ENABLE_DISK_CACHE_SQL_BACKEND)
+
+TEST_F(NetworkContextTest, CloneDirectAndRecursive) {
+  std::unique_ptr<NetworkContext> network_context =
+      CreateContextWithParams(CreateNetworkContextParamsForTesting());
+
+  mojo::Remote<mojom::NetworkContext> cloned_remote1;
+  network_context_remote_->Clone(cloned_remote1.BindNewPipeAndPassReceiver());
+
+  mojo::Remote<mojom::NetworkContext> cloned_remote2;
+  network_context_remote_->Clone(cloned_remote2.BindNewPipeAndPassReceiver());
+
+  mojo::Remote<mojom::NetworkContext> cloned_remote3;
+  cloned_remote1->Clone(cloned_remote3.BindNewPipeAndPassReceiver());
+
+  cloned_remote1.FlushForTesting();
+  cloned_remote2.FlushForTesting();
+  cloned_remote3.FlushForTesting();
+
+  EXPECT_TRUE(cloned_remote1.is_connected());
+  EXPECT_TRUE(cloned_remote2.is_connected());
+  EXPECT_TRUE(cloned_remote3.is_connected());
+}
+
+TEST_F(NetworkContextTest, ClonedRemoteMethodExecution) {
+  std::unique_ptr<NetworkContext> network_context =
+      CreateContextWithParams(CreateNetworkContextParamsForTesting());
+
+  mojo::Remote<mojom::NetworkContext> cloned_remote;
+  network_context_remote_->Clone(cloned_remote.BindNewPipeAndPassReceiver());
+
+  const net::NetworkAnonymizationKey key;
+  url::SchemeHostPort google("https", "www.google.com", 443);
+  cloned_remote->AddQuicHints({google}, key);
+  cloned_remote.FlushForTesting();
+
+  net::AlternativeServiceInfoVector google_infos =
+      network_context->url_request_context()
+          ->http_server_properties()
+          ->GetAlternativeServiceInfos(google, key);
+  ASSERT_EQ(1u, google_infos.size());
+  EXPECT_EQ(443, google_infos[0].GetHostPortPair().port());
+  EXPECT_EQ("www.google.com", google_infos[0].GetHostPortPair().host());
+
+  ConnectionListener connection_listener;
+  net::EmbeddedTestServer test_server;
+  test_server.SetConnectionListener(&connection_listener);
+  ASSERT_TRUE(test_server.Start());
+
+  cloned_remote->PreconnectSockets(
+      1, test_server.base_url(), network::mojom::CredentialsMode::kInclude, key,
+      GetTestNetworkRestrictionsId(),
+      net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
+      std::nullopt, mojo::NullRemote());
+  connection_listener.WaitForAcceptedConnections(1u);
+}
+
+TEST_F(NetworkContextTest, ClonedRemoteSurvivesParentCloneReset) {
+  std::unique_ptr<NetworkContext> network_context =
+      CreateContextWithParams(CreateNetworkContextParamsForTesting());
+
+  mojo::Remote<mojom::NetworkContext> parent_clone;
+  network_context_remote_->Clone(parent_clone.BindNewPipeAndPassReceiver());
+
+  mojo::Remote<mojom::NetworkContext> child_clone;
+  parent_clone->Clone(child_clone.BindNewPipeAndPassReceiver());
+
+  parent_clone.reset();
+  child_clone.FlushForTesting();
+  EXPECT_TRUE(child_clone.is_connected());
+
+  const net::NetworkAnonymizationKey key;
+  url::SchemeHostPort origin("https", "post-reset.example.com", 443);
+  child_clone->AddQuicHints({origin}, key);
+  child_clone.FlushForTesting();
+  EXPECT_TRUE(child_clone.is_connected());
+
+  net::AlternativeServiceInfoVector infos =
+      network_context->url_request_context()
+          ->http_server_properties()
+          ->GetAlternativeServiceInfos(origin, key);
+  ASSERT_EQ(1u, infos.size());
+  EXPECT_EQ(443, infos[0].GetHostPortPair().port());
+  EXPECT_EQ("post-reset.example.com", infos[0].GetHostPortPair().host());
+}
+
+TEST_F(NetworkContextTest, PrimaryRemoteFunctionalAfterCloneReset) {
+  std::unique_ptr<NetworkContext> network_context =
+      CreateContextWithParams(CreateNetworkContextParamsForTesting());
+
+  mojo::Remote<mojom::NetworkContext> cloned_remote;
+  network_context_remote_->Clone(cloned_remote.BindNewPipeAndPassReceiver());
+  cloned_remote.reset();
+
+  network_context_remote_.FlushForTesting();
+  EXPECT_TRUE(network_context_remote_.is_connected());
+
+  const net::NetworkAnonymizationKey key;
+  url::SchemeHostPort example("https", "www.example.com", 443);
+  network_context_remote_->AddQuicHints({example}, key);
+  network_context_remote_.FlushForTesting();
+
+  net::AlternativeServiceInfoVector example_infos =
+      network_context->url_request_context()
+          ->http_server_properties()
+          ->GetAlternativeServiceInfos(example, key);
+  ASSERT_EQ(1u, example_infos.size());
+  EXPECT_EQ(443, example_infos[0].GetHostPortPair().port());
+  EXPECT_EQ("www.example.com", example_infos[0].GetHostPortPair().host());
+}
+
+TEST_F(NetworkContextTest, CloneResetDoesNotDestroyContext) {
+  mojo::Remote<mojom::NetworkContext> primary_remote;
+  mojom::NetworkContextParamsPtr context_params =
+      CreateNetworkContextParamsForTesting();
+  context_params->cert_verifier_params =
+      FakeTestCertVerifierParamsFactory::GetCertVerifierParams();
+  network_service_->CreateNetworkContext(
+      primary_remote.BindNewPipeAndPassReceiver(), std::move(context_params));
+
+  mojo::Remote<mojom::NetworkContext> cloned_remote;
+  primary_remote->Clone(cloned_remote.BindNewPipeAndPassReceiver());
+  cloned_remote.FlushForTesting();
+  EXPECT_TRUE(cloned_remote.is_connected());
+
+  // Resetting a cloned remote must not destroy the NetworkContext in
+  // NetworkService.
+  cloned_remote.reset();
+  primary_remote.FlushForTesting();
+  EXPECT_TRUE(primary_remote.is_connected());
+
+  // Re-cloning from primary remote still works.
+  mojo::Remote<mojom::NetworkContext> cloned_remote2;
+  primary_remote->Clone(cloned_remote2.BindNewPipeAndPassReceiver());
+  cloned_remote2.FlushForTesting();
+  EXPECT_TRUE(cloned_remote2.is_connected());
+}
+
+TEST_F(NetworkContextTest, PrimaryRemoteResetDisconnectsClones) {
+  mojo::Remote<mojom::NetworkContext> primary_remote;
+  mojom::NetworkContextParamsPtr context_params =
+      CreateNetworkContextParamsForTesting();
+  context_params->cert_verifier_params =
+      FakeTestCertVerifierParamsFactory::GetCertVerifierParams();
+  network_service_->CreateNetworkContext(
+      primary_remote.BindNewPipeAndPassReceiver(), std::move(context_params));
+
+  mojo::Remote<mojom::NetworkContext> cloned_remote;
+  primary_remote->Clone(cloned_remote.BindNewPipeAndPassReceiver());
+  cloned_remote.FlushForTesting();
+  EXPECT_TRUE(cloned_remote.is_connected());
+
+  // Resetting the primary remote destroys the NetworkContext in NetworkService
+  // and disconnects all cloned remotes.
+  primary_remote.reset();
+  cloned_remote.FlushForTesting();
+  EXPECT_FALSE(cloned_remote.is_connected());
+}
 
 }  // namespace
 

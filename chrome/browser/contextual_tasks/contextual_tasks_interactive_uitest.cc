@@ -40,6 +40,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_web_contents_user_data.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_web_view.h"
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service_delegate.h"
 #include "chrome/browser/extensions/component_loader.h"
@@ -135,6 +136,7 @@
 #include "ui/gfx/scoped_animation_duration_scale_mode.h"
 #include "ui/views/bubble/bubble_border.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
+#include "ui/views/controls/webview/webview.h"
 
 using testing::_;
 
@@ -1083,6 +1085,9 @@ class ContextualTasksPinnedToolbarInteractiveUiTest
     auto disabled = GetDefaultDisabledFeatures();
     enabled.push_back({kEnableContextualTasksPinButtonInToolbar, {}});
     enabled.push_back({kContextualTasksForceEntryPointEligibility, {}});
+    // `RestoreClosedTabAndReopenPanel` expects a reopened tab to come back
+    // without its side panel.
+    disabled.push_back(kContextualTasksSidePanelTabState);
     feature_list_.InitWithFeaturesAndParameters(enabled, disabled);
   }
 };
@@ -1186,6 +1191,8 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksPinnedToolbarInteractiveUiTest,
 //  (7) The unsubmitted draft query is still in the composebox.
 IN_PROC_BROWSER_TEST_P(ContextualTasksPinnedToolbarInteractiveUiTest,
                        SwitchTabsPreservesComposeboxDraft) {
+  SkipIfIncognito("Toolbar pinning is not supported in Incognito");
+
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kReopenedSidePanelId);
 
@@ -1287,6 +1294,8 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksPinnedToolbarInteractiveUiTest,
 //      zero-state task for the moved tab.
 IN_PROC_BROWSER_TEST_P(ContextualTasksPinnedToolbarInteractiveUiTest,
                        MoveTabToNewWindowAndReopenPanel) {
+  SkipIfIncognito("Toolbar pinning is not supported in Incognito");
+
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kMovedTabId);
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kNewWindowSidePanelId);
@@ -1296,8 +1305,8 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksPinnedToolbarInteractiveUiTest,
   const DeepQuery kComposebox = {"contextual-tasks-app", "#composebox",
                                  "#composebox"};
 
-  // Pinning is profile-wide (incognito reads the original profile's pins), so
-  // the pinned button also shows in the window that the tab moves to.
+  // Pinning is profile-wide, so the pinned button also shows in the window
+  // that the tab moves to.
   PinnedToolbarActionsModel::Get(browser()->GetProfile())
       ->UpdatePinnedState(kActionSidePanelShowContextualTasks, true);
 
@@ -5109,24 +5118,39 @@ class ContextualTasksExtensionTabPickerInteractiveUiTest
     const GURL tab_picker_url(
         base::StringPrintf("chrome-extension://%s/tab_picker.html?cs=0",
                            extension_misc::kContextualTasksExtensionId));
-    EXPECT_TRUE(content::ExecJs(host_contents, R"(
+    EXPECT_TRUE(content::ExecJs(
+        host_contents,
+        content::JsReplace(
+            R"(
       (() => {
         if (!Array.isArray(window.receivedSearchMessages)) {
           window.receivedSearchMessages = [];
           window.searchMessageWaiters = [];
-          window.addEventListener('message', (event) => {
-            if (event.data instanceof Uint8Array ||
-                event.data instanceof ArrayBuffer) {
-              const bytes = event.data instanceof Uint8Array ?
-                  event.data : new Uint8Array(event.data);
+          const port = chrome.runtime.connect(
+              $1, {name: 'chrome-search-channel'});
+          window.__aimSearchPort = port;
+          window.__handshakeCompletePromise = new Promise((resolve) => {
+            port.onMessage.addListener((msg) => {
+              if (!msg || msg.type !== 'chrome-search-channel' ||
+                  !Array.isArray(msg.payload)) {
+                return;
+              }
+              if (msg.payload.length >= 2 && msg.payload[0] === 10) {
+                port.postMessage({
+                  type: 'chrome-search-channel',
+                  payload: [10, 0],
+                });
+                resolve(true);
+                return;
+              }
               window.receivedSearchMessages.push(
-                  btoa(Array.from(bytes, b => String.fromCharCode(b))
+                  btoa(Array.from(msg.payload, b => String.fromCharCode(b))
                       .join('')));
               const waiters = window.searchMessageWaiters.splice(0);
               for (const w of waiters) {
                 w();
               }
-            }
+            });
           });
         }
         let iframe = document.getElementById('tab-picker-iframe');
@@ -5136,7 +5160,8 @@ class ContextualTasksExtensionTabPickerInteractiveUiTest
           document.body.appendChild(iframe);
         }
       })();
-    )"));
+    )",
+            extension_misc::kContextualTasksExtensionId)));
     EXPECT_TRUE(content::NavigateIframeToURL(host_contents, "tab-picker-iframe",
                                              tab_picker_url));
 
@@ -5161,12 +5186,7 @@ class ContextualTasksExtensionTabPickerInteractiveUiTest
           const trigger = app?.shadowRoot?.querySelector('#shareTabsTrigger');
           const item = app?.shadowRoot?.querySelector(
               'button.dropdown-item[data-index="0"]');
-          if (trigger && item && window.__extensionBrowserProxyInstance &&
-              document.readyState === 'complete') {
-            window.__handshakeCompletePromise = new Promise((res) => {
-              window.__extensionBrowserProxyInstance.callbackRouter
-                  .onHandshakeComplete.addListener(() => res(true));
-            });
+          if (trigger && item && document.readyState === 'complete') {
             resolve(true);
             return;
           }
@@ -5176,17 +5196,15 @@ class ContextualTasksExtensionTabPickerInteractiveUiTest
       })
     )"));
 
-    EXPECT_TRUE(content::ExecJs(host_contents, R"(
-      (() => {
-        const iframe = document.getElementById('tab-picker-iframe');
-        if (iframe && iframe.contentWindow) {
-          iframe.contentWindow.postMessage(new Uint8Array([10, 0]), '*');
-        }
-      })();
-    )"));
-
-    EXPECT_EQ(true,
-              content::EvalJs(picker_rfh, "window.__handshakeCompletePromise"));
+    EXPECT_EQ(true, content::EvalJs(host_contents,
+                                    "window.__handshakeCompletePromise"));
+    auto* user_data =
+        ContextualTasksWebContentsUserData::FromWebContents(host_contents);
+    EXPECT_NE(user_data, nullptr);
+    if (user_data) {
+      EXPECT_TRUE(base::test::RunUntil(
+          [&]() { return user_data->IsHandshakeCompleteForTesting(); }));
+    }
     return picker_rfh;
   }
 
@@ -5781,8 +5799,9 @@ std::string RearchitectureParamName(const testing::TestParamInfo<bool>& info) {
 
 }  // namespace
 
-// Tests that closing the side panel only applies to the tab where the user took
-// the action. The test param controls whether the Contextual Tasks
+// Tests that closing the side panel or changing its thread only applies to the
+// tab where the user took the action, and that reopening a closed tab restores
+// its open panel. The test param controls whether the Contextual Tasks
 // rearchitecture is enabled.
 class ContextualTasksSidePanelTabStateInteractiveUiTest
     : public ContextualTasksInteractiveUiTestBase,
@@ -5792,6 +5811,9 @@ class ContextualTasksSidePanelTabStateInteractiveUiTest
     auto enabled = GetDefaultEnabledFeatures();
     enabled.push_back({kContextualTasksEphemeralBrandedEntryPoint,
                        {{"ContextualTasksEntryPoint", entry_point_}}});
+    if (notify_zero_state_rendered_) {
+      enabled.push_back({kEnableNotifyZeroStateRenderedCapability, {}});
+    }
     auto disabled = GetDefaultDisabledFeatures();
     if (tab_state_enabled_) {
       enabled.push_back({kContextualTasksSidePanelTabState, {}});
@@ -5864,10 +5886,9 @@ class ContextualTasksSidePanelTabStateInteractiveUiTest
                              ->GetThreadId() == kTabStateThreadId;
   }
 
-  // Adds tab1 and tab2, opens the panel on tab0 with a thread, and associates
-  // tab2 with the same task, as if it was opened from the panel. tab1 isn't
-  // associated with a task.
-  MultiStep OpenPanelWithSharedThread() {
+  // Adds tab1 and tab2, and opens the panel on tab0 with a thread. tab1 and
+  // tab2 aren't associated with a task.
+  MultiStep OpenPanelWithThread() {
     return Steps(Do([this]() {
                    chrome::AddTabAt(browser(), GURL("about:blank"), -1, false);
                    chrome::AddTabAt(browser(), GURL("about:blank"), -1, false);
@@ -5884,9 +5905,34 @@ class ContextualTasksSidePanelTabStateInteractiveUiTest
                    std::optional<base::Uuid> task_id = GetTaskIdForTab(0);
                    ASSERT_TRUE(task_id.has_value());
                    shared_task_id_ = *task_id;
+                 }));
+  }
+
+  // Adds tab1 and tab2, opens the panel on tab0 with a thread, and associates
+  // tab2 with the same task, as if it was opened from the panel. tab1 isn't
+  // associated with a task.
+  MultiStep OpenPanelWithSharedThread() {
+    return Steps(OpenPanelWithThread(), Do([this]() {
                    GetContextualTasksService()->AssociateTabWithTask(
                        shared_task_id_, GetTabId(2));
                  }));
+  }
+
+  // Closes tab0 so that it can be reopened from recently closed tabs, and then
+  // reopens it, as Ctrl+Shift+T does.
+  MultiStep CloseAndRestoreTab0() {
+    return Steps(Do([this]() {
+                   browser()->tab_strip_model()->CloseWebContentsAt(
+                       0, TabCloseTypes::CLOSE_CREATE_HISTORICAL_TAB);
+                   ASSERT_EQ(2, browser()->tab_strip_model()->count());
+                   chrome::RestoreTab(browser());
+                 }),
+                 PollUntil(
+                     [this]() {
+                       return browser()->tab_strip_model()->count() == 3 &&
+                              browser()->tab_strip_model()->active_index() == 0;
+                     },
+                     "Wait for tab0 to be reopened."));
   }
 
   // Instruments the WebView that hosts the side panel toolbar as
@@ -5928,8 +5974,48 @@ class ContextualTasksSidePanelTabStateInteractiveUiTest
                     ExecuteJsMode::kFireAndForget));
   }
 
+  // Clicks the toolbar's New thread button on tab0 while tab0 and tab2 share a
+  // thread, and verifies that only tab0 moves to a new thread.
+  void RunNewThreadButtonTest() {
+    content::WebContents* panel_contents = nullptr;
+    RunTestSequence(
+        OpenPanelWithSharedThread(),
+        Do([&]() { panel_contents = GetPanelContents(); }),
+
+        ClickToolbarButton("newThreadButton"),
+        PollUntil(
+            [&]() {
+              std::optional<base::Uuid> task_id = GetTaskIdForTab(0);
+              return task_id && *task_id != shared_task_id_;
+            },
+            "Wait for tab0 to move to a new thread."),
+        Do([&]() {
+          // The new thread starts in a new panel `WebContents` for tab0.
+          content::WebContents* new_thread_contents = GetPanelContents();
+          ASSERT_TRUE(new_thread_contents);
+          EXPECT_TRUE(IsPanelOpen());
+          EXPECT_NE(panel_contents, new_thread_contents);
+          EXPECT_FALSE(ShowsThread(new_thread_contents));
+
+          // tab2 keeps showing the existing thread in the original panel
+          // `WebContents`.
+          ActivateTab(2);
+          EXPECT_TRUE(IsPanelOpen());
+          EXPECT_EQ(shared_task_id_, GetTaskIdForTab(2));
+          EXPECT_EQ(panel_contents, GetPanelContents());
+          EXPECT_TRUE(ShowsThread(GetPanelContents()));
+
+          // tab0 still shows the new thread.
+          ActivateTab(0);
+          EXPECT_TRUE(IsPanelOpen());
+          EXPECT_EQ(new_thread_contents, GetPanelContents());
+          EXPECT_NE(shared_task_id_, GetTaskIdForTab(0));
+        }));
+  }
+
   std::string entry_point_ = "toolbar-ephemeral-branded";
   bool tab_state_enabled_ = true;
+  bool notify_zero_state_rendered_ = false;
   base::Uuid shared_task_id_;
 };
 
@@ -6019,6 +6105,126 @@ IN_PROC_BROWSER_TEST_P(
                   }));
 }
 
+// This tests the following CUJ:
+//  (1) The side panel is open with the same thread on tab0 and tab2.
+//  (2) User clicks the toolbar's New thread button on tab0.
+//  (3) tab0 moves to a new thread, and tab2 keeps showing the existing thread.
+IN_PROC_BROWSER_TEST_P(ContextualTasksSidePanelTabStateInteractiveUiTest,
+                       NewThreadButton_OnlyChangesThreadOnActiveTab) {
+  RunNewThreadButtonTest();
+}
+
+// This tests the following CUJ in the legacy UI:
+//  (1) The side panel is open with the same thread on tab0 and tab2.
+//  (2) User switches tab0's panel to another thread from thread history.
+//  (3) tab0 shows the other thread, and tab2 keeps showing the existing thread.
+IN_PROC_BROWSER_TEST_P(ContextualTasksSidePanelTabStateInteractiveUiTest,
+                       ThreadHistorySwitch_OnlyChangesThreadOnActiveTab) {
+  if (IsRearchitectureEnabled()) {
+    GTEST_SKIP() << "In the rearchitecture, thread history switches happen "
+                    "inside the AI page without notifying the browser.";
+  }
+  // Add a thread from thread history that isn't open in any tab.
+  ContextualTasksService* service = GetContextualTasksService();
+  const base::Uuid history_task_id = service->CreateTask().GetTaskId();
+  service->UpdateThreadForTask(history_task_id, ThreadType::kAiMode, "thread2",
+                               std::nullopt, "Title 2");
+  const GURL kHistoryThreadUrl(
+      "https://www.google.com/search?udm=50&q=Title+2&mtid=thread2");
+  const DeepQuery kThreadFrame = {"contextual-tasks-app", "#threadFrame"};
+  content::WebContents* panel_contents = nullptr;
+  RunTestSequence(
+      OpenPanelWithSharedThread(),
+      Do([&panel_contents, this]() { panel_contents = GetPanelContents(); }),
+      InstrumentSidePanelToolbar(),
+
+      // Switch tab0's panel to the thread from thread history.
+      ExecuteJsAt(
+          kTabStateSidePanelToolbarId, kThreadFrame,
+          content::JsReplace("el => { el.src = $1; }", kHistoryThreadUrl)),
+      PollUntil([&history_task_id,
+                 this]() { return GetTaskIdForTab(0) == history_task_id; },
+                "Wait for tab0 to switch threads."),
+      Do([&panel_contents, this]() {
+        EXPECT_EQ(panel_contents, GetPanelContents());
+        std::vector<content::WebContents*> panels =
+            GetPanelController()->GetPanelWebContentsList();
+        ASSERT_EQ(2u, panels.size());
+        content::WebContents* rebuilt_contents =
+            panels[0] == panel_contents ? panels[1] : panels[0];
+
+        // tab2 stays on the existing thread, in the panel WebContents
+        // recreated when the thread switched.
+        EXPECT_EQ(shared_task_id_, GetTaskIdForTab(2));
+        ActivateTab(2);
+        EXPECT_TRUE(IsPanelOpen());
+        EXPECT_EQ(rebuilt_contents, GetPanelContents());
+      }),
+      PollUntil([this]() { return ShowsThread(GetPanelContents()); },
+                "Wait for tab2's panel to show the existing thread."),
+      Do([&panel_contents, &history_task_id, this]() {
+        // tab0 still shows the thread from thread history.
+        ActivateTab(0);
+        EXPECT_TRUE(IsPanelOpen());
+        EXPECT_EQ(panel_contents, GetPanelContents());
+        EXPECT_EQ(history_task_id, GetTaskIdForTab(0));
+      }));
+}
+
+// This tests the following CUJ:
+//  (1) The side panel is open with a thread on tab0, the only tab on the
+//      thread.
+//  (2) User closes tab0, and then reopens it with Ctrl+Shift+T.
+//  (3) The reopened tab shows the panel with the thread.
+IN_PROC_BROWSER_TEST_P(ContextualTasksSidePanelTabStateInteractiveUiTest,
+                       RestoreClosedTab_RestoresPanelWithThread) {
+  RunTestSequence(
+      OpenPanelWithThread(), CloseAndRestoreTab0(),
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      PollUntil([this]() { return ShowsThread(GetPanelContents()); },
+                "Wait for the thread to load in the reopened tab's panel."),
+      Do([this]() {
+        EXPECT_TRUE(IsPanelOpen());
+        EXPECT_TRUE(GetTaskIdForTab(0).has_value());
+      }));
+}
+
+// This tests the following CUJ:
+//  (1) The side panel is open with the same thread on tab0 and tab2.
+//  (2) User closes tab0, and then reopens it with Ctrl+Shift+T.
+//  (3) The reopened tab shares the panel with tab2 again.
+IN_PROC_BROWSER_TEST_P(ContextualTasksSidePanelTabStateInteractiveUiTest,
+                       RestoreClosedTab_SharedThread_RejoinsPanel) {
+  content::WebContents* panel_contents = nullptr;
+  RunTestSequence(OpenPanelWithSharedThread(), Do([&panel_contents, this]() {
+                    panel_contents = GetPanelContents();
+                  }),
+                  CloseAndRestoreTab0(),
+                  WaitForShow(kContextualTasksSidePanelWebViewElementId),
+                  Do([&panel_contents, this]() {
+                    EXPECT_EQ(shared_task_id_, GetTaskIdForTab(0));
+                    EXPECT_TRUE(IsPanelOpen());
+                    EXPECT_EQ(panel_contents, GetPanelContents());
+                  }));
+}
+
+// This tests the following CUJ:
+//  (1) The side panel is open with a thread on tab0.
+//  (2) User closes the panel, closes tab0, and then reopens it with
+//      Ctrl+Shift+T.
+//  (3) The reopened tab doesn't show the panel.
+IN_PROC_BROWSER_TEST_P(ContextualTasksSidePanelTabStateInteractiveUiTest,
+                       RestoreClosedTab_PanelClosed_DoesNotRestorePanel) {
+  RunTestSequence(OpenPanelWithThread(), Do([this]() {
+                    GetPanelController()->Close();
+                    EXPECT_FALSE(IsPanelOpen());
+                  }),
+                  CloseAndRestoreTab0(), Do([this]() {
+                    EXPECT_FALSE(IsPanelOpen());
+                    EXPECT_FALSE(GetTaskIdForTab(0).has_value());
+                  }));
+}
+
 class ContextualTasksSidePanelTabStateNoEntryPointInteractiveUiTest
     : public ContextualTasksSidePanelTabStateInteractiveUiTest {
  public:
@@ -6077,8 +6283,32 @@ IN_PROC_BROWSER_TEST_P(
       }));
 }
 
-// With side panel tab state disabled, closing the panel applies to all tabs
-// that share the thread.
+// With the AI page notifying the browser when its zero state is rendered, the
+// legacy UI doesn't start a new task when the zero state loads, so the New
+// thread button can't rely on that to move only the active tab.
+class ContextualTasksSidePanelTabStateNotifyZeroStateInteractiveUiTest
+    : public ContextualTasksSidePanelTabStateInteractiveUiTest {
+ public:
+  ContextualTasksSidePanelTabStateNotifyZeroStateInteractiveUiTest() {
+    notify_zero_state_rendered_ = true;
+  }
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    ContextualTasksSidePanelTabStateNotifyZeroStateInteractiveUiTest,
+    testing::Bool(),
+    &RearchitectureParamName);
+
+IN_PROC_BROWSER_TEST_P(
+    ContextualTasksSidePanelTabStateNotifyZeroStateInteractiveUiTest,
+    NewThreadButton_OnlyChangesThreadOnActiveTab) {
+  RunNewThreadButtonTest();
+}
+
+// With side panel tab state disabled, closing the panel or changing its thread
+// applies to all tabs that share the thread, and reopening a closed tab doesn't
+// restore its panel.
 class ContextualTasksSidePanelTabStateDisabledInteractiveUiTest
     : public ContextualTasksSidePanelTabStateInteractiveUiTest {
  public:
@@ -6102,6 +6332,35 @@ IN_PROC_BROWSER_TEST_P(
         ActivateTab(2);
         EXPECT_FALSE(IsPanelOpen());
       }));
+}
+
+IN_PROC_BROWSER_TEST_P(
+    ContextualTasksSidePanelTabStateDisabledInteractiveUiTest,
+    NewThreadButton_ChangesThreadOnTabsSharingThread) {
+  content::WebContents* panel_contents = nullptr;
+  RunTestSequence(OpenPanelWithSharedThread(),
+                  Do([&]() { panel_contents = GetPanelContents(); }),
+                  ClickToolbarButton("newThreadButton"),
+                  PollUntil([&]() { return !ShowsThread(panel_contents); },
+                            "Wait for the new thread to load in the panel."),
+                  Do([&]() {
+                    // Both tabs show the new thread in the same panel
+                    // `WebContents`.
+                    EXPECT_EQ(GetTaskIdForTab(0), GetTaskIdForTab(2));
+                    ActivateTab(2);
+                    EXPECT_TRUE(IsPanelOpen());
+                    EXPECT_EQ(panel_contents, GetPanelContents());
+                    EXPECT_FALSE(ShowsThread(GetPanelContents()));
+                  }));
+}
+
+IN_PROC_BROWSER_TEST_P(
+    ContextualTasksSidePanelTabStateDisabledInteractiveUiTest,
+    RestoreClosedTab_DoesNotRestorePanel) {
+  RunTestSequence(OpenPanelWithThread(), CloseAndRestoreTab0(), Do([this]() {
+                    EXPECT_FALSE(IsPanelOpen());
+                    EXPECT_FALSE(GetTaskIdForTab(0).has_value());
+                  }));
 }
 
 }  // namespace contextual_tasks

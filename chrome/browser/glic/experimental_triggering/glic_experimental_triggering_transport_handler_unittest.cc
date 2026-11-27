@@ -30,9 +30,9 @@
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/base/testing_profile_manager.h"
-#include "components/browser_actuator/public/common.h"
-#include "components/browser_actuator/public/payload_type_mapping.h"
-#include "components/browser_actuator/public/transport_session.h"
+#include "components/browser_actuator/public/transport/common.h"
+#include "components/browser_actuator/public/transport/payload_type_mapping.h"
+#include "components/browser_actuator/public/transport/transport_session.h"
 #include "components/policy/core/common/management/management_service.h"
 #include "components/policy/core/common/management/scoped_management_service_override_for_testing.h"
 #include "components/sharing_message/proto/glic_experimental_triggering.pb.h"
@@ -43,10 +43,10 @@
 namespace glic {
 namespace {
 
-using browser_actuator::FactoryId;
-using browser_actuator::PayloadType;
-using browser_actuator::SendUpstreamMessageError;
-using browser_actuator::TransportSession;
+using browser_actuator::transport::FactoryId;
+using browser_actuator::transport::PayloadType;
+using browser_actuator::transport::SendUpstreamMessageError;
+using browser_actuator::transport::TransportSession;
 
 class MockTransportSession : public TransportSession {
  public:
@@ -61,9 +61,9 @@ class MockTransportSession : public TransportSession {
               (override));
   MOCK_METHOD(void,
               OnMessage,
-              (PayloadType payload_type,
-               const google::protobuf::MessageLite& message),
+              (PayloadType payload_type, std::string_view serialized_payload),
               (override));
+  MOCK_METHOD(void, Close, (), (override));
 };
 
 class MockGlicExperimentalTriggeringCoordinator
@@ -184,6 +184,7 @@ TEST_F(GlicExperimentalTriggeringTransportHandlerTest,
         EXPECT_EQ(0, response.task_metadata().sender_sequence_number());
         return {};
       });
+  EXPECT_CALL(*session_, Close()).Times(1);
 
   handler.OnMessage(PayloadType::kExperimentalTriggering,
                     triggering.SerializeAsString());
@@ -246,6 +247,7 @@ TEST_F(GlicExperimentalTriggeringTransportHandlerTest,
         EXPECT_EQ(42, response.task_metadata().last_seen_sequence_number());
         return {};
       });
+  EXPECT_CALL(*session_, Close()).Times(0);
 
   handler.OnMessage(PayloadType::kExperimentalTriggering,
                     triggering.SerializeAsString());
@@ -409,11 +411,107 @@ TEST_F(GlicExperimentalTriggeringTransportHandlerTest,
       1);
 }
 
+TEST_F(GlicExperimentalTriggeringTransportHandlerTest,
+       ClosesSessionOnlyOnTerminalResponse) {
+  auto mock_coordinator = std::make_unique<
+      testing::NiceMock<MockGlicExperimentalTriggeringCoordinator>>(profile_);
+  auto* raw_coordinator = mock_coordinator.get();
+  GlicExperimentalTriggeringTransportHandlerFactory factory(
+      profile_, std::move(mock_coordinator));
+
+  GlicExperimentalTriggeringUpdateCallback captured_update_callback;
+  EXPECT_CALL(*raw_coordinator, OnRequest("test_session_id", testing::_,
+                                          testing::_, testing::_, nullptr))
+      .WillOnce([&](const std::string& context_id,
+                    const ExperimentalTriggeringRequest& request,
+                    ScopedIncomingMessageResultLogger result_logger,
+                    GlicExperimentalTriggeringUpdateCallback update_callback,
+                    tabs::TabInterface* prepared_tab)
+                    -> std::optional<ExperimentalTriggeringResponse> {
+        result_logger.set_result(
+            GlicExperimentalTriggeringIncomingMessageResult::kSuccess);
+        captured_update_callback = std::move(update_callback);
+        ExperimentalTriggeringResponse starting_response;
+        starting_response.context_id = context_id;
+        TaskUpdate starting_update;
+        starting_update.state = TaskUpdate::State::kStarting;
+        starting_response.task_update = std::move(starting_update);
+        return starting_response;
+      });
+
+  auto handler = factory.OnNewSession(session_.get());
+
+  components_sharing_message::GlicExperimentalTriggering triggering;
+  triggering.set_context_id("test_session_id");
+  triggering.mutable_request()->mutable_trigger_actuation_request();
+
+  EXPECT_CALL(*session_, SendUpstreamMessage(
+                             PayloadType::kExperimentalTriggering, testing::_))
+      .WillRepeatedly(
+          testing::Return(base::expected<void, SendUpstreamMessageError>()));
+  EXPECT_CALL(*session_, Close()).Times(0);
+
+  // Non-terminal kStarting response must not close the session.
+  handler->OnMessage(PayloadType::kExperimentalTriggering,
+                     triggering.SerializeAsString());
+  ASSERT_TRUE(captured_update_callback);
+
+  // Non-terminal kYield response must not close the session.
+  ExperimentalTriggeringResponse yield_response;
+  yield_response.context_id = "test_session_id";
+  TaskUpdate yield_update;
+  yield_update.state = TaskUpdate::State::kYield;
+  yield_response.task_update = std::move(yield_update);
+  captured_update_callback.Run(std::move(yield_response));
+  testing::Mock::VerifyAndClearExpectations(session_.get());
+
+  // Terminal kComplete response closes the session.
+  EXPECT_CALL(*session_, SendUpstreamMessage(
+                             PayloadType::kExperimentalTriggering, testing::_))
+      .WillOnce(
+          testing::Return(base::expected<void, SendUpstreamMessageError>()));
+  EXPECT_CALL(*session_, Close()).Times(1);
+
+  ExperimentalTriggeringResponse complete_response;
+  complete_response.context_id = "test_session_id";
+  TaskUpdate complete_update;
+  complete_update.state = TaskUpdate::State::kComplete;
+  complete_response.task_update = std::move(complete_update);
+  captured_update_callback.Run(std::move(complete_response));
+  testing::Mock::VerifyAndClearExpectations(session_.get());
+
+  // Terminal execute_actions_response closes the session.
+  EXPECT_CALL(*session_, SendUpstreamMessage(
+                             PayloadType::kExperimentalTriggering, testing::_))
+      .WillOnce(
+          testing::Return(base::expected<void, SendUpstreamMessageError>()));
+  EXPECT_CALL(*session_, Close()).Times(1);
+
+  ExperimentalTriggeringResponse actions_response;
+  actions_response.context_id = "test_session_id";
+  actions_response.execute_actions_response = ExecuteActionsResponse{};
+  captured_update_callback.Run(std::move(actions_response));
+  testing::Mock::VerifyAndClearExpectations(session_.get());
+
+  // Terminal declined device_opt_in_result closes the session.
+  EXPECT_CALL(*session_, SendUpstreamMessage(
+                             PayloadType::kExperimentalTriggering, testing::_))
+      .WillOnce(
+          testing::Return(base::expected<void, SendUpstreamMessageError>()));
+  EXPECT_CALL(*session_, Close()).Times(1);
+
+  ExperimentalTriggeringResponse declined_response;
+  declined_response.context_id = "test_session_id";
+  declined_response.device_opt_in_result = DeviceOptInResult::kDeclined;
+  captured_update_callback.Run(std::move(declined_response));
+}
+
 // Pins `ExpectedTypeUrl` to the generated proto; this layer may include it.
 TEST(GlicExperimentalTriggeringTypeUrlTest, MatchesProtoTypeName) {
   EXPECT_EQ(
-      browser_actuator::ExpectedTypeUrl(PayloadType::kExperimentalTriggering),
-      base::StrCat({browser_actuator::kTypeUrlPrefix,
+      browser_actuator::transport::ExpectedTypeUrl(
+          PayloadType::kExperimentalTriggering),
+      base::StrCat({browser_actuator::transport::kTypeUrlPrefix,
                     components_sharing_message::GlicExperimentalTriggering()
                         .GetTypeName()}));
 }

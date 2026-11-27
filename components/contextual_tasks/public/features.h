@@ -167,14 +167,22 @@ extern const base::FeatureParam<bool> kOpenNewTabOnSidePanelLinkClick;
 // always open a new tab instead of focusing an existing affiliated tab.
 bool ShouldOpenNewTabOnSidePanelLinkClick();
 
-// Controls whether closing the contextual tasks side panel only applies to the
-// tab where the user closed it, instead of all tabs affiliated with the same
-// task.
+// Controls whether closing the contextual tasks side panel or changing its
+// thread only applies to the tab where the user took the action, instead of
+// all tabs affiliated with the same task.
 extern const base::FeatureParam<bool> kScopeSidePanelStateToTab;
 
-// Returns whether closing the contextual tasks side panel should only apply to
-// the tab where the user closed it.
+// Returns whether closing the contextual tasks side panel or changing its
+// thread should only apply to the tab where the user took the action.
 bool ShouldScopeSidePanelStateToTab();
+
+// Controls whether reopening a recently closed tab restores the contextual
+// tasks side panel and its thread if the panel was open on the tab.
+extern const base::FeatureParam<bool> kRestoreSidePanelOnTabRestore;
+
+// Returns whether reopening a recently closed tab should restore the
+// contextual tasks side panel and its thread if the panel was open on the tab.
+bool ShouldRestoreSidePanelOnTabRestore();
 
 // Enables emitting attached tab context tokens in OnSuggestInputsChanged for
 // tab-based query suggestions.
@@ -202,12 +210,18 @@ BASE_DECLARE_FEATURE(kABASearchJourneys);
 extern const base::FeatureParam<base::TimeDelta> kABASearchJourneysTtl;
 extern const base::FeatureParam<size_t> kABASearchJourneysMaxRingBufferSize;
 extern const base::FeatureParam<size_t> kABASearchJourneysMinQueryMatchLength;
+extern const base::FeatureParam<bool> kABASearchJourneysAllowIntermediateTabs;
 
 bool IsABASearchJourneysEnabled();
 
 base::TimeDelta GetABASearchJourneysTtl();
 size_t GetABASearchJourneysMaxRingBufferSize();
 size_t GetABASearchJourneysMinQueryMatchLength();
+
+// Returns whether visiting other tabs between the search tab and the return to
+// the source tab (A -> B -> C -> A) keeps the journey. Off by default, so only
+// A -> B -> A counts.
+bool ShouldAllowABASearchJourneysIntermediateTabs();
 
 BASE_DECLARE_FEATURE(kContextualTasksEnableSpatialModelToolbarLayout);
 
@@ -604,6 +618,16 @@ extern bool IsContextualTasksPinningV2Enabled();
 // Returns whether the permanent pinned contextual tasks toolbar button should
 // show an active indicator when the active tab has an ongoing thread/session.
 extern bool IsContextualTasksPinnedButtonActiveIndicatorEnabled();
+
+// Controls whether the permanent pinned contextual tasks toolbar button context
+// menu displays a "Close/Hide side panel" item when the active tab has an
+// ongoing thread/session.
+extern const base::FeatureParam<bool>
+    kContextualTasksPinnedButtonContextMenuCloseSidePanel;
+
+// Returns whether the permanent pinned contextual tasks toolbar button context
+// menu should show a "Close/Hide side panel" item when active.
+extern bool ShouldShowCloseSidePanelInPinnedButtonContextMenu();
 
 // Returns whether the pin button in the side panel header is enabled on SRP.
 extern bool IsContextualTasksPinButtonOnSrpEnabled();

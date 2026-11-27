@@ -45,7 +45,7 @@ namespace {
 constexpr CGFloat kTabGridFontSize = 11;
 // The size of the button images.
 constexpr CGFloat kButtonImageSize = 23;
-constexpr CGFloat kFiveButtonAppBarButtonImageSize = 22;
+constexpr CGFloat kFiveButtonAppBarButtonImageSize = 24;
 // The padding between the image and the text in the buttons.
 constexpr CGFloat kButtonImagePadding = 3;
 // The shadow radius for the buttons.
@@ -75,9 +75,10 @@ constexpr CGFloat kAssistantHighlightDuration = 0.2;
 constexpr CGFloat kStackViewSpacing = 4;
 // The horizontal margins of the stack view.
 constexpr CGFloat kStackViewHorizontalMargin = 8;
+constexpr CGFloat kFiveButtonStackViewLandscapeHorizontalMargin = 4;
 // The vertical offset of the stack view in portrait.
 constexpr CGFloat kStackViewPortraitVerticalOffset = 2;
-constexpr CGFloat kFiveButtonStackViewPortraitVerticalOffset = 20;
+constexpr CGFloat kFiveButtonStackViewPortraitVerticalOffset = 24;
 
 // The inner padding of the buttons.
 constexpr CGFloat kButtonHorizontalPadding = 4;
@@ -85,6 +86,11 @@ constexpr CGFloat kButtonVerticalPadding = 12;
 
 // Duration of the IPH show/hide animation.
 constexpr CGFloat kIPHAnimationDuration = 0.3;
+
+// Background opacity for the open new tab button circle in light and dark
+// modes.
+constexpr CGFloat kOpenNewTabButtonBackgroundLightAlpha = 0.07;
+constexpr CGFloat kOpenNewTabButtonBackgroundDarkAlpha = 0.25;
 
 // Returns the color to be used as foreground color for the buttons.
 UIColor* ButtonsForegroundColor() {
@@ -114,7 +120,23 @@ UIImageSymbolConfiguration* AppBarSymbolConfiguration() {
 
 // Returns a symbol with the common configuration.
 UIImage* AppBarSymbol(Symbol symbol) {
-  return SymbolWithConfiguration(symbol, AppBarSymbolConfiguration());
+  UIImage* image = SymbolWithConfiguration(symbol, AppBarSymbolConfiguration());
+  if (IsFiveButtonAppBarLayoutEnabled()) {
+    if (symbol == SymbolPlusCircleFill) {
+      UIColor* newTabButtonBackgroundColor =
+          [UIColor colorWithDynamicProvider:^UIColor*(
+                       UITraitCollection* traitCollection) {
+            CGFloat alpha =
+                traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+                    ? kOpenNewTabButtonBackgroundDarkAlpha
+                    : kOpenNewTabButtonBackgroundLightAlpha;
+            return [UIColor.blackColor colorWithAlphaComponent:alpha];
+          }];
+      return SymbolWithPalette(
+          image, @[ ButtonsForegroundColor(), newTabButtonBackgroundColor ]);
+    }
+  }
+  return image;
 }
 
 // Returns the font size for the buttons.
@@ -339,15 +361,28 @@ UIColor* AssistantHighlightBackgroundColor() {
     _stackView.transform = CGAffineTransformIdentity;
     _stackView.alpha = 1.0;
     _stackView.distribution = UIStackViewDistributionEqualSpacing;
+    if (IsFiveButtonAppBarLayoutEnabled()) {
+      _stackView.alignment = UIStackViewAlignmentCenter;
+    }
     [NSLayoutConstraint activateConstraints:_buttonWidthConstraints];
     _leadingSpacer.hidden = NO;
     _trailingSpacer.hidden = NO;
     _heightConstraint.constant = AppBarHeightLandscape();
     _stackViewBottomConstraint.constant = 0;
-    _stackViewLeadingConstraint.constant = 0;
-    _stackViewTrailingConstraint.constant = 0;
+    if (IsFiveButtonAppBarLayoutEnabled()) {
+      _stackViewLeadingConstraint.constant =
+          kFiveButtonStackViewLandscapeHorizontalMargin;
+      _stackViewTrailingConstraint.constant =
+          -kFiveButtonStackViewLandscapeHorizontalMargin;
+    } else {
+      _stackViewLeadingConstraint.constant = 0;
+      _stackViewTrailingConstraint.constant = 0;
+    }
   } else {
     _stackView.distribution = UIStackViewDistributionFillEqually;
+    if (IsFiveButtonAppBarLayoutEnabled()) {
+      _stackView.alignment = UIStackViewAlignmentFill;
+    }
     [NSLayoutConstraint deactivateConstraints:_buttonWidthConstraints];
     _leadingSpacer.hidden = YES;
     _trailingSpacer.hidden = YES;
@@ -485,16 +520,22 @@ UIColor* AssistantHighlightBackgroundColor() {
   _stackView.tintAdjustmentMode = UIViewTintAdjustmentModeNormal;
 
   if (IsFiveButtonAppBarLayoutEnabled()) {
+    // Allow all buttons to shrink equally in landscape if five full-size
+    // buttons do not fit on screen (e.g. when Display Zoom is enabled).
+    NSLayoutConstraint* assistantButtonWidthConstraint =
+        [_assistantButton.widthAnchor
+            constraintEqualToAnchor:_stackView.heightAnchor];
+    assistantButtonWidthConstraint.priority = UILayoutPriorityDefaultHigh;
     _buttonWidthConstraints = @[
-      [_assistantButton.widthAnchor
-          constraintEqualToAnchor:_stackView.heightAnchor],
+      assistantButtonWidthConstraint,
       [_openNewTabButton.widthAnchor
-          constraintEqualToAnchor:_stackView.heightAnchor],
+          constraintEqualToAnchor:_assistantButton.widthAnchor],
       [_tabGridButton.widthAnchor
-          constraintEqualToAnchor:_stackView.heightAnchor],
-      [_backButton.widthAnchor constraintEqualToAnchor:_stackView.heightAnchor],
+          constraintEqualToAnchor:_assistantButton.widthAnchor],
+      [_backButton.widthAnchor
+          constraintEqualToAnchor:_assistantButton.widthAnchor],
       [_forwardButton.widthAnchor
-          constraintEqualToAnchor:_stackView.heightAnchor],
+          constraintEqualToAnchor:_assistantButton.widthAnchor],
     ];
   } else {
     _buttonWidthConstraints = @[
@@ -1027,8 +1068,9 @@ UIColor* AssistantHighlightBackgroundColor() {
 // Returns a new "New Tab" button.
 - (UIButton*)createOpenNewTabButton {
   NSString* title = [self openNewTabButtonTitleForCurrentState];
-  UIImage* image = AppBarSymbol(
-      IsFiveButtonAppBarLayoutEnabled() ? SymbolPlus : SymbolPlusInCircle);
+  UIImage* image =
+      AppBarSymbol(IsFiveButtonAppBarLayoutEnabled() ? SymbolPlusCircleFill
+                                                     : SymbolPlusInCircle);
   UIButton* button = [self buttonWithTitle:title image:image];
   button.accessibilityIdentifier = kAppBarNewTabButtonIdentifier;
 
@@ -1124,6 +1166,8 @@ UIColor* AssistantHighlightBackgroundColor() {
   CGFloat activeAlpha = isAssistantButtonHighlighted ? 1.0 : highlightAlpha;
   if (button == _tabGridButton) {
     _tabGridContentView.alpha = activeAlpha;
+  } else if (IsFiveButtonAppBarLayoutEnabled() && button == _openNewTabButton) {
+    button.alpha = activeAlpha;
   }
 
   config.baseForegroundColor =
@@ -1294,6 +1338,14 @@ UIColor* AssistantHighlightBackgroundColor() {
   button.titleLabel.adjustsFontSizeToFitWidth = YES;
 
   button.translatesAutoresizingMaskIntoConstraints = NO;
+  if (IsFiveButtonAppBarLayoutEnabled()) {
+    // Keep buttons square when `_stackView` is center-aligned in landscape and
+    // their widths shrink below `_stackView.heightAnchor`.
+    NSLayoutConstraint* buttonHeightConstraint =
+        [button.heightAnchor constraintEqualToAnchor:button.widthAnchor];
+    buttonHeightConstraint.priority = UILayoutPriorityDefaultHigh;
+    buttonHeightConstraint.active = YES;
+  }
 
   button.layer.shadowColor = [UIColor blackColor].CGColor;
   button.layer.shadowOffset = CGSizeMake(0, kButtonShadowOffset);

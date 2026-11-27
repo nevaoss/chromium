@@ -21,6 +21,9 @@ namespace {
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
 const int k10YearsInDays = 365 * 10;
 #endif
+#if BUILDFLAG(IS_IOS)
+const uint32_t kSwipeBackForwardFirstRunRecencyInDays = 60;
+#endif
 }  // namespace
 
 namespace feature_engagement {
@@ -795,6 +798,35 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
+  if (kIPHAndroidBottomBarAddressBar.name == feature->name) {
+    FeatureConfig config;
+    config.valid = true;
+    config.availability = kAlwaysAvailable;
+
+    // IPH can show even if other IPHs have shown this session.
+    config.session_rate = kNoRestrictions;
+
+    // Show at most 3 times in 360 days, and at most once per 7 days.
+    config.trigger =
+        EventConfig("android_bottom_bar_address_bar_trigger",
+                    Comparator(LESS_THAN, 3), /*window=*/360, /*storage=*/360);
+    config.event_configs.insert(
+        EventConfig("android_bottom_bar_address_bar_trigger",
+                    Comparator(LESS_THAN, 1), /*window=*/7, /*storage=*/360));
+
+    // Require that the bottom bar education flow has been shown at least once.
+    config.event_configs.insert(EventConfig(
+        "android_bottom_bar_education_trigger",
+        Comparator(GREATER_THAN_OR_EQUAL, 1), /*window=*/360, /*storage=*/360));
+
+    // Stop showing once the user interacts with the address bar long-press
+    // menu.
+    config.used =
+        EventConfig("bottom_toolbar_menu_triggered", Comparator(EQUAL, 0),
+                    /*window=*/360, /*storage=*/360);
+    return config;
+  }
+
   if (kIPHAndroidBottomBarEducation.name == feature->name) {
     FeatureConfig config;
     config.valid = true;
@@ -805,8 +837,10 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     // IPH only shows if no other IPH has shown this session.
     config.session_rate = Comparator(EQUAL, 0);
 
-    // Showing this IPH does not block other IPHs from showing this session.
-    config.session_rate_impact.type = SessionRateImpact::Type::NONE;
+    // Count toward the session rate, so session-limited IPHs (e.g. NTP theme
+    // customization) don't show in the same session as the education bubble
+    // or opt-in dialog, including after the opt-in activity recreate.
+    config.session_rate_impact.type = SessionRateImpact::Type::ALL;
 
     // IPH only shows once per 360 days.
     config.trigger =
@@ -817,6 +851,51 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     config.used =
         EventConfig("android_bottom_bar_education_used", Comparator(EQUAL, 0),
                     /*window=*/360, /*storage=*/360);
+    return config;
+  }
+
+  if (kIPHAndroidBottomBarEducationTooltips.name == feature->name) {
+    FeatureConfig config;
+    config.valid = true;
+
+    config.availability = kAlwaysAvailable;
+
+    // Not limited by session rate: the tour starts right after the opt-in
+    // dialog, which already counted toward this session.
+    config.session_rate = kNoRestrictions;
+
+    // The tour is the payoff of an explicit opt-in, so don't let another IPH
+    // that happens to be showing push it to a later visit.
+    config.blocked_by.type = BlockedBy::Type::NONE;
+
+    // It must block any other features from showing while the tooltips
+    // are active.
+    config.blocking.type = Blocking::Type::ALL;
+
+    // Count toward the session rate, so session-limited IPHs don't show in
+    // the same session as the tour.
+    config.session_rate_impact.type = SessionRateImpact::Type::ALL;
+
+    // IPH only shows once per 360 days.
+    config.trigger =
+        EventConfig("android_bottom_bar_education_tooltips_trigger",
+                    Comparator(EQUAL, 0), /*window=*/360, /*storage=*/360);
+
+    // The tour is a one-time walkthrough of several bottom bar buttons that
+    // starts right after the user opts in, so no single action makes it
+    // redundant, and the trigger already limits it to once per 360 days.
+    config.used =
+        EventConfig("android_bottom_bar_education_tooltips_used", kAlwaysTrue,
+                    /*window=*/0, /*storage=*/360);
+
+    // Only triggers after the user accepts the opt-in dialog. The tour
+    // normally starts right after the activity recreate; the 360-day window
+    // lets a user who opted in but missed it still get it on a later visit.
+    config.event_configs.insert(
+        EventConfig("android_bottom_bar_education_opt_in_accepted",
+                    Comparator(GREATER_THAN_OR_EQUAL, 1), /*window=*/360,
+                    /*storage=*/360));
+
     return config;
   }
 
@@ -1932,22 +2011,6 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     config.event_configs.insert(
         EventConfig("auto_dark_user_education_message_opt_in_trigger",
                     Comparator(LESS_THAN, 6), /*window=*/360, /*storage=*/360));
-    return config;
-  }
-
-  if (kIPH_AutofillAmbientAutofillSpiiDisclaimer.name == feature->name) {
-    // Allows an IPH for showing a disclaimer when an Ambient Autofill
-    // suggestion contains sensitive personal information (SPII).
-    FeatureConfig config;
-    config.valid = true;
-    config.availability = kAlwaysAvailable;
-    config.session_rate = Comparator(EQUAL, 0);
-    config.trigger =
-        EventConfig("autofill_ai_spii_disclaimer_trigger",
-                    Comparator(LESS_THAN, 1), k10YearsInDays, k10YearsInDays);
-    config.used =
-        EventConfig("autofill_ai_spii_disclaimer_used", Comparator(EQUAL, 0),
-                    k10YearsInDays, k10YearsInDays);
     return config;
   }
 
@@ -3225,6 +3288,10 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
 
   if (kIPHiOSSwipeBackForwardFeature.name == feature->name) {
     // The IPH of the swipe back/forward feature.
+    std::optional<uint32_t> first_run_recency_in_days =
+        kIPHiOSSwipeBackForwardForAllUsers.Get()
+            ? std::nullopt
+            : std::make_optional(kSwipeBackForwardFirstRunRecencyInDays);
     return CreateNewUserGestureInProductHelpConfig(
         *feature, /*action_event=*/
         events::kIOSBackForwardButtonTapped,
@@ -3232,7 +3299,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
         events::kIOSSwipeBackForwardUsed,
         /*dismiss_button_tap_event=*/
         events::kIOSSwipeBackForwardIPHDismissButtonTapped,
-        /*first_run_recency_in_days=*/60);
+        first_run_recency_in_days);
   }
 
   if (kIPHiOSSwipeToolbarToChangeTabFeature.name == feature->name) {
@@ -3647,6 +3714,22 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
+  if (kIPHiOSBottomOmniboxFeature.name == feature->name) {
+    // Show the in-product help if 1) it has never been triggered, and 2) user
+    // has not moved the omnibox to the bottom.
+    FeatureConfig config;
+    config.valid = true;
+    config.availability = kAlwaysAvailable;
+    config.session_rate = Comparator(EQUAL, 0);
+    config.trigger =
+        EventConfig("ios_bottom_omnibox_triggered", Comparator(EQUAL, 0),
+                    /*window=*/kMaxWindowPeriod, /*storage=*/kMaxStoragePeriod);
+    config.used =
+        EventConfig(events::kIOSBottomOmniboxUsed, Comparator(EQUAL, 0),
+                    /*window=*/kMaxWindowPeriod, /*storage=*/kMaxStoragePeriod);
+    return config;
+  }
+
   if (kIPHiOSPinMostVisitedSiteFeature.name == feature->name) {
     // Show the in-product help if 1) it has never been triggered, and 2) user
     // has not pinned any site to the most visited tile.
@@ -3739,6 +3822,22 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
         EventConfig("autofill_ai_valuables_feature_used", Comparator(EQUAL, 0),
                     /*window=*/k10YearsInDays, /*storage=*/k10YearsInDays);
 
+    return config;
+  }
+
+  if (kIPH_AutofillAmbientAutofillSpiiDisclaimer.name == feature->name) {
+    // Allows an IPH for showing a disclaimer when an Ambient Autofill
+    // suggestion contains sensitive personal information (SPII).
+    FeatureConfig config;
+    config.valid = true;
+    config.availability = kAlwaysAvailable;
+    config.session_rate = Comparator(EQUAL, 0);
+    config.trigger =
+        EventConfig("autofill_ai_spii_disclaimer_trigger",
+                    Comparator(LESS_THAN, 1), k10YearsInDays, k10YearsInDays);
+    config.used =
+        EventConfig("autofill_ai_spii_disclaimer_used", Comparator(EQUAL, 0),
+                    k10YearsInDays, k10YearsInDays);
     return config;
   }
 #endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)

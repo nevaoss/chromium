@@ -12,7 +12,6 @@ import '../settings_vars.css.js';
 import './google_drive_confirmation_dialog.js';
 import 'chrome://resources/polymer/v3_0/paper-tooltip/paper-tooltip.js';
 
-import {PrefsMixin} from '/shared/settings/prefs/prefs_mixin.js';
 import {I18nMixin} from 'chrome://resources/ash/common/cr_elements/i18n_mixin.js';
 import {assertNotReached} from 'chrome://resources/js/assert.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
@@ -21,12 +20,14 @@ import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bu
 import {DeepLinkingMixin} from '../common/deep_linking_mixin.js';
 import {RouteObserverMixin} from '../common/route_observer_mixin.js';
 import type {SettingsToggleButtonElement} from '../controls/settings_toggle_button.js';
+import type {PageCallbackRouter as GoogleDrivePageCallbackRouter, PageHandlerRemote as GoogleDrivePageHandlerRemote, Status} from '../mojom-webui/google_drive_handler.mojom-webui.js';
+import {Stage} from '../mojom-webui/pinning_manager_types.mojom-webui.js';
 import {Setting} from '../mojom-webui/setting.mojom-webui.js';
-import type {Route} from '../router.js';
+import type {Route} from '../os_settings_routes.js';
+import {PrefsMixin} from '../prefs/prefs_mixin.js';
 import {routes} from '../router.js';
 
-import type {GoogleDrivePageCallbackRouter, GoogleDrivePageHandlerRemote, Status} from './google_drive_browser_proxy.js';
-import {GoogleDriveBrowserProxy, Stage} from './google_drive_browser_proxy.js';
+import {GoogleDriveBrowserProxy} from './google_drive_browser_proxy.js';
 import {getTemplate} from './google_drive_subpage.html.js';
 
 const SettingsGoogleDriveSubpageElementBase =

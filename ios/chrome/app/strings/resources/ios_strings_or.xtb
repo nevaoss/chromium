@@ -325,6 +325,7 @@
 <translation id="1925706052394657380">iOSରେ <ph name="BEGIN_BOLD" />ଡିଫଲ୍ଟ ଆପ୍ସ<ph name="END_BOLD" /> ସେଟିଂସ ଖୋଲନ୍ତୁ</translation>
 <translation id="1938871630297275912">{count,plural, =1{ଲିଙ୍କ ମିଳିଛି}other{{count} ଲିଙ୍କ ମିଳିଛି}}</translation>
 <translation id="1941314575388338491">କପି କରିବାକୁ ଦୁଇଥର ଟାପ୍‌ କରନ୍ତୁ।</translation>
+<translation id="1942483019269000450">ଟାସ୍କ ଜାରି ରଖିବାକୁ, Gemini Google Walletକୁ ଆପଣଙ୍କର କ୍ରେଡିଟ କାର୍ଡ ସୂଚନା ପୂରଣ କରିବାକୁ କହିପାରେ</translation>
 <translation id="1943478190258551035">ମେନୁ → ସେଟିଂସ</translation>
 <translation id="1944477975050820119">AI ସହ ବ୍ରାଉଜ କରିବାର ନୂଆ ଉପାୟଗୁଡ଼ିକ ଖୋଜିବାରେ ଆପଣଙ୍କୁ ସାହାଯ୍ୟ କରିପାରୁଥିବା ରିଅଲ-ଟାଇମ ପରାମର୍ଶଗୁଡ଼ିକ ପାଆନ୍ତୁ। <ph name="BEGIN_LINK" />ଅଧିକ ଜାଣନ୍ତୁ<ph name="END_LINK" /></translation>
 <translation id="1952728750904661634">ପରିଚାଳିତ ଆକାଉଣ୍ଟ ମାଧ୍ୟମରେ ସାଇନ୍ ଇନ୍ କରନ୍ତୁ</translation>
@@ -365,6 +366,7 @@
 <translation id="20485545164632846">ନୂଆ ଆଇଟମ</translation>
 <translation id="2049727122989709386"><ph name="COUNT" />ଟି ଆକାଉଣ୍ଟ ସମାନ ପାସୱାର୍ଡ ବ୍ୟବହାର କରୁଛି</translation>
 <translation id="205013082884273671">ଆପଣଙ୍କ ସ୍କ୍ରିନରେ କିଛି ବି ସର୍ଚ୍ଚ କରନ୍ତୁ</translation>
+<translation id="2053311407685904414">ଠିକଣା ଚୟନ କରନ୍ତୁ</translation>
 <translation id="2054044186557130763">ଆପଣଙ୍କ ସଂସ୍ଥା ଦ୍ୱାରା ପରିଚାଳିତ <ph name="NAME" /> <ph name="EMAIL" /> ଭାବେ ସାଇନ ଇନ କରନ୍ତୁ।</translation>
 <translation id="2059166748188874810">ମ୍ୟୁନିସିପାଲିଟି</translation>
 <translation id="2060638295449304809">ଏହି ଠିକଣାକୁ କେବଳ ଏହି ଡିଭାଇସରେ ସେଭ କରାଯାଏ। ଆପଣଙ୍କର ଅନ୍ୟ ଡିଭାଇସଗୁଡ଼ିକରେ ଏହାକୁ ବ୍ୟବହାର କରିବା ପାଇଁ ଆପଣଙ୍କ Google ଆକାଉଣ୍ଟରେ ଏହାକୁ ସେଭ କରନ୍ତୁ, <ph name="USER_EMAIL" /></translation>
@@ -465,6 +467,7 @@
 <translation id="2359043044084662842">Translate</translation>
 <translation id="2359808026110333948">ଜାରି ରଖନ୍ତୁ</translation>
 <translation id="2360196772093551345">ମୋବାଇଲ୍ ସାଇଟ୍ ପାଇଁ ଅନୁରୋଧ କରନ୍ତୁ</translation>
+<translation id="2360272811987888433">ମାନୁଆଲ ସାଇନ ଇନ</translation>
 <translation id="2362083820973145409"><ph name="USER_NAME" /> ଭାବେ ସାଇନ ଇନ କରିଛନ୍ତି। <ph name="USER_EMAIL" />। ସେଟିଂସ ଖୋଲେ।</translation>
 <translation id="2367025302166767427">ଆପଣଙ୍କ ସୂଚନା ପୂରଣ କରିବାରେ ସମସ୍ୟା ହେଉଛି</translation>
 <translation id="2371084566192454134">ଟାବ ଏବଂ ଟାବ ଗ୍ରୁପ</translation>
@@ -773,11 +776,13 @@
 <translation id="3404232721752787413">Google Photosରେ ସେଭ କରନ୍ତୁ</translation>
 <translation id="3406506285180498376">ପୃଷ୍ଠା ସେୟାର କରନ୍ତୁ…</translation>
 <translation id="340669334496430859">ଗତ ଥର ପରିବର୍ତ୍ତନ ହୋଇଛି</translation>
+<translation id="3407832712016477396">ଆପଣଙ୍କ ପାଇଁ ସାଇନ ଇନ କରିବାକୁ Gemini, Google Password Managerକୁ ବ୍ୟବହାର କରିପାରିବ</translation>
 <translation id="3409785640040772790">Maps</translation>
 <translation id="3416023309465857378">ଅକ୍ଟୋବର 25, 2023</translation>
 <translation id="3419787211763835342">ଉନ୍ନତ ଅଟୋଫିଲକୁ ଅଧିକ ସମୃଦ୍ଧ କରିବାରେ ସାହାଯ୍ୟ କରନ୍ତୁ</translation>
 <translation id="3422958112451181446">ଆପଣଙ୍କ ପସନ୍ଦର ଟୁଲକୁ ଏଠାରେ ପିନ କରିବା ପାଇଁ ଦବାଇ ଧରି ରଖନ୍ତୁ</translation>
 <translation id="3430407169377889553">ସାବଧାନତାର ସହ Gemini ବ୍ୟବହାର କରନ୍ତୁ ଏବଂ ଆବଶ୍ୟକ ହେଲେ ନିୟନ୍ତ୍ରଣ ନିଅନ୍ତୁ। ଟାସ୍କଗୁଡ଼ିକ ଚାଲିଥିବା ସମୟରେ Geminiର କାର୍ଯ୍ୟ ପାଇଁ ଆପଣ ଦାୟୀ ଅଟନ୍ତି।</translation>
+<translation id="3432601291244612633">ପୃଷ୍ଠାକୁ ବନ୍ଦ କରନ୍ତୁ</translation>
 <translation id="3435738964857648380">ସୁରକ୍ଷା</translation>
 <translation id="3441673211568148613">ଆପଣଙ୍କ ବ୍ରାଉଜିଂକୁ ପ୍ରାଇଭେଟ ରଖନ୍ତୁ</translation>
 <translation id="3445288400492335833"><ph name="MINUTES" /> ମିନିଟ୍</translation>
@@ -1049,6 +1054,8 @@
 <translation id="4290920330097335010">କେବେ ବି ଅନୁମତି ଦିଅନ୍ତୁ ନାହିଁ</translation>
 <translation id="4293154608148215505">ଆପଣଙ୍କ ଫୋନ</translation>
 <translation id="4294506173142861371"><ph name="FIRST_NAME" /> ଭାବେ ସାଇନ ଇନ କରିବେ?</translation>
+<translation id="4297031046690565608">ମାନୁଆଲୀ ଲେଖନ୍ତୁ</translation>
+<translation id="4297418774230471285">ବ୍ୟକ୍ତିଗତ ସୂଚନା ଚୟନ କରନ୍ତୁ</translation>
 <translation id="4302061870579014542">ସ୍ଥିତି ସେଟ କରନ୍ତୁ</translation>
 <translation id="4304713468139749426">ପାସୱାର୍ଡ ମ୍ୟାନେଜର</translation>
 <translation id="4309403553630140242">ଅଧିକ ସୂଚନା ପାଇଁ ଦୁଇଥର ଟାପ୍ କରନ୍ତୁ</translation>
@@ -1387,6 +1394,7 @@
 <translation id="5315029634103634221">Gemini ହେଉଛି AI ଏବଂ ଏହା ଭୁଲ କରିପାରେ। <ph name="BEGIN_LINK" />Googleକୁ ପଠାଯାଇଥିବା ପ୍ରାସଙ୍ଗିକ ଡାଟା ବିଷୟରେ ଅଧିକ<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">ଇମ୍ପୋର୍ଟ କରିବା ପାଇଁ କିଛି ନାହିଁ</translation>
 <translation id="5316356981864168850"><ph name="NUM_SUGGESTIONS" />ରୁ <ph name="INDEX" /></translation>
+<translation id="5316823130598991834"><ph name="SITE_DOMAIN" />ରେ ସାଇନ ଇନ କରନ୍ତୁ</translation>
 <translation id="5317780077021120954">ସେଭ କରନ୍ତୁ</translation>
 <translation id="5318298563956633672">ଆପଣ ପୂର୍ବରୁ ଏହି ପ୍ରଡକ୍ଟକୁ ଟ୍ରାକ କରୁଛନ୍ତି।</translation>
 <translation id="5327248766486351172">ନାମ</translation>
@@ -1934,6 +1942,7 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="6946722113367118030">ଥିଙ୍କିଂ</translation>
 <translation id="6947751977892029882">ଏହି ସେଟିଂରେ କିଛି ତ୍ରୁଟି ହୋଇଛି। Chrome ଏବଂ iOSକୁ ଅପଡେଟ କରି ରିଷ୍ଟାର୍ଟ କରନ୍ତୁ ଏବଂ ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ। ଯଦି ଏହି ତ୍ରୁଟି ଜାରି ରହେ, ତେବେ ଆପଣଙ୍କ iPhone ଏହି ସେଟିଂକୁ ସପୋର୍ଟ କରୁନଥାଇପାରେ।</translation>
 <translation id="6950522403736391608">ଲୁକ୍କାୟିତ</translation>
+<translation id="6957084631403333422">ଏକ ଫୋକସ କରାଯାଇଥିବା ନୂଆ ଟାବ ପୃଷ୍ଠା ଚେଷ୍ଟା କରନ୍ତୁ</translation>
 <translation id="695965663642079255">ଶୀଘ୍ର ଚେକ ଆଉଟ କରିବା ପାଇଁ ପେମେଣ୍ଟ ସୂଚନା ସେଭ ଏବଂ ପରିଚାଳନା କରନ୍ତୁ</translation>
 <translation id="6962809930976936328">Gemini ସହ ଇନସାଇଟଗୁଡ଼ିକ ପାଆନ୍ତୁ</translation>
 <translation id="6964300328304469089"><ph name="NAME" />, <ph name="EMAIL" />କୁ ବର୍ତ୍ତମାନ ଚୟନ କରାଯାଇଛି। ଏକ ଆକାଉଣ୍ଟ ବାଛନ୍ତୁ।</translation>
@@ -2171,6 +2180,7 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="7724085059277147439">{count,plural, =1{ଆପଣଙ୍କ Google ଆକାଉଣ୍ଟ {email}ରେ ଆଇଟମ ସେଭ କରାଯାଇଛି}other{ଆପଣଙ୍କ Google ଆକାଉଣ୍ଟ {email}ରେ ଆଇଟମ ସେଭ କରାଯାଇଛି}}</translation>
 <translation id="7729458878441927652">ଆପଣଙ୍କ ଅନ୍ୟ ଡିଭାଇସଗୁଡ଼ିକରୁ ଟାବଗୁଡ଼ିକୁ ଦେଖିବା ପାଇଁ ଆପଣଙ୍କ ଟାବ ଏବଂ ଇତିହାସ ସିଙ୍କ କରନ୍ତୁ।</translation>
 <translation id="7730020510075123961">ନା, ଡାଟାକୁ ମର୍ଜ କରନ୍ତୁ</translation>
+<translation id="7730937523779541003">ଫୋକସ କରାଯାଇଥିବା ନୂଆ ଟାବ ପୃଷ୍ଠା ଲାଗୁ କରାଯାଇଛି</translation>
 <translation id="7733646263819020771"><ph name="BOOKMRK_NAME" />। କେବଳ ଏହି ଡିଭାଇସରେ।</translation>
 <translation id="7737550920399185748">ଆପଣଙ୍କ ଫଟୋ ଲାଇବ୍ରେରୀରୁ ହୋମପେଜ ଫଟୋଗୁଡ଼ିକ ଆପଣଙ୍କ ସମଗ୍ର ଡିଭାଇସରେ ସିଙ୍କ ହେବ ନାହିଁ।</translation>
 <translation id="7738120385185846461">ଏକ ସମସ୍ୟାର ରିପୋର୍ଟ କରନ୍ତୁ…</translation>
@@ -2206,6 +2216,7 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="7839994177130598711"><ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" />ରେ ସାଇନ ଇନ କରିବାକୁ ଆପଣଙ୍କ ପରିବାରର ସଦସ୍ୟମାନେ Google Password Manager ବ୍ୟବହାର କଲେ ସେମାନେ ବର୍ତ୍ତମାନ ଆପଣଙ୍କ ୟୁଜରନେମ ଏବଂ ପାସୱାର୍ଡ ବ୍ୟବହାର କରିପାରିବେ।</translation>
 <translation id="7841180087127694526">କପି କରାଯାଇଥିବା ଟେକ୍ସଟ ସର୍ଚ୍ଚ କରନ୍ତୁ</translation>
 <translation id="7841418003178675048">ଆପଣଙ୍କ ନୂଆ ଟାବ ପୃଷ୍ଠାରେ ଆପଣ କେଉଁ କାର୍ଡଗୁଡ଼ିକ ଦେଖୁଛନ୍ତି ତାହା ବାଛନ୍ତୁ।</translation>
+<translation id="7842369010458597654">ପେମେଣ୍ଟ ସୂଚନା ପୂରଣ କରାଯାଉଛି</translation>
 <translation id="7845466610722898">ପଢ଼ିବା ତାଲିକା ଦେଖାନ୍ତୁ</translation>
 <translation id="7846161022626028328">ଏକ ତ୍ରୁଟି ହୋଇଛି। ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।</translation>
 <translation id="784623644169604270">କୌଣସି ବର୍ତ୍ତମାନର କାର୍ଯ୍ୟକଳାପ ନାହିଁ</translation>
@@ -2613,6 +2624,7 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="9032405509996909363">'ବ୍ରାଉଜିଂ ଡାଟା ଡିଲିଟ କରନ୍ତୁ'କୁ ସୁନିଶ୍ଚିତ କରନ୍ତୁ</translation>
 <translation id="9038526468059454274">ଏହା ସହିତ ଯୋଗ କରନ୍ତୁ</translation>
 <translation id="9039373489628511875">ବ୍ୟାଣ୍ଡୱିଡଥ୍</translation>
+<translation id="9042363670218758847">କ୍ୱିକ ସର୍ଚ୍ଚଗୁଡ଼ିକ ପାଇଁ ତିଆରି ହୋଇଥିବା ଏକ ଲେଆଉଟକୁ ସ୍ୱିଚ କରନ୍ତୁ</translation>
 <translation id="9042893549633094279">ଗୋପନୀୟତା ଏବଂ ସୁରକ୍ଷା</translation>
 <translation id="9044703854323320868">Gmail ମେସେଜ <ph name="INDEX" /></translation>
 <translation id="9055291197094969722">ଆପଣଙ୍କର ଖୋଲା ଥିବା ଫାଇଲଗୁଡ଼ିକୁ ବ୍ୟବସ୍ଥିତ କରିବା ଏବଂ ପ୍ରଡକ୍ଟିଭ ରହିବା ପାଇଁ ଟାବ ଗ୍ରୁପଗୁଡ଼ିକୁ ତିଆରି କରନ୍ତୁ</translation>

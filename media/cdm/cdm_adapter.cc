@@ -135,7 +135,7 @@ void* GetCdmHost(int host_interface_version, void* user_data) {
 #if defined(USE_NEVA_CDM)
       CheckSupportedCdmHostVersions(cdm::Host_8::kVersion,
 #else
-      CheckSupportedCdmHostVersions(cdm::Host_11::kVersion,
+      CheckSupportedCdmHostVersions(cdm::Host_10::kVersion,
 #endif
                                     cdm::Host_12::kVersion),
       "Mismatch between GetCdmHost() and IsSupportedCdmHostVersion()");
@@ -149,6 +149,8 @@ void* GetCdmHost(int host_interface_version, void* user_data) {
     case cdm::Host_8::kVersion:
       return static_cast<cdm::Host_8*>(cdm_adapter);
 #endif
+    case cdm::Host_10::kVersion:
+      return static_cast<cdm::Host_10*>(cdm_adapter);
     case cdm::Host_11::kVersion:
       return static_cast<cdm::Host_11*>(cdm_adapter);
     case cdm::Host_12::kVersion:

@@ -256,7 +256,6 @@
 <translation id="3531741627422851418">मोबाइल डिभाइसमा Chromium ब्राउजर डाउनलोड गर्न प्रयोग गरिने QR कोड</translation>
 <translation id="354621070532799440">रिमाइन्डर: Google का उत्कृष्ट सुरक्षा सुविधाहरू तपाईंको खल्तीमै उपलब्ध छन्</translation>
 <translation id="3561853857681580870">आफ्नो स्क्रिन सेयर गर्न सिस्टम सेटिङमा गई Chromium लाई स्क्रिन रेकर्ड गर्ने अनुमति दिनुहोस्।</translation>
-<translation id="3588112919289558122">उन्नत सुरक्षाले Chromium ले नचिन्ने साइटहरूमा JavaScript अप्टिमाइजेसन अफ गर्छ</translation>
 <translation id="3597003331831379823">खास विशेषाधिकारहरू प्रयोग गरी सेटअप रन गर्न सकिएन। <ph name="METAINSTALLER_ERROR" /></translation>
 <translation id="3600428265489994557">Chromium मा साइन इन गर्नुहोस्</translation>
 <translation id="3639635944603682591">यस डिभाइसबाट यो व्यक्तिको ब्राउजिङ डेटा मेटाइने छ। उक्त डेटा पुनः प्राप्त गर्न <ph name="USER_EMAIL" /> का रूपमा Chromium मा साइन इन गर्नुहोस्।</translation>
@@ -295,7 +294,6 @@
 <translation id="3971865010372729242">तपाईंले एड्रेस बार वा खोज बाकसमा टाइप गर्दा तपाईंलाई सुझावहरू देखाउन सकियोस् भन्नाका लागि Chromium ले तपाईंले टाइप गर्ने कुरा तपाईंको सङ्गठनको खोज, AI र एजेन्टसम्बन्धी टुलहरूमा पठाउँछ।</translation>
 <translation id="3975724895399328945">Google Chrome for Testing का बारेमा</translation>
 <translation id="3997429360543082038">ChromiumOS का बारेमा</translation>
-<translation id="4010059961270896984">तपाईंले कुनै साइट खोल्दा Chromium ले तपाईंको IP एड्रेस लुकाउने गोपनीयता सर्भरमार्फत <ph name="BEGIN_LINK" />Google सुरक्षित ब्राउजिङ<ph name="END_LINK" />मा यो URL को अस्पष्ट भाग पठाउँछ। वेबसाइटले कुनै शंकास्पद गतिविधि गरेका खण्डमा पूरै URL र पेजमा भएका केही सामग्री पनि पठाइन्छन्।</translation>
 <translation id="4016217212818346953">पासवर्ड म्यानेजर प्रयोग गरी सुरक्षित रहनुहोस्</translation>
 <translation id="4019629340646866719">ChromiumOS पनि <ph name="BEGIN_LINK_LINUX_OSS" />Linux डेभलपमेन्ट इनभारमेन्ट<ph name="END_LINK_LINUX_OSS" /> जस्तै अतिरिक्त <ph name="BEGIN_LINK_CROS_OSS" />खुला स्रोत सफ्टवेयर<ph name="END_LINK_CROS_OSS" /> प्रयोग गरी निर्माण गरिएको हो।</translation>
 <translation id="4022972681110646219">स्क्रिनमा भएको सामग्री अनुवाद गर्नुहोस्</translation>
@@ -373,6 +371,7 @@
 <translation id="4786083865378785874">Chromium मा उपलब्ध Gemini खुला छ भने नयाँ ट्याबहरू बनाउँदा साइड प्यानल खुला रहन्छ</translation>
 <translation id="479167709087336770">यसले Google खोजमा प्रयोग गरिएकै स्पेल चेकर प्रयोग गर्दछ। तपाईंले ब्राउजरमा टाइप गर्ने पाठ Google मा पठाइन्छ। तपाईं सेटिङमा गई जुनसुकै बेला उक्त व्यवहार परिवर्तन गर्न सक्नुहुन्छ।</translation>
 <translation id="4814736265800133385">कुनै खातामा साइन इन नगरिकनै Chromium चलाउनुहोस्</translation>
+<translation id="4839733921943823254">सर्टकट पिन गर्नुहोस्</translation>
 <translation id="4888717733111232871">mDNS ट्राफिक अनुमति दिन Chromium को लागि इन्बाउन्ड नियम।</translation>
 <translation id="4893347770495441059">&amp;Chromium अपडेट गर्न पुनः सुरु गर्नुहोस्</translation>
 <translation id="4918086044614829423">स्वीकार्नुहोस्</translation>
@@ -456,7 +455,6 @@
 <translation id="5821520528363214608">आफ्नो Google खातामा भएको Chromium को जानकारी प्रयोग गर्न र त्यसमा सो जानकारी सेभ गर्न Chromium अपडेट गर्नुहोस्</translation>
 <translation id="5824893331272123205">यो प्यानल लोड गर्न सकिएन। फेरि प्रयास गर्नुहोस्</translation>
 <translation id="5862307444128926510">Chromium मा स्वागतम्</translation>
-<translation id="5867606647614813312">Chromium को सबैभन्दा भरपर्दो सुरक्षा प्रदान गर्न अतिरिक्त सुविधाहरू अन गर्छ</translation>
 <translation id="5871205389137001634">फोटो प्रयोग गरी खोज्ने सुविधाबाट बाहिरिन क्लिक गर्नुहोस्</translation>
 <translation id="5883558403894052917">Chromium ले यी वस्तुमा मालवेयर भएको कुरा पत्ता लगाएको छ:</translation>
 <translation id="5889361821821684993">Chromium ले तपाईंको ब्राउजरका सेटिङ सबैभन्दा सुरक्षित छ भन्ने कुराको सुनिश्चित गर्न नियमित रूपमा जाँच गर्छ। केही कुराको समीक्षा गर्नु पर्ने भएमा हामी तपाईंलाई जानकारी गराउने छौँ।</translation>
@@ -757,13 +755,13 @@ Chromium ले तपाइँका सेटिङहरू पुनर्�
 <translation id="8522801943730206384">तपाईंले आफ्ना पासवर्डहरू सेभ गरेपछि मात्र Chromium ले तिनको जाँच गर्न सक्छ</translation>
 <translation id="8525579356836940628">इन्स्टल गर्ने प्रक्रिया रोकिएको छ</translation>
 <translation id="8545729292258443488">आफ्नो <ph name="DEVICE_TYPE" /> मा Chromium एप इन्स्टल गरी आफ्ना पासवर्ड, ट्याब र अन्य कुराहरू जुनसुकै बेला जहाँसुकैबाट एक्सेस गर्नुहोस्</translation>
-<translation id="8548787790260785208">Chromium ले तपाईंको कुनै पासवर्ड चोरी भएको डेटाको सार्वजनिक सङ्ग्रहमा भेट्टाएका खण्डमा चेतावनी प्राप्त गर्नुहोस्</translation>
 <translation id="8555465886620020932">सेवासम्बन्धी त्रुटि भयो: <ph name="SERVICE_ERROR" />।</translation>
 <translation id="8556055872671007529">Chromium का केही सुविधा र एक्स्टेन्सनहरूमा सर्टकटहरू समावेश गरिएका हुन्छन्। तपाईं तिनलाई फेरि अन गर्न सक्नुहुन्छ।</translation>
 <translation id="8556420416730706394">तपाईं फोटो प्रयोग गरी खोज्ने सुविधा पिन गरी सजिलैसँग एक्सेस गर्न सक्नुहुन्छ; साइड प्यानलको सिरानमा रहेको "पिन गर्नुहोस्" बटन क्लिक गर्नुहोस्</translation>
 <translation id="856656450041460113">भाषाको सूची खोज्नुहोस्</translation>
 <translation id="8576826849825683917">एकभन्दा बढी सङ्गठनहरूले Chromium व्यवस्थापन गर्छन्</translation>
 <translation id="8586442755830160949">Copyright <ph name="YEAR" /> क्रोमियम लेखक। सबै अधिकार सुरक्षित।</translation>
+<translation id="8590782867495422699">Google Search को AI मोड फेरि खोल्नुहोस्</translation>
 <translation id="8619360774459241877">Chromium सुरु गर्दै…</translation>
 <translation id="8624541899164515475">सेटिङ, नयाँ ट्याबमा खुल्छ।</translation>
 <translation id="8648201657708811153">Google Chrome for Testing लाई तपाईंको डिफल्ट ब्राउजर बनाउन मिल्दैन।</translation>
@@ -814,6 +812,7 @@ Chromium ले तपाइँका सेटिङहरू पुनर्�
 <translation id="9056398481763999048">आफ्नो फोनमा भएको Chromium एप प्रयोग गरी Google का उत्कृष्ट AI टुलहरू प्रयोग गर्नुहोस्</translation>
 <translation id="9057625473949801035"><ph name="DEVICE" /> मा भएका आफ्ना पासवर्डलगायतका कुराहरू प्राप्त गर्न Chromium मा साइन इन गर्नुहोस्</translation>
 <translation id="9062666675513499497">तपाईंले Google का अन्य सेवामा साइन इन गर्दा Chromium मा साइन इन गर्नुहोस्</translation>
+<translation id="9074041031320636790">सफल भयो! तपाईं अब Google Search AI मोड प्रयोग गरी ब्राउज गर्दै गर्दा सजिलैसँग प्रश्नहरू सोध्न सक्नुहुन्छ</translation>
 <translation id="9078733879136747090">Chromium स्वतः बन्द गरियो</translation>
 <translation id="9089354809943900324">क्रोमियमको म्याद सकिएको छ</translation>
 <translation id="9093206154853821181">{0,plural, =1{Chromium एक घन्टामा पुनः सुरु हुने छ}other{Chromium # घन्टामा पुनः सुरु हुने छ}}</translation>

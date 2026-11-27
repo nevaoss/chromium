@@ -41,7 +41,13 @@ BASE_FEATURE(kContextualTasksPrivateApiNoAnimation,
 
 // Enables the contextual tasks side panel infrastructure without full product
 // capabilities.
-BASE_FEATURE(kContextualTasksSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kContextualTasksSidePanel,
+#if BUILDFLAG(IS_ANDROID)
+             base::FEATURE_DISABLED_BY_DEFAULT
+#else
+             base::FEATURE_ENABLED_BY_DEFAULT
+#endif
+);
 
 // Aligns the contextual tasks side panel to the right hand side by default.
 BASE_FEATURE(kContextualTasksSidePanelDefaultRight,
@@ -79,6 +85,17 @@ BASE_FEATURE(kContextualTasksPinningV2, base::FEATURE_DISABLED_BY_DEFAULT);
 // thread/session.
 BASE_FEATURE(kContextualTasksPinnedButtonActiveIndicator,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+const base::FeatureParam<bool>
+    kContextualTasksPinnedButtonContextMenuCloseSidePanel(
+        &kContextualTasksPinnedButtonActiveIndicator,
+        "ContextualTasksPinnedButtonContextMenuCloseSidePanel",
+        false);
+
+bool ShouldShowCloseSidePanelInPinnedButtonContextMenu() {
+  return IsContextualTasksPinnedButtonActiveIndicatorEnabled() &&
+         kContextualTasksPinnedButtonContextMenuCloseSidePanel.Get();
+}
 
 // Keeps the ephemeral contextual tasks button visible even when the permanent
 // button is pinned in the toolbar.
@@ -294,6 +311,11 @@ const base::FeatureParam<size_t> kABASearchJourneysMinQueryMatchLength(
     "aba_search_journeys_min_query_match_length",
     5);
 
+const base::FeatureParam<bool> kABASearchJourneysAllowIntermediateTabs(
+    &kABASearchJourneys,
+    "aba_search_journeys_allow_intermediate_tabs",
+    false);
+
 bool IsABASearchJourneysEnabled() {
   return base::FeatureList::IsEnabled(kABASearchJourneys);
 }
@@ -317,6 +339,11 @@ size_t GetABASearchJourneysMinQueryMatchLength() {
     return 0;
   }
   return kABASearchJourneysMinQueryMatchLength.Get();
+}
+
+bool ShouldAllowABASearchJourneysIntermediateTabs() {
+  return IsABASearchJourneysEnabled() &&
+         kABASearchJourneysAllowIntermediateTabs.Get();
 }
 
 BASE_FEATURE(kContextualTasksEnableSpatialModelToolbarLayout,
@@ -360,6 +387,16 @@ const base::FeatureParam<bool> kScopeSidePanelStateToTab(
 bool ShouldScopeSidePanelStateToTab() {
   return base::FeatureList::IsEnabled(kContextualTasksSidePanelTabState) &&
          kScopeSidePanelStateToTab.Get();
+}
+
+const base::FeatureParam<bool> kRestoreSidePanelOnTabRestore(
+    &kContextualTasksSidePanelTabState,
+    "restore_side_panel_on_tab_restore",
+    true);
+
+bool ShouldRestoreSidePanelOnTabRestore() {
+  return base::FeatureList::IsEnabled(kContextualTasksSidePanelTabState) &&
+         kRestoreSidePanelOnTabRestore.Get();
 }
 
 BASE_FEATURE(kContextualTasksTabBasedSuggestions,

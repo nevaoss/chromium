@@ -319,6 +319,9 @@ BASE_FEATURE(kEnterprisePasswordReuseUiRefresh,
 BASE_FEATURE(kEnterpriseRealTimeUrlCheckNewUrl,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kEnterpriseRealTimeUrlCheckUrlSkiplist,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kEsbAsASyncedSetting, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kExtendedReportingRemovePrefDependency,
@@ -442,12 +445,12 @@ BASE_FEATURE_PARAM(bool,
                    &kMigrateToBlockV8OptimizerOnUnfamiliarSites,
                    false);
 
-BASE_FEATURE(kMovePasswordLeakDetectionToggleIos,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kNoticeQueueForEsb, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kNotificationTelemetry, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kPrioritizeSafeBrowsingNavigationCallbacks,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kProactivePasswordProtection, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<double> kCsdProactivePasswordProtectionSampleRate{
@@ -486,6 +489,8 @@ constexpr base::FeatureParam<int> kReportNotificationContentDetectionDataRate{
     &kReportNotificationContentDetectionData,
     "ReportNotificationContentDetectionDataRate",
     /*default_value=*/100};
+
+BASE_FEATURE(kRustPhishingModelSetter, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSafeBrowsingDailyPhishingReportsLimit,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -602,6 +607,7 @@ base::ListValue GetFeatureStatusList() {
       &kEnhancedFieldsForSecOps,
       &kEnhancedSafeBrowsingPromo,
       &kEnterprisePasswordReuseUiRefresh,
+      &kEnterpriseRealTimeUrlCheckUrlSkiplist,
       &kEsbAsASyncedSetting,
       &kExtensionBlocklistSkipNetworkQuery,
       &kHashPrefixRealTimeLookups,
@@ -609,6 +615,7 @@ base::ListValue GetFeatureStatusList() {
       &kMigrateEnhancedSbUserToEnhancedBundle,
       &kProactivePasswordProtection,
       &kReportNotificationContentDetectionData,
+      &kRustPhishingModelSetter,
       &kSafeBrowsingDeleteUnusedStores,
       &kSafeBrowsingNoProtectionSuppressWarnings,
       &kSafeBrowsingNoProtectionTemporary,

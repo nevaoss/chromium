@@ -194,6 +194,7 @@ class MockAndroidAutofillProviderBridge : public AndroidAutofillProviderBridge {
   MOCK_METHOD(void, OnDidAutofillForm, (), (override));
   MOCK_METHOD(void, CancelSession, (), (override));
   MOCK_METHOD(void, Reset, (), (override));
+  MOCK_METHOD(bool, IsAutofillDisabled, (), (const, override));
 };
 
 content::RenderFrameHost* NavigateAndCommitFrame(content::RenderFrameHost* rfh,
@@ -695,10 +696,360 @@ TEST_F(AndroidAutofillProviderTest, OnFormSubmitted) {
       AutofillManagerTestApi::pass_key());
 }
 
+// Tests that submitting a form only records submission metrics for loggers
+// matching the submitted form's FormTypes, and does not falsely log
+// FillingAssistance=false for other forms interacted with on the same page.
+TEST_F(AndroidAutofillProviderTest,
+       OnFormSubmittedOnlyLogsMetricsForSubmittedFormTypes) {
+  base::HistogramTester histogram_tester;
+
+  FormData address_form = CreateFormDataForFrame(
+      CreateTestPersonalInformationFormData(), main_frame_token());
+  FormData credit_card_form = CreateFormDataForFrame(
+      CreateTestCreditCardFormData(/*is_https=*/true, /*use_month_type=*/true),
+      main_frame_token());
+  android_autofill_manager().OnFormsSeen({address_form, credit_card_form},
+                                         /*removed_forms=*/{},
+                                         AutofillManagerTestApi::pass_key());
+
+  // Interact with the credit card form first, then switch to the address form.
+  android_autofill_manager().OnAskForValuesToFillTest(
+      credit_card_form, credit_card_form.fields()[0].global_id());
+  android_autofill_manager().OnAskForValuesToFillTest(
+      address_form, address_form.fields()[0].global_id());
+
+  // Autofill the address form and submit only the address form.
+  FormData filled_address_form = address_form;
+  test_api(filled_address_form)
+      .field(0)
+      .set_is_autofilled_according_to_renderer(true);
+  test_api(filled_address_form).field(0).set_value(u"Jane");
+  android_autofill_manager().FillOrPreviewForm(
+      mojom::ActionPersistence::kFill, filled_address_form,
+      address_form.main_frame_origin());
+
+  android_autofill_manager().OnFormSubmitted(
+      address_form, mojom::SubmissionSource::FORM_SUBMISSION,
+      AutofillManagerTestApi::pass_key());
+  Reset(autofill_driver());
+
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.WebView.KeyMetrics.FillingAssistance2.Address", true, 1);
+  histogram_tester.ExpectTotalCount(
+      "Autofill.WebView.KeyMetrics.FillingAssistance2.CreditCard", 0);
+}
+
+// Tests that on a login form whose username field is `<input type="email">`,
+// interaction, filling, and submission are attributed to the Password logger
+// rather than polluting the Address logger.
+TEST_F(AndroidAutofillProviderTest,
+       LoginFormEmailUsernameRoutesToPasswordLoggerOnly) {
+  base::HistogramTester histogram_tester;
+
+  FormData login_form;
+  login_form.set_renderer_id(test::MakeFormRendererId());
+  login_form.set_name(u"login_form");
+  login_form.set_url(GURL("https://foo.com/form.html"));
+  login_form.set_action(GURL("https://foo.com/submit.html"));
+  login_form.set_main_frame_origin(url::Origin::Create(login_form.url()));
+  login_form.set_fields(
+      {CreateTestFormField(/*label=*/"Email", /*name=*/"email",
+                           /*value=*/"", FormControlType::kInputEmail),
+       CreateTestFormField(/*label=*/"Password", /*name=*/"password",
+                           /*value=*/"", FormControlType::kInputPassword)});
+  login_form = CreateFormDataForFrame(login_form, main_frame_token());
+
+  android_autofill_manager().OnFormsSeen({login_form}, /*removed_forms=*/{},
+                                         AutofillManagerTestApi::pass_key());
+
+  // User interacts with the email field only and accepts a credential fill
+  // that populates both the email and password fields.
+  android_autofill_manager().OnAskForValuesToFillTest(
+      login_form, login_form.fields()[0].global_id());
+
+  FormData filled_form = login_form;
+  test_api(filled_form).field(0).set_is_autofilled_according_to_renderer(true);
+  test_api(filled_form).field(0).set_value(u"user@example.com");
+  test_api(filled_form).field(1).set_is_autofilled_according_to_renderer(true);
+  test_api(filled_form).field(1).set_value(u"secret");
+  android_autofill_manager().FillOrPreviewForm(mojom::ActionPersistence::kFill,
+                                               filled_form,
+                                               login_form.main_frame_origin());
+
+  android_autofill_manager().OnFormSubmitted(
+      login_form, mojom::SubmissionSource::FORM_SUBMISSION,
+      AutofillManagerTestApi::pass_key());
+  Reset(autofill_driver());
+
+  histogram_tester.ExpectTotalCount(
+      "Autofill.WebView.KeyMetrics.FillingAssistance2.Address", 0);
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.WebView.KeyMetrics.FillingAssistance2.Password", true, 1);
+}
+
+// Tests that fields whose suggestions and filling are suppressed by default
+// (here because of an unrecognized autocomplete attribute) don't make a form
+// count as a form of their type.
+TEST_F(AndroidAutofillProviderTest,
+       UnrecognizedAutocompleteFieldsDoNotCountTowardsFormTypes) {
+  base::HistogramTester histogram_tester;
+
+  FormData form;
+  form.set_renderer_id(test::MakeFormRendererId());
+  form.set_name(u"form");
+  form.set_url(GURL("https://foo.com/form.html"));
+  form.set_action(GURL("https://foo.com/submit.html"));
+  form.set_main_frame_origin(url::Origin::Create(form.url()));
+  form.set_fields(
+      {CreateTestFormField(/*label=*/"First Name", /*name=*/"firstname",
+                           /*value=*/"", FormControlType::kInputText,
+                           /*autocomplete=*/"garbage"),
+       CreateTestFormField(/*label=*/"Middle Name", /*name=*/"middlename",
+                           /*value=*/"", FormControlType::kInputText,
+                           /*autocomplete=*/"garbage"),
+       CreateTestFormField(/*label=*/"Last Name", /*name=*/"lastname",
+                           /*value=*/"", FormControlType::kInputText,
+                           /*autocomplete=*/"garbage"),
+       CreateTestFormField(/*label=*/"Email", /*name=*/"email",
+                           /*value=*/"", FormControlType::kInputEmail,
+                           /*autocomplete=*/"garbage")});
+  form = CreateFormDataForFrame(form, main_frame_token());
+  android_autofill_manager().OnFormsSeen({form}, /*removed_forms=*/{},
+                                         AutofillManagerTestApi::pass_key());
+  Reset(autofill_driver());
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.WebView.Funnel.ParsedAsType2.Address", false, 1);
+
+  // Without the autocomplete attribute, the same fields form an address form.
+  FormData control_form = CreateFormDataForFrame(
+      CreateTestPersonalInformationFormData(), main_frame_token());
+  android_autofill_manager().OnFormsSeen({control_form}, /*removed_forms=*/{},
+                                         AutofillManagerTestApi::pass_key());
+  Reset(autofill_driver());
+  histogram_tester.ExpectBucketCount(
+      "Autofill.WebView.Funnel.ParsedAsType2.Address", true, 1);
+}
+
+// Tests that FillOrPreviewForm attributes the fill to all FieldTypeGroups
+// present in the filled fields when a single form spans multiple groups.
+TEST_F(AndroidAutofillProviderTest,
+       FillOrPreviewFormAttributesAllFilledFieldTypeGroups) {
+  base::HistogramTester histogram_tester;
+
+  FormData combined_form = CreateFormDataForFrame(
+      CreateTestPersonalInformationFormData(), main_frame_token());
+  FormData cc_form = CreateFormDataForFrame(
+      CreateTestCreditCardFormData(/*is_https=*/true, /*use_month_type=*/true),
+      main_frame_token());
+  std::vector<FormFieldData> combined_fields = combined_form.fields();
+  combined_fields.insert(combined_fields.end(), cc_form.fields().begin(),
+                         cc_form.fields().end());
+  combined_form.set_fields(std::move(combined_fields));
+
+  android_autofill_manager().OnFormsSeen({combined_form}, /*removed_forms=*/{},
+                                         AutofillManagerTestApi::pass_key());
+
+  // User triggers autofill from the first (Address) field and the autofill
+  // service populates both an Address field and a CreditCard field.
+  android_autofill_manager().OnAskForValuesToFillTest(
+      combined_form, combined_form.fields()[0].global_id());
+
+  FormData filled_form = combined_form;
+  test_api(filled_form).field(0).set_is_autofilled_according_to_renderer(true);
+  test_api(filled_form).field(0).set_value(u"Jane");
+  const size_t cc_field_index =
+      CreateTestPersonalInformationFormData().fields().size();
+  test_api(filled_form)
+      .field(cc_field_index)
+      .set_is_autofilled_according_to_renderer(true);
+  test_api(filled_form).field(cc_field_index).set_value(u"Jane Doe");
+  android_autofill_manager().FillOrPreviewForm(
+      mojom::ActionPersistence::kFill, filled_form,
+      combined_form.main_frame_origin());
+
+  android_autofill_manager().OnFormSubmitted(
+      combined_form, mojom::SubmissionSource::FORM_SUBMISSION,
+      AutofillManagerTestApi::pass_key());
+  Reset(autofill_driver());
+
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.WebView.KeyMetrics.FillingAssistance2.Address", true, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.WebView.KeyMetrics.FillingAssistance2.CreditCard", true, 1);
+}
+
+// Tests that a postal address form emits both Address and PostalAddress
+// variants for FillingAssistance, and does not emit EmailOnly.
+TEST_F(AndroidAutofillProviderTest,
+       PostalAddressFormEmitsAddressAndPostalAddressMetrics) {
+  base::HistogramTester histogram_tester;
+
+  FormData postal_form = CreateFormDataForFrame(
+      GetFormData({NAME_FULL, ADDRESS_HOME_LINE1, ADDRESS_HOME_CITY,
+                   ADDRESS_HOME_STATE, ADDRESS_HOME_ZIP}),
+      main_frame_token());
+  android_autofill_manager().OnFormsSeen({postal_form}, /*removed_forms=*/{},
+                                         AutofillManagerTestApi::pass_key());
+
+  android_autofill_manager().OnAskForValuesToFillTest(
+      postal_form, postal_form.fields()[0].global_id());
+
+  FormData filled_form = postal_form;
+  test_api(filled_form).field(0).set_is_autofilled_according_to_renderer(true);
+  test_api(filled_form).field(0).set_value(u"Jane Doe");
+  android_autofill_manager().FillOrPreviewForm(mojom::ActionPersistence::kFill,
+                                               filled_form,
+                                               postal_form.main_frame_origin());
+
+  android_autofill_manager().OnFormSubmitted(
+      postal_form, mojom::SubmissionSource::FORM_SUBMISSION,
+      AutofillManagerTestApi::pass_key());
+  Reset(autofill_driver());
+
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.WebView.KeyMetrics.FillingAssistance2.Address", true, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.WebView.KeyMetrics.FillingAssistance2.PostalAddress", true, 1);
+  histogram_tester.ExpectTotalCount(
+      "Autofill.WebView.KeyMetrics.FillingAssistance2.EmailOnly", 0);
+}
+
+// Tests that an email-only form emits both Address and EmailOnly variants for
+// FillingAssistance, and does not emit PostalAddress.
+TEST_F(AndroidAutofillProviderTest,
+       EmailOnlyFormEmitsAddressAndEmailOnlyMetrics) {
+  base::HistogramTester histogram_tester;
+
+  FormData email_form =
+      CreateFormDataForFrame(GetFormData({EMAIL_ADDRESS}), main_frame_token());
+  android_autofill_manager().OnFormsSeen({email_form}, /*removed_forms=*/{},
+                                         AutofillManagerTestApi::pass_key());
+
+  android_autofill_manager().OnAskForValuesToFillTest(
+      email_form, email_form.fields()[0].global_id());
+
+  FormData filled_form = email_form;
+  test_api(filled_form).field(0).set_is_autofilled_according_to_renderer(true);
+  test_api(filled_form).field(0).set_value(u"jane@example.com");
+  android_autofill_manager().FillOrPreviewForm(mojom::ActionPersistence::kFill,
+                                               filled_form,
+                                               email_form.main_frame_origin());
+
+  android_autofill_manager().OnFormSubmitted(
+      email_form, mojom::SubmissionSource::FORM_SUBMISSION,
+      AutofillManagerTestApi::pass_key());
+  Reset(autofill_driver());
+
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.WebView.KeyMetrics.FillingAssistance2.Address", true, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.WebView.KeyMetrics.FillingAssistance2.EmailOnly", true, 1);
+  histogram_tester.ExpectTotalCount(
+      "Autofill.WebView.KeyMetrics.FillingAssistance2.PostalAddress", 0);
+}
+
+// Tests that FillingAcceptance is recorded as true when platform Autofill
+// suggestions are displayed and accepted before form submission, and not
+// recorded when suggestions were never displayed.
+TEST_F(AndroidAutofillProviderTest,
+       FillingAcceptanceRecordedOnSuggestionsShownAndFilled) {
+  base::HistogramTester histogram_tester;
+
+  FormData postal_form = CreateFormDataForFrame(
+      GetFormData({NAME_FULL, ADDRESS_HOME_LINE1, ADDRESS_HOME_CITY,
+                   ADDRESS_HOME_STATE, ADDRESS_HOME_ZIP}),
+      main_frame_token());
+  android_autofill_manager().OnFormsSeen({postal_form}, /*removed_forms=*/{},
+                                         AutofillManagerTestApi::pass_key());
+
+  android_autofill_manager().OnAskForValuesToFillTest(
+      postal_form, postal_form.fields()[0].global_id());
+  provider_bridge_delegate().OnDidShowSuggestions();
+
+  FormData filled_form = postal_form;
+  test_api(filled_form).field(0).set_is_autofilled_according_to_renderer(true);
+  test_api(filled_form).field(0).set_value(u"Jane Doe");
+  android_autofill_manager().FillOrPreviewForm(mojom::ActionPersistence::kFill,
+                                               filled_form,
+                                               postal_form.main_frame_origin());
+
+  android_autofill_manager().OnFormSubmitted(
+      postal_form, mojom::SubmissionSource::FORM_SUBMISSION,
+      AutofillManagerTestApi::pass_key());
+  Reset(autofill_driver());
+
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.WebView.KeyMetrics.FillingAcceptance.Address", true, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.WebView.KeyMetrics.FillingAcceptance.PostalAddress", true, 1);
+}
+
+// Tests that FillingAcceptance is recorded as false when platform Autofill
+// suggestions (or the prefill bottom sheet) are shown and ignored before form
+// submission.
+TEST_F(AndroidAutofillProviderTest,
+       FillingAcceptanceRecordedOnBottomSheetShownAndIgnored) {
+  base::HistogramTester histogram_tester;
+
+  FormData login_form =
+      CreateFormDataForFrame(CreateTestLoginForm(), main_frame_token());
+  android_autofill_manager().OnFormsSeen({login_form}, /*removed_forms=*/{},
+                                         AutofillManagerTestApi::pass_key());
+
+  android_autofill_manager().OnAskForValuesToFillTest(
+      login_form, login_form.fields()[0].global_id());
+  provider_bridge_delegate().OnShowBottomSheetResult(
+      /*is_shown=*/true, /*provided_autofill_structure=*/true);
+
+  android_autofill_manager().OnFormSubmitted(
+      login_form, mojom::SubmissionSource::FORM_SUBMISSION,
+      AutofillManagerTestApi::pass_key());
+  Reset(autofill_driver());
+
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.WebView.KeyMetrics.FillingAcceptance.Password", false, 1);
+}
+
+// Tests that if Android Autofill is disabled in OS settings, no funnel or key
+// metrics are logged by AndroidFormEventLogger.
+TEST_F(AndroidAutofillProviderTest,
+       DoNotLogFormEventMetricsWhenAutofillDisabled) {
+  ON_CALL(provider_bridge(), IsAutofillDisabled).WillByDefault(Return(true));
+  Reset(autofill_driver());
+
+  base::HistogramTester histogram_tester;
+  FormData form = CreateFormDataForFrame(
+      CreateTestPersonalInformationFormData(), main_frame_token());
+  android_autofill_manager().OnFormsSeen({form}, /*removed_forms=*/{},
+                                         AutofillManagerTestApi::pass_key());
+
+  android_autofill_manager().OnAskForValuesToFillTest(
+      form, form.fields()[0].global_id());
+  android_autofill_manager().OnTextFieldValueChanged(
+      form, form.fields()[0].global_id(), base::TimeTicks::Now(),
+      AutofillManagerTestApi::pass_key());
+  android_autofill_manager().OnFormSubmitted(
+      form, mojom::SubmissionSource::FORM_SUBMISSION,
+      AutofillManagerTestApi::pass_key());
+  Reset(autofill_driver());
+
+  histogram_tester.ExpectTotalCount(
+      "Autofill.WebView.Funnel.ParsedAsType2.Address", 0);
+  histogram_tester.ExpectTotalCount(
+      "Autofill.WebView.Funnel.InteractionAfterParsedAsType2.Address", 0);
+  histogram_tester.ExpectTotalCount(
+      "Autofill.WebView.Funnel.FillAfterInteraction2.Address", 0);
+  histogram_tester.ExpectTotalCount(
+      "Autofill.WebView.KeyMetrics.FillingAssistance2.Address", 0);
+  histogram_tester.ExpectTotalCount(
+      "Autofill.WebView.KeyMetrics.FormSubmission.NotAutofilled2.Address", 0);
+}
+
 // Tests that a form submission of an ongoing Autofill session with source
 // DOM_MUTATION_AFTER_AUTOFILL is propagated to Java for password forms.
 TEST_F(AndroidAutofillProviderTest,
        DomMutationAfterAutofillFormSubmission_PasswordForm) {
+  base::HistogramTester histogram_tester;
   base::test::ScopedFeatureList scoped_feature_list{
       features::kAutofillAcceptDomMutationAfterAutofillSubmission};
   FormData form =
@@ -717,12 +1068,17 @@ TEST_F(AndroidAutofillProviderTest,
   android_autofill_manager().OnFormSubmitted(
       form, mojom::SubmissionSource::DOM_MUTATION_AFTER_AUTOFILL,
       AutofillManagerTestApi::pass_key());
+  Reset(autofill_driver());
+
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.WebView.KeyMetrics.FillingAssistance2.Password", false, 1);
 }
 
 // Tests that a form submission of an ongoing Autofill session with source
 // DOM_MUTATION_AFTER_AUTOFILL is not propagated to Java for non-password forms.
 TEST_F(AndroidAutofillProviderTest,
        DomMutationAfterAutofillFormSubmission_NonPasswordForm) {
+  base::HistogramTester histogram_tester;
   base::test::ScopedFeatureList scoped_feature_list{
       features::kAutofillAcceptDomMutationAfterAutofillSubmission};
   FormData form = CreateFormDataForFrame(
@@ -741,6 +1097,41 @@ TEST_F(AndroidAutofillProviderTest,
   android_autofill_manager().OnFormSubmitted(
       form, mojom::SubmissionSource::DOM_MUTATION_AFTER_AUTOFILL,
       AutofillManagerTestApi::pass_key());
+  Reset(autofill_driver());
+
+  histogram_tester.ExpectTotalCount(
+      "Autofill.WebView.KeyMetrics.FillingAssistance2.Address", 0);
+}
+
+// Tests that a form submission with source DOM_MUTATION_AFTER_AUTOFILL is
+// neither propagated to Java nor recorded as a submission for password forms if
+// `kAutofillAcceptDomMutationAfterAutofillSubmission` is disabled.
+TEST_F(AndroidAutofillProviderTest,
+       DomMutationAfterAutofillFormSubmission_PasswordFormFeatureDisabled) {
+  base::HistogramTester histogram_tester;
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndDisableFeature(
+      features::kAutofillAcceptDomMutationAfterAutofillSubmission);
+  FormData form =
+      CreateFormDataForFrame(CreateTestPasswordFormData(), main_frame_token());
+  android_autofill_manager().OnFormsSeen({form}, /*removed_forms=*/{},
+                                         AutofillManagerTestApi::pass_key());
+
+  // Start an Autofill session.
+  android_autofill_manager().OnAskForValuesToFillTest(
+      form, form.fields()[0].global_id());
+
+  EXPECT_CALL(
+      provider_bridge(),
+      OnFormSubmitted(mojom::SubmissionSource::DOM_MUTATION_AFTER_AUTOFILL))
+      .Times(0);
+  android_autofill_manager().OnFormSubmitted(
+      form, mojom::SubmissionSource::DOM_MUTATION_AFTER_AUTOFILL,
+      AutofillManagerTestApi::pass_key());
+  Reset(autofill_driver());
+
+  histogram_tester.ExpectTotalCount(
+      "Autofill.WebView.KeyMetrics.FillingAssistance2.Password", 0);
 }
 
 // Tests that a form submission of an ongoing Autofill session is propagated to

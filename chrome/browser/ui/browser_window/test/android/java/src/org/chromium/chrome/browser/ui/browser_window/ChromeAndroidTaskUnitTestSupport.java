@@ -33,6 +33,7 @@ import android.view.WindowMetrics;
 import androidx.annotation.RequiresApi;
 import androidx.core.view.WindowInsetsControllerCompat;
 
+import org.jni_zero.JniPtr;
 import org.jni_zero.JniUniquePtr;
 
 import org.chromium.base.ContextUtils;
@@ -610,13 +611,23 @@ public final class ChromeAndroidTaskUnitTestSupport {
         return sNativeAndroidBrowserWindowDestroyCounts.getOrDefault(fakePtr, 0);
     }
 
+    /**
+     * Returns the fake address assigned to {@code ptr} by the mock from {@link
+     * #createMockAndroidBrowserWindowNatives()}, or 0 if {@code ptr} is null or wasn't created by
+     * that mock.
+     */
+    static long getFakeNativeAndroidBrowserWindowPtr(
+            @Nullable JniPtr<NativeBrowserWindowInterface> ptr) {
+        if (ptr == null) return 0;
+        return sFakeNativeAndroidBrowserWindowPtrs.getOrDefault(ptr, 0L);
+    }
+
     /** Mocks {@link PopupCreator}. */
     public static PopupCreator mockPopupCreator() {
         if (sPopupCreator != null) return sPopupCreator;
         sPopupCreator = mock(PopupCreator.class);
-        when(sPopupCreator.createNewPopup(any(), anyBoolean(), any(), any(), any()))
-                .thenReturn(true);
-        when(sPopupCreator.createNewPopupFromWebContents(any(), any(), any(), any(), any(), any()))
+        when(sPopupCreator.createNewPopup(any(), anyBoolean(), any(), any())).thenReturn(true);
+        when(sPopupCreator.createNewPopupFromWebContents(any(), any(), any(), any(), any()))
                 .thenReturn(true);
         PopupCreatorFactory.setInstanceForTesting(sPopupCreator);
         ResettersForTesting.register(() -> sPopupCreator = null);

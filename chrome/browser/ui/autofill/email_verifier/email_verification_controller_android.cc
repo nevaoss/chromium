@@ -9,7 +9,6 @@
 
 #include "base/check_deref.h"
 #include "base/functional/bind.h"
-#include "base/functional/callback_helpers.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/strings/utf_string_conversions.h"
@@ -44,6 +43,14 @@ EmailVerificationControllerAndroid::EmailVerificationControllerAndroid(
 
 EmailVerificationControllerAndroid::~EmailVerificationControllerAndroid() =
     default;
+
+void EmailVerificationControllerAndroid::HideLoadingToastImpl() {
+  // `Dismiss()` dismisses all active messages on `GetMessageController()`.
+  // This is safe because `HideLoadingToastImpl()` is only invoked when a
+  // subsequent-run loading message is active, and Android Messages shows at
+  // most one web-contents-scoped Autofill banner at a time.
+  GetMessageController().Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE);
+}
 
 void EmailVerificationControllerAndroid::ShowPopupImpl(
     const gfx::RectF& /*element_bounds*/,
@@ -83,9 +90,9 @@ void EmailVerificationControllerAndroid::ShowPopupImpl(
         } else if (on_prompt_dismissed) {
           // If the user already accepted the prompt (`cb->data` was consumed by
           // `on_accepted`), a subsequent dismissal means the loading bottom
-          // sheet was closed. For programmatic hides, `HidePopup()` already
-          // transitioned `prompt_state_` to `kClosed`, making
-          // `OnPromptDismissed` a no-op.
+          // sheet was closed. For programmatic hides, `DismissActiveUi()`
+          // already reset `loading_start_time_`, making `OnPromptDismissed` a
+          // no-op.
           std::move(on_prompt_dismissed).Run();
         }
       },
@@ -105,34 +112,20 @@ void EmailVerificationControllerAndroid::ShowLoadingToastImpl(
   if (!IsWebContentsVisible()) {
     return;
   }
-  // TODO(crbug.com/555673134): Move this dismissal into `HideLoadingToastImpl`.
-  GetMessageController().Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE);
-  auto [on_action_cancelled, on_dismiss_cancelled] =
-      base::SplitOnceCallback(std::move(on_cancelled));
   GetMessageController().Show(
-      AutofillMessageModel::CreateForEmailVerificationLoading(
-          web_contents().GetTopLevelNativeWindow(),
-          std::move(on_action_cancelled),
-          base::BindOnce(
-              [](base::OnceClosure on_cancelled,
-                 messages::DismissReason reason) {
-                // `PRIMARY_ACTION` already invokes `on_cancelled` via the
-                // action callback, and `DISMISSED_BY_FEATURE` is
-                // programmatic replacement by a subsequent EVP UI state.
-                if (reason != messages::DismissReason::PRIMARY_ACTION &&
-                    reason != messages::DismissReason::DISMISSED_BY_FEATURE) {
-                  std::move(on_cancelled).Run();
-                }
-              },
-              std::move(on_dismiss_cancelled))));
+      AutofillMessageModel::CreateForEmailVerificationLoading(base::BindOnce(
+          [](base::OnceClosure on_cancelled, messages::DismissReason reason) {
+            // `DISMISSED_BY_FEATURE` is programmatic replacement by a
+            // subsequent EVP UI state. Any other dismissal (e.g. the user
+            // swiping the message away) cancels the verification.
+            if (reason != messages::DismissReason::DISMISSED_BY_FEATURE) {
+              std::move(on_cancelled).Run();
+            }
+          },
+          std::move(on_cancelled))));
 }
 
 void EmailVerificationControllerAndroid::ShowErrorToastImpl() {
-  // `Dismiss()` dismisses all active messages on `GetMessageController()`.
-  // This is safe because Android Messages shows at most one web-contents-scoped
-  // Autofill banner at a time.
-  // TODO(crbug.com/555673134): Move this dismissal into `HideLoadingToastImpl`.
-  GetMessageController().Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE);
   if (!IsWebContentsVisible()) {
     return;
   }
@@ -142,8 +135,6 @@ void EmailVerificationControllerAndroid::ShowErrorToastImpl() {
 
 void EmailVerificationControllerAndroid::ShowVerifiedToastImpl(
     const GURL& url) {
-  // TODO(crbug.com/555673134): Move this dismissal into `HideLoadingToastImpl`.
-  GetMessageController().Dismiss(messages::DismissReason::DISMISSED_BY_FEATURE);
   if (!IsWebContentsVisible()) {
     return;
   }

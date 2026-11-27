@@ -993,51 +993,51 @@ For more settings that use data to improve your Chrome experience, go to <ph nam
         Auto expand tabs on hover
       </message>
       <!-- Bottom bar education. -->
-      <!-- TODO(crbug.com/567168121): Make translateable once the copy is final. -->
-      <message translateable="false" name="IDS_BOTTOM_BAR_EDUCATION_TITLE_ERGONOMICS" desc="Title of the bottom bar education bubble for the ergonomics variant (tools within easy reach).">
-        Easy access to your most important tools
+      <message name="IDS_BOTTOM_BAR_EDUCATION_TITLE_ERGONOMICS" desc="Title of the bottom bar education bubble for the ergonomics variant (tools within easy reach).">
+        A new look for easy access to your essentials
       </message>
-      <message translateable="false" name="IDS_BOTTOM_BAR_EDUCATION_TITLE_GEMINI" desc="Title of the bottom bar education bubble for the Gemini-focused variant.">
-        Easy access to Gemini and your most important tools
+      <message name="IDS_BOTTOM_BAR_EDUCATION_TITLE_GEMINI" desc="Title of the bottom bar education bubble for the Gemini-focused variant.">
+        Gemini and your essentials on the new toolbar
       </message>
-      <message translateable="false" name="IDS_BOTTOM_BAR_EDUCATION_TITLE_OPT_IN" desc="Title for the opt-in preview dialog">
+      <message name="IDS_BOTTOM_BAR_EDUCATION_TITLE_OPT_IN" desc="Title for the opt-in preview dialog">
         Preview Chrome&apos;s new look, built for convenience
       </message>
-      <message translateable="false" name="IDS_BOTTOM_BAR_EDUCATION_BODY" desc="Body of the bottom bar education bubble. The link opens Appearance settings.">
-        Chrome has a new look, built for your convenience. You can switch back anytime in <ph name="BEGIN_LINK">&lt;link&gt;</ph>settings<ph name="END_LINK">&lt;/link&gt;</ph>
+      <message name="IDS_BOTTOM_BAR_EDUCATION_BODY" desc="Body of the bottom bar education bubble. The link opens Appearance settings.">
+        Chrome has a new toolbar, built for convenience. You can switch back anytime in <ph name="BEGIN_LINK">&lt;link&gt;</ph>settings<ph name="END_LINK">&lt;/link&gt;</ph>.
       </message>
-      <message translateable="false" name="IDS_BOTTOM_BAR_EDUCATION_BODY_OPT_IN" desc="Body of the bottom bar opt-in preview dialog. The link opens Appearance settings.">
+      <message name="IDS_BOTTOM_BAR_EDUCATION_BODY_OPT_IN" desc="Body of the bottom bar opt-in preview dialog. The link opens Appearance settings.">
         Your essentials, right on the toolbar. You can switch back anytime in <ph name="BEGIN_LINK">&lt;link&gt;</ph>settings<ph name="END_LINK">&lt;/link&gt;</ph>
       </message>
-      <message translateable="false" name="IDS_BOTTOM_BAR_EDUCATION_SWITCH_BACK" desc="Button text to switch back to the old layout">
+      <message name="IDS_BOTTOM_BAR_EDUCATION_SWITCH_BACK" desc="Button text to switch back to the old layout">
         Switch back
       </message>
-      <message translateable="false" name="IDS_BOTTOM_BAR_EDUCATION_SHOW_ME" desc="Button text to continue and show tooltips">
+      <message name="IDS_BOTTOM_BAR_EDUCATION_SHOW_ME" desc="Button text to continue and show tooltips">
         Show me
       </message>
-      <message translateable="false" name="IDS_BOTTOM_BAR_EDUCATION_NOT_NOW" desc="Button text to dismiss the bottom bar opt-in preview dialog">
+      <message name="IDS_BOTTOM_BAR_EDUCATION_NOT_NOW" desc="Button text to dismiss the bottom bar opt-in preview dialog">
         Not now
       </message>
-      <message translateable="false" name="IDS_BOTTOM_BAR_EDUCATION_TRY_IT_NOW" desc="Button text to accept the bottom bar opt-in preview dialog">
+      <message name="IDS_BOTTOM_BAR_EDUCATION_TRY_IT_NOW" desc="Button text to accept the bottom bar opt-in preview dialog">
         Try it now
       </message>
-      <message translateable="false" name="IDS_BOTTOM_BAR_EDUCATION_TOOLTIP_GEMINI" desc="Tooltip explaining the Gemini button">
+      <message name="IDS_BOTTOM_BAR_EDUCATION_TOOLTIP_GEMINI" desc="Tooltip explaining the Gemini button">
         Ask Gemini about anything on your page
       </message>
-      <message translateable="false" name="IDS_BOTTOM_BAR_EDUCATION_TOOLTIP_NEW_TAB" desc="Tooltip explaining the New Tab button">
+      <message name="IDS_BOTTOM_BAR_EDUCATION_TOOLTIP_NEW_TAB" desc="Tooltip explaining the New Tab button">
         Open new tabs
       </message>
-      <message translateable="false" name="IDS_BOTTOM_BAR_EDUCATION_TOOLTIP_TAB_SWITCHER" desc="Tooltip explaining the Tab Switcher button">
+      <message name="IDS_BOTTOM_BAR_EDUCATION_TOOLTIP_TAB_SWITCHER" desc="Tooltip explaining the Tab Switcher button">
         View all of your tabs
       </message>
-      <!-- Bottom bar settings. -->
-      <!-- TODO(crbug.com/556961273): Make translateable once the copy is final. -->
-      <message name="IDS_BOTTOM_BAR_SETTING_TITLE" desc="Title of the switch in the Appearance settings page that shows or hides the bottom toolbar (a bar at the bottom of the screen with buttons such as new tab, tab switcher and menu). [CHAR_LIMIT=32]" translateable="false">
-        Show bottom toolbar
+      <message name="IDS_BOTTOM_BAR_EDUCATION_TOOLTIP_ADDRESS_BAR" desc="Tooltip nudging the user to move the top address bar to the bottom">
+        Want all of your tools at the bottom? Press and hold the address bar to move it
       </message>
-      <!-- TODO(crbug.com/556961273): Make translateable once the copy is final. -->
-      <message name="IDS_BOTTOM_BAR_SETTING_SUMMARY" desc="Summary shown under the 'Show bottom toolbar' switch in the Appearance settings page. The bottom toolbar is a row of navigation and tool buttons (for example new tab, tab switcher and menu) anchored to the bottom of the screen so they are easier to reach with one hand. It is separate from the 'Address bar' setting, which only moves the address bar between the top and bottom of the screen." translateable="false">
-        Keep navigation and tools to the bottom for easy reach
+      <!-- Bottom bar settings. -->
+      <message name="IDS_BOTTOM_BAR_SETTING_TITLE" desc="Title of the switch in the Appearance settings page that shows or hides the bottom toolbar (a bar at the bottom of the screen with buttons such as new tab, tab switcher and menu). [CHAR_LIMIT=32]">
+        Toolbar
+      </message>
+      <message name="IDS_BOTTOM_BAR_SETTING_SUMMARY" desc="Summary shown under the 'Toolbar' switch in the Appearance settings page. The bottom toolbar is a row of navigation and tool buttons (for example new tab, tab switcher and menu) anchored to the bottom of the screen so they are easier to reach with one hand. It is separate from the 'Address bar' setting, which only moves the address bar between the top and bottom of the screen.">
+        Display navigation and tools in a bottom toolbar for easy access
       </message>
 
       <!-- On startup settings -->
@@ -1047,11 +1047,25 @@ For more settings that use data to improve your Chrome experience, go to <ph nam
       <message name="IDS_ON_STARTUP_PREF_NEW_TAB" desc="Label for the option to open the Homepage on startup.">
         Open the Homepage
       </message>
+      <!-- LINT.IfChange(HomepageDefaultToNtp) -->
+      <message name="IDS_ON_STARTUP_PREF_NEW_TAB_SUMMARY" desc="Summary text for the option to open the Homepage on startup, with a link to the Homepage settings page.">
+        You can customize your Homepage in <ph name="BEGIN_LINK">&lt;link&gt;</ph>settings<ph name="END_LINK">&lt;/link&gt;</ph>. Defaults to the New Tab page if none is set.
+      </message>
+      <!-- LINT.ThenChange(/chrome/android/java/src/org/chromium/chrome/browser/homepage/HomepageManager.java:HomepageDefaultToNtp) -->
       <message name="IDS_ON_STARTUP_PREF_LAST" desc="Label for the option to continue where the user left off on startup.">
         Continue where you left off
       </message>
       <message name="IDS_ON_STARTUP_PREF_URLS" desc="Label for the option to open a specific page or set of pages on startup.">
         Open a specific page or set of pages
+      </message>
+      <message name="IDS_ON_STARTUP_ADD_NEW_PAGE" desc="Label and dialog title for adding a new startup page URL.">
+        Add a new page
+      </message>
+      <message name="IDS_ON_STARTUP_EDIT_PAGE" desc="Dialog title for editing an existing startup page URL.">
+        Edit page
+      </message>
+      <message name="IDS_ON_STARTUP_USE_CURRENT_PAGES" desc="Button label in On startup settings to set all open HTTP/HTTPS tabs in the current window as startup pages.">
+        Use current pages
       </message>
       <if expr="enable_extensions_core">
         <message name="IDS_EXTENSIONS_PIN_TO_TOOLBAR_SETTING" desc="Title Text of the button that pins the extensions menu icon (the puzzle piece icon) to the toolbar.">
@@ -8030,6 +8044,15 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_GLIC_MIC_PERMISSION_DIALOG_ALLOW" desc="Positive button text to allow microphone permission for Gemini.">
         Allow
       </message>
+      <message name="IDS_GLIC_EXPERIMENTAL_OPT_IN_NOTIFICATION_TITLE" desc="Title of the notification shown when Gemini needs the user's permission to use Chrome on this device to complete a task, and Chrome is not open. Tapping the notification opens Chrome, where the user can give permission.">
+        Gemini needs permission to use Chrome
+      </message>
+      <message name="IDS_GLIC_EXPERIMENTAL_OPT_IN_NOTIFICATION_BODY" desc="Body text of the notification shown when Gemini needs the user's permission to use Chrome on this device to complete a task. 'Chrome auto browse' is the feature that lets Gemini browse and take actions in Chrome for the user.">
+        To work on your tasks, let Gemini use Chrome auto browse on this device
+      </message>
+      <message name="IDS_GLIC_EXPERIMENTAL_OPT_IN_NOTIFICATION_ACTION" desc="Action button on the notification shown when Gemini needs the user's permission to use Chrome. Tapping it opens Chrome, where the user can give permission. [CHAR_LIMIT=20]">
+        Go to Chrome
+      </message>
 
       <!-- TTC strings -->
       <message name="IDS_TTC_SESSION_ERROR" desc="Status shown on the TTC session pill when the session failed." translateable="false">
@@ -8043,6 +8066,15 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
       <message name="IDS_TTC_SESSION_END_DESCRIPTION" desc="Accessibility description of the TTC session pill. Tapping it ends the session." translateable="false">
         End TTC session
+      </message>
+      <message name="IDS_TTC_FRE_DIALOG_TITLE" desc="Placeholder title of the TTC first run dialog that asks for the user's consent." translateable="false">
+        Placeholder
+      </message>
+      <message name="IDS_TTC_FRE_DIALOG_BODY" desc="Placeholder body of the TTC first run dialog that asks for the user's consent." translateable="false">
+        Enable TTC?
+      </message>
+      <message name="IDS_TTC_FRE_DIALOG_ALLOW" desc="Label of the button in the TTC first run dialog that gives consent." translateable="false">
+        Allow
       </message>
 
       <!-- Immersive Playback Confirmation strings -->

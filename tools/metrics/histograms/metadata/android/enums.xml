@@ -99,6 +99,25 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//chrome/browser/ui/android/bottombar/java/src/org/chromium/chrome/browser/ui/bottombar/BottomBarMetrics.java:AndroidBottomBarCandidateAction) -->
 
+<!-- LINT.IfChange(AndroidBottomBarEducationOnboardingEvent) -->
+
+<enum name="AndroidBottomBarEducationOnboardingEvent">
+  <int value="0" label="Shown"/>
+  <int value="1" label="Accepted"/>
+  <int value="2" label="Declined"/>
+  <int value="3" label="SettingsClicked"/>
+  <int value="4" label="DismissedOther"/>
+  <int value="5" label="TappedScrim">
+    Tapped outside the bubble, not on the bottom bar
+  </int>
+  <int value="6" label="TappedBottomBar">
+    Tapped the bottom bar, outside the bubble
+  </int>
+  <int value="7" label="BackPressed">Closed with system back</int>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/ui/android/bottombar/java/src/org/chromium/chrome/browser/ui/bottombar/BottomBarMetrics.java:AndroidBottomBarEducationOnboardingEvent) -->
+
 <!-- LINT.IfChange(AndroidBottomBarGlicButtonState) -->
 
 <enum name="AndroidBottomBarGlicButtonState">
@@ -135,9 +154,10 @@ chromium-metrics-reviews@google.com.
 <enum name="AndroidBottomBarIphEvent">
   <int value="0" label="Shown"/>
   <int value="1" label="Dismissed"/>
+  <int value="2" label="MovedToBottom"/>
 </enum>
 
-<!-- LINT.ThenChange(//chrome/browser/ui/android/bottombar/java/src/org/chromium/chrome/browser/ui/bottombar/BottomBarMetrics.java:IphEvent) -->
+<!-- LINT.ThenChange(//chrome/browser/ui/android/bottombar/java/src/org/chromium/chrome/browser/ui/bottombar/BottomBarMetrics.java:AndroidBottomBarIphEvent) -->
 
 <!-- LINT.IfChange(AndroidBottomBarPromoEvent) -->
 
@@ -1015,6 +1035,7 @@ chromium-metrics-reviews@google.com.
   <int value="238" label="GoogleAccountsEvent.getActionType"/>
   <int value="239" label="GoogleAccountsEvent.getContinueUrl"/>
   <int value="240" label="GoogleAccountsEvent.isOutermostMainFrame"/>
+  <int value="241" label="GoogleAccountsEvent.isNavigationRequest"/>
 <!-- LINT.ThenChange(/android_webview/support_library/java/src/org/chromium/support_lib_glue/SupportLibWebViewChromiumFactory.java:ApiCall) -->
 
 </enum>
@@ -1758,12 +1779,6 @@ chromium-metrics-reviews@google.com.
   <int value="0" label="App is minimized but current tab is not closed"/>
   <int value="1" label="Current tab is closed but app is not minimized"/>
   <int value="2" label="App is minimized and current tab is closed"/>
-</enum>
-
-<enum name="MissingDeviceLockDialogEvent">
-  <int value="0" label="Dialog shown"/>
-  <int value="1" label="Continue without a device lock"/>
-  <int value="2" label="Device lock restored"/>
 </enum>
 
 <enum name="MissingNavbarInsetsReason">

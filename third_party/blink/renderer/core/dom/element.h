@@ -1147,8 +1147,6 @@ class CORE_EXPORT Element : public ContainerNode {
   // Implements manual slot assignment for user agent shadow roots.
   virtual void ManuallyAssignSlots() { DCHECK(false); }
 
-  bool IsInDescendantTreeOf(const Element* shadow_host) const;
-
   // Returns the Element’s ComputedStyle. If the ComputedStyle is not already
   // stored on the Element, computes the ComputedStyle and stores it on the
   // Element’s NodeRareData.  Used for getComputedStyle when Element is display
@@ -1752,7 +1750,6 @@ class CORE_EXPORT Element : public ContainerNode {
   virtual bool IsValidElement() { return false; }
   virtual bool IsInRange() const { return false; }
   virtual bool IsOutOfRange() const { return false; }
-  virtual bool IsClearButtonElement() const { return false; }
   virtual bool IsScriptElement() const { return false; }
   virtual bool IsVTTCueBackgroundBox() const { return false; }
   virtual bool IsVTTCueBox() const { return false; }
@@ -2733,10 +2730,6 @@ class CORE_EXPORT Element : public ContainerNode {
                                      const AtomicString& new_name);
 
   void CreateUniqueElementData();
-
-  bool ShouldInvalidateDistributionWhenAttributeChanged(ShadowRoot&,
-                                                        const QualifiedName&,
-                                                        const AtomicString&);
 
   void SetInnerHTMLInternal(const String&,
                             FragmentParserConfig::ParseDeclarativeShadowRoots,

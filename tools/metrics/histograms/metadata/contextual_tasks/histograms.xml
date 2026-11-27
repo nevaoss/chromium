@@ -80,8 +80,7 @@ chromium-metrics-reviews@google.com.
   <owner>chrome-contextual-tasks-eng@google.com</owner>
   <summary>
     Recorded when the user invokes 'Ask Google about this page' via any of the
-    updated entry points (context menu, app menu, pinned toolbar button, or
-    homework action chip).
+    updated entry points (context menu, app menu, or homework action chip).
   </summary>
 </histogram>
 
@@ -366,6 +365,17 @@ chromium-metrics-reviews@google.com.
         summary="Recorded when the active tab is disassociated from its task
                  or the task is removed."/>
   </token>
+</histogram>
+
+<histogram
+    name="ContextualTasks.EphemeralToolbarButton.UserAction.PinByContextMenu"
+    enum="Boolean" expires_after="2027-04-15">
+  <owner>dianaou@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <summary>
+    Recorded when the user pins the ephemeral (unpinned) contextual tasks
+    toolbar button to the toolbar via its context menu. Always recorded as true.
+  </summary>
 </histogram>
 
 <histogram
@@ -833,6 +843,23 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
+<histogram
+    name="ContextualTasks.TabCoins.AttachedCountAtSubmission{UploadType}"
+    units="tabs" expires_after="2027-03-07">
+  <owner>hujasonx@google.com</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <summary>
+    Number of {UploadType} tab contexts added to the OnSubmitQueryResponse proto
+    when a query is submitted in Contextual Tasks. Recorded once per submitted
+    query turn, including 0 when no matching tabs were added.
+  </summary>
+  <token key="UploadType">
+    <variant name="" summary="all (explicit and implicit)"/>
+    <variant name=".Explicit" summary="explicitly user-attached"/>
+    <variant name=".Implicit" summary="implicitly attached"/>
+  </token>
+</histogram>
+
 <histogram name="ContextualTasks.TabPicker.IframeRenderLatencyMs" units="ms"
     expires_after="2027-03-07">
   <owner>hujasonx@google.com</owner>
@@ -881,6 +908,22 @@ chromium-metrics-reviews@google.com.
     via the Unbounded Element API from fallbacks when the API is unsupported by
     the platform and runtime presentation failures.
   </summary>
+</histogram>
+
+<histogram name="ContextualTasks.TabPicker.UserAction{ActionType}"
+    enum="Boolean" expires_after="2027-03-07">
+  <owner>hujasonx@google.com</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <summary>
+    Recorded every time the user clicks on a tab item in the Contextual Tasks
+    tab picker flyout menu. {ActionType} Always recorded as true.
+  </summary>
+  <token key="ActionType">
+    <variant name=".TabDeselected"
+        summary="The user clicked a selected tab to remove it from context."/>
+    <variant name=".TabSelected"
+        summary="The user clicked an unselected tab to attach it as context."/>
+  </token>
 </histogram>
 
 <histogram

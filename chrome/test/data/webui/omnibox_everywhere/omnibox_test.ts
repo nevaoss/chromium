@@ -18,10 +18,9 @@ import {browserProxyFactory, MostVisitedPageHandlerRemote} from 'chrome://resour
 import type {SearchAnimatedGlowElement} from 'chrome://resources/cr_components/search/animated_glow.js';
 import {GlowAnimationState} from 'chrome://resources/cr_components/search/constants.js';
 import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
-import {SelectionDirection, SelectionLineState, SelectionStep} from 'chrome://resources/cr_components/searchbox/searchbox_selection_mixin.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {getDeepActiveElement} from 'chrome://resources/js/util.js';
-import {FreStage} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {FreStage, SelectionDirection, SelectionLineState, SelectionStep} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, SelectedFileInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {TextDirection} from 'chrome://resources/mojo/mojo/public/mojom/base/text_direction.mojom-webui.js';
 import type {UnguessableToken} from 'chrome://resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
@@ -545,6 +544,88 @@ suite('OmniboxEverywhereOmniboxTest', () => {
         assertFalse(testOmnibox.$.input.allowFilePaste);
       });
 
+  function dispatchFileDragEvent(target: HTMLElement, type: string): DragEvent {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(new File(['foo'], 'foo.png', {type: 'image/png'}));
+    const event = new DragEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      dataTransfer,
+    });
+    target.dispatchEvent(event);
+    return event;
+  }
+
+  function getAnimatedGlow(element: OmniboxEverywhereOmniboxElement):
+      SearchAnimatedGlowElement {
+    const glow = element.shadowRoot.querySelector('search-animated-glow');
+    assertTrue(!!glow);
+    return glow;
+  }
+
+  test('drag glow is hidden when AI Mode is unavailable at load', async () => {
+    document.body.innerHTML = window.trustedTypes!.emptyHTML;
+    loadTimeData.overrideValues({isFuseboxEnabled: false});
+    const testOmnibox = document.createElement('omnibox-everywhere-omnibox');
+    document.body.appendChild(testOmnibox);
+    await microtasksFinished();
+
+    const inputWrapper = testOmnibox.$.inputWrapper;
+    const dragEnter = dispatchFileDragEvent(inputWrapper, 'dragenter');
+    const dragOver = dispatchFileDragEvent(inputWrapper, 'dragover');
+    await microtasksFinished();
+
+    assertTrue(dragEnter.defaultPrevented);
+    assertTrue(dragOver.defaultPrevented);
+    assertEquals(
+        GlowAnimationState.NONE, getAnimatedGlow(testOmnibox).animationState);
+
+    // The drop must still be handled so that it can't navigate the page.
+    const drop = dispatchFileDragEvent(inputWrapper, 'drop');
+    await microtasksFinished();
+
+    assertTrue(drop.defaultPrevented);
+    assertEquals(
+        GlowAnimationState.NONE, getAnimatedGlow(testOmnibox).animationState);
+  });
+
+  test('glow keeps non-drag states when AI Mode is unavailable', async () => {
+    testProxy.page.updateAimPopupEligibility(false);
+    await microtasksFinished();
+
+    const voiceBtn =
+        omnibox.shadowRoot.querySelector<HTMLElement>('#voiceSearchButton');
+    assertTrue(!!voiceBtn);
+    const whenOpenVoiceSearch = eventToPromise('open-voice-search', omnibox);
+    voiceBtn.click();
+    await whenOpenVoiceSearch;
+    await microtasksFinished();
+
+    assertEquals(
+        GlowAnimationState.LISTENING, getAnimatedGlow(omnibox).animationState);
+  });
+
+  test(
+      'drag glow clears when AI Mode becomes unavailable mid-drag',
+      async () => {
+        const inputWrapper = omnibox.$.inputWrapper;
+        const glow = getAnimatedGlow(omnibox);
+
+        dispatchFileDragEvent(inputWrapper, 'dragenter');
+        await microtasksFinished();
+        assertEquals(GlowAnimationState.DRAGGING, glow.animationState);
+
+        testProxy.page.updateAimPopupEligibility(false);
+        await microtasksFinished();
+        assertEquals(GlowAnimationState.NONE, glow.animationState);
+
+        const drop = dispatchFileDragEvent(inputWrapper, 'drop');
+        await microtasksFinished();
+        assertTrue(drop.defaultPrevented);
+        assertEquals(GlowAnimationState.NONE, glow.animationState);
+      });
+
   test('dropdownIsVisible preserves bottomControls', async () => {
     const bottomControls =
         omnibox.shadowRoot.querySelector<HTMLElement>('#bottomControls');
@@ -596,29 +677,59 @@ suite('OmniboxEverywhereOmniboxTest', () => {
         assertTrue(!!omnibox.shadowRoot.querySelector('#lensSearchButton'));
       });
 
-  test('balanced layout and element clearances', () => {
+  test('balanced layout and element clearances', async () => {
     const inputWrapper = omnibox.$.inputWrapper;
-    const wrapperStyle = window.getComputedStyle(inputWrapper);
-    assertEquals('16px', wrapperStyle.borderRadius);
-    assertEquals('6px', wrapperStyle.paddingTop);
-
     const bottomControls =
         omnibox.shadowRoot.querySelector<HTMLElement>('#bottomControls');
     assertTrue(!!bottomControls);
+    const composeButton =
+        omnibox.shadowRoot.querySelector<HTMLElement>('#composeButton');
+    assertTrue(!!composeButton);
+
+    // When dropdown is closed, omnibox renders as a 1-line pill with inline
+    // voice/lens controls and no compose/plus buttons.
+    const collapsedWrapperStyle = window.getComputedStyle(inputWrapper);
+    assertEquals('24px', collapsedWrapperStyle.borderRadius);
+    assertEquals('48px', collapsedWrapperStyle.height);
+    assertEquals('6px', collapsedWrapperStyle.marginTop);
+    assertEquals('0px', collapsedWrapperStyle.paddingTop);
+    assertEquals('none', window.getComputedStyle(composeButton).display);
+    assertEquals('10px', window.getComputedStyle(bottomControls).top);
+
+    // When dropdown is visible, bottomControls and composeButton are shown.
+    omnibox.dropdownIsVisible = true;
+    await microtasksFinished();
+
+    const wrapperStyle = window.getComputedStyle(inputWrapper);
+    assertEquals('16px', wrapperStyle.borderRadius);
+    assertEquals('0px', wrapperStyle.marginTop);
+    assertEquals('6px', wrapperStyle.paddingTop);
+
     const bottomControlsStyle = window.getComputedStyle(bottomControls);
     assertEquals('4px', bottomControlsStyle.paddingTop);
     assertEquals('12px', bottomControlsStyle.paddingBottom);
     assertEquals('12px', bottomControlsStyle.paddingInlineStart);
     assertEquals('16px', bottomControlsStyle.paddingInlineEnd);
 
-    const composeButton =
-        omnibox.shadowRoot.querySelector<HTMLElement>('#composeButton');
-    assertTrue(!!composeButton);
     assertEquals(
         '36px', window.getComputedStyle(composeButton).marginInlineEnd);
 
     const profileIcon = omnibox.$.profileIcon;
     assertEquals('16px', window.getComputedStyle(profileIcon).top);
+
+    // When dropdown is hidden while user input is present (e.g. in multiline
+    // mode), the expanded layout and plus menu remain visible.
+    const contextualEntrypoint = omnibox.shadowRoot.querySelector<HTMLElement>(
+        '.contextualEntrypointContainer');
+    assertTrue(!!contextualEntrypoint);
+    omnibox.setInputText('multiline query');
+    omnibox.dropdownIsVisible = false;
+    await microtasksFinished();
+
+    assertEquals('16px', window.getComputedStyle(inputWrapper).borderRadius);
+    assertNotEquals('none', window.getComputedStyle(composeButton).display);
+    assertNotEquals(
+        'none', window.getComputedStyle(contextualEntrypoint).display);
   });
 
   test(

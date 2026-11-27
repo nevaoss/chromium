@@ -243,20 +243,6 @@ void MaybeShutdownLoginDisplayHostWebUI() {
   }
 }
 
-// Safely check if the UserContext is stored in the WizardContext;
-bool ShouldPreserveUserContext() {
-  if (!features::IsOobeAddUserDuringEnrollmentEnabled() ||
-      !LoginDisplayHost::default_host()) {
-    return false;
-  }
-  WizardContext* wizard_context =
-      LoginDisplayHost::default_host()->GetWizardContext();
-  if (!wizard_context || !wizard_context->timebound_user_context_holder) {
-    return false;
-  }
-  return true;
-}
-
 // ShowLoginWizard is split into two parts. This function is sometimes called
 // from TriggerShowLoginWizardFinish() directly, and sometimes from
 // OnLanguageSwitchedCallback() (if locale was updated).
@@ -267,6 +253,8 @@ void ShowLoginWizardFinish(
 
   // TODO(crbug.com/403154552): Avoid g_browser_process.
   PrefService* local_state = g_browser_process->local_state();
+  ::metrics::MetricsService* metrics_service =
+      g_browser_process->metrics_service();
   ApplicationLocaleStorage* application_locale_storage =
       g_browser_process->GetFeatures()->application_locale_storage();
   scoped_refptr<network::SharedURLLoaderFactory> shared_url_loader_factory =
@@ -282,15 +270,7 @@ void ShowLoginWizardFinish(
     return;
   }
 
-  std::unique_ptr<TimeboundUserContextHolder> user_context;
   if (ShouldShowSigninScreen(CHECK_DEREF(local_state), first_screen)) {
-    if (ShouldPreserveUserContext()) {
-      // Move the user context to the local variable before it's destroyed.
-      WizardContext* wizard_context =
-          LoginDisplayHost::default_host()->GetWizardContext();
-      CHECK(wizard_context);
-      user_context = std::move(wizard_context->timebound_user_context_holder);
-    }
     // Shutdown WebUI host to replace with the Mojo one.
     MaybeShutdownLoginDisplayHostWebUI();
   }
@@ -306,20 +286,14 @@ void ShowLoginWizardFinish(
     display_host = LoginDisplayHost::default_host();
   } else if (ShouldShowSigninScreen(CHECK_DEREF(local_state), first_screen)) {
     display_host = new LoginDisplayHostMojo(
-        local_state, application_locale_storage, shared_url_loader_factory,
-        browser_policy_connector_ash, DisplayedScreen::SIGN_IN_SCREEN,
+        local_state, metrics_service, application_locale_storage,
+        shared_url_loader_factory, browser_policy_connector_ash,
+        DisplayedScreen::SIGN_IN_SCREEN,
         /*update_geolocation_usage_allowed=*/true);
   } else {
     display_host = new LoginDisplayHostWebUI(
-        local_state, application_locale_storage, shared_url_loader_factory,
-        browser_policy_connector_ash);
-  }
-
-  if (features::IsOobeAddUserDuringEnrollmentEnabled() && user_context) {
-    // Restore the user context within the wizard context.
-    WizardContext* wizard_context = display_host->GetWizardContext();
-    CHECK(wizard_context);
-    wizard_context->timebound_user_context_holder = std::move(user_context);
+        local_state, metrics_service, application_locale_storage,
+        shared_url_loader_factory, browser_policy_connector_ash);
   }
 
   // Restore system timezone.
@@ -511,10 +485,12 @@ class LoginDisplayHostWebUI::KeyboardDrivenOobeKeyHandler
 
 LoginDisplayHostWebUI::LoginDisplayHostWebUI(
     PrefService* local_state,
+    ::metrics::MetricsService* metrics_service,
     ApplicationLocaleStorage* application_locale_storage,
     scoped_refptr<network::SharedURLLoaderFactory> shared_url_loader_factory,
     policy::BrowserPolicyConnectorAsh* browser_policy_connector_ash)
     : LoginDisplayHostCommon(local_state,
+                             metrics_service,
                              application_locale_storage,
                              std::move(shared_url_loader_factory),
                              browser_policy_connector_ash,
@@ -650,7 +626,7 @@ void LoginDisplayHostWebUI::StartWizard(OobeScreenId first_screen) {
   } else {
     // TODO(crbug.com/404133029): Avoid using g_browser_process.
     wizard_controller_ = std::make_unique<WizardController>(
-        &local_state_.get(), g_browser_process->metrics_service(),
+        &local_state_.get(), &metrics_service_.get(),
         &application_locale_storage_.get(), shared_url_loader_factory_.get(),
         &browser_policy_connector_ash_.get(),
         g_browser_process->platform_part()->component_manager_ash(),
@@ -725,7 +701,7 @@ void LoginDisplayHostWebUI::OnStartAppLaunch() {
   if (!wizard_controller_) {
     // TODO(crbug.com/404133029): Avoid using g_browser_process.
     wizard_controller_ = std::make_unique<WizardController>(
-        &local_state_.get(), g_browser_process->metrics_service(),
+        &local_state_.get(), &metrics_service_.get(),
         &application_locale_storage_.get(), shared_url_loader_factory_.get(),
         &browser_policy_connector_ash_.get(),
         g_browser_process->platform_part()->component_manager_ash(),
@@ -1246,6 +1222,8 @@ void LoginDisplayHostWebUI::PlayStartupSoundIfPossible() {
 void ShowLoginWizard(OobeScreenId first_screen) {
   // TODO(crbug.com/403154552): Avoid using g_browser_process.
   PrefService& local_state = CHECK_DEREF(g_browser_process->local_state());
+  ::metrics::MetricsService* metrics_service =
+      g_browser_process->metrics_service();
   ApplicationLocaleStorage* application_locale_storage =
       g_browser_process->GetFeatures()->application_locale_storage();
   scoped_refptr<network::SharedURLLoaderFactory> shared_url_loader_factory =
@@ -1287,8 +1265,8 @@ void ShowLoginWizard(OobeScreenId first_screen) {
       first_screen == ash::OOBE_SCREEN_UNKNOWN) {
     // Manages its own lifetime. See ShutdownDisplayHost().
     auto* display_host = new LoginDisplayHostWebUI(
-        &local_state, application_locale_storage, shared_url_loader_factory,
-        browser_policy_connector_ash);
+        &local_state, metrics_service, application_locale_storage,
+        shared_url_loader_factory, browser_policy_connector_ash);
     // Shows networks screen instead of enrollment screen to resume the
     // interrupted auto start enrollment flow because enrollment screen does
     // not handle flaky network. See http://crbug.com/41082635

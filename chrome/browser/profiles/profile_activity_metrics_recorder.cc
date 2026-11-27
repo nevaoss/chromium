@@ -11,12 +11,14 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/task/sequenced_task_runner.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/metrics/profile_metrics_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_attributes_entry.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+#include "components/metrics/profile_metrics_service.h"
 
 namespace {
 
@@ -54,7 +56,7 @@ int GetMetricsBucketIndex(const Profile* profile) {
   return entry->GetMetricsBucketIndex();
 }
 
-void RecordProfileSessionDuration(const Profile* profile,
+void RecordProfileSessionDuration(Profile* profile,
                                   base::TimeDelta session_length) {
   if (!profile || session_length.InMinutes() <= 0) {
     return;
@@ -68,9 +70,13 @@ void RecordProfileSessionDuration(const Profile* profile,
                                 base::HistogramBase::kUmaTargetedHistogramFlag)
         ->AddCount(profile_bucket, session_length.InMinutes());
   }
+
+  ProfileMetricsServiceFactory::GetForProfile(profile)->UmaHistogramCustomTimes(
+      "Profile.SessionDuration", session_length, base::Milliseconds(1),
+      base::Hours(24), 50);
 }
 
-void RecordBrowserActivation(const Profile* profile) {
+void RecordBrowserActivation(Profile* profile) {
   CHECK(profile, base::NotFatalUntil::M162);
   int profile_bucket = GetMetricsBucketIndex(profile);
 
@@ -78,6 +84,9 @@ void RecordBrowserActivation(const Profile* profile) {
     UMA_HISTOGRAM_EXACT_LINEAR("Profile.BrowserActive.PerProfile",
                                profile_bucket, kMaxProfileBucket);
   }
+
+  ProfileMetricsServiceFactory::GetForProfile(profile)->UmaHistogramBoolean(
+      "Profile.BrowserActive", true);
 }
 
 void RecordProfileSwitch() {
@@ -87,7 +96,7 @@ void RecordProfileSwitch() {
                            profiles_count);
 }
 
-void RecordUserAction(const Profile* profile) {
+void RecordUserAction(Profile* profile) {
   if (!profile) {
     return;
   }
@@ -98,6 +107,9 @@ void RecordUserAction(const Profile* profile) {
     UMA_HISTOGRAM_EXACT_LINEAR("Profile.UserAction.PerProfile", profile_bucket,
                                kMaxProfileBucket);
   }
+
+  ProfileMetricsServiceFactory::GetForProfile(profile)->UmaHistogramBoolean(
+      "Profile.UserAction", true);
 }
 
 void RecordProfilesState() {

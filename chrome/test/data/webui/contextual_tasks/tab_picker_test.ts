@@ -89,6 +89,15 @@ suite('TabPickerTest', () => {
   const mockTabs: TabInfo[] = [tab0, tab1, tab2];
 
   suiteSetup(() => {
+    // tab-picker-app opens and closes its menu on hover, and cr-action-menu
+    // focuses items on mouseover. The bot's real mouse cursor can rest over
+    // the test window (seen on win-rel), so Blink dispatches trusted hover
+    // events whenever the trigger or menu is laid out under it. These race
+    // with the synthetic events the tests dispatch and flip the menu state.
+    // Disable hit testing for the page so the real cursor never targets it.
+    // dispatchEvent() and click() are not affected by `pointer-events`.
+    document.body.style.pointerEvents = 'none';
+
     (window as any).chrome = (window as any).chrome || {};
     (window as any).chrome.histograms = (window as any).chrome.histograms || {};
     originalRecordEnumerationValue =
@@ -120,6 +129,8 @@ suite('TabPickerTest', () => {
   });
 
   suiteTeardown(() => {
+    document.body.style.pointerEvents = '';
+
     if ((window as any).chrome && (window as any).chrome.histograms) {
       (window as any).chrome.histograms.recordEnumerationValue =
           originalRecordEnumerationValue;
@@ -763,9 +774,19 @@ suite('TabPickerTest', () => {
           assertFalse(!!recordedBooleans.find(
               m => m.metricName ===
                   'ContextualSearch.TabPicker.SelectedTabIsActive.ContextualTasksExtension'));
+
+          const tabSelectedAction = recordedBooleans.find(
+              m => m.metricName ===
+                  'ContextualTasks.TabPicker.UserAction.TabSelected');
+          assertTrue(!!tabSelectedAction);
+          assertTrue(tabSelectedAction.value);
+          assertFalse(!!recordedBooleans.find(
+              m => m.metricName ===
+                  'ContextualTasks.TabPicker.UserAction.TabDeselected'));
         }
 
-        // Deselecting a tab should not record either metric.
+        // Deselecting a tab should not record ContextualSearch.TabPicker.*,
+        // and should record ContextualTasks.TabPicker.UserAction.TabDeselected.
         recordedMetrics = [];
         recordedBooleans = [];
         items[0]!.click();
@@ -775,6 +796,14 @@ suite('TabPickerTest', () => {
             m => m.metricName.startsWith('ContextualSearch.TabPicker.')));
         assertFalse(!!recordedBooleans.find(
             m => m.metricName.startsWith('ContextualSearch.TabPicker.')));
+        const tabDeselectedAction = recordedBooleans.find(
+            m => m.metricName ===
+                'ContextualTasks.TabPicker.UserAction.TabDeselected');
+        assertTrue(!!tabDeselectedAction);
+        assertTrue(tabDeselectedAction.value);
+        assertFalse(!!recordedBooleans.find(
+            m => m.metricName ===
+                'ContextualTasks.TabPicker.UserAction.TabSelected'));
       });
 
   test(

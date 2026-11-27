@@ -232,8 +232,7 @@ void PossiblyRemoveAutofillWarnings(std::vector<Suggestion>& suggestions) {
     const SuggestionType type = suggestion.type;
     return type == SuggestionType::kInsecureContextPaymentDisabledMessage;
   };
-  if (std::ranges::find_if(suggestions, std::not_fn(is_warning)) ==
-      suggestions.end()) {
+  if (std::ranges::all_of(suggestions, is_warning)) {
     return;
   }
 
@@ -1897,6 +1896,8 @@ bool AutofillExternalDelegate::SuppressEntityAndOfferUndo(
   }
   const bool newly_suppressed = suppression_manager->SuppressEntity(entity);
   if (newly_suppressed) {
+    LogEntitySuppressedWithSavedEntityPresent(
+        entity.type(), manager_->client().GetEntityDataManager());
     manager_->client().ShowAutofillAiSuggestionRemovedNotification(
         entity, base::BindOnce(
                     &AutofillExternalDelegate::OnAutofillAiSuppressionUndone,

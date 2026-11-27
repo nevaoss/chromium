@@ -323,19 +323,6 @@ void GlicSelectionWidgetController::ShowSelectionOverlay() {
     return;
   }
 
-  overlay_closed_subscription_ =
-      controller->RegisterOverlayClosedCallback(base::BindOnce(
-          [](GlicSelectionWidgetController* self,
-             SelectionOverlayController::CloseReason reason) {
-            if (reason ==
-                    SelectionOverlayController::CloseReason::kCloseButton ||
-                reason ==
-                    SelectionOverlayController::CloseReason::kEscapeKeyPress) {
-              self->OnHide();
-            }
-          },
-          base::Unretained(this)));
-
   // When the side panel is open, let the web client start the capture session.
   if (glic_keyed_service_ &&
       GlicSidePanelCoordinator::IsShowing(tab_interface) &&
@@ -354,7 +341,8 @@ void GlicSelectionWidgetController::ShowSelectionOverlay() {
     controller->ShowWithSelection(
         delegate_->GetSelectedFrame(), *bounds,
         selection::InteractionOptions::New(
-            /*hide_handles=*/true, /*disable_multi_select=*/true));
+            /*hide_handles=*/true, /*disable_multi_select=*/true,
+            /*skip_intro_animation=*/true));
   } else {
     controller->Show(/*options=*/nullptr);
   }

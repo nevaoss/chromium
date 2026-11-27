@@ -258,7 +258,6 @@
 <translation id="3531741627422851418">QR кôд за преузимање Chromium прегледача на мобилним уређајима</translation>
 <translation id="354621070532799440">Подсетник: Најбоље Google безбедносне функције у вашем џепу</translation>
 <translation id="3561853857681580870">Да бисте делили екран, дозволите снимање екрана за Chromium у подешавањима система.</translation>
-<translation id="3588112919289558122">Побољшана заштита искључује оптимизацију JavaScript-а за сајтове које Chromium не препознаје</translation>
 <translation id="3597003331831379823">Покретање подешавања са пуним привилегијама није успело. <ph name="METAINSTALLER_ERROR" /></translation>
 <translation id="3600428265489994557">Пријавите се у Chromium</translation>
 <translation id="3639635944603682591">Подаци прегледања ове особе ће бити избрисани са овог уређаја. Да бисте вратили податке, пријавите се у Chromium као <ph name="USER_EMAIL" />.</translation>
@@ -297,7 +296,6 @@
 <translation id="3971865010372729242">Када уносите текст у траку за адресу или у оквир за претрагу, Chromium шаље оно што уносите у алатке за претрагу, вештачку интелигенцију и агента организације да бисте добијали предлоге.</translation>
 <translation id="3975724895399328945">О верзији Google Chrome for Testing</translation>
 <translation id="3997429360543082038">О Chromium ОС-у</translation>
-<translation id="4010059961270896984">Када одете на сајт, Chromium шаље маскирани део URL-а <ph name="BEGIN_LINK" />Google безбедном прегледању<ph name="END_LINK" /> преко сервера за приватност који крије IP адресу. Ако сајт ради нешто сумњиво, шаљу се и комплетни URL-ови и делови садржаја странице.</translation>
 <translation id="4016217212818346953">Останите безбедни уз Менаџер лозинки</translation>
 <translation id="4019629340646866719">Chromium ОС је омогућен захваљујући додатном <ph name="BEGIN_LINK_CROS_OSS" />софтверу са отвореним кодом<ph name="END_LINK_CROS_OSS" />, као што је <ph name="BEGIN_LINK_LINUX_OSS" />Linux окружење за програмирање<ph name="END_LINK_LINUX_OSS" />.</translation>
 <translation id="4022972681110646219">Преведи екран</translation>
@@ -375,6 +373,7 @@
 <translation id="4786083865378785874">Ако је Gemini у Chromium-у отворен, бочна табла остаје отворена када правите нове картице</translation>
 <translation id="479167709087336770">Користи исту проверу правописа као Google претрага. Текст који унесете у прегледач се шаље Google-у. То увек можете да промените у подешавањима.</translation>
 <translation id="4814736265800133385">Користите Chromium без налога</translation>
+<translation id="4839733921943823254">Закачи пречицу</translation>
 <translation id="4888717733111232871">Правило за долазни саобраћај за Chromium да би се омогућио mDNS саобраћај.</translation>
 <translation id="4893347770495441059">Поново покрени да би се &amp;Chromium ажурирао</translation>
 <translation id="4918086044614829423">Прихвати</translation>
@@ -458,7 +457,6 @@
 <translation id="5821520528363214608">Да бисте користили и чували Chromium податке на Google налогу, ажурирајте Chromium</translation>
 <translation id="5824893331272123205">Учитавање овог окна није успело. Пробајте поново</translation>
 <translation id="5862307444128926510">Добро дошли у Chromium</translation>
-<translation id="5867606647614813312">Укључује додатне функције ради пружања најснажније Chromium заштите</translation>
 <translation id="5871205389137001634">Кликните да бисте напустили претрагу слика</translation>
 <translation id="5883558403894052917">Chromium је открио малвер у овим ставкама:</translation>
 <translation id="5889361821821684993">Chromium редовно проверава да ли прегледач има најбезбеднија подешавања. Обавестићемо вас ако је потребно да нешто прегледате.</translation>
@@ -760,13 +758,13 @@ Chromium не може да врати подешавања.</translation>
 <translation id="8522801943730206384">Chromium може да проверава лозинке када их сачувате</translation>
 <translation id="8525579356836940628">Инсталација је прекинута</translation>
 <translation id="8545729292258443488">Носите своје лозинке, картице и друго са собом помоћу апликације Chromium на уређају <ph name="DEVICE_TYPE" /></translation>
-<translation id="8548787790260785208">Добијајте упозорења ако Chromium пронађе неку од лозинки у јавној повреди података</translation>
 <translation id="8555465886620020932">Грешка у услузи: <ph name="SERVICE_ERROR" />.</translation>
 <translation id="8556055872671007529">Неке Chromium функције и додаци имају пречице. Можете поново да их укључите.</translation>
 <translation id="8556420416730706394">Можете да закачите претрагу слика ради једноставног приступа; кликните на дугме Закачи у врху бочне табле</translation>
 <translation id="856656450041460113">Претражите листу језика</translation>
 <translation id="8576826849825683917">Више организација управља Chromium-ом</translation>
 <translation id="8586442755830160949">Ауторска права <ph name="YEAR" />. Аутори Chromium-а. Сва права задржана.</translation>
+<translation id="8590782867495422699">Поново отвори AI режим Google претраге</translation>
 <translation id="8619360774459241877">Покреће се Chromium...</translation>
 <translation id="8624541899164515475">Подешавања, отварају се на новој картици.</translation>
 <translation id="8648201657708811153">Google Chrome for Testing не може да се постави за подразумевани прегледач.</translation>
@@ -817,6 +815,7 @@ Chromium не може да врати подешавања.</translation>
 <translation id="9056398481763999048">Користите најбоље Google алатке вештачке интелигенције помоћу апликације Chromium на телефону</translation>
 <translation id="9057625473949801035">Пријавите се у Chromium да бисте приступали лозинкама и другом са уређаја <ph name="DEVICE" /></translation>
 <translation id="9062666675513499497">Пријавите се у Chromium када се пријавите у друге Google услуге</translation>
+<translation id="9074041031320636790">Браво! Сада можете лако да постављате питања док прегледате помоћу AI режима Google претраге</translation>
 <translation id="9078733879136747090">Chromium је аутоматски затворен</translation>
 <translation id="9089354809943900324">Chromium је застарео</translation>
 <translation id="9093206154853821181">{0,plural, =1{Поново ћемо покренути Chromium за један сат}one{Поново ћемо покренути Chromium за # сат}few{Поново ћемо покренути Chromium за # сата}other{Поново ћемо покренути Chromium за # сати}}</translation>

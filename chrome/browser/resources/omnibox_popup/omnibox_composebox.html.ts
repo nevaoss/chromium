@@ -83,10 +83,26 @@ export function getHtml(this: OmniboxComposeboxElement) {
             .submitEnabled="${this.submitEnabled}"
             .entrypointName="${this.entrypointName}"
             .cancelButtonTitle="${this.computeCancelButtonTitle()}"
+            .hideCancel="${this.isAimButtonShown_}"
+            .inlineActionButtons="${this.isAimButtonShown_}"
             @input-input="${this.onInputInput}"
             @input-focusin="${this.onInputFocusin}"
             @cancel-click="${this.onCancelClick}"
             @clear-smart-compose="${this.onClearSmartCompose}">
+          ${this.isAimButtonShown_ ? html`
+            <cr-composebox-aim-button slot="action-buttons"
+                .mode="${this.getAimButtonMode()}"
+                .showExitIcon="${this.showAimButtonExitIcon_}"
+                .disabled="${this.isAimButtonDisabled()}"
+                .energyEffectAnimationEnabled="${
+                    this.energyEffectAnimationEnabled_}"
+                .label="${this.i18n('searchboxComposeButtonText')}"
+                .exitTitle="${this.i18n('composeboxAimButtonExitTitle')}"
+                .sendTitle="${this.i18n('composeboxAimButtonSendTitle')}"
+                @aim-button-click="${this.onAimButtonClick}"
+                @focusin="${this.onAimButtonFocusin}">
+            </cr-composebox-aim-button>
+          ` : ''}
         </cr-composebox-input>
         <div id="context" part="context-entrypoint">
           <div id="carouselContainer" part="carousel-container">
@@ -167,7 +183,8 @@ export function getHtml(this: OmniboxComposeboxElement) {
                 title="${this.i18n('voiceSearchButtonLabel')}">
             </cr-icon-button>
           ` : ''}
-          ${this.shouldShowSubmitButton() &&
+          ${!this.isAimButtonShown_ &&
+                this.shouldShowSubmitButton() &&
                 this.searchboxLayoutMode === 'TallBottomContext' ? html`
               <cr-composebox-submit
                 exportparts="action-icon, submit, submit-icon, submit-overlay"
@@ -180,6 +197,14 @@ export function getHtml(this: OmniboxComposeboxElement) {
           ` : ''}
         </div>
       </div>
+      ${this.shouldShowSuggestionActivityLink() ? html`
+        <div id="suggestionActivity">
+          <localized-link
+            .localizedString="${this.i18nAdvanced('suggestionActivityLink')}"
+            @link-clicked="${this.onLinkClicked}">
+          </localized-link>
+        </div>
+      ` : ''}
     </div>
     ${this.shouldShowVoiceSearch() ? html`
       <cr-composebox-voice-search id="voiceSearch"
@@ -198,14 +223,6 @@ export function getHtml(this: OmniboxComposeboxElement) {
           exportparts="voice-close-button, voice-details-link, voice-stop-button, voice-submit-button">
       </cr-composebox-voice-search>
     ` : ''}
-    ${this.shouldShowSuggestionActivityLink() ? html`
-      <div id="suggestionActivity">
-        <localized-link
-          .localizedString="${this.i18nAdvanced('suggestionActivityLink')}"
-          @link-clicked="${this.onLinkClicked}">
-        </localized-link>
-      </div>
-    `: ''}
 <!--_html_template_end_-->`;
   // clang-format on
 }

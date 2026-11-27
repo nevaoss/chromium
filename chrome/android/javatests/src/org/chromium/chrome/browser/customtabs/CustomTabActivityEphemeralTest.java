@@ -431,12 +431,7 @@ public class CustomTabActivityEphemeralTest {
                     assertFalse(
                             new PopupCreatorImpl()
                                     .createNewPopupFromWebContents(
-                                            activity,
-                                            ephemeralProfile,
-                                            webContents,
-                                            null,
-                                            null,
-                                            null));
+                                            activity, ephemeralProfile, webContents, null, null));
                     assertTrue(webContents.isDestroyed());
                 });
 
@@ -448,6 +443,8 @@ public class CustomTabActivityEphemeralTest {
     public void testActivityRecreation() {
         CustomTabActivity activity = launchEphemeralCustomTabActivity();
         int initialTabId = activity.getActivityTab().getId();
+        Profile initialProfile =
+                ThreadUtils.runOnUiThreadBlocking(() -> activity.getActivityTab().getProfile());
 
         mCustomTabActivityTestRule.recreateActivity();
         mCustomTabActivityTestRule.waitForActivityCompletelyLoaded();
@@ -468,6 +465,7 @@ public class CustomTabActivityEphemeralTest {
         Profile profile =
                 ThreadUtils.runOnUiThreadBlocking(
                         () -> recreatedActivity.getActivityTab().getProfile());
+        assertEquals(initialProfile, profile);
         assertTrue(profile.isOffTheRecord());
         assertFalse(profile.isIncognitoBranded());
         assertFalse(profile.isPrimaryOtrProfile());
