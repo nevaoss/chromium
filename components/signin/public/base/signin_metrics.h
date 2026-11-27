@@ -674,7 +674,20 @@ enum class SyncButtonsType : int {
 enum class SigninFunnelEvent {
   kPromoShownWithAccount = 0,
   kPromoShownNoAccount = 1,
-  kMaxValue = kPromoShownNoAccount,
+  kChooseOtherAccountClicked = 2,
+  kSigninButtonClicked = 3,
+  kSigninDeclinedButtonClicked = 4,
+  // The continue button started the add account flow, as there was no account
+  // on the device.
+  kAddAccountClicked = 5,
+  // "Add account to device" was clicked in the account picker.
+  kAccountPickerAddAccountClicked = 6,
+  kAccountPickerShown = 7,
+  kNonDefaultAccountSelected = 8,
+  kDefaultAccountSelected = 9,
+  kAccountPickerDismissed = 10,
+  kAccountAdded = 11,
+  kMaxValue = kAccountAdded,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/signin/enums.xml:SigninFunnelEvent)
 

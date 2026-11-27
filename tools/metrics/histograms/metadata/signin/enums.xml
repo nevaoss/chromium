@@ -867,6 +867,9 @@ chromium-metrics-reviews@google.com.
   <int value="0" label="Account not on device"/>
   <int value="1" label="Account in persistent error state"/>
   <int value="2" label="Account recently added"/>
+  <int value="3"
+      label="Target account on device, primary account in persistent error
+             state"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/signin/chrome_signin_helper.h:MirrorHeaderEvent) -->
@@ -1361,6 +1364,16 @@ chromium-metrics-reviews@google.com.
 <enum name="SigninFunnelEvent">
   <int value="0" label="PromoShownWithAccount"/>
   <int value="1" label="PromoShownNoAccount"/>
+  <int value="2" label="ChooseOtherAccountClicked"/>
+  <int value="3" label="SigninButtonClicked"/>
+  <int value="4" label="SigninDeclinedButtonClicked"/>
+  <int value="5" label="AddAccountClicked"/>
+  <int value="6" label="AccountPickerAddAccountClicked"/>
+  <int value="7" label="AccountPickerShown"/>
+  <int value="8" label="NonDefaultAccountSelected"/>
+  <int value="9" label="DefaultAccountSelected"/>
+  <int value="10" label="AccountPickerDismissed"/>
+  <int value="11" label="AccountAdded"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/signin/public/base/signin_metrics.h:SigninFunnelEvent) -->

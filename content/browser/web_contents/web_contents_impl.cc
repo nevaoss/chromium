@@ -1197,6 +1197,28 @@ void WebContentsImpl::WebContentsObserverList::RemoveObserver(
   observers_.RemoveObserver(observer);
 }
 
+void WebContentsImpl::WebContentsObserverList::
+    NotifyObserversUntilNavigationDeleted(
+        NavigationObserverMethod observer_method,
+        NavigationHandle* navigation_handle) {
+  TRACE_EVENT0(
+      TRACE_DISABLED_BY_DEFAULT("content.verbose"),
+      "WebContentsObserverList::NotifyObserversUntilNavigationDeleted");
+  base::AutoReset<bool> scope(&is_notifying_observers_, true);
+  base::WeakPtr<NavigationRequest> weak_navigation_request =
+      NavigationRequest::From(navigation_handle)->GetWeakPtr();
+  for (WebContentsObserver& observer : observers_) {
+    TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("content.verbose"),
+                 "Dispatching WebContentsObserver callback");
+    (observer.*observer_method)(navigation_handle);
+    if (!weak_navigation_request) {
+      // An observer deleted the NavigationRequest. Don't notify the remaining
+      // observers, as they would get a dangling NavigationHandle.
+      return;
+    }
+  }
+}
+
 // WebContentsImpl -------------------------------------------------------------
 
 namespace {
@@ -2264,6 +2286,8 @@ void WebContentsImpl::SetPageBaseBackgroundColor(std::optional<SkColor> color) {
 }
 
 void WebContentsImpl::SetColorProviderSource(ui::ColorProviderSource* source) {
+  base::AutoReset<bool> setting_source(&is_setting_color_provider_source_,
+                                       true);
   ColorProviderSourceObserver::Observe(source);
 }
 
@@ -5905,6 +5929,14 @@ FrameTree* WebContentsImpl::CreateNewWindow(
         new_contents_impl->GetPrimaryMainFrame()->browsing_context_state());
   }
 
+  // Creating and showing the new window's view, and AddNewContents(), can run
+  // a nested message loop (e.g. UpdateLegacyWin() on Windows) in which the
+  // opener's tab or frame is closed. If so, stop creating the window; the
+  // caller already handles the opener frame being gone. See
+  // crbug.com/574739217.
+  base::WeakPtr<WebContentsImpl> weak_this = weak_factory_.GetWeakPtr();
+  base::WeakPtr<RenderFrameHostImpl> weak_opener = opener->GetWeakPtr();
+
   // Save the window for later if we're not suppressing the opener (since it
   // will be shown immediately).
   if (!params.opener_suppressed) {
@@ -5915,11 +5947,17 @@ FrameTree* WebContentsImpl::CreateNewWindow(
       // newly created object and give it one of its own member variables.
       RenderWidgetHostViewBase* widget_view = new_view->CreateViewForWidget(
           new_contents_impl->GetRenderViewHost()->GetWidget());
+      if (!weak_this || !weak_opener) {
+        return nullptr;
+      }
       view_->SetOverscrollControllerEnabled(CanOverscrollContent());
       if (!renderer_started_hidden) {
         // RenderWidgets for frames always initialize as hidden. If the renderer
         // created this window as visible, then we show it here.
         widget_view->ShowWithVisibility(PageVisibilityState::kVisible);
+        if (!weak_this || !weak_opener) {
+          return nullptr;
+        }
       }
     }
     // Save the created window associated with the route so we can show it
@@ -5960,14 +5998,13 @@ FrameTree* WebContentsImpl::CreateNewWindow(
   bool was_blocked = false;
   base::WeakPtr<WebContentsImpl> weak_new_contents =
       new_contents_impl->weak_factory_.GetWeakPtr();
-  base::WeakPtr<WebContentsImpl> weak_this = weak_factory_.GetWeakPtr();
   WebContentsImpl* contents_to_load = new_contents_impl;
   if (delegate_) {
     WebContents* web_contents_navigated = delegate_->AddNewContents(
         this, std::move(new_contents), params.target_url, params.disposition,
         *params.features, has_user_gesture, &was_blocked);
 
-    if (!weak_this) {
+    if (!weak_this || !weak_opener) {
       // `this` may be deleted after AddNewContents() due to a nested message
       // loop (e.g. the window hosting the opener is closed). See
       // crbug.com/527676561.
@@ -8093,8 +8130,10 @@ void WebContentsImpl::DidStartNavigation(NavigationHandle* navigation_handle) {
   const GURL url = navigation_handle->GetURL();
 
   base::ElapsedTimer duration;
-  observers_.NotifyObservers(&WebContentsObserver::DidStartNavigation,
-                             navigation_handle);
+  // On Android, a WebView app can delete the NavigationRequest here, e.g. by
+  // calling stopLoading() from onNavigationStarted().
+  observers_.NotifyObserversUntilNavigationDeleted(
+      &WebContentsObserver::DidStartNavigation, navigation_handle);
   // WARNING: DO NOT use |navigation_handle| after this point. An observer may
   // have destroyed the NavigationRequest, rendering the pointer invalid. See
   // crbug.com/504574017. We set `navigation_handle` to nullptr here to prevent
@@ -8145,8 +8184,10 @@ void WebContentsImpl::DidRedirectNavigation(
 
   {
     SCOPED_UMA_HISTOGRAM_TIMER("WebContentsObserver.DidRedirectNavigation");
-    observers_.NotifyObservers(&WebContentsObserver::DidRedirectNavigation,
-                               navigation_handle);
+    // On Android, a WebView app can delete the NavigationRequest here, e.g. by
+    // calling stopLoading() from onNavigationRedirected().
+    observers_.NotifyObserversUntilNavigationDeleted(
+        &WebContentsObserver::DidRedirectNavigation, navigation_handle);
   }
   // WARNING: DO NOT use |navigation_handle| after this point. An observer may
   // have destroyed the NavigationRequest, rendering the pointer invalid. See
@@ -8191,8 +8232,12 @@ void WebContentsImpl::ReadyToCommitNavigation(
     }
   }
 
-  observers_.NotifyObservers(&WebContentsObserver::ReadyToCommitNavigation,
-                             navigation_handle);
+  // Observers can also delete the NavigationRequest at this point on Android
+  // (which lacks `is_safe_to_delete_` protections), so use
+  // NotifyObserversUntilNavigationDeleted() instead of NotifyObservers() here
+  // as well.
+  observers_.NotifyObserversUntilNavigationDeleted(
+      &WebContentsObserver::ReadyToCommitNavigation, navigation_handle);
   // WARNING: DO NOT use |navigation_handle| after this point. An observer may
   // have destroyed the NavigationRequest, rendering the pointer invalid. See
   // crbug.com/504574017. We set `navigation_handle` to nullptr here to prevent
@@ -8253,6 +8298,10 @@ void WebContentsImpl::DidFinishNavigation(NavigationHandle* navigation_handle) {
 
   {
     SCOPED_UMA_HISTOGRAM_TIMER("WebContentsObserver.DidFinishNavigation");
+    // All observers need this to clean up. Unlike in DidStartNavigation(), an
+    // observer can't delete the NavigationRequest here (even from
+    // onNavigationCompleted() in Android WebView apps), since this
+    // NavigationRequest's owner has already released it.
     observers_.NotifyObservers(&WebContentsObserver::DidFinishNavigation,
                                navigation_handle);
   }
@@ -12870,14 +12919,14 @@ void WebContentsImpl::SetVisibilityForChildViews(bool visible) {
 }
 
 void WebContentsImpl::ScheduleColorRelatedStateChanges() {
-  if (color_related_state_change_scheduled_) {
+  if (!scheduled_color_related_state_change_.IsCancelled()) {
     return;
   }
-  color_related_state_change_scheduled_ = true;
-  GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE,
+  scheduled_color_related_state_change_.Reset(
       base::BindOnce(&WebContentsImpl::HandleColorRelatedStateChanges,
                      weak_factory_.GetWeakPtr()));
+  GetUIThreadTaskRunner({})->PostTask(
+      FROM_HERE, scheduled_color_related_state_change_.callback());
 }
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
@@ -12948,7 +12997,7 @@ void WebContentsImpl::OnDidDropAllPeerConnections(
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 void WebContentsImpl::HandleColorRelatedStateChanges() {
-  color_related_state_change_scheduled_ = false;
+  scheduled_color_related_state_change_.Cancel();
 
   // This can be reached re-entrantly during ~WebContentsImpl, after the
   // primary main frame has begun being destroyed. Bail out before
@@ -13041,7 +13090,8 @@ void WebContentsImpl::OnColorProviderChanged() {
 
   observers_.NotifyObservers(&WebContentsObserver::OnColorProviderChanged);
 
-  if (base::FeatureList::IsEnabled(features::kThemeChangeOptimization)) {
+  if (!is_setting_color_provider_source_ &&
+      base::FeatureList::IsEnabled(features::kThemeChangeOptimization)) {
     ScheduleColorRelatedStateChanges();
   } else {
     HandleColorRelatedStateChanges();

@@ -3266,57 +3266,56 @@ TEST_F(TabStripModelTest, RotateFocusedGroup) {
   tabstrip()->RotateFocusedGroup(/*forward=*/false);
   EXPECT_EQ(std::nullopt, tabstrip()->GetFocusedGroup());
 
-  // Case 2: If there is one tab group, rotation toggles between unfocused and
-  // the group.
+  // Case 2: If there is a tab group but not in focus mode, rotation is a no-op.
   tab_groups::TabGroupId group0 = tabstrip()->AddToNewGroup({0});
   EXPECT_EQ(std::nullopt, tabstrip()->GetFocusedGroup());
-
-  // Rotating forward cycles from unfocused to group0, then back to unfocused.
-  tabstrip()->RotateFocusedGroup(/*forward=*/true);
-  EXPECT_EQ(group0, tabstrip()->GetFocusedGroup());
   tabstrip()->RotateFocusedGroup(/*forward=*/true);
   EXPECT_EQ(std::nullopt, tabstrip()->GetFocusedGroup());
-
-  // Rotating backward cycles from unfocused to group0, then back to unfocused.
-  tabstrip()->RotateFocusedGroup(/*forward=*/false);
-  EXPECT_EQ(group0, tabstrip()->GetFocusedGroup());
   tabstrip()->RotateFocusedGroup(/*forward=*/false);
   EXPECT_EQ(std::nullopt, tabstrip()->GetFocusedGroup());
 
-  // Case 3: When multiple groups exist, rotation wraps around in a carousel.
+  // Case 3: If there is only one tab group and it is focused, rotation keeps
+  // the group focused and does not unfocus.
+  tabstrip()->EnterFocusMode(group0);
+  EXPECT_EQ(group0, tabstrip()->GetFocusedGroup());
+  tabstrip()->RotateFocusedGroup(/*forward=*/true);
+  EXPECT_EQ(group0, tabstrip()->GetFocusedGroup());
+  tabstrip()->RotateFocusedGroup(/*forward=*/false);
+  EXPECT_EQ(group0, tabstrip()->GetFocusedGroup());
+
+  // Case 4: When multiple groups exist, rotation cycles through open groups and
+  // wraps around without unfocusing.
   PrepareTabs(tabstrip(), 3);
   tab_groups::TabGroupId group1 = tabstrip()->AddToNewGroup({2});
   tab_groups::TabGroupId group2 = tabstrip()->AddToNewGroup({4});
 
-  // Rotating forward transitions through all groups in visual order, returns
-  // to unfocused, and wraps around.
-  EXPECT_EQ(std::nullopt, tabstrip()->GetFocusedGroup());
-  tabstrip()->RotateFocusedGroup(/*forward=*/true);
-  EXPECT_EQ(group0, tabstrip()->GetFocusedGroup());
-  tabstrip()->RotateFocusedGroup(/*forward=*/true);
-  EXPECT_EQ(group1, tabstrip()->GetFocusedGroup());
-  tabstrip()->RotateFocusedGroup(/*forward=*/true);
-  EXPECT_EQ(group2, tabstrip()->GetFocusedGroup());
-  tabstrip()->RotateFocusedGroup(/*forward=*/true);
-  EXPECT_EQ(std::nullopt, tabstrip()->GetFocusedGroup());
-  tabstrip()->RotateFocusedGroup(/*forward=*/true);
-  EXPECT_EQ(group0, tabstrip()->GetFocusedGroup());
-
-  // Reset to the unfocused state.
+  // While unfocused, rotating forward or backward is still a no-op.
   tabstrip()->ExitFocusMode();
+  EXPECT_EQ(std::nullopt, tabstrip()->GetFocusedGroup());
+  tabstrip()->RotateFocusedGroup(/*forward=*/true);
+  EXPECT_EQ(std::nullopt, tabstrip()->GetFocusedGroup());
+  tabstrip()->RotateFocusedGroup(/*forward=*/false);
+  EXPECT_EQ(std::nullopt, tabstrip()->GetFocusedGroup());
 
-  // Rotating backward transitions through all groups in reverse visual order,
-  // returns to unfocused, and wraps around.
+  // Enter focus mode on group0. Rotating forward transitions through all groups
+  // in visual order and wraps around to group0 without unfocusing.
+  tabstrip()->EnterFocusMode(group0);
+  EXPECT_EQ(group0, tabstrip()->GetFocusedGroup());
+  tabstrip()->RotateFocusedGroup(/*forward=*/true);
+  EXPECT_EQ(group1, tabstrip()->GetFocusedGroup());
+  tabstrip()->RotateFocusedGroup(/*forward=*/true);
+  EXPECT_EQ(group2, tabstrip()->GetFocusedGroup());
+  tabstrip()->RotateFocusedGroup(/*forward=*/true);
+  EXPECT_EQ(group0, tabstrip()->GetFocusedGroup());
+
+  // Rotating backward transitions through all groups in reverse visual order
+  // and wraps around without unfocusing.
   tabstrip()->RotateFocusedGroup(/*forward=*/false);
   EXPECT_EQ(group2, tabstrip()->GetFocusedGroup());
   tabstrip()->RotateFocusedGroup(/*forward=*/false);
   EXPECT_EQ(group1, tabstrip()->GetFocusedGroup());
   tabstrip()->RotateFocusedGroup(/*forward=*/false);
   EXPECT_EQ(group0, tabstrip()->GetFocusedGroup());
-  tabstrip()->RotateFocusedGroup(/*forward=*/false);
-  EXPECT_EQ(std::nullopt, tabstrip()->GetFocusedGroup());
-  tabstrip()->RotateFocusedGroup(/*forward=*/false);
-  EXPECT_EQ(group2, tabstrip()->GetFocusedGroup());
 }
 
 TEST_F(TabStripModelTest, RotateFocusedGroup_EphemeralGroup) {
@@ -7727,19 +7726,19 @@ TEST_F(TabStripModelTest, ToggleSiteMuted) {
   // Validate if the mute site menu item shows up and the site is unmuted
   EXPECT_TRUE(tabstrip()->IsContextMenuCommandEnabled(
       0, TabStripModel::CommandToggleSiteMuted));
-  EXPECT_FALSE(IsSiteMuted(*tabstrip(), 0));
+  EXPECT_FALSE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
 
   // Validate if toggling the state successfully mutes the site
   tabstrip()->ExecuteContextMenuCommand(0,
                                         TabStripModel::CommandToggleSiteMuted);
-  EXPECT_TRUE(IsSiteMuted(*tabstrip(), 0));
+  EXPECT_TRUE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
   EXPECT_TRUE(IsSiteInContentSettingExceptionList(settings, url,
                                                   ContentSettingsType::SOUND));
 
   // Toggling the state again to successfully unmute the site
   tabstrip()->ExecuteContextMenuCommand(0,
                                         TabStripModel::CommandToggleSiteMuted);
-  EXPECT_FALSE(IsSiteMuted(*tabstrip(), 0));
+  EXPECT_FALSE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
   EXPECT_FALSE(IsSiteInContentSettingExceptionList(settings, url,
                                                    ContentSettingsType::SOUND));
 
@@ -7762,7 +7761,7 @@ TEST_F(TabStripModelTest, ToggleSiteMutedWithLessSpecificRule) {
   // Validate if the mute site menu item shows up and the site is unmuted
   EXPECT_TRUE(tabstrip()->IsContextMenuCommandEnabled(
       0, TabStripModel::CommandToggleSiteMuted));
-  EXPECT_FALSE(IsSiteMuted(*tabstrip(), 0));
+  EXPECT_FALSE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
 
   // Add a wildcard to mute all HTTPS sites as a custom behavior
   ContentSettingsPattern primary_pattern =
@@ -7772,24 +7771,24 @@ TEST_F(TabStripModelTest, ToggleSiteMutedWithLessSpecificRule) {
   settings->SetContentSettingCustomScope(primary_pattern, secondary_pattern,
                                          ContentSettingsType::SOUND,
                                          CONTENT_SETTING_BLOCK);
-  EXPECT_TRUE(IsSiteMuted(*tabstrip(), 0));
+  EXPECT_TRUE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
 
   // Validate we are able to unmute the site (with the wildcard custom behavior)
   tabstrip()->ExecuteContextMenuCommand(0,
                                         TabStripModel::CommandToggleSiteMuted);
-  EXPECT_FALSE(IsSiteMuted(*tabstrip(), 0));
+  EXPECT_FALSE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
   EXPECT_TRUE(IsSiteInContentSettingExceptionList(settings, url,
                                                   ContentSettingsType::SOUND));
 
   // Validate we are able to mute the site
   tabstrip()->ExecuteContextMenuCommand(0,
                                         TabStripModel::CommandToggleSiteMuted);
-  EXPECT_TRUE(IsSiteMuted(*tabstrip(), 0));
+  EXPECT_TRUE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
 
   // Validate we are able to unmute the site
   tabstrip()->ExecuteContextMenuCommand(0,
                                         TabStripModel::CommandToggleSiteMuted);
-  EXPECT_FALSE(IsSiteMuted(*tabstrip(), 0));
+  EXPECT_FALSE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
   EXPECT_TRUE(IsSiteInContentSettingExceptionList(settings, url,
                                                   ContentSettingsType::SOUND));
 
@@ -7812,7 +7811,7 @@ TEST_F(TabStripModelTest, ToggleSiteMutedWithOtherDisjointRule) {
   // Validate if the mute site menu item shows up and the site is unmuted
   EXPECT_TRUE(tabstrip()->IsContextMenuCommandEnabled(
       0, TabStripModel::CommandToggleSiteMuted));
-  EXPECT_FALSE(IsSiteMuted(*tabstrip(), 0));
+  EXPECT_FALSE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
 
   // Add a wildcard to mute all HTTPS sites as a custom behavior
   ContentSettingsPattern primary_pattern =
@@ -7822,19 +7821,19 @@ TEST_F(TabStripModelTest, ToggleSiteMutedWithOtherDisjointRule) {
   settings->SetContentSettingCustomScope(primary_pattern, secondary_pattern,
                                          ContentSettingsType::SOUND,
                                          CONTENT_SETTING_BLOCK);
-  EXPECT_FALSE(IsSiteMuted(*tabstrip(), 0));
+  EXPECT_FALSE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
 
   // Validate we are able to mute the site
   tabstrip()->ExecuteContextMenuCommand(0,
                                         TabStripModel::CommandToggleSiteMuted);
-  EXPECT_TRUE(IsSiteMuted(*tabstrip(), 0));
+  EXPECT_TRUE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
   EXPECT_TRUE(IsSiteInContentSettingExceptionList(settings, url,
                                                   ContentSettingsType::SOUND));
 
   // Validate we are able to unmute the site
   tabstrip()->ExecuteContextMenuCommand(0,
                                         TabStripModel::CommandToggleSiteMuted);
-  EXPECT_FALSE(IsSiteMuted(*tabstrip(), 0));
+  EXPECT_FALSE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
   EXPECT_FALSE(IsSiteInContentSettingExceptionList(settings, url,
                                                    ContentSettingsType::SOUND));
 
@@ -7860,12 +7859,12 @@ TEST_F(TabStripModelTest, ToggleSiteMutedWithDifferentDefault) {
   // Validate if the mute site menu item shows up and the site is muted
   EXPECT_TRUE(tabstrip()->IsContextMenuCommandEnabled(
       0, TabStripModel::CommandToggleSiteMuted));
-  EXPECT_TRUE(IsSiteMuted(*tabstrip(), 0));
+  EXPECT_TRUE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
 
   // Validate if toggling the state successfully unmutes the site
   tabstrip()->ExecuteContextMenuCommand(0,
                                         TabStripModel::CommandToggleSiteMuted);
-  EXPECT_FALSE(IsSiteMuted(*tabstrip(), 0));
+  EXPECT_FALSE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
   EXPECT_TRUE(IsSiteInContentSettingExceptionList(settings, url,
                                                   ContentSettingsType::SOUND));
 
@@ -7880,7 +7879,7 @@ TEST_F(TabStripModelTest, ToggleMuteUnmuteMultipleSites) {
   tabstrip()->AddWebContents(std::move(new_tab_contents1), -1,
                              ui::PAGE_TRANSITION_TYPED,
                              AddTabTypes::ADD_ACTIVE);
-  EXPECT_FALSE(IsSiteMuted(*tabstrip(), 0));
+  EXPECT_FALSE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
 
   GURL url2("https://example2.com/");
   std::unique_ptr<WebContents> new_tab_contents2 = CreateWebContents();
@@ -7889,7 +7888,7 @@ TEST_F(TabStripModelTest, ToggleMuteUnmuteMultipleSites) {
   tabstrip()->AddWebContents(std::move(new_tab_contents2), -1,
                              ui::PAGE_TRANSITION_TYPED,
                              AddTabTypes::ADD_ACTIVE);
-  EXPECT_FALSE(IsSiteMuted(*tabstrip(), 1));
+  EXPECT_FALSE(IsSiteMuted(tabstrip()->GetTabAtIndex(1)->GetHandle()));
 
   tabstrip()->SelectTabAt(0);
   EXPECT_TRUE(
@@ -7897,13 +7896,17 @@ TEST_F(TabStripModelTest, ToggleMuteUnmuteMultipleSites) {
 
   tabstrip()->ExecuteContextMenuCommand(0,
                                         TabStripModel::CommandToggleSiteMuted);
-  EXPECT_TRUE(IsSiteMuted(*tabstrip(), 0));
-  EXPECT_TRUE(IsSiteMuted(*tabstrip(), 1));
+  EXPECT_TRUE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
+  EXPECT_TRUE(IsSiteMuted(tabstrip()->GetTabAtIndex(1)->GetHandle()));
 
   tabstrip()->ExecuteContextMenuCommand(0,
                                         TabStripModel::CommandToggleSiteMuted);
-  EXPECT_FALSE(IsSiteMuted(*tabstrip(), 0));
-  EXPECT_FALSE(IsSiteMuted(*tabstrip(), 1));
+  EXPECT_FALSE(IsSiteMuted(tabstrip()->GetTabAtIndex(0)->GetHandle()));
+  EXPECT_FALSE(IsSiteMuted(tabstrip()->GetTabAtIndex(1)->GetHandle()));
+
+  // Also test null handles with IsSiteMuted and WillContextMenuMuteSites.
+  EXPECT_FALSE(IsSiteMuted(tabs::TabHandle::Null()));
+  EXPECT_FALSE(tabstrip()->WillContextMenuMuteSites(tabs::TabHandle::Null()));
 
   tabstrip()->CloseAllTabs();
 }

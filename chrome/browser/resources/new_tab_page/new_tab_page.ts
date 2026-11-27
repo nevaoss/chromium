@@ -11,6 +11,7 @@
 
 export {GlifAnimationState} from '//resources/cr_components/composebox/common.js';
 export {CustomizeButtonsElement} from 'chrome://new-tab-page/shared/customize_buttons/customize_buttons.js';
+export {COLOR_PROVIDER_CHANGED, ColorChangeUpdater} from 'chrome://resources/cr_components/color_change_listener/colors_css_updater.js';
 export {PlaceholderTextCycler} from 'chrome://resources/cr_components/searchbox/placeholder_text_cycler.js';
 export {SearchboxBrowserProxy} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 export {SearchboxIconElement} from 'chrome://resources/cr_components/searchbox/searchbox_icon.js';
@@ -18,7 +19,7 @@ export {SearchboxMatchElement} from 'chrome://resources/cr_components/searchbox/
 export type {CrA11yAnnouncerMessagesSentEvent} from 'chrome://resources/cr_elements/cr_a11y_announcer/cr_a11y_announcer.js';
 export {CrAutoImgElement} from 'chrome://resources/cr_elements/cr_auto_img/cr_auto_img.js';
 export type {CrIconElement} from 'chrome://resources/cr_elements/cr_icon/cr_icon.js';
-export {BrowserCommandProxy} from 'chrome://resources/js/browser_command/browser_command_proxy.js';
+export {browserProxyFactory as browserCommandProxyFactory} from 'chrome://resources/js/browser_command.mojom-webui.js';
 export {BrowserProxyImpl} from 'chrome://resources/js/metrics_reporter/browser_proxy.js';
 export {MetricsReporterImpl} from 'chrome://resources/js/metrics_reporter/metrics_reporter.js';
 export {getTrustedHTML} from 'chrome://resources/js/static_types.js';

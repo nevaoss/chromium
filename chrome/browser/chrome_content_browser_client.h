@@ -57,6 +57,7 @@
 #include "third_party/blink/public/mojom/on_device_translation/translation_manager.mojom-forward.h"
 #include "third_party/blink/public/mojom/worker/shared_worker_info.mojom.h"
 #include "ui/base/clipboard/clipboard_metadata.h"
+#include "ui/base/mojom/window_open_disposition.mojom-forward.h"
 
 class ChromeContentBrowserClientParts;
 #if !BUILDFLAG(IS_ANDROID)
@@ -76,6 +77,7 @@ class WindowFeatures;
 namespace web_pref {
 struct WebPreferences;
 }  // namespace web_pref
+class Manifest;
 class StorageKey;
 class URLLoaderThrottle;
 }  // namespace blink
@@ -516,7 +518,7 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
                        const GURL& target_url,
                        const content::Referrer& referrer,
                        const std::string& frame_name,
-                       WindowOpenDisposition disposition,
+                       ui::mojom::WindowOpenDisposition disposition,
                        const blink::mojom::WindowFeatures& features,
                        bool user_gesture,
                        bool opener_suppressed,
@@ -533,8 +535,9 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
 #if BUILDFLAG(IS_CHROMEOS)
   content::TtsControllerDelegate* GetTtsControllerDelegate() override;
 #endif
-  void MaybeOverrideManifest(content::RenderFrameHost* render_frame_host,
-                             blink::mojom::ManifestPtr& manifest) override;
+  std::optional<blink::Manifest> MaybeOverrideManifest(
+      content::RenderFrameHost* render_frame_host,
+      const blink::Manifest& manifest) override;
   content::TtsPlatform* GetTtsPlatform() override;
   void OverrideWebPreferences(content::WebContents* web_contents,
                               content::SiteInstance& main_frame_site,
@@ -784,6 +787,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       cert_verifier::mojom::CertVerifierCreationParams*
           cert_verifier_creation_params) override;
   std::vector<base::FilePath> GetNetworkContextsParentDirectory() override;
+  std::optional<base::FilePath> GetNetworkContextsDataDirectory() override;
+  std::optional<base::FilePath> GetNetworkContextsCacheDirectory() override;
   base::DictValue GetNetLogConstants() override;
   bool AllowRenderingMhtmlOverHttp(
       content::NavigationUIData* navigation_ui_data) override;
@@ -949,6 +954,9 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   std::optional<GURL> MaybeOverrideSourceURLForClipboardAccess(
       content::RenderFrameHost* render_frame_host,
       const GURL& original_url) override;
+
+  content::BrowserContext* GetUserBrowserContext(
+      content::RenderFrameHost& render_frame_host) override;
 
   void IsClipboardPasteAllowedByPolicy(
       const content::ClipboardEndpoint& source,
@@ -1438,8 +1446,11 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   std::unique_ptr<vr::ChromeXrIntegrationClient> xr_integration_client_;
 #endif
 
-  // Returned from GetNetworkContextsParentDirectory() but created on the UI
-  // thread because it needs to access the Local State prefs.
+  // Returned from GetNetworkContextsParentDirectory(),
+  // GetNetworkContextsDataDirectory(), and GetNetworkContextsCacheDirectory()
+  // but created on the UI thread because it needs to access Local State prefs.
+  base::FilePath network_contexts_data_directory_;
+  base::FilePath network_contexts_cache_directory_;
   std::vector<base::FilePath> network_contexts_parent_directory_;
 
   // Handles web-browser implementation of the http auth feature.

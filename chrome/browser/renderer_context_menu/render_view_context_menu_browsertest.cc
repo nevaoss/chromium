@@ -98,6 +98,7 @@
 #include "chrome/browser/ui/toasts/toast_features.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/web_applications/test/web_app_browsertest_util.h"
+#include "chrome/browser/ui/webui/context_hub/context_hub.mojom-features.h"
 #include "chrome/browser/web_applications/os_integration/os_integration_manager.h"
 #include "chrome/browser/web_applications/test/os_integration_test_override_impl.h"
 #include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
@@ -207,6 +208,7 @@
 #include "url/gurl.h"
 
 #if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/ui/views/context_hub/memory_banks_palette_bubble_controller.h"
 #include "chrome/browser/ui/views/context_hub/save_to_memory_bank_bubble_controller.h"
 #endif
 
@@ -4788,7 +4790,8 @@ class MemoryBanksContextMenuBrowserTest
   MemoryBanksContextMenuBrowserTest() {
     memory_banks_feature_list_.InitWithFeatures(
         {context_hub::features::kContextHub,
-         context_hub::features::kMemoryBanks},
+         context_hub::features::kMemoryBanks,
+         browser::context_hub::mojom::kMemoryBanksSearchPalette},
         {});
   }
 
@@ -5061,6 +5064,60 @@ IN_PROC_BROWSER_TEST_P(MemoryBanksContextMenuBrowserTest,
 #endif
 }
 
+#if !BUILDFLAG(IS_ANDROID)
+IN_PROC_BROWSER_TEST_P(MemoryBanksContextMenuBrowserTest,
+                       BrowseMemoryBanksShownAndExecutesWhenEnabled) {
+  GURL page_url("data:text/html,Hello%20World");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), page_url));
+
+  content::ContextMenuParams params;
+  params.page_url = page_url;
+  std::unique_ptr<TestRenderViewContextMenu> menu =
+      CreateContextMenuFromParams(params);
+
+  EXPECT_TRUE(menu->IsItemPresent(IDC_CONTENT_CONTEXT_BROWSE_MEMORY_BANKS));
+  EXPECT_TRUE(
+      menu->IsCommandIdEnabled(IDC_CONTENT_CONTEXT_BROWSE_MEMORY_BANKS));
+
+  menu->ExecuteCommand(IDC_CONTENT_CONTEXT_BROWSE_MEMORY_BANKS, 0);
+
+  auto* controller = MemoryBanksPaletteBubbleController::FromWebContents(
+      browser()->tab_strip_model()->GetActiveWebContents());
+  ASSERT_TRUE(controller);
+  controller->CloseBubble();
+}
+
+class MemoryBanksSearchPaletteDisabledContextMenuBrowserTest
+    : public MemoryBanksContextMenuBrowserTest {
+ protected:
+  MemoryBanksSearchPaletteDisabledContextMenuBrowserTest() {
+    disabled_feature_list_.InitAndDisableFeature(
+        browser::context_hub::mojom::kMemoryBanksSearchPalette);
+  }
+
+ private:
+  base::test::ScopedFeatureList disabled_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_P(MemoryBanksSearchPaletteDisabledContextMenuBrowserTest,
+                       BrowseMemoryBanksHiddenWhenSearchPaletteDisabled) {
+  GURL page_url("data:text/html,Hello%20World");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), page_url));
+
+  content::ContextMenuParams params;
+  params.page_url = page_url;
+  std::unique_ptr<TestRenderViewContextMenu> menu =
+      CreateContextMenuFromParams(params);
+
+  EXPECT_TRUE(menu->IsItemPresent(IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS));
+  EXPECT_FALSE(menu->IsItemPresent(IDC_CONTENT_CONTEXT_BROWSE_MEMORY_BANKS));
+}
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         MemoryBanksSearchPaletteDisabledContextMenuBrowserTest,
+                         testing::Bool());
+#endif  // !BUILDFLAG(IS_ANDROID)
+
 INSTANTIATE_TEST_SUITE_P(All,
                          MemoryBanksContextMenuBrowserTest,
                          testing::Bool());
@@ -5069,9 +5126,7 @@ class ContextualTasksContextMenuBrowserTest : public ContextMenuBrowserTest {
  public:
   ContextualTasksContextMenuBrowserTest() {
     feature_list_.InitWithFeatures(
-        {lens::features::kLensOverlay, contextual_tasks::kContextualTasks,
-         contextual_tasks::kContextualTasksForceEntryPointEligibility,
-         lens::features::kLensSidePanelUnification},
+        {lens::features::kLensOverlay},
         {contextual_tasks::kContextualTasksUpdatedEntryPoints});
   }
 
@@ -5106,9 +5161,6 @@ class ContextualTasksContextMenuAskGoogleBrowserTest
   ContextualTasksContextMenuAskGoogleBrowserTest() {
     feature_list_.InitWithFeaturesAndParameters(
         {{lens::features::kLensOverlay, {}},
-         {contextual_tasks::kContextualTasks, {}},
-         {contextual_tasks::kContextualTasksForceEntryPointEligibility, {}},
-         {lens::features::kLensSidePanelUnification, {}},
          {contextual_tasks::kContextualTasksUpdatedEntryPoints,
           {{"ContextualTasksContextMenuShowAskGoogle", "true"},
            {"ContextualTasksContextMenuSubmenu", "false"},
@@ -5171,9 +5223,6 @@ class ContextualTasksContextMenuSubmenuBrowserTest
   ContextualTasksContextMenuSubmenuBrowserTest() {
     feature_list_.InitWithFeaturesAndParameters(
         {{lens::features::kLensOverlay, {}},
-         {contextual_tasks::kContextualTasks, {}},
-         {contextual_tasks::kContextualTasksForceEntryPointEligibility, {}},
-         {lens::features::kLensSidePanelUnification, {}},
          {contextual_tasks::kContextualTasksUpdatedEntryPoints,
           {{"ContextualTasksContextMenuShowAskGoogle", "true"},
            {"ContextualTasksContextMenuSubmenu", "true"},

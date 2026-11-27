@@ -36,6 +36,10 @@ bool EmbeddedPermissionPromptContentScrimView::IsOmniboxEverywhere(
 }
 
 // static
+// When adding support for a new privileged WebUI surface, also ensure the WebUI
+// handles `@voice-permission-changed` and applies
+// `--cr_composebox_minimum_height` and `--cr_composebox_minimum_width` in CSS.
+// LINT.IfChange(PrivilegedPepcSurfaces)
 gfx::Rect EmbeddedPermissionPromptContentScrimView::GetScrimBounds(
     content::WebContents& web_contents) {
   gfx::Rect bounds = web_contents.GetContainerBounds();
@@ -44,9 +48,26 @@ gfx::Rect EmbeddedPermissionPromptContentScrimView::GetScrimBounds(
   // by shrinking scrim by same amount.
   if (IsOmniboxEverywhere(web_contents)) {
     bounds.Inset(gfx::Insets(kOmniboxEverywherePadding));
+    return bounds;
+  }
+
+  if (views::Widget* widget = views::Widget::GetTopLevelWidgetForNativeView(
+          web_contents.GetContentNativeView())) {
+    if (auto* rounded_frame = views::AsViewClass<RoundedOmniboxResultsFrame>(
+            widget->GetClientContentsView())) {
+      auto* omnibox_content = rounded_frame->GetOmniboxPopupWebUIBaseContent();
+      // When the WebUI omnibox popup paints its own drop shadow, the WebView
+      // spans the entire widget including the transparent shadow margin
+      // reserved as `body` padding (16px top/left/right, 28px bottom). Inset
+      // the scrim by the shadow insets so it only covers the popup surface.
+      if (omnibox_content && omnibox_content->ShouldDrawShadowInWebUI()) {
+        bounds.Inset(RoundedOmniboxResultsFrame::GetShadowInsets());
+      }
+    }
   }
   return bounds;
 }
+// LINT.ThenChange(//chrome/browser/permissions/chrome_permissions_client.cc:PrivilegedPepcSurfaces)
 
 // Only require web contents instance to be passed in and not widget instance
 // (for window sizing) since web contents knows which widget it belongs to.

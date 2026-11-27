@@ -168,7 +168,8 @@ IN_PROC_BROWSER_TEST_F(SettingsTest, ChooserExceptionList) {
 }
 
 IN_PROC_BROWSER_TEST_F(SettingsTest, ChooserExceptionListEntry) {
-  RunTest("settings/chooser_exception_list_entry_test.js", "mocha.run()");
+  RunTest("settings/chooser_exception_list_entry_test.js",
+          "runMochaSuite('ChooserExceptionListEntry')");
 }
 
 IN_PROC_BROWSER_TEST_F(SettingsTest, CollapseRadioButton) {
@@ -232,10 +233,6 @@ IN_PROC_BROWSER_TEST_F(SettingsTest, AiPage) {
 
 IN_PROC_BROWSER_TEST_F(SettingsTest, AiInfoCard) {
   RunTest("settings/ai_info_card_test.js", "mocha.run()");
-}
-
-IN_PROC_BROWSER_TEST_F(SettingsTest, HistorySearchSubpage) {
-  RunTest("settings/ai_history_search_subpage_test.js", "mocha.run()");
 }
 
 IN_PROC_BROWSER_TEST_F(SettingsTest, AiModeSearchPage) {
@@ -579,6 +576,33 @@ IN_PROC_BROWSER_TEST_F(SettingsGlicSubpageLearnMoreTest,
                        GlicSettingsLearnMoreEnabled) {
   RunTest("settings/glic_subpage_test.js",
           "runMochaSuite('GlicSubpage LearnMoreEnabled')");
+}
+
+IN_PROC_BROWSER_TEST_F(SettingsTest, GeicSubpage) {
+  RunTest("settings/geic_subpage_test.js",
+          "runMochaSuite('GeicSubpage Default')");
+}
+
+class SettingsGeicSubpageLearnMoreTest : public SettingsBrowserTest {
+ public:
+  SettingsGeicSubpageLearnMoreTest() {
+    scoped_feature_list_.InitWithFeaturesAndParameters(
+        {{features::kGlicLearnMoreURLConfig,
+          {
+              {"geic-default-tab-access-toggle-learn-more-url",
+               "https://google.com/"},
+          }}},
+        /*disabled_features=*/{});
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(SettingsGeicSubpageLearnMoreTest,
+                       GeicSettingsLearnMoreEnabled) {
+  RunTest("settings/geic_subpage_test.js",
+          "runMochaSuite('GeicSubpage LearnMoreEnabled')");
 }
 
 class SettingsGlicPageHeaderLearnMoreTest : public SettingsBrowserTest {
@@ -1386,6 +1410,10 @@ using SettingsAiPageOfficialTest = SettingsBrowserTest;
 
 IN_PROC_BROWSER_TEST_F(SettingsAiPageOfficialTest, AiPageOfficial) {
   RunTest("settings/ai_page_official_test.js", "mocha.run()");
+}
+
+IN_PROC_BROWSER_TEST_F(SettingsAiPageOfficialTest, OnDeviceAiPage) {
+  RunTest("settings/on_device_ai_page_test.js", "mocha.run()");
 }
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 

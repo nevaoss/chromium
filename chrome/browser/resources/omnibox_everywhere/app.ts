@@ -230,8 +230,9 @@ export class OmniboxEverywhereAppElement extends
   override willUpdate(changedProperties: PropertyValues<this>) {
     super.willUpdate(changedProperties);
     if (this.dynamicSizing_) {
-      // In persistent mode, rest in the small 480px state (5 MVT tiles) when
-      // inactive, and expand both the searchbox and MVT row when focused.
+      // In persistent mode, rest in the small 480px state (4 MVT tiles) when
+      // inactive, and expand both the searchbox and MVT row (5 tiles) when
+      // focused.
       this.smallLoomnibox_ = this.isPersistentMode_ && !this.isActive_;
     }
   }
@@ -455,10 +456,7 @@ export class OmniboxEverywhereAppElement extends
   }
 
   protected getMaxMostVisitedTiles_(): number {
-    if (this.smallLoomnibox_) {
-      return 5;
-    }
-    return (this.dynamicSizing_ && this.dynamicSizingWidth_ === 600) ? 6 : 7;
+    return this.smallLoomnibox_ ? 4 : 5;
   }
 
   protected onMostVisitedCloseClick_() {
@@ -582,15 +580,12 @@ export class OmniboxEverywhereAppElement extends
       const searchbox =
           this.shadowRoot?.querySelector<OmniboxEverywhereOmniboxElement>(
               'omnibox-everywhere-omnibox');
-      if (searchbox) {
-        const inputElement = searchbox.getInputElement();
-        if (inputElement && inputElement.getInputValue()) {
-          inputElement.setInputText('');
-          searchbox.clearAutocompleteMatches();
-          searchbox.focusInput();
-          e.preventDefault();
-          return;
-        }
+      if (searchbox && searchbox.getInputText()) {
+        searchbox.setInputText('');
+        searchbox.clearAutocompleteMatches();
+        searchbox.focusInput();
+        e.preventDefault();
+        return;
       }
     }
 
@@ -715,6 +710,7 @@ export class OmniboxEverywhereAppElement extends
 
   protected onVoicePermissionChanged_(
       e: CustomEvent<VoicePermissionPromptState>) {
+    e.preventDefault();
     if (e.detail.isOpened) {
       this.voiceSearchListening_ = false;
     } else {

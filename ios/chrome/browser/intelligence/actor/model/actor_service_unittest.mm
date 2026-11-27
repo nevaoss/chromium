@@ -8,6 +8,7 @@
 
 #import <set>
 #import <utility>
+#import <vector>
 
 #import "base/functional/bind.h"
 #import "base/functional/callback_helpers.h"
@@ -68,9 +69,18 @@
 @property(nonatomic, assign) NSInteger stateChangeCount;
 @property(nonatomic, assign) NSInteger stoppedCount;
 @property(nonatomic, copy) NSString* taskTitle;
+@property(nonatomic, copy) void (^onStateChange)(actor::ActorTaskState);
+// Returns the new states of the received transitions, in delivery order.
+- (const std::vector<actor::ActorTaskState>&)states;
 @end
 
-@implementation FakeActorServiceTaskUpdatesObserver
+@implementation FakeActorServiceTaskUpdatesObserver {
+  std::vector<actor::ActorTaskState> _states;
+}
+
+- (const std::vector<actor::ActorTaskState>&)states {
+  return _states;
+}
 
 - (void)didRegisterAsObserverForTaskID:(actor::ActorTaskId)taskID
                              taskTitle:(NSString*)taskTitle
@@ -85,6 +95,10 @@
          didChangeState:(actor::ActorTaskState)newState
               fromState:(actor::ActorTaskState)oldState {
   _stateChangeCount++;
+  _states.push_back(newState);
+  if (_onStateChange) {
+    _onStateChange(newState);
+  }
 }
 
 - (void)actorTaskDidStopWithID:(actor::ActorTaskId)taskID
@@ -143,6 +157,9 @@ namespace {
 
 constexpr int kPolicyDisabled = 1;
 
+// Id of a task that the tests never create.
+constexpr ActorTaskId kUnknownTaskId(999);
+
 // Returns the provenance attributed to tasks created by these tests.
 TaskSourceInfo TestSource() {
   return TaskSourceInfo(TaskSourceInfo::Client::kTest, /*id=*/std::nullopt);
@@ -172,6 +189,7 @@ class MockActorTask : public ActorTask {
                 AggregatedJournal* journal,
                 ActorToolFactory* tool_factory,
                 BrowserList* browser_list,
+                base::OnceClosure on_stopped,
                 bool* stop_called)
       : ActorTask(task_id,
                   title,
@@ -180,7 +198,8 @@ class MockActorTask : public ActorTask {
                   journal,
                   tool_factory,
                   browser_list,
-                  /*policy_checker=*/nullptr),
+                  /*policy_checker=*/nullptr,
+                  std::move(on_stopped)),
         stop_called_(stop_called) {}
 
   void Stop(ActorTaskStoppedReason stop_reason) override {
@@ -245,8 +264,18 @@ class ActorServiceTest : public PlatformTest {
     service->active_tasks_[task_id] = std::move(task);
   }
 
+  // Returns the hook `ActorService::CreateTask` gives to the task `task_id`.
+  base::OnceClosure MakeOnStoppedCallback(ActorService* service,
+                                          ActorTaskId task_id) {
+    return base::BindOnce(&ActorService::OnTaskStopped, service->GetWeakPtr(),
+                          task_id);
+  }
+
+  // Returns whether the service still owns the task, whether active or
+  // pending deletion.
   bool HasTask(ActorService* service, ActorTaskId task_id) {
-    return service->active_tasks_.find(task_id) != service->active_tasks_.end();
+    return service->active_tasks_.contains(task_id) ||
+           service->pending_delete_tasks_.contains(task_id);
   }
 
   ActorTask* GetTask(ActorService* service, ActorTaskId task_id) {
@@ -258,8 +287,66 @@ class ActorServiceTest : public PlatformTest {
     return service->journal_.get();
   }
 
+  // Completes the page context extraction that follows an act of `task_id`
+  // with one page context and no action results.
+  void CompleteActObservations(ActorService* service,
+                               ActorTaskId task_id,
+                               PerformActionsCallback callback) {
+    std::vector<std::unique_ptr<TabObservationResponse>> contexts;
+    contexts.push_back(std::make_unique<TabObservationResponse>(
+        web::WebStateID::NewUnique(), PageContextWrapperCallbackResponse(),
+        true));
+    service->OnActObservationsComplete(
+        task_id,
+        GetJournal(service)->CreatePendingAsyncEntry(
+            GURL(), task_id, MakeBrowserTrackUUID(task_id),
+            "TabObservationController", /*details=*/{}),
+        std::move(callback), PerformActionsResult(), std::move(contexts));
+  }
+
+  // Delivers a successful completion of the actions of `task_id` to `service`,
+  // as `ActorTask::Act()` would.
+  void CompleteAct(ActorService* service,
+                   ActorTaskId task_id,
+                   PerformActionsCallback callback) {
+    service->OnActCompleted(task_id, std::move(callback),
+                            MakeActionResults(mojom::ActionResultCode::kOk));
+  }
+
   ActorToolFactory* GetToolFactory(ActorService* service) {
     return service->tool_factory_.get();
+  }
+
+  // Returns whether a PageContext extraction is in progress.
+  bool HasPendingObservation(ActorService* service) {
+    return !service->pending_observations_.empty();
+  }
+
+  // Returns an extractable WebState whose PageContext extraction never
+  // completes, so that it only ends when the extraction times out.
+  std::unique_ptr<web::FakeWebState> CreateWebStateWithHangingExtraction() {
+    // URL of a page that a PageContext extraction accepts.
+    static constexpr char kExtractableURL[] = "https://example.com";
+
+    web::test::OverrideJavaScriptFeatures(
+        profile_.get(), {PageContextExtractorJavaScriptFeature::GetInstance()});
+
+    auto web_state = std::make_unique<web::FakeWebState>();
+    web_state->SetBrowserState(profile_.get());
+    web_state->SetCurrentURL(GURL(kExtractableURL));
+    web_state->SetContentsMimeType("text/html");
+
+    auto main_frame =
+        web::FakeWebFrame::CreateMainWebFrame(GURL(kExtractableURL));
+    main_frame->set_browser_state(profile_.get());
+    main_frame->set_force_timeout(true);
+    auto frames_manager = std::make_unique<web::FakeWebFramesManager>();
+    frames_manager->AddWebFrame(std::move(main_frame));
+    web_state->SetWebFramesManager(
+        PageContextExtractorJavaScriptFeature::GetInstance()
+            ->GetSupportedContentWorld(),
+        std::move(frames_manager));
+    return web_state;
   }
 
   base::test::ScopedFeatureList scoped_feature_list_;
@@ -304,24 +391,47 @@ TEST_F(ActorServiceTest, CreateTaskGeneratesUniqueIds) {
   }
 }
 
-// Tests that requesting tab observation with a null WebState triggers the
-// callback.
+// Tests that requesting tab observation with a null WebState posts an error
+// response.
 TEST_F(ActorServiceTest, RequestTabObservationWithNullWebStateReturnsFailure) {
   ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
   ASSERT_NE(nullptr, service);
 
   ActorTaskId task_id = CreateTask(service);
 
-  bool callback_called = false;
-  service->RequestTabObservation(
-      task_id, nullptr,
-      base::BindOnce(
-          [](bool* called, PageContextWrapperCallbackResponse response) {
-            *called = true;
-          },
-          &callback_called));
+  base::test::TestFuture<PageContextWrapperCallbackResponse> future;
+  service->RequestTabObservation(task_id, nullptr, future.GetCallback());
+  // Run the command, which posts the reply.
+  RunAlreadyPostedTasks();
+  EXPECT_FALSE(future.IsReady());
+  // Run the posted reply.
+  RunAlreadyPostedTasks();
+  ASSERT_TRUE(future.IsReady());
+  const PageContextWrapperCallbackResponse& response = future.Get();
+  ASSERT_FALSE(response.has_value());
+  EXPECT_EQ(PageContextWrapperError::kGenericError, response.error());
+}
 
-  EXPECT_TRUE(callback_called);
+// Tests that requesting tab observation of a non-extractable WebState, whose
+// extraction completes synchronously, still replies asynchronously.
+TEST_F(ActorServiceTest, RequestTabObservationOfNonExtractablePageIsAsync) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  // A `FakeWebState` has no HTTP(S) URL, so it cannot be extracted.
+  web::FakeWebState web_state;
+
+  base::test::TestFuture<PageContextWrapperCallbackResponse> future;
+  service->RequestTabObservation(task_id, &web_state, future.GetCallback());
+  // Run the command, whose extraction completes synchronously and posts the
+  // reply.
+  RunAlreadyPostedTasks();
+  EXPECT_FALSE(future.IsReady());
+  // Run the posted reply.
+  RunAlreadyPostedTasks();
+  ASSERT_TRUE(future.IsReady());
+  EXPECT_FALSE(future.Get().has_value());
 }
 
 // Tests that requesting tab observation with a valid WebState extracts APC.
@@ -383,28 +493,11 @@ TEST_F(ActorServiceMockTimeTest, RequestTabObservation_Timeout) {
   ASSERT_NE(nullptr, service);
 
   ActorTaskId task_id = CreateTask(service);
-
-  web::test::OverrideJavaScriptFeatures(
-      profile_.get(), {PageContextExtractorJavaScriptFeature::GetInstance()});
-
-  web::FakeWebState fake_web_state;
-  fake_web_state.SetBrowserState(profile_.get());
-  fake_web_state.SetCurrentURL(GURL("https://example.com"));
-  fake_web_state.SetContentsMimeType("text/html");
-
-  auto frames_manager = std::make_unique<web::FakeWebFramesManager>();
-  auto main_frame =
-      web::FakeWebFrame::CreateMainWebFrame(GURL("https://example.com"));
-  main_frame->set_browser_state(profile_.get());
-  main_frame->set_force_timeout(true);
-  frames_manager->AddWebFrame(std::move(main_frame));
-  fake_web_state.SetWebFramesManager(
-      PageContextExtractorJavaScriptFeature::GetInstance()
-          ->GetSupportedContentWorld(),
-      std::move(frames_manager));
+  std::unique_ptr<web::FakeWebState> fake_web_state =
+      CreateWebStateWithHangingExtraction();
 
   base::test::TestFuture<PageContextWrapperCallbackResponse> future;
-  service->RequestTabObservation(task_id, &fake_web_state,
+  service->RequestTabObservation(task_id, fake_web_state.get(),
                                  future.GetCallback());
 
   task_environment_.FastForwardBy(base::Milliseconds(400));
@@ -413,6 +506,69 @@ TEST_F(ActorServiceMockTimeTest, RequestTabObservation_Timeout) {
   task_environment_.FastForwardBy(base::Milliseconds(100));
   ASSERT_TRUE(future.IsReady());
   EXPECT_EQ(base::unexpected(PageContextWrapperError::kTimeout), future.Get());
+}
+
+// Tests that an extraction still in progress when the service shuts down never
+// replies, because `Shutdown()` releases its wrapper along with its completion.
+TEST_F(ActorServiceMockTimeTest, ShutdownDropsInProgressTabObservation) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  std::unique_ptr<web::FakeWebState> fake_web_state =
+      CreateWebStateWithHangingExtraction();
+
+  base::test::TestFuture<PageContextWrapperCallbackResponse> future;
+  service->RequestTabObservation(task_id, fake_web_state.get(),
+                                 future.GetCallback());
+  // Run the command, which starts the extraction.
+  RunAlreadyPostedTasks();
+  ASSERT_FALSE(future.IsReady());
+
+  service->Shutdown();
+  // Go past the extraction timeout, which would otherwise have replied (see
+  // `RequestTabObservation_Timeout`).
+  task_environment_.FastForwardBy(GetActorTabObservationPageContextTimeout());
+  EXPECT_FALSE(future.IsReady());
+}
+
+// Tests that an act whose tab observation is still in progress when the service
+// shuts down never replies, and that the observation's journal entries are
+// destroyed with it rather than outliving the journal.
+TEST_F(ActorServiceMockTimeTest, ShutdownDropsActWithInProgressObservation) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+
+  BrowserList* browser_list = BrowserListFactory::GetForProfile(profile_.get());
+  auto test_browser = std::make_unique<TestBrowser>(profile_.get());
+  browser_list->AddBrowser(test_browser.get());
+
+  std::unique_ptr<web::FakeWebState> fake_web_state =
+      CreateWebStateWithHangingExtraction();
+  web::FakeWebState* fake_web_state_ptr = fake_web_state.get();
+  test_browser->GetWebStateList()->InsertWebState(std::move(fake_web_state));
+  service->AddControlledWebState(task_id, fake_web_state_ptr);
+
+  base::test::TestFuture<PerformActionsResult> future;
+  service->PerformActions(task_id, {}, "Update", future.GetCallback());
+  // Run the command, whose empty act completes and posts its completion.
+  RunAlreadyPostedTasks();
+  // Run the act completion, which starts the observation.
+  RunAlreadyPostedTasks();
+  ASSERT_TRUE(HasPendingObservation(service));
+  ASSERT_FALSE(future.IsReady());
+
+  service->Shutdown();
+  // `Shutdown()` released the extraction, and with it the barrier holding the
+  // journal entry.
+  EXPECT_FALSE(HasPendingObservation(service));
+  // Go past the extraction timeout, which would otherwise have replied.
+  task_environment_.FastForwardBy(GetActorTabObservationPageContextTimeout());
+  EXPECT_FALSE(future.IsReady());
+
+  browser_list->RemoveBrowser(test_browser.get());
 }
 
 // Tests that GetWebStateForID returns nullptr for a tab that is not controlled
@@ -858,8 +1014,8 @@ TEST_F(ActorServiceMockTimeTest,
   browser_list->RemoveBrowser(test_browser.get());
 }
 
-// Test that StopTask stops and erases the task, and verifies that Stop() is
-// called on the ActorTask.
+// Test that StopTask calls Stop() on the task, removes it from the active
+// tasks, and destroys it asynchronously.
 TEST_F(ActorServiceTest, StopTask) {
   ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
   ASSERT_NE(nullptr, service);
@@ -871,22 +1027,32 @@ TEST_F(ActorServiceTest, StopTask) {
 
   // Swap the task with our MockActorTask.
   bool stop_called = false;
-  SwapTask(
-      service, task_id,
-      std::make_unique<MockActorTask>(
-          task_id, "Test Task",
-          /*allow_incognito_web_states=*/false, GetJournal(service),
-          GetToolFactory(service),
-          BrowserListFactory::GetForProfile(profile_.get()), &stop_called));
+  SwapTask(service, task_id,
+           std::make_unique<MockActorTask>(
+               task_id, "Test Task",
+               /*allow_incognito_web_states=*/false, GetJournal(service),
+               GetToolFactory(service),
+               BrowserListFactory::GetForProfile(profile_.get()),
+               MakeOnStoppedCallback(service, task_id), &stop_called));
 
   // Stop the task.
   service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+  EXPECT_FALSE(stop_called);
+  EXPECT_NE(nullptr, GetTask(service, task_id));
+
+  // Run the enqueued stop only; the deletion it enqueues runs afterwards.
+  RunAlreadyPostedTasks();
 
   // Verify that Stop() was called on our MockActorTask.
   EXPECT_TRUE(stop_called);
 
-  // Verify the task is also erased from ActorService's active tasks.
-  EXPECT_FALSE(HasTask(service, task_id));
+  // Verify the task is inactive once stopped but only destroyed once the
+  // enqueued deletion runs.
+  EXPECT_EQ(std::nullopt, service->GetActiveTaskState());
+  EXPECT_EQ(nullptr, GetTask(service, task_id));
+  EXPECT_TRUE(HasTask(service, task_id));
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return !HasTask(service, task_id); }));
 }
 
 // Test lifecycle of a single task updates observer.
@@ -1048,6 +1214,8 @@ TEST_F(ActorServiceTest, AddTaskScopedUpdatesObserverFailures) {
 
   ActorTaskId task_id = CreateTask(service);
   service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return !HasTask(service, task_id); }));
 
   FakeActorServiceTaskUpdatesObserver* observer =
       [[FakeActorServiceTaskUpdatesObserver alloc] init];
@@ -1056,7 +1224,8 @@ TEST_F(ActorServiceTest, AddTaskScopedUpdatesObserverFailures) {
 }
 
 // Tests that a task lifecycle observer is notified asynchronously, with the
-// task source, when a task is started and stopped.
+// task source, when a task is started and stopped, and that the stop
+// notification is delivered after the task has left the active tasks.
 TEST_F(ActorServiceTest, TaskLifecycleObserverNotifiedOnStartAndStop) {
   ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
   ASSERT_NE(nullptr, service);
@@ -1076,9 +1245,13 @@ TEST_F(ActorServiceTest, TaskLifecycleObserverNotifiedOnStartAndStop) {
   EXPECT_EQ(TaskSourceInfo::Client::kTest, observer.lastSourceType);
 
   service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+  RunAlreadyPostedTasks();
+  EXPECT_EQ(nullptr, GetTask(service, task_id));
   EXPECT_EQ(0, observer.stoppedCount);
-  FlushCurrentSequence();
-  EXPECT_EQ(1, observer.stoppedCount);
+
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return observer.stoppedCount == 1 && !HasTask(service, task_id);
+  }));
   EXPECT_EQ(task_id, observer.lastTaskID);
   EXPECT_EQ(ActorTaskState::kCancelled, observer.lastFinalState);
 
@@ -1217,7 +1390,8 @@ TEST_F(ActorServiceTest, TaskLifecycleObserverStopsTaskFromStart) {
 }
 
 // Tests that a task stopped right after its creation is reported as started
-// before it is reported as stopped, and rejects task-scoped update observers.
+// before it is reported as stopped, and that its start notification runs ahead
+// of the queued stop, so it can still add task-scoped update observers.
 TEST_F(ActorServiceTest, TaskLifecycleStartDeliveredBeforeStop) {
   ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
   ASSERT_NE(nullptr, service);
@@ -1228,7 +1402,7 @@ TEST_F(ActorServiceTest, TaskLifecycleStartDeliveredBeforeStop) {
 
   FakeActorServiceTaskUpdatesObserver* updates_observer =
       [[FakeActorServiceTaskUpdatesObserver alloc] init];
-  __block bool add_updates_observer_result = true;
+  __block bool add_updates_observer_result = false;
   observer.onStart = ^(ActorTaskId started_task_id) {
     add_updates_observer_result =
         service->AddTaskUpdatesObserver(started_task_id, updates_observer);
@@ -1240,9 +1414,409 @@ TEST_F(ActorServiceTest, TaskLifecycleStartDeliveredBeforeStop) {
   EXPECT_EQ(1, observer.stoppedCount);
   EXPECT_EQ(1, observer.startedCountAtStop);
   EXPECT_EQ(1, observer.startedCount);
-  EXPECT_FALSE(add_updates_observer_result);
+  EXPECT_TRUE(add_updates_observer_result);
 
   service->RemoveTaskLifecycleObserver(observer);
+}
+
+// Tests that a task-scoped observer added after a stop was enqueued, but before
+// it ran, receives the registration snapshot and then the stop.
+TEST_F(ActorServiceTest, TaskScopedObserverAddedAfterStopReceivesStop) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+
+  FakeActorServiceTaskUpdatesObserver* observer =
+      [[FakeActorServiceTaskUpdatesObserver alloc] init];
+  EXPECT_TRUE(service->AddTaskUpdatesObserver(task_id, observer));
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return observer.stoppedCount == 1; }));
+  EXPECT_EQ(1, observer.registeredCount);
+  EXPECT_FALSE(HasTask(service, task_id));
+}
+
+// Tests that `StopAllTasks` only stops the tasks active when it is called.
+TEST_F(ActorServiceTest, StopAllTasksDoesNotStopTasksCreatedAfter) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId stopped_task_id = CreateTask(service);
+  service->StopAllTasks();
+  ActorTaskId new_task_id = CreateTask(service);
+
+  // `StopAllTasks` enqueues its stops in a single turn, so a stray stop of the
+  // new task would have run by the time the first task is gone.
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return !HasTask(service, stopped_task_id); }));
+  EXPECT_TRUE(HasTask(service, new_task_id));
+}
+
+// Tests that actions enqueued after a stop are rejected with `kTaskWentAway`.
+TEST_F(ActorServiceTest, PerformActionsAfterStopTaskRepliesTaskWentAway) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+
+  PerformActionsResult result = PerformActions(service, task_id);
+  ASSERT_EQ(1u, result.action_results.size());
+  EXPECT_EQ(mojom::ActionResultCode::kTaskWentAway,
+            result.action_results[0].tool_result.code());
+}
+
+// Tests that a tab observation requested after a stop replies with a generic
+// error instead of extracting.
+TEST_F(ActorServiceTest, RequestTabObservationAfterStopTaskRepliesError) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  // A `FakeWebState` cannot be extracted, so an extraction would reply with
+  // `kPageNotExtractableError` rather than `kGenericError`.
+  web::FakeWebState web_state;
+  service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+
+  base::test::TestFuture<PageContextWrapperCallbackResponse> future;
+  service->RequestTabObservation(task_id, &web_state, future.GetCallback());
+  ASSERT_TRUE(future.Wait());
+  ASSERT_FALSE(future.Get().has_value());
+  EXPECT_EQ(PageContextWrapperError::kGenericError, future.Get().error());
+}
+
+// Tests that a tab observation whose WebState is destroyed before the command
+// runs replies with a generic error instead of extracting.
+TEST_F(ActorServiceTest, RequestTabObservationOfWebStateDestroyedBeforeRun) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  // A `FakeWebState` cannot be extracted, so an extraction would reply with
+  // `kPageNotExtractableError` rather than `kGenericError`.
+  auto web_state = std::make_unique<web::FakeWebState>();
+
+  base::test::TestFuture<PageContextWrapperCallbackResponse> future;
+  service->RequestTabObservation(task_id, web_state.get(),
+                                 future.GetCallback());
+  web_state.reset();
+
+  ASSERT_TRUE(future.Wait());
+  ASSERT_FALSE(future.Get().has_value());
+  EXPECT_EQ(PageContextWrapperError::kGenericError, future.Get().error());
+}
+
+// Tests that commands run in call order: the act runs before the stop.
+TEST_F(ActorServiceTest, CommandsRunInCallOrder) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  FakeActorServiceTaskUpdatesObserver* observer =
+      [[FakeActorServiceTaskUpdatesObserver alloc] init];
+  ASSERT_TRUE(service->AddTaskUpdatesObserver(task_id, observer));
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return observer.registeredCount == 1; }));
+  const size_t base_count = observer.states.size();
+
+  base::test::TestFuture<PerformActionsResult> future;
+  service->PerformActions(task_id, {}, "Update", future.GetCallback());
+  service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+  ASSERT_TRUE(future.Wait());
+  // The act's completion runs after the stop, so it replies `kTaskWentAway`.
+  ASSERT_EQ(1u, future.Get().action_results.size());
+  EXPECT_EQ(mojom::ActionResultCode::kTaskWentAway,
+            future.Get().action_results[0].tool_result.code());
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return observer.stoppedCount == 1; }));
+
+  // An empty act completes within its command, so it transitions to `kActing`
+  // then `kReflecting` before the stop transitions to `kCancelled`. A stop
+  // running first would transition to `kCancelled` only.
+  const std::vector<ActorTaskState> expected_states = {
+      ActorTaskState::kActing, ActorTaskState::kReflecting,
+      ActorTaskState::kCancelled};
+  EXPECT_EQ(expected_states,
+            std::vector<ActorTaskState>(observer.states.begin() + base_count,
+                                        observer.states.end()));
+}
+
+// Tests that a stop issued while an interrupt is still queued ends the task,
+// reports a single stop, and never asks the delegate for confirmation.
+TEST_F(ActorServiceTest, StopQueuedAfterInterruptStopsTask) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  FakeActorTaskLifecycleObserver* observer =
+      [[FakeActorTaskLifecycleObserver alloc] init];
+  service->AddTaskLifecycleObserver(observer);
+  ActorTaskId task_id = CreateTask(service);
+  FakeActorTaskInterventionDelegate* delegate =
+      [[FakeActorTaskInterventionDelegate alloc] init];
+  service->SetTaskInterventionDelegate(task_id, delegate);
+
+  service->InterruptTask(task_id,
+                         ActorTaskInterruptReason::kWaitingUserConfirmation,
+                         "Please confirm");
+  service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return observer.stoppedCount == 1; }));
+  EXPECT_FALSE(HasTask(service, task_id));
+  EXPECT_EQ(ActorTaskState::kCancelled, observer.lastFinalState);
+  // The stop notification is posted after any confirmation request the
+  // interrupt posted, so that request already ran or was dropped.
+  EXPECT_FALSE(delegate.requestConfirmationCalled);
+  EXPECT_EQ(1, observer.stoppedCount);
+
+  service->RemoveTaskLifecycleObserver(observer);
+}
+
+// Tests that commands issued from a reply run after the commands they follow.
+TEST_F(ActorServiceTest, CommandsIssuedFromReplyRunInCallOrder) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  base::test::TestFuture<PerformActionsResult> future;
+  service->PerformActions(
+      task_id, {}, "Update",
+      base::BindOnce(
+          [](ActorService* service, ActorTaskId task_id,
+             PerformActionsCallback callback, PerformActionsResult result) {
+            service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+            service->PerformActions(task_id, {}, "Update", std::move(callback));
+          },
+          base::Unretained(service), task_id, future.GetCallback()));
+
+  ASSERT_TRUE(future.Wait());
+  ASSERT_EQ(1u, future.Get().action_results.size());
+  EXPECT_EQ(mojom::ActionResultCode::kTaskWentAway,
+            future.Get().action_results[0].tool_result.code());
+}
+
+// Tests that a command for an unknown task replies after two hops: the queued
+// command, then its posted reply. This is internal structure, not the public
+// contract, that the `ShutdownDropsPosted*` tests rely on to call `Shutdown()`
+// between the two.
+TEST_F(ActorServiceTest, CommandForUnknownTaskRepliesAfterTwoHops) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  base::test::TestFuture<PerformActionsResult> future;
+  service->PerformActions(kUnknownTaskId, {}, "Update", future.GetCallback());
+  RunAlreadyPostedTasks();
+  EXPECT_FALSE(future.IsReady());
+  RunAlreadyPostedTasks();
+
+  ASSERT_TRUE(future.IsReady());
+  ASSERT_EQ(1u, future.Get().action_results.size());
+  EXPECT_EQ(mojom::ActionResultCode::kTaskWentAway,
+            future.Get().action_results[0].tool_result.code());
+}
+
+// Tests that a command still queued when the service shuts down never replies.
+TEST_F(ActorServiceTest, ShutdownDropsQueuedCommands) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  base::test::TestFuture<PerformActionsResult> future;
+  service->PerformActions(kUnknownTaskId, {}, "Update", future.GetCallback());
+  service->Shutdown();
+  // Drain the sequence: dropped work has no observable effect to wait on.
+  FlushCurrentSequence();
+
+  EXPECT_FALSE(future.IsReady());
+}
+
+// Tests that a stop still queued when the service shuts down never runs.
+TEST_F(ActorServiceTest, ShutdownDropsQueuedStop) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  bool stop_called = false;
+  SwapTask(service, task_id,
+           std::make_unique<MockActorTask>(
+               task_id, "Test Task",
+               /*allow_incognito_web_states=*/false, GetJournal(service),
+               GetToolFactory(service),
+               BrowserListFactory::GetForProfile(profile_.get()),
+               MakeOnStoppedCallback(service, task_id), &stop_called));
+
+  service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+  service->Shutdown();
+  // Drain the sequence: dropped work has no observable effect to wait on.
+  FlushCurrentSequence();
+
+  EXPECT_FALSE(stop_called);
+}
+
+// Tests that an interrupt still queued when the service shuts down never asks
+// the delegate for confirmation.
+TEST_F(ActorServiceTest, ShutdownDropsQueuedInterrupt) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  FakeActorTaskInterventionDelegate* delegate =
+      [[FakeActorTaskInterventionDelegate alloc] init];
+  service->SetTaskInterventionDelegate(task_id, delegate);
+
+  service->InterruptTask(task_id,
+                         ActorTaskInterruptReason::kWaitingUserConfirmation,
+                         "Please confirm");
+  service->Shutdown();
+  // Drain the sequence: dropped work has no observable effect to wait on.
+  FlushCurrentSequence();
+
+  EXPECT_FALSE(delegate.requestConfirmationCalled);
+}
+
+// Tests that a reply already posted when the service shuts down is not run.
+TEST_F(ActorServiceTest, ShutdownDropsPostedReplies) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  base::test::TestFuture<PerformActionsResult> future;
+  service->PerformActions(kUnknownTaskId, {}, "Update", future.GetCallback());
+  // Run the command, which posts its reply.
+  RunAlreadyPostedTasks();
+  service->Shutdown();
+  // Drain the sequence: dropped work has no observable effect to wait on.
+  FlushCurrentSequence();
+
+  EXPECT_FALSE(future.IsReady());
+}
+
+// Tests that a tab observation reply already posted when the service shuts
+// down is not run.
+TEST_F(ActorServiceTest, ShutdownDropsPostedTabObservationReply) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  base::test::TestFuture<PageContextWrapperCallbackResponse> future;
+  service->RequestTabObservation(task_id, nullptr, future.GetCallback());
+  // Run the command, which posts its reply.
+  RunAlreadyPostedTasks();
+  service->Shutdown();
+  // Drain the sequence: dropped work has no observable effect to wait on.
+  FlushCurrentSequence();
+
+  EXPECT_FALSE(future.IsReady());
+}
+
+// Tests that an extraction reply already posted when the service shuts down is
+// not run.
+TEST_F(ActorServiceTest, ShutdownDropsPostedExtractionReply) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  // A `FakeWebState` cannot be extracted, so its extraction completes
+  // synchronously.
+  web::FakeWebState web_state;
+  base::test::TestFuture<PageContextWrapperCallbackResponse> future;
+  service->RequestTabObservation(task_id, &web_state, future.GetCallback());
+  // Run the command, whose extraction completes and posts its reply.
+  RunAlreadyPostedTasks();
+  service->Shutdown();
+  // Drain the sequence: dropped work has no observable effect to wait on.
+  FlushCurrentSequence();
+
+  EXPECT_FALSE(future.IsReady());
+}
+
+// Tests that an act completion already posted when the service shuts down
+// never replies.
+TEST_F(ActorServiceTest, ShutdownDropsPostedActCompletion) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  base::test::TestFuture<PerformActionsResult> future;
+  service->PerformActions(task_id, {}, "Update", future.GetCallback());
+  // Run the command, whose empty act completes and posts its completion.
+  RunAlreadyPostedTasks();
+  ASSERT_FALSE(future.IsReady());
+
+  service->Shutdown();
+  // Drain the sequence: dropped work has no observable effect to wait on.
+  FlushCurrentSequence();
+
+  EXPECT_FALSE(future.IsReady());
+}
+
+// Tests that an act whose tab observation completes synchronously replies from
+// the act completion. Internal: a separately posted reply would hold the
+// journal entry and could run after the journal is destroyed.
+TEST_F(ActorServiceTest, ActObservationCompletingSynchronouslyRepliesDirectly) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+
+  BrowserList* browser_list = BrowserListFactory::GetForProfile(profile_.get());
+  auto test_browser = std::make_unique<TestBrowser>(profile_.get());
+  browser_list->AddBrowser(test_browser.get());
+
+  // A `FakeWebState` cannot be extracted, so its extraction completes
+  // synchronously.
+  auto fake_web_state = std::make_unique<web::FakeWebState>();
+  web::WebState* fake_web_state_ptr = fake_web_state.get();
+  test_browser->GetWebStateList()->InsertWebState(std::move(fake_web_state));
+  service->AddControlledWebState(task_id, fake_web_state_ptr);
+
+  base::test::TestFuture<PerformActionsResult> future;
+  service->PerformActions(task_id, {}, "Update", future.GetCallback());
+  // Run the command, whose empty act completes and posts its completion.
+  RunAlreadyPostedTasks();
+  EXPECT_FALSE(future.IsReady());
+  // Run the act completion, whose observation completes and replies.
+  RunAlreadyPostedTasks();
+  ASSERT_TRUE(future.IsReady());
+  EXPECT_EQ(1u, future.Get().page_contexts.size());
+
+  browser_list->RemoveBrowser(test_browser.get());
+}
+
+// Tests that a command issued after the service shut down never replies.
+TEST_F(ActorServiceTest, ShutdownDropsCommandsIssuedAfterwards) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  service->Shutdown();
+  base::test::TestFuture<PerformActionsResult> future;
+  service->PerformActions(kUnknownTaskId, {}, "Update", future.GetCallback());
+  // Drain the sequence: dropped work has no observable effect to wait on.
+  FlushCurrentSequence();
+
+  EXPECT_FALSE(future.IsReady());
+}
+
+// Tests that calling `CreateTask()` after `Shutdown()` crashes.
+TEST_F(ActorServiceTest, CreateTaskAfterShutdownCrashes) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  service->Shutdown();
+  EXPECT_DEATH_IF_SUPPORTED(CreateTask(service), "");
+}
+
+// Tests that `GetWeakPtr()` is null after `Shutdown()`, for both pointers
+// obtained before and after it, so that no work bound to it runs afterwards.
+TEST_F(ActorServiceTest, GetWeakPtrNullAfterShutdown) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  base::WeakPtr<ActorService> weak_service = service->GetWeakPtr();
+  ASSERT_TRUE(weak_service);
+  service->Shutdown();
+
+  EXPECT_FALSE(weak_service);
+  EXPECT_FALSE(service->GetWeakPtr());
 }
 
 // Tests that lifecycle notifications still pending when the service shuts down
@@ -1310,7 +1884,7 @@ TEST_F(ActorServiceTest, GetWeakTaskBackgroundWorkers) {
 
   service->StopTask(first_id, ActorTaskStoppedReason::kStoppedByUser);
 
-  EXPECT_FALSE(first_worker);
+  ASSERT_TRUE(base::test::RunUntil([&]() { return !first_worker; }));
   workers = service->GetWeakTaskBackgroundWorkers();
   ASSERT_EQ(1u, workers.size());
   ASSERT_TRUE(workers[0]);
@@ -1414,6 +1988,37 @@ TEST_F(ActorServiceTest, InterruptTaskBeforeFirstAct) {
   EXPECT_EQ(task->GetState(), ActorTaskState::kReflecting);
 }
 
+// Tests that an intervention delegate set from the lifecycle start
+// notification receives an interrupt issued in the same turn as `CreateTask()`.
+TEST_F(ActorServiceTest,
+       InterventionDelegateSetFromStartReachesSameTurnInterrupt) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  FakeActorTaskLifecycleObserver* observer =
+      [[FakeActorTaskLifecycleObserver alloc] init];
+  service->AddTaskLifecycleObserver(observer);
+  FlushCurrentSequence();
+
+  FakeActorTaskInterventionDelegate* delegate =
+      [[FakeActorTaskInterventionDelegate alloc] init];
+  observer.onStart = ^(ActorTaskId started_task_id) {
+    service->SetTaskInterventionDelegate(started_task_id, delegate);
+  };
+
+  ActorTaskId task_id = CreateTask(service);
+  service->InterruptTask(task_id,
+                         ActorTaskInterruptReason::kWaitingUserConfirmation,
+                         "Please confirm");
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return delegate.requestConfirmationCalled; }));
+
+  EXPECT_TRUE(HasTask(service, task_id));
+  EXPECT_EQ(0, observer.stoppedCount);
+
+  service->RemoveTaskLifecycleObserver(observer);
+}
+
 // Test that SetTaskInterventionDelegate and InterruptTask safely handle unknown
 // task IDs without crashing.
 TEST_F(ActorServiceTest, InterventionAndInterruptSafelyHandleUnknownTaskId) {
@@ -1433,9 +2038,9 @@ TEST_F(ActorServiceTest, InterventionAndInterruptSafelyHandleUnknownTaskId) {
   EXPECT_FALSE(delegate.requestConfirmationCalled);
 }
 
-// Test that InterruptTask removes the task from active_tasks_ and notifies
-// lifecycle observers when the interrupt fails and transitions the task to a
-// terminal state.
+// Test that a task stopped by a failed interrupt is removed from the active
+// tasks once the posted interrupt runs, notifies lifecycle observers, and is
+// destroyed asynchronously.
 TEST_F(ActorServiceTest, InterruptTaskRemovesStoppedTaskOnFailure) {
   ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
   ASSERT_NE(nullptr, service);
@@ -1448,15 +2053,21 @@ TEST_F(ActorServiceTest, InterruptTaskRemovesStoppedTaskOnFailure) {
   service->AddTaskLifecycleObserver(observer);
 
   // Interrupting for confirmation without setting an intervention delegate
-  // stops the task and removes it from `active_tasks_`.
+  // stops the task.
   service->InterruptTask(task_id,
                          ActorTaskInterruptReason::kWaitingUserConfirmation,
                          "Please confirm");
+  EXPECT_NE(nullptr, GetTask(service, task_id));
+  // Run the interrupt command.
+  RunAlreadyPostedTasks();
 
-  EXPECT_FALSE(HasTask(service, task_id));
+  EXPECT_EQ(std::nullopt, service->GetActiveTaskState());
+  EXPECT_EQ(nullptr, GetTask(service, task_id));
+  EXPECT_TRUE(HasTask(service, task_id));
   EXPECT_EQ(0, observer.stoppedCount);
-  FlushCurrentSequence();
-  EXPECT_EQ(1, observer.stoppedCount);
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return observer.stoppedCount == 1 && !HasTask(service, task_id);
+  }));
   EXPECT_EQ(task_id, observer.lastTaskID);
 
   service->RemoveTaskLifecycleObserver(observer);
@@ -1486,7 +2097,219 @@ TEST_F(ActorServiceTest, InterruptTaskHandlesReentrantStopTask) {
       [&]() { return delegate.requestConfirmationCalled; }));
 
   EXPECT_TRUE(delegate.requestConfirmationCalled);
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return !HasTask(service, task_id); }));
+}
+
+// Test that calling StopTask from a state change observer notification while an
+// action is in flight replies `kTaskWentAway` and destroys the task from a
+// later posted task.
+TEST_F(ActorServiceTest, StopTaskWhileActingRepliesTaskWentAway) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  FakeActorServiceTaskUpdatesObserver* observer =
+      [[FakeActorServiceTaskUpdatesObserver alloc] init];
+  observer.onStateChange = ^(ActorTaskState new_state) {
+    service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+  };
+  service->AddTaskUpdatesObserver(observer);
+
+  base::test::TestFuture<PerformActionsResult> future;
+  service->PerformActions(task_id, {MakeSuccessfulActorAction()}, "Update",
+                          future.GetCallback());
+  EXPECT_FALSE(future.IsReady());
+
+  const PerformActionsResult& result = future.Get();
+  ASSERT_EQ(1u, result.action_results.size());
+  EXPECT_EQ(mojom::ActionResultCode::kTaskWentAway,
+            result.action_results[0].tool_result.code());
+  EXPECT_EQ(std::nullopt, service->GetActiveTaskState());
+  EXPECT_TRUE(HasTask(service, task_id));
+
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return observer.stoppedCount == 1 && !HasTask(service, task_id);
+  }));
+
+  service->RemoveTaskUpdatesObserver(observer);
+}
+
+// Test that a stopped task that has not been destroyed yet rejects new actions
+// with a single `kTaskWentAway` result.
+TEST_F(ActorServiceTest, PerformActionsOnStoppedTaskReturnsTaskWentAway) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+  RunAlreadyPostedTasks();
+  ASSERT_EQ(nullptr, GetTask(service, task_id));
+  ASSERT_TRUE(HasTask(service, task_id));
+
+  PerformActionsResult result = PerformActions(service, task_id);
+  ASSERT_EQ(1u, result.action_results.size());
+  EXPECT_EQ(mojom::ActionResultCode::kTaskWentAway,
+            result.action_results[0].tool_result.code());
+  EXPECT_TRUE(result.page_contexts.empty());
+}
+
+// Test that performing actions on an unknown task replies with a single
+// `kTaskWentAway` result.
+TEST_F(ActorServiceTest, PerformActionsOnUnknownTaskReturnsTaskWentAway) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  PerformActionsResult result = PerformActions(service, ActorTaskId(999));
+  ASSERT_EQ(1u, result.action_results.size());
+  EXPECT_EQ(mojom::ActionResultCode::kTaskWentAway,
+            result.action_results[0].tool_result.code());
+  EXPECT_TRUE(result.page_contexts.empty());
+}
+
+// Test that StopTask on a task that is already stopped is a no-op.
+TEST_F(ActorServiceTest, StopTaskOnStoppedTaskIsNoOp) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId first_task_id = CreateTask(service, "First Task");
+  ActorTaskId second_task_id = CreateTask(service, "Second Task");
+  FakeActorServiceTaskUpdatesObserver* observer =
+      [[FakeActorServiceTaskUpdatesObserver alloc] init];
+  observer.onStateChange = ^(ActorTaskState new_state) {
+    service->StopTask(second_task_id, ActorTaskStoppedReason::kStoppedByUser);
+  };
+  service->AddTaskUpdatesObserver(observer);
+
+  service->StopAllTasks();
+  RunAlreadyPostedTasks();
+  EXPECT_EQ(std::nullopt, service->GetActiveTaskState());
+
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return observer.stoppedCount == 2 && !HasTask(service, first_task_id) &&
+           !HasTask(service, second_task_id);
+  }));
+
+  service->RemoveTaskUpdatesObserver(observer);
+}
+
+// Test that shutting down the service while a stopped task awaits deletion is
+// safe.
+TEST_F(ActorServiceTest, ShutdownWithPendingDelete) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+  RunAlreadyPostedTasks();
+  ASSERT_TRUE(HasTask(service, task_id));
+
+  service->Shutdown();
   EXPECT_FALSE(HasTask(service, task_id));
+
+  FlushCurrentSequence();
+  EXPECT_FALSE(HasTask(service, task_id));
+}
+
+// Test that a task stopped while the page contexts that follow its actions are
+// extracted replies with a single `kTaskWentAway` result and no page contexts.
+TEST_F(ActorServiceTest, ActObservationsAfterStopReplyTaskWentAway) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return !GetTask(service, task_id); }));
+
+  base::test::TestFuture<PerformActionsResult> future;
+  CompleteActObservations(service, task_id, future.GetCallback());
+
+  const PerformActionsResult& result = future.Get();
+  ASSERT_EQ(1u, result.action_results.size());
+  EXPECT_EQ(mojom::ActionResultCode::kTaskWentAway,
+            result.action_results[0].tool_result.code());
+  EXPECT_TRUE(result.page_contexts.empty());
+}
+
+// Test that a task stopped after its actions completed, but before their
+// completion is delivered, replies with a single `kTaskWentAway` result instead
+// of the actions' results.
+TEST_F(ActorServiceTest, ActCompletionAfterStopRepliesTaskWentAway) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+  RecordingJournalObserver journal_observer(*GetJournal(service));
+
+  ActorTaskId task_id = CreateTask(service);
+  service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return !GetTask(service, task_id); }));
+
+  base::test::TestFuture<PerformActionsResult> future;
+  CompleteAct(service, task_id, future.GetCallback());
+
+  const PerformActionsResult& result = future.Get();
+  ASSERT_EQ(1u, result.action_results.size());
+  EXPECT_EQ(mojom::ActionResultCode::kTaskWentAway,
+            result.action_results[0].tool_result.code());
+  EXPECT_TRUE(result.page_contexts.empty());
+
+  std::vector<const mojom::JournalEntry*> finished_entries =
+      journal_observer.EntriesNamed("PerformActionsFinished");
+  ASSERT_EQ(1u, finished_entries.size());
+  EXPECT_EQ(base::ToString(mojom::ActionResultCode::kTaskWentAway),
+            FindJournalDetail(*finished_entries[0], "result_code"));
+}
+
+// Test that the task update notifications of a stop still pending when the
+// service shuts down are not delivered.
+TEST_F(ActorServiceTest, ShutdownDropsPendingTaskUpdateNotifications) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  FakeActorServiceTaskUpdatesObserver* observer =
+      [[FakeActorServiceTaskUpdatesObserver alloc] init];
+  service->AddTaskUpdatesObserver(observer);
+  FlushCurrentSequence();
+  ASSERT_EQ(1, observer.registeredCount);
+
+  service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+  RunAlreadyPostedTasks();
+  service->Shutdown();
+  FlushCurrentSequence();
+
+  EXPECT_EQ(0, observer.stateChangeCount);
+  EXPECT_EQ(0, observer.stoppedCount);
+}
+
+// Test that observers removed after a task stopped, but before its stop was
+// delivered, are not notified of the stop.
+TEST_F(ActorServiceTest, ObserversRemovedBeforeStopDeliveryAreNotNotified) {
+  ActorService* service = ActorServiceFactory::GetForProfile(profile_.get());
+  ASSERT_NE(nullptr, service);
+
+  ActorTaskId task_id = CreateTask(service);
+  FakeActorServiceTaskUpdatesObserver* scoped_observer =
+      [[FakeActorServiceTaskUpdatesObserver alloc] init];
+  FakeActorServiceTaskUpdatesObserver* global_observer =
+      [[FakeActorServiceTaskUpdatesObserver alloc] init];
+  ASSERT_TRUE(service->AddTaskUpdatesObserver(task_id, scoped_observer));
+  service->AddTaskUpdatesObserver(global_observer);
+  FlushCurrentSequence();
+
+  service->StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
+  RunAlreadyPostedTasks();
+  ASSERT_EQ(nullptr, GetTask(service, task_id));
+  ASSERT_TRUE(HasTask(service, task_id));
+
+  service->RemoveTaskUpdatesObserver(task_id, scoped_observer);
+  service->RemoveTaskUpdatesObserver(global_observer);
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return !HasTask(service, task_id); }));
+
+  EXPECT_EQ(0, scoped_observer.stoppedCount);
+  EXPECT_EQ(0, global_observer.stoppedCount);
 }
 
 // Test that `CreateTask()` returns a null ID and creates no task when web
@@ -1516,7 +2339,8 @@ TEST_F(ActorServiceTest, CanActOnWebChanged_StopsActiveTasksWhenDisabled) {
   profile_->GetPrefs()->SetInteger(prefs::kGeminiActOnWebSettings,
                                    kPolicyDisabled);
 
-  EXPECT_FALSE(HasTask(service, task_id));
+  EXPECT_TRUE(
+      base::test::RunUntil([&]() { return !HasTask(service, task_id); }));
 }
 
 // Test that `PerformActions()` rejects with `kActionsBlockedByEnterprisePolicy`
@@ -1529,13 +2353,14 @@ TEST_F(ActorServiceTest, PerformActions_RejectedWhenBlockedByEnterprisePolicy) {
   ASSERT_NE(nullptr, service);
 
   const ActorTaskId task_id(1);
-  SwapTask(service, task_id,
-           std::make_unique<ActorTask>(
-               task_id, "Test Task", TestSource(),
-               /*allow_incognito_web_states=*/false, GetJournal(service),
-               GetToolFactory(service),
-               BrowserListFactory::GetForProfile(profile_.get()),
-               /*policy_checker=*/nullptr));
+  SwapTask(
+      service, task_id,
+      std::make_unique<ActorTask>(
+          task_id, "Test Task", TestSource(),
+          /*allow_incognito_web_states=*/false, GetJournal(service),
+          GetToolFactory(service),
+          BrowserListFactory::GetForProfile(profile_.get()),
+          /*policy_checker=*/nullptr, MakeOnStoppedCallback(service, task_id)));
 
   PerformActionsResult result = PerformActions(service, task_id);
   ASSERT_EQ(1u, result.action_results.size());

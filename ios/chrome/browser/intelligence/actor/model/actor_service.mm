@@ -7,6 +7,7 @@
 #import <algorithm>
 #import <optional>
 #import <set>
+#import <utility>
 
 #import "base/barrier_callback.h"
 #import "base/base64.h"
@@ -14,6 +15,7 @@
 #import "base/functional/bind.h"
 #import "base/location.h"
 #import "base/task/sequenced_task_runner.h"
+#import "base/types/expected.h"
 #import "components/actor/core/aggregated_journal.h"
 #import "components/actor/core/journal_details_builder.h"
 #import "components/actor/core/task_source_info.h"
@@ -81,15 +83,34 @@ void LogActionsProto(
                     "chrome_intelligence_proto_features.Actions");
 }
 
-// Posts `callback` with `result`. Early replies are posted so that callers are
-// never re-entered from within `ActorService::PerformActions()`.
-void PostPerformActionsReply(PerformActionsCallback callback,
-                             PerformActionsResult result) {
-  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, base::BindOnce(std::move(callback), std::move(result)));
+// Returns a `PerformActionsResult` with a single `code` result.
+PerformActionsResult MakePerformActionsResult(mojom::ActionResultCode code) {
+  PerformActionsResult result;
+  result.action_results = MakeActionResults(code);
+  return result;
 }
 
 }  // namespace
+
+template <typename Method, typename... Args>
+void ActorService::EnqueueCommand(Method method, Args&&... args) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(method, weak_this_, std::forward<Args>(args)...));
+}
+
+void ActorService::PostReply(base::OnceClosure reply) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&ActorService::RunReply, weak_this_, std::move(reply)));
+}
+
+void ActorService::RunReply(base::OnceClosure reply) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  std::move(reply).Run();
+}
 
 ActorService::ActorService(ProfileIOS* profile)
     : profile_(profile),
@@ -100,9 +121,9 @@ ActorService::ActorService(ProfileIOS* profile)
       lifecycle_observers_([[PostedObserverList alloc]
           initWithProtocol:@protocol(ActorTaskLifecycleObserver)]) {
   CHECK(tool_factory_);
-  can_act_on_web_subscription_ =
-      policy_checker_->AddCanActOnWebChangedCallback(base::BindRepeating(
-          &ActorService::OnCanActOnWebChanged, weak_ptr_factory_.GetWeakPtr()));
+  weak_this_ = weak_ptr_factory_.GetWeakPtr();
+  can_act_on_web_subscription_ = policy_checker_->AddCanActOnWebChangedCallback(
+      base::BindRepeating(&ActorService::OnCanActOnWebChanged, weak_this_));
 }
 
 ActorService::~ActorService() {
@@ -111,13 +132,19 @@ ActorService::~ActorService() {
 
 void ActorService::Shutdown() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (IsShutDown()) {
+    return;
+  }
+  // No command, reply or lifecycle notification runs after `Shutdown()`:
+  // queued and pending ones are dropped, as are the ones issued afterwards.
+  weak_ptr_factory_.InvalidateWeakPtrsAndDoom();
   can_act_on_web_subscription_ = {};
-  // Pending lifecycle notifications are dropped, so that observers are never
-  // called back after `Shutdown()`.
   [lifecycle_observers_ removeAllObservers];
+  pending_observations_.clear();
   // TODO(crbug.com/568342921): Gracefully cleanup tasks.
   task_observers_.clear();
   active_tasks_.clear();
+  pending_delete_tasks_.clear();
   policy_checker_.reset();
 }
 
@@ -126,6 +153,7 @@ ActorTaskId ActorService::CreateTask(const std::string& title,
                                      bool allow_incognito_web_states) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(IsActorEnabled());
+  CHECK(!IsShutDown());
   if (policy_checker_ && !policy_checker_->CanActOnWeb()) {
     journal_->Log(GURL(), ActorTaskId(), "ActorService::CreateTask",
                   JournalDetailsBuilder()
@@ -140,7 +168,8 @@ ActorTaskId ActorService::CreateTask(const std::string& title,
   BrowserList* browser_list = BrowserListFactory::GetForProfile(profile_);
   auto task = std::make_unique<ActorTask>(
       task_id, title, source_info, allow_incognito_web_states, journal_.get(),
-      tool_factory_.get(), browser_list, policy_checker_.get());
+      tool_factory_.get(), browser_list, policy_checker_.get(),
+      base::BindOnce(&ActorService::OnTaskStopped, weak_this_, task_id));
 
   for (id<ActorTaskUpdatesObserver> observer : task_observers_) {
     if (observer) {
@@ -161,119 +190,38 @@ ActorTaskId ActorService::CreateTask(const std::string& title,
 
 void ActorService::PerformActions(
     ActorTaskId task_id,
-    const std::vector<optimization_guide::proto::Action>& actions,
-    const std::string& task_update,
+    std::vector<optimization_guide::proto::Action> actions,
+    std::string task_update,
     PerformActionsCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(IsActorEnabled());
 
-  LogActionsProto(journal_.get(), task_id, actions);
-
-  auto it = active_tasks_.find(task_id);
-  if (it == active_tasks_.end()) {
-    PerformActionsResult actions_result;
-    actions_result.action_results =
-        MakeActionResults(mojom::ActionResultCode::kTaskWentAway);
-    PostPerformActionsReply(std::move(callback), std::move(actions_result));
-    return;
-  }
-
-  if (policy_checker_ && !policy_checker_->CanActOnWeb()) {
-    constexpr mojom::ActionResultCode kRejectionCode =
-        mojom::ActionResultCode::kActionsBlockedByEnterprisePolicy;
-    LogActRejection(*journal_, task_id, "ActorService::PerformActions",
-                    kRejectionCode);
-    PerformActionsResult actions_result;
-    actions_result.action_results = MakeActionResults(kRejectionCode);
-    PostPerformActionsReply(std::move(callback), std::move(actions_result));
-    return;
-  }
-
-  // Reject before `AddControlledWebStates`, so that a rejected request does not
-  // leave its target WebStates controlled by the task.
-  // TODO(crbug.com/568338837): Rely on the `ActorTask::Act()` check once the
-  // task registers its controlled WebStates.
-  if (it->second->HasPendingAct()) {
-    constexpr mojom::ActionResultCode kRejectionCode =
-        mojom::ActionResultCode::kExecutionEngineExistingAction;
-    LogActRejection(*journal_, task_id, "ActorService::PerformActions",
-                    kRejectionCode);
-    PerformActionsResult actions_result;
-    actions_result.action_results = MakeActionResults(kRejectionCode);
-    PostPerformActionsReply(std::move(callback), std::move(actions_result));
-    return;
-  }
-
-  std::vector<std::unique_ptr<ActorToolRequest>> tool_requests;
-  tool_requests.reserve(actions.size());
-  for (const auto& action : actions) {
-    tool_requests.push_back(std::make_unique<ActorToolRequest>(action));
-  }
-
-  // Resolve and register target WebStates from requests before execution.
-  AddControlledWebStates(it->second.get(), tool_requests);
-
-  it->second->Act(std::move(tool_requests), task_update,
-                  base::BindOnce(&ActorService::OnActCompleted,
-                                 weak_ptr_factory_.GetWeakPtr(), task_id,
-                                 std::move(callback)));
+  EnqueueCommand(&ActorService::DoPerformActions, task_id, std::move(actions),
+                 std::move(task_update), std::move(callback));
 }
 
 void ActorService::RequestTabObservation(ActorTaskId task_id,
                                          web::WebState* web_state,
                                          TabObservationCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  auto it = active_tasks_.find(task_id);
-  if (it == active_tasks_.end() || !web_state) {
-    std::move(callback).Run(PageContextWrapperCallbackResponse());
-    return;
-  }
-
-  const GURL last_committed_url = web_state->GetLastCommittedURL();
-  std::unique_ptr<AggregatedJournal::PendingAsyncEntry> journal_entry =
-      journal_->CreatePendingAsyncEntry(
-          last_committed_url, task_id, MakeBrowserTrackUUID(task_id),
-          "RequestTabObservation", /*details=*/{});
-
-  PageContextWrapperConfigBuilder builder;
-  builder.SetUseRichExtraction(true);
-  builder.SetUseRichExtractionWithActionable(true);
-  builder.SetIncludeSameSiteOnly(true);
-  builder.SetSnapshotCachePolicy(
-      PageContextWrapperConfig::SnapshotCachePolicy::kBypassCache);
-  PageContextWrapperConfig config = builder.Build();
-
-  web::WebStateID web_state_id = web_state->GetUniqueIdentifier();
-
-  PageContextWrapper* page_context_wrapper = [[PageContextWrapper alloc]
-        initWithWebState:web_state
-                  config:config
-      completionCallback:base::BindOnce(
-                             &ActorService::OnPageContextExtractionComplete,
-                             weak_ptr_factory_.GetWeakPtr(), web_state_id,
-                             last_committed_url, std::move(journal_entry),
-                             std::move(callback))];
-
-  pending_observations_[web_state_id] = page_context_wrapper;
-
-  [page_context_wrapper setShouldGetAnnotatedPageContent:YES];
-  [page_context_wrapper setShouldGetSnapshot:YES];
-  [page_context_wrapper populatePageContextFieldsAsyncWithTimeout:
-                            GetActorTabObservationPageContextTimeout()];
+  EnqueueCommand(
+      &ActorService::DoRequestTabObservation, task_id,
+      web_state ? web_state->GetWeakPtr() : base::WeakPtr<web::WebState>(),
+      std::move(callback));
 }
 
 void ActorService::PauseTask(ActorTaskId task_id, bool from_actor) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  // TODO(crbug.com/496163986): Implement and test.
+  // TODO(crbug.com/496163986): Implement and test. Must be enqueued as a
+  // command.
 }
 
 void ActorService::SetTaskInterventionDelegate(
     ActorTaskId task_id,
     id<ActorTaskInterventionDelegate> delegate) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  auto it = active_tasks_.find(task_id);
-  if (it != active_tasks_.end()) {
-    it->second->SetInterventionDelegate(delegate);
+  if (ActorTask* task = FindActiveTask(task_id)) {
+    task->SetInterventionDelegate(delegate);
   }
 }
 
@@ -281,39 +229,22 @@ void ActorService::InterruptTask(ActorTaskId task_id,
                                  ActorTaskInterruptReason reason,
                                  std::string_view message) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  auto it = active_tasks_.find(task_id);
-  if (it == active_tasks_.end()) {
-    return;
-  }
-  it->second->Interrupt(reason, message);
-  // TODO(crbug.com/532978481): Clean up once `ActorTask` routes
-  // task-initiated stops directly through `ActorService::StopTask`.
-  it = active_tasks_.find(task_id);
-  if (it != active_tasks_.end() && IsTerminalState(it->second->GetState())) {
-    NotifyTaskStopped(*it->second);
-    active_tasks_.erase(it);
-  }
+  EnqueueCommand(&ActorService::DoInterruptTask, task_id, reason,
+                 std::string(message));
 }
 
 void ActorService::StopTask(ActorTaskId task_id,
                             ActorTaskStoppedReason reason) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  // TODO(crbug.com/496163986): Implement and test.
-  auto it = active_tasks_.find(task_id);
-  if (it != active_tasks_.end()) {
-    it->second->Stop(reason);
-    NotifyTaskStopped(*it->second);
-  }
-  active_tasks_.erase(task_id);
+  EnqueueCommand(&ActorService::DoStopTask, task_id, reason);
 }
 
 // TODO(crbug.com/517583120): Remove when the temporary actuation prototype is
 // cleaned up.
 void ActorService::StopAllTasks() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  while (!active_tasks_.empty()) {
-    StopTask(active_tasks_.begin()->first,
-             ActorTaskStoppedReason::kStoppedByUser);
+  for (const auto& [task_id, task] : active_tasks_) {
+    StopTask(task_id, ActorTaskStoppedReason::kStoppedByUser);
   }
 }
 
@@ -337,8 +268,11 @@ void ActorService::RemoveTaskUpdatesObserver(
     id<ActorTaskUpdatesObserver> observer) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   std::erase(task_observers_, observer);
-  for (const auto& [task_id, task] : active_tasks_) {
-    task->RemoveObserver(observer);
+  // Also remove from stopped tasks to cancel any pending notifications.
+  for (const auto* tasks : {&active_tasks_, &pending_delete_tasks_}) {
+    for (const auto& [task_id, task] : *tasks) {
+      task->RemoveObserver(observer);
+    }
   }
 }
 
@@ -359,11 +293,11 @@ void ActorService::RemoveTaskUpdatesObserver(
     ActorTaskId task_id,
     id<ActorTaskUpdatesObserver> observer) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  auto it = active_tasks_.find(task_id);
-  if (it == active_tasks_.end()) {
-    return;
+  for (const auto* tasks : {&active_tasks_, &pending_delete_tasks_}) {
+    if (auto it = tasks->find(task_id); it != tasks->end()) {
+      it->second->RemoveObserver(observer);
+    }
   }
-  it->second->RemoveObserver(observer);
 }
 
 void ActorService::AddTaskLifecycleObserver(
@@ -390,12 +324,12 @@ std::optional<ActorTaskState> ActorService::GetActiveTaskState() const {
 web::WebState* ActorService::GetWebStateForID(web::WebStateID web_state_id,
                                               ActorTaskId task_id) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  auto it = active_tasks_.find(task_id);
-  if (it == active_tasks_.end()) {
+  ActorTask* task = FindActiveTask(task_id);
+  if (!task) {
     return nullptr;
   }
 
-  for (const auto& weak_ptr : it->second->controlled_web_states()) {
+  for (const auto& weak_ptr : task->controlled_web_states()) {
     if (weak_ptr && weak_ptr->GetUniqueIdentifier() == web_state_id) {
       return weak_ptr.get();
     }
@@ -409,9 +343,8 @@ void ActorService::AddControlledWebState(ActorTaskId task_id,
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(IsActorEnabled());
 
-  auto it = active_tasks_.find(task_id);
-  if (it != active_tasks_.end()) {
-    it->second->AddControlledWebState(web_state);
+  if (ActorTask* task = FindActiveTask(task_id)) {
+    task->AddControlledWebState(web_state);
   }
 }
 
@@ -427,6 +360,142 @@ ActorService::GetWeakTaskBackgroundWorkers() {
 }
 
 #pragma mark - Private
+
+ActorTask* ActorService::FindActiveTask(ActorTaskId task_id) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  auto it = active_tasks_.find(task_id);
+  return it == active_tasks_.end() ? nullptr : it->second.get();
+}
+
+void ActorService::DoPerformActions(
+    ActorTaskId task_id,
+    std::vector<optimization_guide::proto::Action> actions,
+    std::string task_update,
+    PerformActionsCallback callback) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  LogActionsProto(journal_.get(), task_id, actions);
+
+  ActorTask* task = FindActiveTask(task_id);
+  if (!task) {
+    PostReply(base::BindOnce(
+        std::move(callback),
+        MakePerformActionsResult(mojom::ActionResultCode::kTaskWentAway)));
+    return;
+  }
+
+  if (policy_checker_ && !policy_checker_->CanActOnWeb()) {
+    constexpr mojom::ActionResultCode kRejectionCode =
+        mojom::ActionResultCode::kActionsBlockedByEnterprisePolicy;
+    LogActRejection(*journal_, task_id, "ActorService::PerformActions",
+                    kRejectionCode);
+    PostReply(base::BindOnce(std::move(callback),
+                             MakePerformActionsResult(kRejectionCode)));
+    return;
+  }
+
+  // Reject before `AddControlledWebStates`, so that a rejected request does not
+  // leave its target WebStates controlled by the task.
+  // TODO(crbug.com/568338837): Rely on the `ActorTask::Act()` check once the
+  // task registers its controlled WebStates.
+  if (task->HasPendingAct()) {
+    constexpr mojom::ActionResultCode kRejectionCode =
+        mojom::ActionResultCode::kExecutionEngineExistingAction;
+    LogActRejection(*journal_, task_id, "ActorService::PerformActions",
+                    kRejectionCode);
+    PostReply(base::BindOnce(std::move(callback),
+                             MakePerformActionsResult(kRejectionCode)));
+    return;
+  }
+
+  std::vector<std::unique_ptr<ActorToolRequest>> tool_requests;
+  tool_requests.reserve(actions.size());
+  for (const auto& action : actions) {
+    tool_requests.push_back(std::make_unique<ActorToolRequest>(action));
+  }
+
+  // Resolve and register target WebStates from requests before execution.
+  AddControlledWebStates(task, tool_requests);
+
+  task->Act(std::move(tool_requests), task_update,
+            base::BindOnce(&ActorService::OnActCompleted, weak_this_, task_id,
+                           std::move(callback)));
+}
+
+void ActorService::DoRequestTabObservation(
+    ActorTaskId task_id,
+    base::WeakPtr<web::WebState> weak_web_state,
+    TabObservationCallback callback) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  web::WebState* web_state = weak_web_state.get();
+  if (!FindActiveTask(task_id) || !web_state) {
+    // TODO(crbug.com/578549018): Reply a dedicated error when the WebState
+    // went away, matching Desktop's `kWebContentsWentAway`.
+    PostReply(base::BindOnce(
+        std::move(callback),
+        base::unexpected(PageContextWrapperError::kGenericError)));
+    return;
+  }
+
+  // The extraction may complete synchronously; its reply is still posted, like
+  // the early reply above, so that every reply runs as its own task.
+  StartTabObservation(task_id, web_state,
+                      base::BindOnce(&ActorService::PostTabObservationReply,
+                                     weak_this_, std::move(callback)));
+}
+
+void ActorService::StartTabObservation(ActorTaskId task_id,
+                                       web::WebState* web_state,
+                                       TabObservationCallback callback) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  CHECK(web_state);
+  const GURL last_committed_url = web_state->GetLastCommittedURL();
+  std::unique_ptr<AggregatedJournal::PendingAsyncEntry> journal_entry =
+      journal_->CreatePendingAsyncEntry(
+          last_committed_url, task_id, MakeBrowserTrackUUID(task_id),
+          "RequestTabObservation", /*details=*/{});
+
+  PageContextWrapperConfigBuilder builder;
+  builder.SetUseRichExtraction(true);
+  builder.SetUseRichExtractionWithActionable(true);
+  builder.SetIncludeSameSiteOnly(true);
+  builder.SetSnapshotCachePolicy(
+      PageContextWrapperConfig::SnapshotCachePolicy::kBypassCache);
+  PageContextWrapperConfig config = builder.Build();
+
+  web::WebStateID web_state_id = web_state->GetUniqueIdentifier();
+
+  PageContextWrapper* page_context_wrapper = [[PageContextWrapper alloc]
+        initWithWebState:web_state
+                  config:config
+      completionCallback:base::BindOnce(
+                             &ActorService::OnPageContextExtractionComplete,
+                             weak_this_, web_state_id, last_committed_url,
+                             std::move(journal_entry), std::move(callback))];
+
+  pending_observations_[web_state_id] = page_context_wrapper;
+
+  [page_context_wrapper setShouldGetAnnotatedPageContent:YES];
+  [page_context_wrapper setShouldGetSnapshot:YES];
+  [page_context_wrapper populatePageContextFieldsAsyncWithTimeout:
+                            GetActorTabObservationPageContextTimeout()];
+}
+
+void ActorService::DoInterruptTask(ActorTaskId task_id,
+                                   ActorTaskInterruptReason reason,
+                                   std::string message) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (ActorTask* task = FindActiveTask(task_id)) {
+    task->Interrupt(reason, message);
+  }
+}
+
+void ActorService::DoStopTask(ActorTaskId task_id,
+                              ActorTaskStoppedReason reason) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (ActorTask* task = FindActiveTask(task_id)) {
+    task->Stop(reason);
+  }
+}
 
 void ActorService::NotifyTaskStopped(const ActorTask& task) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -484,27 +553,71 @@ void ActorService::OnPageContextExtractionComplete(
   std::move(callback).Run(std::move(response));
 }
 
+void ActorService::PostTabObservationReply(
+    TabObservationCallback callback,
+    PageContextWrapperCallbackResponse response) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  PostReply(base::BindOnce(std::move(callback), std::move(response)));
+}
+
+void ActorService::OnTaskStopped(ActorTaskId task_id) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  auto node = active_tasks_.extract(task_id);
+  CHECK(!node.empty());
+  const ActorTask& task = *node.mapped();
+  NotifyTaskStopped(task);
+  pending_delete_tasks_.insert(std::move(node));
+  // Destruction is enqueued since the task is still on the call stack.
+  EnqueueCommand(&ActorService::FinishStoppedTask, task_id);
+}
+
+void ActorService::FinishStoppedTask(ActorTaskId task_id) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  pending_delete_tasks_.erase(task_id);
+}
+
+void ActorService::OnActObservationsComplete(
+    ActorTaskId task_id,
+    std::unique_ptr<AggregatedJournal::PendingAsyncEntry> observation_entry,
+    PerformActionsCallback callback,
+    PerformActionsResult result,
+    std::vector<std::unique_ptr<TabObservationResponse>> contexts) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  // End the slice before replying so it only covers the observation.
+  observation_entry->EndEntry(/*details=*/{});
+  if (!FindActiveTask(task_id)) {
+    std::move(callback).Run(
+        MakePerformActionsResult(mojom::ActionResultCode::kTaskWentAway));
+    return;
+  }
+  result.page_contexts = std::move(contexts);
+  std::move(callback).Run(std::move(result));
+}
+
 void ActorService::OnActCompleted(ActorTaskId task_id,
                                   PerformActionsCallback callback,
                                   std::vector<ActionResult> results) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  // Reply directly, unlike commands: this completion and the extraction's are
+  // already posted or async, and bound to `weak_this_`.
+  ActorTask* task = FindActiveTask(task_id);
   const mojom::ActionResultCode result_code =
-      GetFirstFailedActionResultCode(results);
+      task ? GetFirstFailedActionResultCode(results)
+           : mojom::ActionResultCode::kTaskWentAway;
   // Matches the entry logged by Desktop's `ActorKeyedServiceProtoWrapper`.
   journal_->Log(
       GURL(), task_id, "PerformActionsFinished",
       JournalDetailsBuilder().Add("result_code", result_code).Build());
 
-  PerformActionsResult perform_actions_result;
-  perform_actions_result.action_results = std::move(results);
-
-  auto it = active_tasks_.find(task_id);
-  if (it == active_tasks_.end()) {
-    std::move(callback).Run(std::move(perform_actions_result));
+  if (!task) {
+    std::move(callback).Run(
+        MakePerformActionsResult(mojom::ActionResultCode::kTaskWentAway));
     return;
   }
 
-  ActorTask* task = it->second.get();
+  PerformActionsResult perform_actions_result;
+  perform_actions_result.action_results = std::move(results);
+
   std::vector<web::WebState*> web_states_to_extract;
 
   // TODO(crbug.com/505080093): Extract PageContext for *all* of the controlled
@@ -539,24 +652,17 @@ void ActorService::OnActCompleted(ActorTaskId task_id,
   // ActionsResult.
   auto barrier = base::BarrierCallback<std::unique_ptr<TabObservationResponse>>(
       web_states_to_extract.size(),
-      base::BindOnce(
-          [](std::unique_ptr<AggregatedJournal::PendingAsyncEntry>
-                 observation_entry,
-             PerformActionsCallback callback, PerformActionsResult result,
-             std::vector<std::unique_ptr<TabObservationResponse>> contexts) {
-            // Ended before replying so that the slice only covers the
-            // observation, and after every `RequestTabObservation` slice so
-            // that those stay nested under it.
-            observation_entry->EndEntry(/*details=*/{});
-            result.page_contexts = std::move(contexts);
-            std::move(callback).Run(std::move(result));
-          },
-          std::move(observation_entry), std::move(callback),
-          std::move(perform_actions_result)));
+      base::BindOnce(&ActorService::OnActObservationsComplete, weak_this_,
+                     task_id, std::move(observation_entry), std::move(callback),
+                     std::move(perform_actions_result)));
 
   for (web::WebState* web_state : web_states_to_extract) {
     web::WebStateID id = web_state->GetUniqueIdentifier();
-    RequestTabObservation(
+    // Started directly: the observation is part of this act's reply, so no
+    // command queued meanwhile may run before it starts. Its reply is not
+    // posted, so that `Shutdown()` destroys `barrier`, whose journal entry
+    // needs `journal_`, along with the extraction.
+    StartTabObservation(
         task_id, web_state,
         base::BindOnce(
             [](web::WebStateID id,
@@ -611,13 +717,13 @@ web::WebState* ActorService::GetWebState(web::WebStateID web_state_id,
 }
 
 void ActorService::OnCanActOnWebChanged(bool can_act_on_web) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (can_act_on_web) {
     return;
   }
 
-  while (!active_tasks_.empty()) {
-    StopTask(active_tasks_.begin()->first,
-             ActorTaskStoppedReason::kBrowserFailure);
+  for (const auto& [task_id, task] : active_tasks_) {
+    StopTask(task_id, ActorTaskStoppedReason::kBrowserFailure);
   }
 }
 }  // namespace actor

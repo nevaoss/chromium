@@ -12,6 +12,7 @@
 
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
+#include "base/memory/raw_ptr.h"
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/run_until.h"
@@ -234,7 +235,8 @@ class TlsSecureChannelImplTest : public testing::Test {
   FakeOakTlsSessionService fake_oak_service_;
   FakeTlsCertificateRepository cert_repo_;
   TlsCertificates certs_;
-  std::vector<FakeTlsWebSocketClient*> created_transports_;
+  std::vector<raw_ptr<FakeTlsWebSocketClient, DanglingUntriaged>>
+      created_transports_;
 };
 
 TEST_F(TlsSecureChannelImplTest, SuccessfulHandshakeAndDataTransfer) {
@@ -553,6 +555,34 @@ TEST_F(TlsSecureChannelImplTest,
   ASSERT_TRUE(result.has_value());
   EXPECT_EQ(*result, Response({0x77, 0x88}));
   EXPECT_EQ(fake_oak_service_.process_frame_calls_, 1);
+}
+
+TEST_F(TlsSecureChannelImplTest,
+       BackToBackHandshakeFrameAndSocketCloseRecordsHandshakeStatus) {
+  base::HistogramTester histogram_tester;
+  base::test::TestFuture<void> established_future;
+  base::test::TestFuture<base::expected<Response, StatusCode>> response_future;
+
+  fake_oak_service_.next_process_error_ =
+      mojom::TlsHandshakeError::kProtocolError;
+
+  auto channel = CreateChannel(established_future.GetCallback(),
+                               response_future.GetRepeatingCallback());
+
+  WaitForClientHello();
+
+  // Deliver a corrupted handshake frame / TLS alert and an immediate socket
+  // close back-to-back before the async ProcessHandshakeFrame Mojo reply runs.
+  transport()->SimulateIncomingFrame({0x16, 0x03, 0x03, 0x00, 0x02});
+  transport()->SimulateTransportError(TlsWebSocketClient::Error::kSocketClosed);
+
+  auto result = response_future.Take();
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error(), StatusCode::kHandshakeFailed);
+  EXPECT_FALSE(established_future.IsReady());
+  EXPECT_EQ(fake_oak_service_.process_frame_calls_, 1);
+  histogram_tester.ExpectUniqueSample("PrivateAi.Tls.HandshakeStatus",
+                                      TlsHandshakeStatus::kProtocolError, 1);
 }
 
 }  // namespace

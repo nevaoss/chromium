@@ -1494,6 +1494,23 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Net.Certificate.PrintableStringRequiredParseMode"
+    enum="NetCertificatePrintableStringParseMode" expires_after="2027-05-01">
+  <owner>chlily@chromium.org</owner>
+  <owner>chrome-secure-web-and-net@chromium.org</owner>
+  <summary>
+    The strictest PrintableString parsing mode with which both the subject and
+    issuer names of an X.509 certificate can be parsed. Recorded each time a
+    net::X509Certificate is created with the printable_string_is_utf8 option.
+    That option is used for client certificates from platform certificate
+    stores, extension APIs, and ChromeOS platform keys, but also for every
+    certificate deserialized from IPC, including server certificates. Sample
+    counts are therefore dominated by server certificates and by repeated parses
+    of the same certificate; use the proportion of clients reporting each bucket
+    rather than sample counts. See crbug.com/563054783.
+  </summary>
+</histogram>
+
 <histogram name="Net.Certificate.SerialNumberLength" units="bytes"
     expires_after="2027-03-28">
   <owner>davidben@chromium.org</owner>
@@ -9467,18 +9484,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Net.SSL_Connection_Error_TrustAnchorIDs" enum="NetErrorCodes"
-    expires_after="2026-12-06">
-  <owner>davidben@chromium.org</owner>
-  <owner>estark@chromium.org</owner>
-  <owner>trusty-transport@chromium.org</owner>
-  <summary>
-    Counts of specific error codes returned when opening an SSL connection.
-    Recorded for connections to servers that advertise support for Trust Anchor
-    IDs in DNS.
-  </summary>
-</histogram>
-
 <histogram name="Net.SSL_Connection_Latency_2" units="ms" expires_after="never">
 <!-- expires-never: Used to keep track of the TLS ecosystem. -->
 
@@ -9494,18 +9499,6 @@ chromium-metrics-reviews@google.com.
   <summary>
     Time from when the Connect() starts until it completes. Recorded for
     successful connections to servers that used the Server Padding extension.
-  </summary>
-</histogram>
-
-<histogram name="Net.SSL_Connection_Latency_TrustAnchorIDs" units="ms"
-    expires_after="2026-12-06">
-  <owner>davidben@chromium.org</owner>
-  <owner>estark@chromium.org</owner>
-  <owner>trusty-transport@chromium.org</owner>
-  <summary>
-    Time from when the Connect() starts until it completes. Recorded for
-    successful connections to servers that advertise support for Trust Anchor
-    IDs in DNS.
   </summary>
 </histogram>
 

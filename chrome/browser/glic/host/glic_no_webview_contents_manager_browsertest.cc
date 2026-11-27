@@ -1329,6 +1329,38 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
       "Glic.Overlay.DisplayDuration.LoadingAndCompleted", 2);
 }
 
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
+                       RecordsOverlayDisplayDurationForErrorToGuestTransition) {
+  GetProfile()->GetPrefs()->SetBoolean(prefs::kGlicShowErrorAllowed, true);
+  base::HistogramTester histogram_tester;
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
+  auto* manager = GetNoWebviewContentsManager(instance);
+  ASSERT_TRUE(manager);
+  ASSERT_TRUE(content::WaitForLoadStop(manager->guest_contents()));
+  EXPECT_EQ(manager->state(),
+            GlicNoWebviewContentsManager::DisplayState::kShowingOverlay);
+
+  // Transition to a transient error while visible.
+  manager->SetErrorState(mojom::ErrorPanelType::kError,
+                         ClientLoadErrorReason::kGuestLoadFailed);
+
+  histogram_tester.ExpectTotalCount("Glic.Overlay.DisplayDuration.Loading", 1);
+  histogram_tester.ExpectTotalCount("Glic.Overlay.DisplayDuration", 0);
+
+  // Dismissing the error panel directly into the guest (via ShowGuestDirectly)
+  // records the error duration and total overlay duration without emitting a
+  // synthetic LoadingAndCompleted sample.
+  manager->GetOverlayPageHandlerForTesting()->OnShowErrorClicked();
+  EXPECT_EQ(manager->state(),
+            GlicNoWebviewContentsManager::DisplayState::kShowingGuest);
+
+  histogram_tester.ExpectTotalCount("Glic.Overlay.DisplayDuration", 1);
+  histogram_tester.ExpectTotalCount("Glic.Overlay.DisplayDuration.Loading", 1);
+  histogram_tester.ExpectTotalCount("Glic.Overlay.DisplayDuration.Error", 1);
+  histogram_tester.ExpectTotalCount(
+      "Glic.Overlay.DisplayDuration.LoadingAndCompleted", 0);
+}
+
 IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
                        RecordsOverlayUserActions) {
   GlicNoWebviewContentsManager manager(GetProfile(), &service()->enabling(),
@@ -1727,11 +1759,12 @@ IN_PROC_BROWSER_TEST_F(
   ASSERT_OK(RunUntilNull([&]() { return manager->overlay_contents(); }));
 }
 
-#if !BUILDFLAG(IS_ANDROID)
 class GlicLegacyWebviewNativeLoadingPlaceholderBrowserTest
     : public GlicBrowserTest {
  public:
   GlicLegacyWebviewNativeLoadingPlaceholderBrowserTest() {
+    // Explicitly disable `kGlicNoWebview` because the fieldtrial testing config
+    // enables it on bots.
     feature_list_.InitWithFeatures({features::kGlicNativeLoadingPlaceholder},
                                    {features::kGlicNoWebview});
   }
@@ -1760,7 +1793,7 @@ class GlicLegacyWebviewNativeLoadingTimeoutBrowserTest
     : public GlicBrowserTest {
  public:
   GlicLegacyWebviewNativeLoadingTimeoutBrowserTest() {
-    SetGlicPagePath("/title1.html");
+    SetGlicPagePath("/glic/test_data/page.html");
     feature_list_.InitWithFeaturesAndParameters(
         {{features::kGlicNativeLoadingPlaceholder, {}},
          {features::kGlicWebClientLoadTimes,
@@ -1779,9 +1812,10 @@ IN_PROC_BROWSER_TEST_F(
     ClientLoadTimeoutTransitionsToErrorAndHidesNativePlaceholder) {
   ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
 
-  // Because /title1.html never initializes a Glic web client, `noLoader` must
-  // still advance through `kFinishLoading` and fire `TIMEOUT_LOADING_CLIENT`,
-  // dismissing the native loading placeholder to reveal `#errorPanel`.
+  // Because /glic/test_data/page.html never initializes a Glic web client,
+  // `noLoader` must still advance through `kFinishLoading` and fire
+  // `TIMEOUT_LOADING_CLIENT`, dismissing the native loading placeholder to
+  // reveal `#errorPanel`.
   ASSERT_OK(WaitForWebUiState(mojom::WebUiState::kError));
   EXPECT_FALSE(instance->host().IsShowingNativeLoading());
 
@@ -1931,7 +1965,6 @@ IN_PROC_BROWSER_TEST_F(GlicLegacyWebviewWarmedNativeLoadingBrowserTest,
   ASSERT_OK(WaitForGlicClient(instance));
   EXPECT_FALSE(instance->host().IsShowingNativeLoading());
 }
-#endif
 
 class GlicNoWebviewNativeLoadingPlaceholderBrowserTest
     : public GlicNoWebviewContentsManagerBrowserTest {

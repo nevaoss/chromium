@@ -203,8 +203,7 @@ void IFaceWithTypemapProxy::Echo(
     in_param,
     param_fragment);
 
-  params->param.Set(
-      param_fragment.is_null() ? nullptr : param_fragment.data());
+  params->param.Set(param_fragment);
 
   
   MOJO_INTERNAL_CHECK_SERIALIZATION(
@@ -288,10 +287,8 @@ bool IFaceWithTypemap_Echo_ForwardToCallback::Accept(
   if (success && !input_data_view.ReadOut(&p_out))
     success = false;
   if (!success) {
-    ReportValidationErrorForMessage(
-        message,
-        mojo::internal::VALIDATION_ERROR_DESERIALIZATION_FAILED,
-        IFaceWithTypemap::Name_, 0, true);
+    mojo::internal::ReportDeserializationErrorForMessage(
+        message, IFaceWithTypemap::Name_, 0, true);
     return false;
   }
   if (!callback_.is_null()) {
@@ -314,15 +311,10 @@ void IFaceWithTypemap_Echo_ProxyToResponder::Run(
    });
 #endif
 
-  const uint32_t kFlags = mojo::Message::kFlagIsResponse |
-      ((is_sync_) ? mojo::Message::kFlagIsSync : 0) |
-      ((true) ? 0 : mojo::Message::kFlagNoInterrupt) |
-      ((false) ? mojo::Message::kFlagIsUrgent : 0);
-
   const size_t estimated_payload_size =
     0;
   mojo::Message message(
-      std::to_underlying(messages::IFaceWithTypemap::kEcho), kFlags, estimated_payload_size);
+      std::to_underlying(messages::IFaceWithTypemap::kEcho), response_flags_, estimated_payload_size);
   mojo::internal::MessageFragment<
       ::golden::internal::IFaceWithTypemap_Echo_ResponseParams_Data> params(
           message);
@@ -335,8 +327,7 @@ void IFaceWithTypemap_Echo_ProxyToResponder::Run(
     in_out,
     out_fragment);
 
-  params->out.Set(
-      out_fragment.is_null() ? nullptr : out_fragment.data());
+  params->out.Set(out_fragment);
 
   
   MOJO_INTERNAL_CHECK_SERIALIZATION(
@@ -350,16 +341,7 @@ void IFaceWithTypemap_Echo_ProxyToResponder::Run(
   message.set_method_name("Echo");
 #endif
 
-  message.set_request_id(request_id_);
-  message.set_trace_nonce(trace_nonce_);
-  ::mojo::internal::SendMojoMessage(*responder_, message);
-  // SendMojoMessage() fails silently if the responder connection is closed,
-  // or if the message is malformed.
-  //
-  // TODO(darin): If Accept() returns false due to a malformed message, that
-  // may be good reason to close the connection. However, we don't have a
-  // way to do that from here. We should add a way.
-  responder_ = nullptr;
+  SendResponse(message);
 }
 
 // static
@@ -398,10 +380,8 @@ bool IFaceWithTypemapStubDispatch::AcceptWithResponder(
       if (success && !input_data_view.ReadParam(&p_param))
         success = false;
       if (!success) {
-        ReportValidationErrorForMessage(
-            message,
-            mojo::internal::VALIDATION_ERROR_DESERIALIZATION_FAILED,
-            IFaceWithTypemap::Name_, 0, false);
+        mojo::internal::ReportDeserializationErrorForMessage(
+            message, IFaceWithTypemap::Name_, 0, false);
         return false;
       }
       auto callback =

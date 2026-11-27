@@ -1050,6 +1050,7 @@ void StyleAdjuster::AdjustForForcedColorsMode(ComputedStyleBuilder& builder,
   const ColorThemeInfo theme_info{
       .color_provider = document.GetColorProviderForPainting(color_scheme),
       .color_scheme = color_scheme,
+      .accent_color = builder.ResolveMirroredAccentColor(color_scheme),
       .can_expose_system_accent_color =
           document.IsInWebAppScope() && document.IsInitialProfile()};
 
@@ -1278,7 +1279,8 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state,
       (element && IsA<SVGForeignObjectElement>(*element)) || is_in_top_layer ||
       builder.StyleType() == kPseudoIdBackdrop ||
       builder.StyleType() == kPseudoIdViewTransition ||
-      IsCanvasWithContentDrawable(element)) {
+      IsCanvasWithContentDrawable(element) ||
+      builder.IsUnboundedElementActive()) {
     builder.SetForcesStackingContext(true);
   }
 

@@ -14,7 +14,6 @@
 #include "base/functional/bind.h"
 #include "base/location.h"
 #include "base/memory/raw_ptr.h"
-#include "base/metrics/field_trial_params.h"
 #include "base/notreached.h"
 #include "base/run_loop.h"
 #include "base/strings/strcat.h"
@@ -27,7 +26,6 @@
 #include "base/trace_event/typed_macros.h"
 #include "mojo/public/c/system/quota.h"
 #include "mojo/public/cpp/bindings/lib/may_auto_lock.h"
-#include "mojo/public/cpp/bindings/mojo_buildflags.h"
 #include "mojo/public/cpp/bindings/sync_handle_watcher.h"
 #include "mojo/public/cpp/system/wait.h"
 #include "third_party/perfetto/protos/perfetto/trace/track_event/chrome_mojo_event_info.pbzero.h"
@@ -37,18 +35,6 @@
 #endif
 
 namespace mojo {
-
-namespace {
-
-// The default outgoing serialization mode for new Connectors.
-Connector::OutgoingSerializationMode g_default_outgoing_serialization_mode =
-    Connector::OutgoingSerializationMode::kLazy;
-
-// The default incoming serialization mode for new Connectors.
-Connector::IncomingSerializationMode g_default_incoming_serialization_mode =
-    Connector::IncomingSerializationMode::kDispatchAsIs;
-
-}  // namespace
 
 // Used to efficiently maintain a doubly-linked list of all Connectors
 // currently dispatching on any given thread.
@@ -147,8 +133,6 @@ Connector::Connector(ScopedMessagePipeHandle message_pipe,
                      const char* interface_name)
     : message_pipe_(std::move(message_pipe)),
       error_(false),
-      outgoing_serialization_mode_(g_default_outgoing_serialization_mode),
-      incoming_serialization_mode_(g_default_incoming_serialization_mode),
       interface_name_(interface_name),
       header_validator_(
           base::JoinString({interface_name ? interface_name : "Generic",
@@ -180,16 +164,6 @@ Connector::~Connector() {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     CancelWait();
   }
-}
-
-void Connector::SetOutgoingSerializationMode(OutgoingSerializationMode mode) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  outgoing_serialization_mode_ = mode;
-}
-
-void Connector::SetIncomingSerializationMode(IncomingSerializationMode mode) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  incoming_serialization_mode_ = mode;
 }
 
 void Connector::StartReceiving(
@@ -318,19 +292,6 @@ MojoResult Connector::AcceptAndGetResult(Message* message) {
   }
 #endif
 
-  if (!message->is_serialized()) {
-    // The caller is sending an unserialized message. If we haven't set up a
-    // remoteness tracker yet, do so now. See PrefersSerializedMessages() above
-    // for more details. Note that if the Connector is not yet bound to a
-    // TaskRunner and activaly reading the pipe, we don't bother setting this up
-    // yet.
-    DCHECK_EQ(outgoing_serialization_mode_, OutgoingSerializationMode::kLazy);
-    if (!peer_remoteness_tracker_ && task_runner_) {
-      peer_remoteness_tracker_.emplace(
-          message_pipe_.get(), MOJO_HANDLE_SIGNAL_PEER_REMOTE, task_runner_);
-    }
-  }
-
   MojoResult rv =
       WriteMessageNew(message_pipe_.get(), message->TakeMojoMessage(),
                       MOJO_WRITE_MESSAGE_FLAG_NONE);
@@ -373,14 +334,6 @@ void Connector::AllowWokenUpBySyncWatchOnSameThread() {
 
   EnsureSyncWatcherExists();
   sync_watcher_->AllowWokenUpBySyncWatchOnSameThread();
-}
-
-// static
-void Connector::OverrideDefaultSerializationBehaviorForTesting(
-    OutgoingSerializationMode outgoing_mode,
-    IncomingSerializationMode incoming_mode) {
-  g_default_outgoing_serialization_mode = outgoing_mode;
-  g_default_incoming_serialization_mode = incoming_mode;
 }
 
 bool Connector::SimulateReadMessage(ScopedMessageHandle message) {
@@ -513,14 +466,6 @@ bool Connector::DispatchMessage(ScopedMessageHandle handle) {
     dispatch_tracker.emplace(weak_self);
   }
 
-  if (incoming_serialization_mode_ ==
-      IncomingSerializationMode::kSerializeBeforeDispatchForTesting) {
-    message.SerializeIfNecessary();
-  } else {
-    DCHECK_EQ(IncomingSerializationMode::kDispatchAsIs,
-              incoming_serialization_mode_);
-  }
-
   // This emits just full class name, and is inferior to full mojo tracing, so
   // the category is "toplevel" if full tracing isn't available. If it's
   // available, it's emitted under "disabled-by-default-mojom" for debugging
@@ -640,7 +585,6 @@ void Connector::ReadAllAvailableMessages() {
 void Connector::CancelWait() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   is_receiving_ = false;
-  peer_remoteness_tracker_.reset();
   handle_watcher_.reset();
   sync_watcher_.reset();
 }

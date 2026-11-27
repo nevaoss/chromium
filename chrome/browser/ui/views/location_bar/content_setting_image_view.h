@@ -60,11 +60,6 @@ class ContentSettingImageView : public IconLabelBubbleView,
   void SetIconColor(std::optional<SkColor> color);
   std::optional<SkColor> GetIconColor() const;
 
-  // Disables transient in-out label animations. Does not affect labels that
-  // stay expanded until the bubble is closed (see
-  // ContentSettingImageModel::should_keep_label_expanded).
-  // TODO(https://crbug.com/575951625): Clean up how PWA titlebar content
-  // setting animations and quiet notification UI interact.
   void disable_animation() { can_animate_ = false; }
 
   bool ShowBubbleImpl();
@@ -131,6 +126,9 @@ class ContentSettingImageView : public IconLabelBubbleView,
   void UpdateImage();
 
   void UpdateElementIdentifier();
+
+  // Shows the in-product help promo associated with this icon, if any.
+  void MaybeShowPromo(content::WebContents* web_contents);
 
   // Stops keeping the label expanded and collapses it, optionally animated.
   void CollapseKeptExpandedLabel(bool animate);

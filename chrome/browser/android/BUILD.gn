@@ -404,8 +404,6 @@ if (is_android) {
       "browsing_data/url_filter_bridge.h",
       "chrome_startup_flags.cc",
       "chrome_startup_flags.h",
-      "collection_save_forwarder_android.cc",
-      "collection_save_forwarder_android.h",
       "collection_storage_observer_factory_android.cc",
       "collection_storage_observer_factory_android.h",
       "compose_bitmaps_helper.cc",
@@ -649,7 +647,6 @@ if (is_android) {
       "usage_stats/usage_stats_database.cc",
       "usage_stats/usage_stats_database.h",
       "warmup_manager.cc",
-      "web_contents_printer.cc",
       "webapk/webapk_install_service.cc",
       "webapk/webapk_install_service_factory.cc",
       "webapk/webapk_install_service_factory.h",
@@ -735,8 +732,6 @@ if (is_android) {
       "//chrome/browser/finds/android",
       "//chrome/browser/flags:flags_android",
       "//chrome/browser/flags:flags_android_impl",
-      "//chrome/browser/gesturenav/android:gesturenav",
-      "//chrome/browser/gesturenav/android:impl",
       "//chrome/browser/glic/android",
       "//chrome/browser/glic/android:jni_headers",
       "//chrome/browser/glic/browser_ui:impl",
@@ -1100,6 +1095,7 @@ if (is_android) {
     ]
 
     if (enable_printing) {
+      sources += [ "web_contents_printer.cc" ]
       deps += [
         "//chrome/browser/printing",
         "//components/printing/browser",
@@ -1377,6 +1373,7 @@ source_set("android_browsertests") {
     "//components/autofill/content/browser:test_support",
     "//components/autofill/core/browser",
     "//components/autofill/core/browser:test_support",
+    "//components/autofill/core/common:test_support",
     "//components/back_forward_cache",
     "//content/public/browser",
     "//content/test:test_support",

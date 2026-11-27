@@ -13,13 +13,13 @@
 #include "base/location.h"
 #include "base/no_destructor.h"
 #include "base/state_transitions.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/types/pass_key.h"
 #include "build/build_config.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ttc/app/public/audio_controller.h"
-#include "chrome/browser/ttc/app/public/conversation.h"
 #include "chrome/browser/ttc/core/session_journal_impl.h"
 #include "chrome/browser/ttc/core/session_view.h"
 #include "chrome/browser/ttc/core/ttc_keyed_service.h"
@@ -27,27 +27,15 @@
 #include "chrome/browser/ttc/core/voice_focused_contents_tracker.h"
 #include "components/actor/core/journal_details_builder.h"
 #include "components/optimization_guide/proto/features/common_quality_data.pb.h"
+#include "components/ttc/app/public/conversation.h"
+#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
 #include "url/gurl.h"
-
-#if BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/ttc/android/session_view_android.h"
-#else
-#include "chrome/browser/ttc/core/session_view_impl.h"
-#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
-#endif
+#include "url/origin.h"
 
 namespace ttc {
 
 namespace {
-
-std::unique_ptr<SessionView> MakeSessionView(SessionViewDelegate& delegate) {
-#if BUILDFLAG(IS_ANDROID)
-  return std::make_unique<SessionViewAndroid>(delegate);
-#else
-  return std::make_unique<SessionViewImpl>(delegate);
-#endif
-}
 
 void DCheckSessionLifecycleTransition(SessionLifecycle from,
                                       SessionLifecycle to) {
@@ -69,13 +57,15 @@ SessionControllerImpl::SessionControllerImpl(
     TtcKeyedService& service,
     std::unique_ptr<AudioController> audio_controller)
     : service_(service),
+      session_view_(
+          service.MakeSessionView(base::PassKey<SessionControllerImpl>(),
+                                  *this)),
+      voice_focused_contents_tracker_(
+          VoiceFocusedContentsTracker::Create(CHECK_DEREF(service.profile()))),
       actor_task_holder_(*this),
       journal_(CHECK_DEREF(actor::ActorKeyedService::Get(service.profile()))
                    .GetJournal(),
                actor_task_holder_.task_id()),
-      session_view_(MakeSessionView(*this)),
-      voice_focused_contents_tracker_(
-          VoiceFocusedContentsTracker::Create(CHECK_DEREF(service.profile()))),
       tool_controller_(*this) {
   GetJournal().Log("TtcSessionStart", {});
 
@@ -183,13 +173,7 @@ void SessionControllerImpl::UserAudioLevelUpdate(float audio_level) {
 }
 
 BrowserWindowInterface* SessionControllerImpl::GetBrowserWindowInterface() {
-#if BUILDFLAG(IS_ANDROID)
-  return nullptr;
-#else
-  ProfileBrowserCollection* browsers =
-      ProfileBrowserCollection::GetForProfile(service_->profile());
-  return browsers ? browsers->GetLastActiveBrowser() : nullptr;
-#endif
+  return voice_focused_contents_tracker_->GetActiveBrowserWindow();
 }
 
 void SessionControllerImpl::OnSessionInitialized() {
@@ -227,6 +211,7 @@ void SessionControllerImpl::OnModelTurnComplete() {
   for (SessionController::Observer& observer : observers_) {
     observer.OnModelTurnComplete();
   }
+  transcript_tracker_.OnModelTurnComplete();
 }
 
 void SessionControllerImpl::OnModelInterrupted() {
@@ -239,12 +224,16 @@ void SessionControllerImpl::OnInputTranscription(const std::string& text) {
   for (SessionController::Observer& observer : observers_) {
     observer.OnInputTranscription(text);
   }
+  transcript_tracker_.AddUserTranscription(text);
+  NotifyTranscriptsUpdated();
 }
 
 void SessionControllerImpl::OnOutputTranscription(const std::string& text) {
   for (SessionController::Observer& observer : observers_) {
     observer.OnOutputTranscription(text);
   }
+  transcript_tracker_.AddModelTranscription(text);
+  NotifyTranscriptsUpdated();
 }
 
 void SessionControllerImpl::OnModelAudioEnvelopeReady(
@@ -252,6 +241,16 @@ void SessionControllerImpl::OnModelAudioEnvelopeReady(
   for (SessionController::Observer& observer : observers_) {
     observer.OnModelAudioEnvelopeReady(envelope);
   }
+}
+
+void SessionControllerImpl::NotifyTranscriptsUpdated() {
+  // A finished session no longer updates its UI.
+  if (session_lifecycle_ == SessionLifecycle::kFinished) {
+    return;
+  }
+  session_view_->OnTranscriptionsUpdated(
+      transcript_tracker_.user_transcript(),
+      transcript_tracker_.model_transcript());
 }
 
 bool SessionControllerImpl::SetMicMuted(bool muted) {
@@ -311,8 +310,25 @@ actor::TaskId SessionControllerImpl::GetActorTaskId() const {
 void SessionControllerImpl::OnPageContextFetched(
     const PageContextResult& result) {
   if (!result.has_value()) {
-    // TODO(b/555804152): Signal to the model when page context cannot be
-    // fetched or is ineligible.
+    // Replace the model's context with just the tab, so that it doesn't keep
+    // using context of a page that's no longer shown. Only share the origin of
+    // a page whose context may not be shared.
+    // TODO(b/555804152): Tell the model why there's no page content.
+    content::WebContents* contents = GetVoiceFocusedWebContents();
+    if (!contents) {
+      return;
+    }
+    content::RenderFrameHost* main_frame = contents->GetPrimaryMainFrame();
+    if (result.error() == page_content_annotations::FetchPageContextError::
+                              kPageContextNotEligible) {
+      conversation_->SendContextUpdate(
+          main_frame->GetLastCommittedOrigin().GetURL(),
+          /*title=*/std::string(), /*apc=*/{});
+    } else {
+      conversation_->SendContextUpdate(main_frame->GetLastCommittedURL(),
+                                       base::UTF16ToUTF8(contents->GetTitle()),
+                                       /*apc=*/{});
+    }
     return;
   }
   const optimization_guide::proto::AnnotatedPageContent& apc =

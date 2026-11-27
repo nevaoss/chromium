@@ -13,9 +13,11 @@
 #include "chrome/browser/ttc/core/voice_plate_controller.h"
 #include "chrome/browser/ui/toasts/api/toast_id.h"
 #include "chrome/browser/ui/toasts/toast_controller.h"
-#include "chrome/browser/ui/views/dictation/ui_state.h"
+#include "chrome/browser/ui/views/voice/waveform_mode.h"
 
 namespace ttc {
+
+using voice::WaveformMode;
 
 ToastId GetToastIdForError(ErrorCode error) {
   switch (error) {
@@ -55,7 +57,7 @@ void SessionViewImpl::UpdateAudioLevel(float audio_level) {
 
 void SessionViewImpl::OnSessionInitialized() {
   if (voice_plate_controller_) {
-    voice_plate_controller_->SetState(dictation::UiState::kTranscribing);
+    voice_plate_controller_->SetMode(WaveformMode::kLive);
   }
 }
 
@@ -69,5 +71,11 @@ void SessionViewImpl::OnError(ErrorCode error) {
 void SessionViewImpl::OnVoicePlateCloseClicked() {
   delegate_->EndSessionAsync();
 }
+
+// The desktop voice plate doesn't show transcripts yet; they're only surfaced
+// on Android so far.
+void SessionViewImpl::OnTranscriptionsUpdated(
+    const std::string& user_transcript,
+    const std::string& model_transcript) {}
 
 }  // namespace ttc

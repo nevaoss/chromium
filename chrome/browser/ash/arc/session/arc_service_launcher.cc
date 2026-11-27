@@ -66,14 +66,13 @@
 #include "chrome/browser/ash/arc/tracing/arc_tracing_bridge.h"
 #include "chrome/browser/ash/arc/tts/arc_tts_service.h"
 #include "chrome/browser/ash/arc/vmm/arc_system_state_bridge.h"
-#include "chrome/browser/ash/arc/vmm/arc_vmm_manager.h"
 #include "chrome/browser/ash/arc/wallpaper/arc_wallpaper_service.h"
 #include "chrome/browser/ash/login/startup_utils.h"
-#include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/net/nss_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/ash/multi_user/multi_user_util.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
+#include "chromeos/ash/components/browser_context_helper/browser_context_helper.h"
 #include "chromeos/ash/components/channel/channel_info.h"
 #include "chromeos/ash/components/memory/swap_configuration.h"
 #include "chromeos/ash/experiences/arc/app/arc_app_launch_notifier.h"
@@ -299,7 +298,7 @@ void ArcServiceLauncher::OnPrimaryUserProfilePrepared(
   }
 
   std::string user_id_hash =
-      ash::ProfileHelper::GetUserIdHashFromProfile(profile);
+      ash::BrowserContextHelper::GetUserIdHashFromBrowserContext(profile);
 
   // Instantiate ARC related BrowserContextKeyedService classes which need
   // to be running at the beginning of the container run.
@@ -397,8 +396,6 @@ void ArcServiceLauncher::OnPrimaryUserProfilePrepared(
 
   if (arc::IsArcVmEnabled()) {
     // ARCVM-only services.
-    ArcVmmManager::GetForBrowserContext(profile)->set_user_id_hash(
-        user_id_hash);
     ArcSafetyBridge::GetForBrowserContext(profile);
     ArcSystemStateBridge::GetForBrowserContext(profile);
 
@@ -579,7 +576,6 @@ void ArcServiceLauncher::EnsureFactoriesBuilt() {
   ArcUsbHostBridge::EnsureFactoryBuilt();
   ArcUsbHostPermissionManagerFactory::GetInstance();
   ArcUserSessionService::EnsureFactoryBuilt();
-  ArcVmmManager::EnsureFactoryBuilt();
   ArcVolumeMounterBridge::EnsureFactoryBuilt();
   ArcWakeLockBridge::EnsureFactoryBuilt();
   ArcWallpaperService::EnsureFactoryBuilt();

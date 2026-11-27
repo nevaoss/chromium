@@ -886,6 +886,10 @@ NET_EXPORT BASE_DECLARE_FEATURE(kQuicLongerIdleConnectionTimeout);
 NET_EXPORT BASE_DECLARE_FEATURE(
     kQuicAlwaysCancelPreExistingProbingOnMigration);
 
+// If enabled, allows QUIC sessions to migrate to a different port when the
+// current path is degrading.
+NET_EXPORT BASE_DECLARE_FEATURE(kQuicEnablePortMigration);
+
 // Controls the timeout for waiting for a new network to connect before giving
 // up on connection migration.
 NET_EXPORT BASE_DECLARE_FEATURE(kQuicWaitForNewNetworkTimeout);
@@ -1104,6 +1108,13 @@ NET_EXPORT BASE_DECLARE_FEATURE_PARAM(DiskCacheBackend,
 // so they do not set `seen_global_task_` and block concurrent navigations on
 // the full SQLite cookie store load.
 NET_EXPORT BASE_DECLARE_FEATURE(kCookieMonsterPerKeyDelete);
+
+// When enabled, CanonicalCookie only encrypts cookie values in memory (via
+// crypto::ProcessBoundString) for important cookies. Cookies marked Secure are
+// always important. Cookies marked HttpOnly are considered important if the
+// kCookieProcessBoundEncryptHttpOnly param is true.
+NET_EXPORT BASE_DECLARE_FEATURE(kCookieProcessBoundEncryptOnlyImportant);
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool, kCookieProcessBoundEncryptHttpOnly);
 
 // Enables the Rust implementation of the HTTP chunked decoder, called via FFI.
 NET_EXPORT BASE_DECLARE_FEATURE(kHttpChunkedDecoderInRust);

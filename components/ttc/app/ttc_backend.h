@@ -23,6 +23,7 @@ class AnnotatedPageContent;
 
 namespace ttc {
 
+class Conversation;
 struct ServerJournalEvent;
 
 // Generic interface for communicating with a TTC model backend.
@@ -61,6 +62,9 @@ class TtcBackend {
 
   virtual ~TtcBackend() = default;
 
+  // Binds the owning `conversation` to this backend after construction.
+  virtual void BindConversation(Conversation& conversation) {}
+
   // Starts the streaming session with the backend. `observer` must be non-null
   // and must outlive the connection.
   virtual void Connect(Observer* observer) = 0;
@@ -74,7 +78,8 @@ class TtcBackend {
   // Submits a user text query to the backend server.
   virtual void SendTextInput(const std::string& text) = 0;
 
-  // Sends active tab context update to the backend server.
+  // Sends active tab context update to the backend server. `apc` is empty if
+  // the page's content is unavailable.
   virtual void SendContextUpdate(
       const GURL& url,
       const std::string& title,

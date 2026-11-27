@@ -18,6 +18,7 @@
 
 #include "base/auto_reset.h"
 #include "base/callback_list.h"
+#include "base/cancelable_callback.h"
 #include "base/containers/flat_map.h"
 #include "base/functional/callback_helpers.h"
 #include "base/functional/function_ref.h"
@@ -1958,6 +1959,11 @@ class CONTENT_EXPORT WebContentsImpl
   // observer set.
   class WebContentsObserverList {
    public:
+    // A WebContentsObserver method that takes a NavigationHandle, e.g.
+    // &WebContentsObserver::DidStartNavigation.
+    using NavigationObserverMethod =
+        void (WebContentsObserver::*)(NavigationHandle*);
+
     WebContentsObserverList();
     ~WebContentsObserverList();
 
@@ -1978,6 +1984,22 @@ class CONTENT_EXPORT WebContentsImpl
     }
 
     bool is_notifying_observers() { return is_notifying_observers_; }
+
+    // Like NotifyObservers(), but stops if an observer deletes the
+    // NavigationRequest for `navigation_handle` (e.g. a WebView app calling
+    // stopLoading() from its navigation callback on Android), since the
+    // remaining observers would get a dangling NavigationHandle.
+    //
+    // Note that the remaining observers still get DidFinishNavigation() when
+    // the NavigationRequest is deleted, so they see DidFinishNavigation()
+    // without e.g. DidStartNavigation(). Before this was added, they got
+    // DidFinishNavigation() first and then this call with a dangling
+    // NavigationHandle, so the ordering was already broken in this case.
+    // TODO(crbug.com/577957421): Remove this once observers can't delete the
+    // NavigationRequest synchronously.
+    void NotifyObserversUntilNavigationDeleted(
+        NavigationObserverMethod observer_method,
+        NavigationHandle* navigation_handle);
 
     // Exposed to deal with IPC message handlers which need to stop iteration
     // early.
@@ -3018,7 +3040,11 @@ class CONTENT_EXPORT WebContentsImpl
 
   bool opt_out_frame_eviction_ = false;
 
-  bool color_related_state_change_scheduled_ = false;
+  // Pending task posted by `ScheduleColorRelatedStateChanges()`.
+  base::CancelableOnceClosure scheduled_color_related_state_change_;
+
+  // True while `SetColorProviderSource()` is updating the observed source.
+  bool is_setting_color_provider_source_ = false;
 
   base::WeakPtrFactory<WebContentsImpl> loading_weak_factory_{this};
   base::WeakPtrFactory<WebContentsImpl> weak_factory_{this};

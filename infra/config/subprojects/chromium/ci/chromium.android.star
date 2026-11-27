@@ -2463,6 +2463,8 @@ ci.builder(
                 ],
                 ci_only = True,
             ),
+            # TODO(crbug.com/579036143): Remove once e4 failures are fixed.
+            "ui_junit_tests": "e2-standard-8",
             # If you change this, make similar changes in android-x86-code-coverage
             "webview_instrumentation_test_apk_multiple_process_mode": targets.mixin(
                 swarming = targets.swarming(
@@ -2574,6 +2576,9 @@ ci.builder(
             ),
             "blink_unittests": targets.mixin(
                 enable_rts_filtering = True,
+                swarming = targets.swarming(
+                    shards = 10,
+                ),
             ),
             "chrome_public_test_apk": targets.mixin(
                 args = [
@@ -2600,7 +2605,7 @@ ci.builder(
             ),
             "components_browsertests": targets.mixin(
                 swarming = targets.swarming(
-                    shards = 4,
+                    shards = 8,
                 ),
             ),
             "components_unittests": targets.mixin(
@@ -2680,13 +2685,25 @@ ci.builder(
                 ],
                 ci_only = True,
             ),
+            # TODO(crbug.com/579036143): Remove once e4 failures are fixed.
+            "ui_junit_tests": "e2-standard-8",
+            "unit_tests": targets.mixin(
+                swarming = targets.swarming(
+                    shards = 5,
+                ),
+            ),
+            "webview_cts_tests": targets.mixin(
+                swarming = targets.swarming(
+                    shards = 5,
+                ),
+            ),
             "webview_instrumentation_test_apk_multiple_process_mode": targets.mixin(
                 args = [
                     "--disable-field-trial-config",
                     "--skia-gold-consider-unsupported",
                 ],
                 swarming = targets.swarming(
-                    shards = 18,
+                    shards = 25,
                 ),
             ),
             "webview_instrumentation_test_apk_single_process_mode": targets.mixin(

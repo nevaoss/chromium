@@ -237,15 +237,15 @@ constexpr FeatureEntry::Choice kOmniboxTruncateSearchUrlChoices[] = {
     {flags_ui::kGenericExperimentChoiceDefault, "", ""},
     {flags_ui::kGenericExperimentChoiceEnabled, switches::kEnableFeatures,
      "TruncateSearchUrlOq,TruncateSearchUrlQ"},
-    {"Enabled Oq30kQ30k (30k oq, 30k q)", switches::kEnableFeatures,
-     "TruncateSearchUrlOq:truncate_search_url_oq_length/30720,"
-     "TruncateSearchUrlQ:truncate_search_url_q_length/30720"},
-    {"Enabled Oq1kQ59k (1k oq, 59k q)", switches::kEnableFeatures,
+    {"Enabled Oq26kQ26k (26k oq, 26k q)", switches::kEnableFeatures,
+     "TruncateSearchUrlOq:truncate_search_url_oq_length/26624,"
+     "TruncateSearchUrlQ:truncate_search_url_q_length/26624"},
+    {"Enabled Oq1kQ51k (1k oq, 51k q)", switches::kEnableFeatures,
      "TruncateSearchUrlOq:truncate_search_url_oq_length/1024,"
-     "TruncateSearchUrlQ:truncate_search_url_q_length/60416"},
-    {"Enabled Oq2kQ58k (2k oq, 58k q)", switches::kEnableFeatures,
+     "TruncateSearchUrlQ:truncate_search_url_q_length/52224"},
+    {"Enabled Oq2kQ50k (2k oq, 50k q)", switches::kEnableFeatures,
      "TruncateSearchUrlOq:truncate_search_url_oq_length/2048,"
-     "TruncateSearchUrlQ:truncate_search_url_q_length/59392"},
+     "TruncateSearchUrlQ:truncate_search_url_q_length/51200"},
     {"Enabled Oq1kQNoTruncation (1k oq, q disabled)", switches::kEnableFeatures,
      "TruncateSearchUrlOq:truncate_search_url_oq_length/1024"},
     {"Enabled Oq2kQNoTruncation (2k oq, q disabled)", switches::kEnableFeatures,
@@ -2218,11 +2218,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kIOSTrustedVaultNotificationName,
      flag_descriptions::kIOSTrustedVaultNotificationDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kIOSTrustedVaultNotification)},
-    {"ios-skip-fre-default-browser-promo-in-eea",
-     flag_descriptions::kSkipDefaultBrowserPromoInFirstRunName,
-     flag_descriptions::kSkipDefaultBrowserPromoInFirstRunDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(first_run::kSkipDefaultBrowserPromoInFirstRun)},
     {"apply-clientside-model-predictions-for-password-types",
      flag_descriptions::kApplyClientsideModelPredictionsForPasswordTypesName,
      flag_descriptions::

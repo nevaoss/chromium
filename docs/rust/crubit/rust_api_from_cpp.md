@@ -32,11 +32,15 @@ Example:
 
 ```cpp
 // build/rust/tests/test_rust_api_from_cpp/self_contained_target_header2.h:
+namespace test_ns {
+
 int AddViaCc(int x, int y);
 
 struct CcPodStruct final {
   int value;
 };
+
+}  // namespace test_ns
 ```
 
 ```gn
@@ -60,6 +64,9 @@ rust_api_from_cpp("self_contained_target_rs_api") {
   public_headers = [
     "self_contained_target_header2.h",
   ]
+
+  # Re-exports items of the `test_ns` C++ namespace at the root of the crate.
+  root_namespaces = [ "test_ns" ]
 }
 
 rust_static_library("rust_api_from_cpp_unittests") {
@@ -88,6 +95,9 @@ Notes:
   `bindings_target` with an `_rs_api` suffix (e.g. `foo_rs_api` for `foo`).
 * `public_headers` lists only the headers that provide the public API of the
   `bindings_target`.  Rust bindings are generated only for these headers.
+* `root_namespaces` is optional.  Without it, Rust code has to write
+  `self_contained_target_rs_api::test_ns::AddViaCc` (see the "Shorter paths for
+  items from C++ namespaces" section below).
 
 ## Inspecting the generated bindings
 
@@ -116,9 +126,13 @@ Example (`CreateCcPodStructFromValue` below returns `CcPodStruct` from the
 
 #include "build/rust/tests/test_rust_api_from_cpp/self_contained_target_header2.h"
 
+namespace test_ns {
+
 inline CcPodStruct CreateCcPodStructFromValue(int x) {
   return CcPodStruct{.value = x};
 }
+
+}  // namespace test_ns
 ```
 
 ```gn
@@ -135,6 +149,8 @@ rust_api_from_cpp("target_depending_on_another_rs_api") {
 
   # Parallels `public_deps` of `target_depending_on_another`.
   bindings_deps = [ ":self_contained_target_rs_api" ]
+
+  root_namespaces = [ "test_ns" ]
 }
 
 rust_static_library("rust_api_from_cpp_unittests") {
@@ -208,12 +224,15 @@ enabling additional lifetime-related warnings in Chromium's C++ targets.
 ## C++ standard library types
 
 Some C++ standard library types (e.g. `std::optional<T>`, `std::unique_ptr<T>`,
-and `std::vector<T>`) are represented in the generated bindings by
-layout-compatible Rust types from the `cpp_std` crate.  To name these types,
-Rust code should depend on `//build/rust/crubit:cpp_std` and write e.g.
-`cpp_std::vector<T>`.
+`std::vector<T>`, and `std::string_view`) are represented in the generated
+bindings by layout-compatible Rust types from the `cpp_std` crate.  To name
+these types, Rust code should depend on `//build/rust/crubit:cpp_std` and write
+e.g. `cpp_std::vector<T>`.
 See `build/rust/tests/test_rust_api_from_cpp/std/std_types.h` and
 `build/rust/tests/test_rust_api_from_cpp/std/unittests.rs`.
+
+`std::string_view` is represented as `cpp_std::string_view<'a>` (see the
+"References and lifetimes" section above).
 
 ## Adding hand-written Rust code to the bindings
 
@@ -265,6 +284,7 @@ impl TryFrom<TestTimeDelta> for Duration {
 rust_api_from_cpp("time_delta_rs_api") {
   bindings_target = ":time_delta"
   public_headers = [ "time_delta.h" ]
+  root_namespaces = [ "test_base" ]
   extra_rust_sources = [ "time_delta.rs" ]
 }
 ```
@@ -278,7 +298,7 @@ chromium::import! {
 }
 
 fn foo() {
-    let delta = ::time_delta::test_base::TestTimeDelta::FromMicroseconds(123);
+    let delta = ::time_delta::TestTimeDelta::FromMicroseconds(123);
     let duration = std::time::Duration::try_from(delta).unwrap();
 }
 ```
@@ -301,6 +321,26 @@ Notes:
   `source_groups_rs_api` in
   [`build/rust/tests/test_rust_api_from_cpp/extra_rust_sources/BUILD.gn`](../../../build/rust/tests/test_rust_api_from_cpp/extra_rust_sources/BUILD.gn)
   for an example.
+
+## Shorter paths for items from C++ namespaces
+
+C++ namespaces become Rust modules in the generated bindings (e.g.
+`test_outer::test_inner::GetValueFromNestedNamespace` from C++ becomes
+`test_root_namespaces::test_outer::test_inner::GetValueFromNestedNamespace` in
+Rust).  The `root_namespaces` attribute of `rust_api_from_cpp` also re-exports
+the items of the specified namespaces at the root of the crate.
+
+Example:
+
+```gn
+# base/BUILD.gn
+
+rust_api_from_cpp("base_rs_api") {
+  bindings_target = ":base"
+  root_namespaces = [ "base" ]
+  # ...
+}
+```
 
 ## Troubleshooting
 

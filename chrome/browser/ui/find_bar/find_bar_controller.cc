@@ -95,9 +95,9 @@ void FindBarController::Show(bool find_next, bool forward_direction) {
   find_bar->SetFocusAndSelection();
 
   if (find_next) {
-    find_tab_helper->StartFinding(std::u16string(find_bar->GetFindText()),
-                                  forward_direction, false /* case_sensitive */,
-                                  true /* find_match */);
+    find_tab_helper->StartFinding(
+        std::u16string(find_bar->GetFindText()), forward_direction,
+        find_bar->IsMatchCase(), /*find_match=*/true);
     return;
   }
 
@@ -126,7 +126,8 @@ void FindBarController::Show(bool find_next, bool forward_direction) {
   // without triggering any scrolling.
   find_tab_helper->StartFinding(
       std::u16string(find_bar->GetFindText()), /*forward_direction=*/true,
-      /*case_sensitive=*/false, find_match, /*scroll_to_match=*/false);
+      find_bar->IsMatchCase(), find_match,
+      /*scroll_to_match=*/false);
 }
 
 void FindBarController::EndFindSession(
@@ -165,6 +166,13 @@ void FindBarController::ChangeWebContents(WebContents* contents) {
         find_in_page::FindTabHelper::FromWebContents(web_contents());
     if (find_tab_helper) {
       find_tab_helper->set_selected_range(find_bar->GetSelectedRange());
+      if (find_tab_helper->find_ui_active()) {
+        // TODO(crbug.com/41298878): Confirm with PM/UX whether the Match Case
+        // toggle state should persist per-tab across tab switches (including
+        // when the search box is empty) or be shared/reset.
+        find_tab_helper->set_last_search_case_sensitive(
+            find_bar->IsMatchCase());
+      }
       CHECK(find_tab_observation_.IsObservingSource(find_tab_helper),
             base::NotFatalUntil::M162);
       find_tab_observation_.Reset();
@@ -197,6 +205,7 @@ void FindBarController::ChangeWebContents(WebContents* contents) {
   UpdateFindBarForCurrentResult();
 
   if (find_tab_helper && find_tab_helper->find_ui_active()) {
+    find_bar->SetMatchCase(find_tab_helper->last_search_case_sensitive());
     // A tab with a visible find bar just got selected and we need to show the
     // find bar but without animation since it was already animated into its
     // visible state. We also want to reset the window location so that
@@ -211,8 +220,8 @@ void FindBarController::ChangeWebContents(WebContents* contents) {
     // text being empty, the call to StartFinding will be a harmless no-op.
     if (find_tab_helper->find_result().number_of_matches() == -1) {
       find_tab_helper->StartFinding(
-          std::u16string(find_bar->GetFindText()), true /* forward_direction */,
-          false /* case_sensitive */, false /* find_match */);
+          std::u16string(find_bar->GetFindText()), /*forward_direction=*/true,
+          find_bar->IsMatchCase(), /*find_match=*/false);
     }
   }
 
@@ -232,9 +241,9 @@ void FindBarController::SetText(std::u16string text) {
     return;
   }
 
-  find_tab_helper->StartFinding(text, true /* forward_direction */,
-                                false /* case_sensitive */,
-                                false /* find_match */);
+  find_tab_helper->StartFinding(text, /*forward_direction=*/true,
+                                find_bar->IsMatchCase(),
+                                /*find_match=*/false);
 }
 
 void FindBarController::OnUserChangedFindText(std::u16string_view text) {
@@ -307,6 +316,7 @@ void FindBarController::NavigationEntryCommitted(
     find_in_page::FindTabHelper* find_tab_helper =
         find_in_page::FindTabHelper::FromWebContents(web_contents());
     if (find_tab_helper) {
+      find_tab_helper->RecordAndResetSessionMetrics();
       find_tab_helper->StopFinding(find_in_page::SelectionAction::kClear);
       // Use UpdateUIForFindResult instead of ClearResults to preserve the text
       // field content.
@@ -335,7 +345,8 @@ void FindBarController::OnFindResultAvailable(
   // we're only highlighting results (when first opening the find bar).
   // See https://crbug.com/40721569
   if (!find_tab_helper->find_result().final_update() ||
-      !find_tab_helper->should_find_match()) {
+      !find_tab_helper->should_find_match() ||
+      !find_tab_helper->should_scroll_to_match()) {
     return;
   }
 
@@ -349,10 +360,6 @@ void FindBarController::OnFindResultAvailable(
                         current_search, base::CompareCase::SENSITIVE)) {
     GetOrCreateFindBar()->AudibleAlert();
   }
-
-  // Record the completion of the search to suppress future alerts, even if the
-  // page's contents change.
-  find_tab_helper->set_last_completed_find_text(current_search);
 }
 
 void FindBarController::UpdateFindBarForCurrentResult() {

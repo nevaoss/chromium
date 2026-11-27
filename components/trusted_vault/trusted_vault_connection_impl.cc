@@ -5,7 +5,10 @@
 #include "components/trusted_vault/trusted_vault_connection_impl.h"
 
 #include <algorithm>
+#include <optional>
+#include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <variant>
 
@@ -28,7 +31,6 @@
 #include "components/trusted_vault/trusted_vault_histograms.h"
 #include "components/trusted_vault/trusted_vault_request.h"
 #include "components/trusted_vault/trusted_vault_server_constants.h"
-#include "net/base/url_util.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "third_party/abseil-cpp/absl/functional/overload.h"
 
@@ -37,7 +39,7 @@ namespace trusted_vault {
 namespace {
 
 TrustedVaultRequest::RecordFetchStatusCallback MakeFetchStatusCallback(
-    SecurityDomainId security_domain_id,
+    std::optional<SecurityDomainId> security_domain_id,
     TrustedVaultURLFetchReasonForUMA reason) {
   return base::BindRepeating(&RecordTrustedVaultURLFetchResponse,
                              security_domain_id, reason);
@@ -355,7 +357,9 @@ class DownloadAuthenticationFactorsRegistrationStateRequest
  public:
   DownloadAuthenticationFactorsRegistrationStateRequest(
       SecurityDomainId security_domain,
-      const GURL& request_url,
+      const GURL& trusted_vault_service_url,
+      std::set<trusted_vault_pb::SecurityDomainMember_MemberType>
+          recovery_factor_filter,
       const CoreAccountId& account_id,
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
       std::unique_ptr<TrustedVaultAccessTokenFetcher> access_token_fetcher,
@@ -363,7 +367,8 @@ class DownloadAuthenticationFactorsRegistrationStateRequest
           DownloadAuthenticationFactorsRegistrationStateCallback callback,
       base::RepeatingClosure keep_alive_callback)
       : security_domain_(security_domain),
-        base_url_(request_url),
+        trusted_vault_service_url_(trusted_vault_service_url),
+        recovery_factor_filter_(std::move(recovery_factor_filter)),
         account_id_(account_id),
         url_loader_factory_(std::move(url_loader_factory)),
         access_token_fetcher_(std::move(access_token_fetcher)),
@@ -371,16 +376,17 @@ class DownloadAuthenticationFactorsRegistrationStateRequest
         keep_alive_callback_(std::move(keep_alive_callback)) {
     result_.state =
         DownloadAuthenticationFactorsRegistrationStateResult::State::kEmpty;
-    StartOrContinueRequest();
+    StartOrContinueRequest(/*next_page_token=*/std::nullopt);
   }
 
  private:
-  void StartOrContinueRequest(const std::string* next_page_token = nullptr) {
+  void StartOrContinueRequest(std::optional<std::string_view> next_page_token) {
     request_ = std::make_unique<TrustedVaultRequest>(
-        security_domain_, account_id_, TrustedVaultRequest::HttpMethod::kGet,
-        next_page_token ? net::AppendQueryParameter(base_url_, "page_token",
-                                                    *next_page_token)
-                        : base_url_,
+        account_id_, TrustedVaultRequest::HttpMethod::kGet,
+        GetListSecurityDomainMembersURL(
+            trusted_vault_service_url_, {security_domain_},
+            recovery_factor_filter_, next_page_token,
+            /*force_strong_read=*/false),
         /*serialized_request_proto=*/std::nullopt,
         /*max_retry_duration=*/base::Seconds(0), url_loader_factory_,
         access_token_fetcher_->Clone(),
@@ -500,7 +506,7 @@ class DownloadAuthenticationFactorsRegistrationStateRequest
     }
 
     if (!response.next_page_token().empty()) {
-      StartOrContinueRequest(&response.next_page_token());
+      StartOrContinueRequest(response.next_page_token());
       if (keep_alive_callback_) {
         keep_alive_callback_.Run();
       }
@@ -521,7 +527,9 @@ class DownloadAuthenticationFactorsRegistrationStateRequest
   }
 
   const SecurityDomainId security_domain_;
-  const GURL base_url_;
+  const GURL trusted_vault_service_url_;
+  const std::set<trusted_vault_pb::SecurityDomainMember_MemberType>
+      recovery_factor_filter_;
   const CoreAccountId account_id_;
   const scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory_;
   const std::unique_ptr<TrustedVaultAccessTokenFetcher> access_token_fetcher_;
@@ -741,8 +749,7 @@ TrustedVaultConnectionImpl::DownloadNewKeys(
   // TODO(crbug.com/40255601): consider retries for keys downloading after
   // initial failure returned to the upper layers.
   auto request = std::make_unique<TrustedVaultRequest>(
-      security_domain, account_info.account_id,
-      TrustedVaultRequest::HttpMethod::kGet,
+      account_info.account_id, TrustedVaultRequest::HttpMethod::kGet,
       GetGetSecurityDomainMemberURL(
           trusted_vault_service_url_,
           device_key_pair->public_key().ExportToBytes()),
@@ -769,8 +776,7 @@ TrustedVaultConnectionImpl::DownloadIsRecoverabilityDegraded(
     SecurityDomainId security_domain,
     IsRecoverabilityDegradedCallback callback) {
   auto request = std::make_unique<TrustedVaultRequest>(
-      security_domain, account_info.account_id,
-      TrustedVaultRequest::HttpMethod::kGet,
+      account_info.account_id, TrustedVaultRequest::HttpMethod::kGet,
       GetGetSecurityDomainURL(trusted_vault_service_url_, security_domain),
       /*serialized_request_proto=*/std::nullopt,
       /*max_retry_duration=*/base::Seconds(0), GetOrCreateURLLoaderFactory(),
@@ -788,17 +794,15 @@ TrustedVaultConnectionImpl::DownloadIsRecoverabilityDegraded(
 std::unique_ptr<TrustedVaultConnection::Request>
 TrustedVaultConnectionImpl::DownloadGaiaPasswordPublicKey(
     const CoreAccountInfo& account_info,
-    SecurityDomainId security_domain,
     DownloadGaiaPasswordPublicKeyCallback callback) {
   GURL url = GetDownloadGaiaPasswordPublicKeyURL(trusted_vault_service_url_);
   auto request = std::make_unique<TrustedVaultRequest>(
-      security_domain, account_info.account_id,
-      TrustedVaultRequest::HttpMethod::kGet, url,
+      account_info.account_id, TrustedVaultRequest::HttpMethod::kGet, url,
       /*serialized_request_proto=*/std::nullopt,
       /*max_retry_duration=*/base::Seconds(0), GetOrCreateURLLoaderFactory(),
       access_token_fetcher_->Clone(),
       MakeFetchStatusCallback(
-          security_domain,
+          /*security_domain_id=*/std::nullopt,
           TrustedVaultURLFetchReasonForUMA::kDownloadGaiaPasswordPublicKey));
 
   request->FetchAccessTokenAndSendRequest(base::BindOnce(
@@ -814,8 +818,7 @@ TrustedVaultConnectionImpl::RotateSharedKey(
     const trusted_vault_pb::RotateSharedKeyRequest& request,
     RotateSharedKeyCallback callback) {
   auto http_request = std::make_unique<TrustedVaultRequest>(
-      security_domain, account_info.account_id,
-      TrustedVaultRequest::HttpMethod::kPost,
+      account_info.account_id, TrustedVaultRequest::HttpMethod::kPost,
       GetRotateSharedKeyURL(trusted_vault_service_url_, security_domain),
       /*serialized_request_proto=*/request.SerializeAsString(),
       /*max_retry_duration=*/kMaxKeyRotationRetryDuration,
@@ -848,12 +851,10 @@ TrustedVaultConnectionImpl::DownloadAuthenticationFactorsRegistrationState(
         recovery_factor_filter,
     DownloadAuthenticationFactorsRegistrationStateCallback callback,
     base::RepeatingClosure keep_alive_callback) {
-  GURL request_url = GetListSecurityDomainMembersURL(
-      trusted_vault_service_url_, {security_domain}, recovery_factor_filter);
-
   return std::make_unique<
       DownloadAuthenticationFactorsRegistrationStateRequest>(
-      security_domain, request_url, account_info.account_id,
+      security_domain, trusted_vault_service_url_,
+      std::move(recovery_factor_filter), account_info.account_id,
       GetOrCreateURLLoaderFactory(), access_token_fetcher_->Clone(),
       std::move(callback), std::move(keep_alive_callback));
 }
@@ -868,8 +869,7 @@ TrustedVaultConnectionImpl::SendJoinSecurityDomainsRequest(
         authentication_factor_type_and_registration_params,
     JoinSecurityDomainsCallback callback) {
   auto request = std::make_unique<TrustedVaultRequest>(
-      security_domain, account_info.account_id,
-      TrustedVaultRequest::HttpMethod::kPost,
+      account_info.account_id, TrustedVaultRequest::HttpMethod::kPost,
       GetJoinSecurityDomainURL(trusted_vault_service_url_, security_domain),
       /*serialized_request_proto=*/
       CreateJoinSecurityDomainsRequest(

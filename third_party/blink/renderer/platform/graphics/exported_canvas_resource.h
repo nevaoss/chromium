@@ -14,12 +14,21 @@
 namespace blink {
 
 class CanvasResource;
+class CanvasResourceSharedImage;
 class StaticBitmapImage;
 
 class PLATFORM_EXPORT ExportedCanvasResource
     : public ThreadSafeRefCounted<ExportedCanvasResource> {
  public:
-  explicit ExportedCanvasResource(scoped_refptr<CanvasResource> resource);
+  explicit ExportedCanvasResource(
+      scoped_refptr<CanvasResourceSharedImage> resource);
+  explicit ExportedCanvasResource(
+      scoped_refptr<gpu::ClientSharedImage> client_si,
+      const gpu::SyncToken& sync_token,
+      viz::TransferableResource::ResourceSource resource_source,
+      const gfx::HDRMetadata& hdr_metadata,
+      viz::ReleaseCallback callback,
+      base::WeakPtr<WebGraphicsContext3DProviderWrapper> provider);
   ~ExportedCanvasResource();
 
   static void OnPlaceholderReleasedResource(

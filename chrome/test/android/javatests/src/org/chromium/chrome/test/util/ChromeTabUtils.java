@@ -12,7 +12,6 @@ import android.text.TextUtils;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import org.hamcrest.Matchers;
 import org.junit.Assert;
 
 import org.chromium.base.Log;
@@ -24,13 +23,9 @@ import org.chromium.base.test.transit.Condition;
 import org.chromium.base.test.transit.Triggers;
 import org.chromium.base.test.transit.TripBuilder;
 import org.chromium.base.test.util.CallbackHelper;
-import org.chromium.base.test.util.Criteria;
-import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.app.ChromeActivity;
-import org.chromium.chrome.browser.ntp.IncognitoNewTabPage;
-import org.chromium.chrome.browser.ntp.NewTabPage;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabCreationState;
 import org.chromium.chrome.browser.tab.TabLaunchType;
@@ -44,7 +39,6 @@ import org.chromium.chrome.browser.tabmodel.TabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorSupplier;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
-import org.chromium.chrome.browser.url_constants.UrlOverrideUtils;
 import org.chromium.chrome.test.transit.page.PageHitTestDataCondition;
 import org.chromium.chrome.test.transit.page.PageInteractableOrHiddenCondition;
 import org.chromium.chrome.test.transit.page.PageLoadedCondition;
@@ -374,7 +368,7 @@ public class ChromeTabUtils {
 
         Tab tab = getActivityTab(activity);
         waitForTabPageLoaded(tab, (String) null);
-        if (waitForNtpLoad) waitForNtpLoaded(tab);
+        if (waitForNtpLoad) NewTabPageTestUtils.waitForNtpLoaded(tab);
         instrumentation.waitForIdleSync();
         Log.d(TAG, "newTabFromMenu <<");
     }
@@ -476,76 +470,6 @@ public class ChromeTabUtils {
         instrumentation.waitForIdleSync();
     }
 
-    /** Close all tabs and waits for all tabs pending closure to be observed. */
-    public static void closeAllTabs(
-            Instrumentation instrumentation,
-            MonotonicObservableSupplier<TabModelSelector> tabModelSelectorSupplier) {
-        final CallbackHelper closeCallback = new CallbackHelper();
-        final TabModelObserver observer =
-                new TabModelObserver() {
-                    @Override
-                    public void onTabClosePending(
-                            List<Tab> tabs,
-                            boolean isAllTabs,
-                            @TabClosingSource int closingSource) {
-                        closeCallback.notifyCalled();
-                    }
-                };
-        instrumentation.runOnMainSync(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        TabModelSelector selector = tabModelSelectorSupplier.get();
-                        for (TabModel tabModel : selector.getModels()) {
-                            tabModel.addObserver(observer);
-                        }
-                    }
-                });
-
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    TabClosureParams params =
-                            TabClosureParams.closeAllTabs()
-                                    .uponExit(false)
-                                    .tabClosingSource(TabClosingSource.GRID_TAB_SWITCHER)
-                                    .build();
-                    TabModelSelector selector = tabModelSelectorSupplier.get();
-                    selector.getModel(false)
-                            .getTabRemover()
-                            .closeTabs(params, /* allowDialog= */ false);
-                    selector.getModel(true)
-                            .getTabRemover()
-                            .closeTabs(params, /* allowDialog= */ false);
-                });
-
-        try {
-            closeCallback.waitForCallback(0);
-        } catch (TimeoutException e) {
-            throw new AssertionError("All tabs pending closure event was never received", e);
-        }
-        instrumentation.runOnMainSync(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        TabModelSelector selector = tabModelSelectorSupplier.get();
-                        for (TabModel tabModel : selector.getModels()) {
-                            tabModel.removeObserver(observer);
-                        }
-                    }
-                });
-        instrumentation.waitForIdleSync();
-    }
-
-    /**
-     * @deprecated Transitory method, use {@link #closeAllTabs(Instrumentation,
-     *     MonotonicObservableSupplier <TabModelSelector>)} instead. TODO(crbug.com/40191386): Remove this
-     *     after the usages are migrated.
-     */
-    public static void closeAllTabs(
-            Instrumentation instrumentation, final ChromeTabbedActivity activity) {
-        closeAllTabs(instrumentation, activity.getTabModelSelectorSupplier());
-    }
-
     /**
      * @param windowAndroid the WindowAndroid used to acquire the TabModelSelector.
      * @return The TabModelSelector used with the supplied WindowAndroid.
@@ -616,43 +540,5 @@ public class ChromeTabUtils {
 
         RenderWidgetHostView rwhv = webContents.getRenderWidgetHostView();
         return rwhv != null && rwhv.isReady();
-    }
-
-    /**
-     * Waits for the NTP owned by the passed in tab to be fully loaded.
-     *
-     * @param tab The tab to be monitored for NTP loading.
-     * @deprecated Use {@code NewTabPageTestUtils#waitForNtpLoaded(Tab)}, which hops on Public
-     *     Transit at the NTP Station, or start at the NTP with an entry point such as {@code
-     *     startOnNtp()}.
-     */
-    // TODO(crbug.com/428022848): Remove once legacy tests that start on the NTP or open NTPs via
-    // the *FromMenu() helpers use a Public Transit entry point or hop on.
-    @Deprecated
-    public static void waitForNtpLoaded(final Tab tab) {
-        CriteriaHelper.pollUiThread(
-                () -> {
-                    if (!tab.isIncognito()) {
-                        // If the WebUI NTP override is enabled, check that the renderer is ready.
-                        // Otherwise, check that the NTP is loaded in the native page.
-                        if (UrlOverrideUtils.isWebUiNtpOverrideEnabled()) {
-                            Criteria.checkThat(
-                                    ChromeTabUtils.isRendererReady(tab), Matchers.is(true));
-                        } else {
-                            Criteria.checkThat(
-                                    tab.getNativePage(), Matchers.instanceOf(NewTabPage.class));
-                            Criteria.checkThat(
-                                    ((NewTabPage) tab.getNativePage()).isLoadedForTests(),
-                                    Matchers.is(true));
-                        }
-                    } else {
-                        Criteria.checkThat(
-                                tab.getNativePage(),
-                                Matchers.instanceOf(IncognitoNewTabPage.class));
-                        Criteria.checkThat(
-                                ((IncognitoNewTabPage) tab.getNativePage()).isLoadedForTests(),
-                                Matchers.is(true));
-                    }
-                });
     }
 }

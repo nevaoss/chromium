@@ -743,6 +743,52 @@ TEST_F(ChromeFileSystemAccessPermissionContextTest,
         // BUILDFLAG(IS_ANDROID)
 }
 
+// ~/.cache should be blocked on all platforms even when base::DIR_CACHE points
+// elsewhere (macOS NSCachesDirectory, custom $XDG_CACHE_HOME on Linux/ChromeOS,
+// Android app cache) or does not exist (Windows).
+TEST_F(ChromeFileSystemAccessPermissionContextTest,
+       ConfirmSensitiveEntryAccess_HomeCacheBlockedOnAllPlatforms) {
+  base::FilePath home_dir = temp_dir_.GetPath().AppendASCII("home");
+  ScopedHomeDirOverride home_override = OverrideHomeDir(home_dir);
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
+  base::FilePath xdg_cache_dir = temp_dir_.GetPath().AppendASCII("xdg_cache");
+  base::ScopedPathOverride cache_override(base::DIR_CACHE, xdg_cache_dir, true,
+                                          true);
+#endif
+  ResetBlockPath();
+
+  base::FilePath home_cache_dir = home_dir.AppendASCII(".cache");
+  EXPECT_EQ(ConfirmSensitiveEntryAccessSync(
+                permission_context(), PathInfo(home_cache_dir),
+                HandleType::kDirectory, AccessTrigger::kOpen),
+            SensitiveDirectoryResult::kAbort);
+  EXPECT_EQ(ConfirmSensitiveEntryAccessSync(
+                permission_context(), PathInfo(home_cache_dir),
+                HandleType::kDirectory, AccessTrigger::kSave),
+            SensitiveDirectoryResult::kAbort);
+  EXPECT_EQ(ConfirmSensitiveEntryAccessSync(
+                permission_context(),
+                PathInfo(home_cache_dir.AppendASCII("pre-commit")),
+                HandleType::kDirectory, AccessTrigger::kOpen),
+            SensitiveDirectoryResult::kAbort);
+  EXPECT_EQ(ConfirmSensitiveEntryAccessSync(
+                permission_context(),
+                PathInfo(home_cache_dir.AppendASCII("pre-commit")
+                             .AppendASCII("sitecustomize.py")),
+                HandleType::kFile, AccessTrigger::kProgrammaticWrite),
+            SensitiveDirectoryResult::kAbort);
+
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
+  // Custom $XDG_CACHE_HOME / Android cache directory remains blocked too.
+  EXPECT_TRUE(IsOpenAbort(xdg_cache_dir, HandleType::kDirectory));
+  EXPECT_TRUE(IsOpenAbort(xdg_cache_dir.AppendASCII("foo"), HandleType::kFile));
+#endif
+
+  // Sibling directories inside DIR_HOME remain allowed.
+  EXPECT_TRUE(
+      IsOpenAllowed(home_dir.AppendASCII("allowed"), HandleType::kDirectory));
+}
+
 // TODO(crbug.com/432011571): Flaky test.
 TEST_F(ChromeFileSystemAccessPermissionContextTest,
        DISABLED_ConfirmSensitiveEntryAccess_BlockChildrenNested) {
@@ -1541,6 +1587,58 @@ TEST_F(ChromeFileSystemAccessPermissionContextNoSymbolicLinkCheckTest,
       SensitiveDirectoryResult::kAbort);
 }
 
+// Verifies that only subfolders of a WSL home directory are allowed, except its
+// dot entries and bin, see crbug.com/573422635.
+TEST_F(ChromeFileSystemAccessPermissionContextNoSymbolicLinkCheckTest,
+       ConfirmSensitiveEntryAccess_WSL_HomeSubfolders) {
+  static constexpr const base::FilePath::CharType* kAllowedPaths[] = {
+      FILE_PATH_LITERAL("\\\\wsl.localhost\\Ubuntu\\home\\user\\projects"),
+      FILE_PATH_LITERAL("\\\\WSL.LOCALHOST\\Ubuntu\\home\\user\\src\\app"),
+      FILE_PATH_LITERAL("\\\\wsl.localhost\\Ubuntu\\home\\user\\src\\.vscode"),
+      FILE_PATH_LITERAL(
+          "\\\\wsl.localhost\\Ubuntu\\home\\user\\src\\.git\\hooks"),
+      FILE_PATH_LITERAL("//wsl.localhost/Ubuntu/home/user/projects"),
+  };
+  static constexpr const base::FilePath::CharType* kBlockedPaths[] = {
+      FILE_PATH_LITERAL("\\\\wsl.localhost\\Ubuntu\\home"),
+      FILE_PATH_LITERAL("\\\\wsl.localhost\\Ubuntu\\home\\user\\.config\\app"),
+      FILE_PATH_LITERAL("\\\\wsl.localhost\\Ubuntu\\home\\user\\bin"),
+      FILE_PATH_LITERAL("\\\\wsl.localhost\\Ubuntu\\mnt\\c\\Users\\user\\src"),
+      FILE_PATH_LITERAL("\\\\wsl.localhost\\Ubuntu\\root\\projects"),
+      FILE_PATH_LITERAL("\\\\wsl.localhost\\Ubuntu\\HOME\\user\\projects"),
+      FILE_PATH_LITERAL("\\\\wsl.localhost\\.\\home\\user\\projects"),
+      FILE_PATH_LITERAL("\\\\wsl.localhost\\Ubuntu\\home\\.\\user"),
+      FILE_PATH_LITERAL("\\\\wsl.localhost\\Ubuntu\\home\\ \\user"),
+      FILE_PATH_LITERAL("\\\\wsl.localhost\\Ubuntu\\home\\user\\."),
+      FILE_PATH_LITERAL("\\\\wsl.localhost\\Ubuntu\\home\\user\\ ."),
+      FILE_PATH_LITERAL("\\\\wsl.localhost\\Ubuntu\\home\\user\\ "),
+      FILE_PATH_LITERAL("\\\\wsl.localhost\\Ubuntu\\home\\user\\projects."),
+      FILE_PATH_LITERAL("\\\\wsl.localhost\\Ubuntu\\home\\user\\a\\..\\.ssh"),
+      FILE_PATH_LITERAL("\\\\wsl$\\Ubuntu\\home\\user\\projects"),
+  };
+  for (const auto* path : kAllowedPaths) {
+    EXPECT_EQ(ConfirmSensitiveEntryAccessSync(
+                  permission_context(), PathInfo(path), HandleType::kDirectory,
+                  AccessTrigger::kOpen),
+              SensitiveDirectoryResult::kAllowed)
+        << path;
+  }
+  for (const auto* path : kBlockedPaths) {
+    EXPECT_EQ(ConfirmSensitiveEntryAccessSync(
+                  permission_context(), PathInfo(path), HandleType::kDirectory,
+                  AccessTrigger::kOpen),
+              SensitiveDirectoryResult::kAbort)
+        << path;
+  }
+  // The regular rules still apply, such as the write block on .git/hooks.
+  EXPECT_EQ(ConfirmSensitiveEntryAccessSync(
+                permission_context(),
+                PathInfo(FILE_PATH_LITERAL(
+                    "\\\\wsl.localhost\\Ubuntu\\home\\user\\src\\.git\\hooks")),
+                HandleType::kDirectory, AccessTrigger::kSave),
+            SensitiveDirectoryResult::kAbort);
+}
+
 // Verifies that legitimate remote UNC shares remain allowed.
 TEST_F(ChromeFileSystemAccessPermissionContextNoSymbolicLinkCheckTest,
        ConfirmSensitiveEntryAccess_RemoteUNC_Allowed) {
@@ -2244,6 +2342,7 @@ TEST_F(ChromeFileSystemAccessPermissionContextTest,
       {base::DIR_HOME, FILE_PATH_LITERAL(".ssh"), true, false},
       {base::DIR_HOME, FILE_PATH_LITERAL(".gnupg"), true, false},
       {base::DIR_HOME, FILE_PATH_LITERAL(".config"), true, false},
+      {base::DIR_HOME, FILE_PATH_LITERAL(".cache"), true, false},
       {base::DIR_HOME, FILE_PATH_LITERAL(".bash_profile"), true, false},
       {base::DIR_HOME, FILE_PATH_LITERAL(".bash_login"), true, false},
       {base::DIR_HOME, FILE_PATH_LITERAL(".bashrc"), true, false},
@@ -2300,11 +2399,11 @@ TEST_F(ChromeFileSystemAccessPermissionContextTest,
       {base::DIR_HOME, FILE_PATH_LITERAL(".fonts.conf"), true, false},
       {base::DIR_HOME, FILE_PATH_LITERAL(".fonts.conf.d"), true, false},
       {base::DIR_HOME, FILE_PATH_LITERAL(".pki"), true, false},
+      {base::DIR_CACHE, nullptr, true, false},
 #endif
 
 #if BUILDFLAG(IS_ANDROID)
       {base::DIR_ANDROID_APP_DATA, nullptr, true, false},
-      {base::DIR_CACHE, nullptr, true, false},
 #endif
   };
 

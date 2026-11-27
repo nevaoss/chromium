@@ -199,42 +199,12 @@ class CORE_EXPORT GapGeometry : public GarbageCollected<GapGeometry> {
     wtf_size_t count;
   };
 
-  explicit GapGeometry(ContainerType container_type)
-      : container_type_(container_type) {}
-
-  // This copy-esque constructor allows creating a new GapGeometry
-  // instance based on an existing one, while replacing the main gaps and
-  // content block offsets. This is useful for fragmentation where most states
-  // remain the same, but the content block offsets and main gaps may differ.
-  GapGeometry(const GapGeometry& other,
-              MainGaps&& new_main_gaps,
-              LayoutUnit new_content_block_start,
-              LayoutUnit new_content_block_end)
-      : inline_gap_size_(other.inline_gap_size_),
-        block_gap_size_(other.block_gap_size_),
-        container_type_(other.container_type_),
-        main_gaps_(std::move(new_main_gaps)),
-        cross_gaps_(other.cross_gaps_),
-        flex_cross_gap_sizes_(other.flex_cross_gap_sizes_),
-        fragmented_flex_cross_gap_decoration_indices_(
-            other.fragmented_flex_cross_gap_decoration_indices_),
-        fragmented_flex_cross_gap_count_(
-            other.fragmented_flex_cross_gap_count_),
-        multicol_spanner_main_gap_count_(
-            CountMulticolSpannerMainGaps(container_type_, main_gaps_)),
-        gap_placement_reversal_(other.gap_placement_reversal_),
-        content_inline_start_(other.content_inline_start_),
-        content_inline_end_(other.content_inline_end_),
-        content_block_start_(new_content_block_start),
-        content_block_end_(new_content_block_end),
-        main_direction_(other.main_direction_) {}
-
   void Trace(Visitor* visitor) const {}
 
   bool operator==(const GapGeometry& other) const {
-    return inline_gap_size_ == other.inline_gap_size_ &&
+    return container_type_ == other.container_type_ &&
+           inline_gap_size_ == other.inline_gap_size_ &&
            block_gap_size_ == other.block_gap_size_ &&
-           container_type_ == other.container_type_ &&
            main_gaps_ == other.main_gaps_ && cross_gaps_ == other.cross_gaps_ &&
            grid_lanes_empty_openings_ == other.grid_lanes_empty_openings_ &&
            multicol_spanner_main_gap_count_ ==
@@ -376,6 +346,16 @@ class CORE_EXPORT GapGeometry : public GarbageCollected<GapGeometry> {
   // `lane_index` counts only non-collapsed lanes.
   const Vector<TrackOpeningCoordinates>& EmptyOpeningsForLane(
       wtf_size_t lane_index) const;
+
+  // Marks each segment of a grid-lanes main gap, between two adjacent
+  // intersections, as empty before or after when the lane on that side is empty
+  // along the whole segment. The segment is bounded by the edges of the
+  // crossing gutters, and its state is stored on the intersection that starts
+  // it, as for grid. This way `rule-visibility-items` applies to each segment
+  // before `rule-break` joins them.
+  void MarkGridLanesEmptySegments(GridTrackSizingDirection track_direction,
+                                  wtf_size_t gap_index,
+                                  Vector<GapIntersection>& intersections) const;
 
   // Returns the number of multicol main gaps eligible for painting. Spanner
   // main gaps are skipped because they do not consume decoration values.
@@ -668,6 +648,40 @@ class CORE_EXPORT GapGeometry : public GarbageCollected<GapGeometry> {
                                LayoutUnit cross_gap_width,
                                LayoutUnit cross_decoration_width) const;
 
+ protected:
+  // Only the subclass for each container type can create or copy a
+  // `GapGeometry`, so the container type always matches the concrete type.
+  explicit GapGeometry(ContainerType container_type)
+      : container_type_(container_type) {}
+  GapGeometry(const GapGeometry&) = default;
+
+  // This copy-esque constructor allows creating a new GapGeometry
+  // instance based on an existing one, while replacing the main gaps and
+  // content block offsets. This is useful for fragmentation where most states
+  // remain the same, but the content block offsets and main gaps may differ.
+  GapGeometry(const GapGeometry& other,
+              MainGaps&& new_main_gaps,
+              LayoutUnit new_content_block_start,
+              LayoutUnit new_content_block_end)
+      : inline_gap_size_(other.inline_gap_size_),
+        block_gap_size_(other.block_gap_size_),
+        container_type_(other.container_type_),
+        main_gaps_(std::move(new_main_gaps)),
+        cross_gaps_(other.cross_gaps_),
+        flex_cross_gap_sizes_(other.flex_cross_gap_sizes_),
+        fragmented_flex_cross_gap_decoration_indices_(
+            other.fragmented_flex_cross_gap_decoration_indices_),
+        fragmented_flex_cross_gap_count_(
+            other.fragmented_flex_cross_gap_count_),
+        multicol_spanner_main_gap_count_(
+            CountMulticolSpannerMainGaps(container_type_, main_gaps_)),
+        gap_placement_reversal_(other.gap_placement_reversal_),
+        content_inline_start_(other.content_inline_start_),
+        content_inline_end_(other.content_inline_end_),
+        content_block_start_(new_content_block_start),
+        content_block_end_(new_content_block_end),
+        main_direction_(other.main_direction_) {}
+
  private:
   static wtf_size_t CountMulticolSpannerMainGaps(ContainerType container_type,
                                                  const MainGaps& main_gaps);
@@ -814,8 +828,8 @@ class CORE_EXPORT GapGeometry : public GarbageCollected<GapGeometry> {
   MainGaps main_gaps_;
   CrossGaps cross_gaps_;
 
-  // Empty openings per lane, used to determine segment visibility. Note: this
-  // is only used for grid lanes containers.
+  // Empty openings per lane, used to determine visibility. Note: this is only
+  // used for grid lanes containers.
   GridLanesEmptyOpenings grid_lanes_empty_openings_;
 
   // Per-line effective gap sizes (`gap` property + content distribution space)

@@ -13,8 +13,10 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_composebox_handler.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_eligibility_manager.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_interactive_test_base.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_location_bar.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_onboarding_tooltip_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_permission_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
@@ -38,24 +40,29 @@
 #include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
 #include "chrome/browser/ui/side_panel/side_panel_enums.h"
 #include "chrome/browser/ui/side_panel/side_panel_ui.h"
+#include "chrome/browser/ui/tabs/contextual_tasks_tab_sub_menu_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
 #include "chrome/browser/ui/toolbar/app_menu_model.h"
 #include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_onboarding_bubble_view.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/page_info/page_info_main_view.h"
+#include "chrome/browser/ui/views/permissions/chip/permission_dashboard_controller.h"
+#include "chrome/browser/ui/views/permissions/chip/webui_permission_chip.h"
+#include "chrome/browser/ui/views/permissions/chip/webui_permission_dashboard.h"
 #include "chrome/browser/ui/views/side_panel/side_panel.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/webui_url_constants.h"
+#include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/interactive_test_utils.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
 #include "components/constrained_window/constrained_window_views.h"
+#include "components/content_settings/browser/page_specific_content_settings.h"
 #include "components/contextual_search/mock_contextual_search_session_handle.h"
 #include "components/contextual_tasks/public/contextual_tasks_service.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/contextual_tasks/public/prefs.h"
-#include "components/lens/lens_features.h"
 #include "components/omnibox/browser/mock_aim_eligibility_service.h"
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/prefs/pref_service.h"
@@ -73,6 +80,7 @@
 #include "net/dns/mock_host_resolver.h"
 #include "ui/actions/actions.h"
 #include "ui/base/interaction/element_test_util.h"
+#include "ui/base/l10n/l10n_util.h"
 #include "ui/base/models/dialog_model.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
@@ -164,6 +172,17 @@ class ContextualTasksSidePanelCoordinatorInteractiveUiTest
 
   void HidePanel() { GetCoordinator()->Hide(); }
 
+  void CreateCachedWebContentsForTesting(base::Uuid task_id, bool is_open) {
+    GetCoordinator()->CreateCachedWebContentsForTesting(task_id, is_open);
+  }
+
+  content::WebContents* GetCachedWebContentsForTask(const base::Uuid& task_id) {
+    auto it = GetCoordinator()->task_id_to_web_contents_cache_.find(task_id);
+    return it != GetCoordinator()->task_id_to_web_contents_cache_.end()
+               ? it->second->web_contents.get()
+               : nullptr;
+  }
+
   void SetUpTasks() {
     ActiveTaskContextProvider::From(browser())->AddObserver(
         &mock_active_task_context_provider_observer_);
@@ -227,7 +246,8 @@ class ContextualTasksSidePanelCoordinatorInteractiveUiTest
               LOG(INFO) << "URLLoaderInterceptor intercepted URL: "
                         << url.spec();
               if (url.host() == "www.google.com" ||
-                  url.host() == "support.google.com") {
+                  url.host() == "support.google.com" ||
+                  url.host() == "www.g.ai" || url.host() == "g.ai") {
                 content::URLLoaderInterceptor::WriteResponse(
                     "chrome/test/data/mock_aim_page.html",
                     params->client.get());
@@ -308,6 +328,181 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
         ASSERT_EQ(side_panel_web_contents1,
                   coordinator->GetActiveWebContents());
       }));
+}
+
+class ContextualTasksSidePanelPermissionDashboardInteractiveUiTest
+    : public ContextualTasksSidePanelCoordinatorInteractiveUiTest {
+ public:
+  ContextualTasksSidePanelPermissionDashboardInteractiveUiTest() {
+    scoped_feature_list_.Reset();
+    scoped_feature_list_.InitWithFeatures(
+        /*enabled_features=*/{kContextualTasks,
+                              kContextualTasksForceEntryPointEligibility,
+                              kContextualTasksEphemeralBrandedEntryPoint,
+                              kContextualTasksSidePanelRearchitecture},
+        /*disabled_features=*/{kContextualTasksSidePanelTabState});
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksSidePanelPermissionDashboardInteractiveUiTest,
+    SwitchTabUpdatesPermissionDashboard) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kToolbarWebContentsId);
+  DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kPermissionDashboardHiddenEvent);
+  DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kCameraIndicatorShownEvent);
+  DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kMicrophoneIndicatorShownEvent);
+
+  SetUpTasks();
+  EXPECT_CALL(mock_active_task_context_provider_observer_,
+              OnContextTabsChanged(testing::_))
+      .Times(AtLeast(1));
+
+  ContextualTasksSidePanelCoordinator* coordinator = GetCoordinator();
+  ContextualTasksLocationBar* location_bar =
+      coordinator->permission_controller()->GetLocationBarForTesting();
+  ASSERT_NE(nullptr, location_bar);
+
+  PermissionDashboardController* dashboard_controller =
+      location_bar->GetPermissionDashboardController();
+  ASSERT_NE(nullptr, dashboard_controller);
+  dashboard_controller->DoNotCollapseForTesting();
+
+  WebUIPermissionChip* indicator_chip =
+      location_bar->permission_dashboard()->indicator_chip();
+  ASSERT_NE(nullptr, indicator_chip);
+
+  const DeepQuery kPathToPermissionDashboard = {
+      "contextual-tasks-toolbar-app",
+      "#toolbar",
+      "permission-dashboard",
+  };
+  const DeepQuery kPathToIndicatorChip = {
+      "contextual-tasks-toolbar-app",
+      "#toolbar",
+      "permission-dashboard",
+      "#indicator-chip",
+  };
+
+  StateChange permission_dashboard_hidden;
+  permission_dashboard_hidden.type = StateChange::Type::kExistsAndConditionTrue;
+  permission_dashboard_hidden.event = kPermissionDashboardHiddenEvent;
+  permission_dashboard_hidden.where = kPathToPermissionDashboard;
+  permission_dashboard_hidden.test_function = "el => el.hidden";
+
+  StateChange camera_indicator_shown;
+  camera_indicator_shown.type = StateChange::Type::kExistsAndConditionTrue;
+  camera_indicator_shown.event = kCameraIndicatorShownEvent;
+  camera_indicator_shown.where = kPathToIndicatorChip;
+  camera_indicator_shown.test_function = content::JsReplace(
+      "el => el.hasAttribute('visible') && "
+      "el.shadowRoot.querySelector('#chip').title === $1",
+      l10n_util::GetStringUTF8(IDS_CAMERA_ACCESSED));
+
+  StateChange microphone_indicator_shown;
+  microphone_indicator_shown.type = StateChange::Type::kExistsAndConditionTrue;
+  microphone_indicator_shown.event = kMicrophoneIndicatorShownEvent;
+  microphone_indicator_shown.where = kPathToIndicatorChip;
+  microphone_indicator_shown.test_function = content::JsReplace(
+      "el => el.hasAttribute('visible') && "
+      "el.shadowRoot.querySelector('#chip').title === $1",
+      l10n_util::GetStringUTF8(IDS_MICROPHONE_ACCESSED));
+
+  content::WebContents* side_panel_web_contents1 = nullptr;
+  content::WebContents* side_panel_web_contents2 = nullptr;
+
+  RunTestSequence(
+      // Open side panel on Tab 0 (associated with Task 1).
+      Do([&]() {
+        coordinator->Show(
+            false, omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT);
+      }),
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      NameViewRelative(kContextualTasksSidePanelWebViewElementId,
+                       "SidePanelToolbarWebView",
+                       [](ContextualTasksWebView* web_view) -> views::View* {
+                         return web_view->toolbar_web_view();
+                       }),
+      InstrumentNonTabWebView(kToolbarWebContentsId, "SidePanelToolbarWebView"),
+      WaitForStateChange(kToolbarWebContentsId, permission_dashboard_hidden),
+      Check([&]() {
+        side_panel_web_contents1 = coordinator->GetActiveWebContents();
+        return side_panel_web_contents1 != nullptr &&
+               content_settings::PageSpecificContentSettings::GetForFrame(
+                   side_panel_web_contents1->GetPrimaryMainFrame()) != nullptr;
+      }),
+      CheckResult(
+          [&]() {
+            return location_bar->GetWebContents() == side_panel_web_contents1;
+          },
+          true),
+      CheckResult([&]() { return indicator_chip->GetVisible(); }, false),
+
+      // Trigger camera access on Task 1's side panel `WebContents`.
+      Do([&]() {
+        content_settings::PageSpecificContentSettings::GetForFrame(
+            side_panel_web_contents1->GetPrimaryMainFrame())
+            ->OnMediaStreamPermissionSet(
+                GURL("https://www.google.com"),
+                {content_settings::PageSpecificContentSettings::
+                     kCameraAccessed});
+      }),
+      WaitForStateChange(kToolbarWebContentsId, camera_indicator_shown),
+      CheckResult([&]() { return indicator_chip->GetVisible(); }, true),
+      CheckResult([&]() { return indicator_chip->GetTextForTesting(); },
+                  l10n_util::GetStringUTF16(IDS_CAMERA_IN_USE)),
+
+      // Switch to Tab 1 (associated with Task 2, which has no active media
+      // permissions). Verify the permission dashboard updates to reflect
+      // Tab 1's contextual task `WebContents` and hides the indicator chip.
+      SelectTab(kTabStripElementId, 1),
+      WaitForStateChange(kToolbarWebContentsId, permission_dashboard_hidden),
+      Check([&]() {
+        side_panel_web_contents2 = coordinator->GetActiveWebContents();
+        return side_panel_web_contents2 != nullptr &&
+               side_panel_web_contents2 != side_panel_web_contents1 &&
+               content_settings::PageSpecificContentSettings::GetForFrame(
+                   side_panel_web_contents2->GetPrimaryMainFrame()) != nullptr;
+      }),
+      CheckResult(
+          [&]() {
+            return location_bar->GetWebContents() == side_panel_web_contents2;
+          },
+          true),
+      CheckResult([&]() { return indicator_chip->GetVisible(); }, false),
+
+      // Trigger microphone access on Task 2's side panel `WebContents`. Verify
+      // the permission dashboard displays the microphone indicator for Tab 1.
+      Do([&]() {
+        content_settings::PageSpecificContentSettings::GetForFrame(
+            side_panel_web_contents2->GetPrimaryMainFrame())
+            ->OnMediaStreamPermissionSet(
+                GURL("https://www.google.com"),
+                {content_settings::PageSpecificContentSettings::
+                     kMicrophoneAccessed});
+      }),
+      WaitForStateChange(kToolbarWebContentsId, microphone_indicator_shown),
+      CheckResult([&]() { return indicator_chip->GetVisible(); }, true),
+      CheckResult([&]() { return indicator_chip->GetTextForTesting(); },
+                  l10n_util::GetStringUTF16(IDS_MICROPHONE_IN_USE)),
+
+      // Switch back to Tab 0 (Task 1). Verify the permission dashboard
+      // switches back to showing Task 1's camera indicator.
+      SelectTab(kTabStripElementId, 0),
+      WaitForStateChange(kToolbarWebContentsId, camera_indicator_shown),
+      CheckResult(
+          [&]() {
+            return coordinator->GetActiveWebContents() ==
+                   side_panel_web_contents1;
+          },
+          true),
+      CheckResult(
+          [&]() {
+            return location_bar->GetWebContents() == side_panel_web_contents1;
+          },
+          true),
+      CheckResult([&]() { return indicator_chip->GetVisible(); }, true),
+      CheckResult([&]() { return indicator_chip->GetTextForTesting(); },
+                  l10n_util::GetStringUTF16(IDS_CAMERA_IN_USE)));
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
@@ -982,6 +1177,28 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
+                       OpenUrlInNewTab_DoesNotInheritOpenerTask) {
+  SetUpTasks();
+  // Set tab1 as active tab and open a new tab from the panel's own UI.
+  TabListInterface* tab_list = TabListInterface::From(browser());
+  tab_list->ActivateTab(tab_list->GetTab(1)->GetHandle());
+  GetCoordinator()->OpenUrlInNewTab(GURL(chrome::kChromeUISettingsURL));
+  EXPECT_EQ(5, tab_list->GetTabCount());
+
+  // The new tab is a link from the tab strip's perspective, but it was not
+  // opened from tab1's page, so it does not inherit task1.
+  content::WebContents* new_contents = tab_list->GetActiveTab()->GetContents();
+  ASSERT_NE(new_contents, tab_list->GetTab(1)->GetContents());
+  ContextualTasksService* contextual_tasks_service =
+      ContextualTasksServiceFactory::GetForProfile(browser()->GetProfile());
+  EXPECT_TRUE(contextual_tasks_service->GetContextualTaskForTab(
+      sessions::SessionTabHelper::IdForTab(
+          tab_list->GetTab(1)->GetContents())));
+  EXPECT_FALSE(contextual_tasks_service->GetContextualTaskForTab(
+      sessions::SessionTabHelper::IdForTab(new_contents)));
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
                        OpenNewTabWithLinkClick_InheritsOpenerTask) {
   SetUpTasks();
   // Set tab1 as active tab and create a new tab through link click.
@@ -1120,7 +1337,7 @@ class ContextualTasksSidePanelCoordinatorFeatureDisabledInteractiveUiTest
   ContextualTasksSidePanelCoordinatorFeatureDisabledInteractiveUiTest() {
     scoped_feature_list_.Reset();
     scoped_feature_list_.InitWithFeatures(
-        /*enabled_features=*/{kContextualTasksSidePanel},
+        /*enabled_features=*/{},
         /*disabled_features=*/{kContextualTasks,
                                kContextualTasksClobberActiveTab});
   }
@@ -1132,8 +1349,7 @@ class ContextualTasksSidePanelCoordinatorFeatureDisabledClobberInteractiveUiTest
   ContextualTasksSidePanelCoordinatorFeatureDisabledClobberInteractiveUiTest() {
     scoped_feature_list_.Reset();
     scoped_feature_list_.InitWithFeatures(
-        /*enabled_features=*/{kContextualTasksSidePanel,
-                              kContextualTasksClobberActiveTab},
+        /*enabled_features=*/{kContextualTasksClobberActiveTab},
         /*disabled_features=*/{kContextualTasks});
   }
 };
@@ -1382,6 +1598,156 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
   EXPECT_EQ(content::Visibility::HIDDEN, web_contents2->GetVisibility());
 }
 
+// This tests the following CUJ:
+//  (1) Open a tab and open the Contextual Tasks side panel with an ongoing
+//      thread.
+//  (2) Share another tab into the side panel using
+//      `ShareTabsWithNewThread()`.
+//  (3) Because the panel is showing results, a fresh zero-state thread is
+//      started instead of attaching the shared tab to the existing thread.
+//  (4) With the panel in zero state, sharing an additional tab stages it
+//      directly into the existing zero-state task.
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksSidePanelCoordinatorInteractiveUiTest,
+    ShareTabsWithNewThreadStartsNewThreadWhenShowingResults) {
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), embedded_test_server()->GetURL("/title1.html")));
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), embedded_test_server()->GetURL("/title2.html"),
+      WindowOpenDisposition::kNewBackgroundTab,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), embedded_test_server()->GetURL("/title3.html"),
+      WindowOpenDisposition::kNewBackgroundTab,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+
+  ContextualTasksService* contextual_tasks_service =
+      ContextualTasksServiceFactory::GetForProfile(browser()->GetProfile());
+  ContextualTask task1 = contextual_tasks_service->CreateTask();
+  contextual_tasks_service->AssociateTabWithTask(
+      task1.GetTaskId(),
+      sessions::SessionTabHelper::IdForTab(
+          TabListInterface::From(browser())->GetTab(0)->GetContents()));
+  contextual_tasks_service->UpdateThreadForTask(task1.GetTaskId(),
+                                                ThreadType::kAiMode, "thread1",
+                                                std::nullopt, "Title 1");
+
+  ContextualTasksSidePanelCoordinator* coordinator = GetCoordinator();
+  CreateCachedWebContentsForTesting(task1.GetTaskId(),
+                                    /*is_open=*/true);
+
+  TabListInterface* tab_list = TabListInterface::From(browser());
+  tabs::TabHandle tab1_handle = tab_list->GetTab(1)->GetHandle();
+  tabs::TabHandle tab2_handle = tab_list->GetTab(2)->GetHandle();
+
+  RunTestSequence(
+      Do([&]() {
+        coordinator->Show(
+            false, omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT);
+      }),
+      WaitForShow(kContextualTasksSidePanelWebViewElementId), Do([&]() {
+        EXPECT_TRUE(coordinator->IsPanelOpenForContextualTask());
+        EXPECT_TRUE(coordinator->IsShowingResults());
+        const base::Uuid initial_task_id =
+            coordinator->GetCurrentTask()->GetTaskId();
+        EXPECT_EQ(initial_task_id, task1.GetTaskId());
+
+        // Sharing Tab 1 when showing results opens a fresh zero-state thread.
+        coordinator->ShareTabsWithNewThread({tab1_handle});
+
+        std::optional<ContextualTask> current_task =
+            coordinator->GetCurrentTask();
+        ASSERT_TRUE(current_task.has_value());
+        const base::Uuid new_task_id = current_task->GetTaskId();
+        EXPECT_NE(new_task_id, initial_task_id);
+        EXPECT_FALSE(coordinator->IsShowingResults());
+
+        // Sharing Tab 2 when already in zero state attaches directly to the
+        // current zero-state task rather than starting another new thread.
+        coordinator->ShareTabsWithNewThread({tab2_handle});
+        EXPECT_EQ(coordinator->GetCurrentTask()->GetTaskId(), new_task_id);
+      }));
+}
+
+// This tests the following CUJ:
+//  (1) Browser has multiple tabs with cached side panel tasks.
+//  (2) One cached task has a valid non-empty thread title, while another cached
+//      task has a whitespace query and whitespace fallback title.
+//  (3) User opens the tab context submenu (`ContextualTasksTabSubMenuModel`) on
+//      an eligible tab.
+//  (4) Verify only the valid titled thread is listed in the submenu, and the
+//      blank/whitespace thread is omitted.
+IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
+                       TabSubMenuSkipsBlankTitleThreads) {
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), embedded_test_server()->GetURL("/title1.html")));
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), embedded_test_server()->GetURL("/title2.html"),
+      WindowOpenDisposition::kNewBackgroundTab,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+
+  ContextualTasksService* contextual_tasks_service =
+      ContextualTasksServiceFactory::GetForProfile(browser()->GetProfile());
+
+  // Task 1: Valid thread title.
+  ContextualTask task1 = contextual_tasks_service->CreateTask();
+  contextual_tasks_service->AssociateTabWithTask(
+      task1.GetTaskId(),
+      sessions::SessionTabHelper::IdForTab(
+          TabListInterface::From(browser())->GetTab(0)->GetContents()));
+  contextual_tasks_service->UpdateThreadForTask(task1.GetTaskId(),
+                                                ThreadType::kAiMode, "thread1",
+                                                std::nullopt, "Valid Thread");
+  CreateCachedWebContentsForTesting(task1.GetTaskId(), /*is_open=*/true);
+
+  // Navigate cached `WebContents` for `task1` to an AI Mode URL.
+  content::WebContents* task1_wc =
+      GetCachedWebContentsForTask(task1.GetTaskId());
+  ASSERT_NE(task1_wc, nullptr);
+  task1_wc->GetController().LoadURL(
+      GURL("https://www.g.ai/search?udm=50&mtid=1"), content::Referrer(),
+      ui::PAGE_TRANSITION_AUTO_TOPLEVEL, std::string());
+  ASSERT_TRUE(content::WaitForLoadStop(task1_wc));
+
+  // Task 2: Whitespace-only thread query and fallback title.
+  ContextualTask task2 = contextual_tasks_service->CreateTask();
+  contextual_tasks_service->AssociateTabWithTask(
+      task2.GetTaskId(),
+      sessions::SessionTabHelper::IdForTab(
+          TabListInterface::From(browser())->GetTab(1)->GetContents()));
+  contextual_tasks_service->UpdateThreadForTask(
+      task2.GetTaskId(), ThreadType::kAiMode, "thread2", std::nullopt, "   ");
+  CreateCachedWebContentsForTesting(task2.GetTaskId(), /*is_open=*/false);
+
+  // Navigate cached `WebContents` for `task2` to a URL with whitespace query
+  // param `q=+`.
+  content::WebContents* task2_wc =
+      GetCachedWebContentsForTask(task2.GetTaskId());
+  ASSERT_NE(task2_wc, nullptr);
+  task2_wc->GetController().LoadURL(
+      GURL("https://www.g.ai/search?udm=50&mtid=5&q=+"), content::Referrer(),
+      ui::PAGE_TRANSITION_AUTO_TOPLEVEL, std::string());
+  ASSERT_TRUE(content::WaitForLoadStop(task2_wc));
+
+  RunTestSequence(Do([&]() {
+    // Open the tab context submenu model for Tab 0.
+    ContextualTasksTabSubMenuModel submenu(browser()->tab_strip_model(), 0);
+
+    // Submenu must contain:
+    //  - Index 0: `CommandAiModeCreateNewThread` ("Start new thread")
+    //  - Index 1: Separator
+    //  - Index 2: `kMinRecentThreadCommandId` with label "Valid Thread"
+    // Total items must be exactly 3. The whitespace thread must be omitted.
+    ASSERT_EQ(submenu.GetItemCount(), 3u);
+    EXPECT_EQ(submenu.GetCommandIdAt(0),
+              TabStripModel::CommandAiModeCreateNewThread);
+    EXPECT_EQ(submenu.GetTypeAt(1), ui::MenuModel::TYPE_SEPARATOR);
+    EXPECT_EQ(submenu.GetCommandIdAt(2),
+              ContextualTasksTabSubMenuModel::kMinRecentThreadCommandId);
+    EXPECT_EQ(submenu.GetLabelAt(2), u"Valid Thread");
+  }));
+}
+
 // Regression test for crbug.com/517906613: On a buggy build, trying to show the
 // pending dialog during SetWebContents when the view's web_contents() is stale
 // would result in a null host crash in the dialog manager.
@@ -1599,17 +1965,8 @@ class ContextualTasksSignedOutAlignmentInteractiveUiTest
   ~ContextualTasksSignedOutAlignmentInteractiveUiTest() override = default;
 
   void SetUpFeatureList() override {
-    std::vector<base::test::FeatureRefAndParams> enabled_features;
-    for (const auto& feature : GetDefaultEnabledFeatures()) {
-      if (feature.feature == lens::features::kLensSidePanelUnification) {
-        base::FieldTrialParams params = feature.params;
-        params["allow-signed-out"] = "true";
-        enabled_features.emplace_back(lens::features::kLensSidePanelUnification,
-                                      params);
-      } else {
-        enabled_features.push_back(feature);
-      }
-    }
+    std::vector<base::test::FeatureRefAndParams> enabled_features =
+        GetDefaultEnabledFeatures();
     std::vector<base::test::FeatureRef> disabled_features =
         GetDefaultDisabledFeatures();
     disabled_features.push_back(kContextualTasksForceEntryPointEligibility);
@@ -1696,17 +2053,8 @@ class ContextualTasksSignedOutPinnedButtonInteractiveUiTest
     : public ContextualTasksSignedOutAlignmentInteractiveUiTest {
  public:
   void SetUpFeatureList() override {
-    std::vector<base::test::FeatureRefAndParams> enabled_features;
-    for (const auto& feature : GetDefaultEnabledFeatures()) {
-      if (feature.feature == lens::features::kLensSidePanelUnification) {
-        base::FieldTrialParams params = feature.params;
-        params["allow-signed-out"] = "true";
-        enabled_features.emplace_back(lens::features::kLensSidePanelUnification,
-                                      params);
-      } else {
-        enabled_features.push_back(feature);
-      }
-    }
+    std::vector<base::test::FeatureRefAndParams> enabled_features =
+        GetDefaultEnabledFeatures();
     enabled_features.push_back({kEnableContextualTasksPinButtonInToolbar, {}});
     std::vector<base::test::FeatureRef> disabled_features =
         GetDefaultDisabledFeatures();

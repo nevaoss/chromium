@@ -250,6 +250,7 @@ source_set("impl") {
       "//chrome/browser/ui/interaction",
       "//chrome/browser/ui/lens",
       "//chrome/browser/ui/lens:backend_logic_impl",
+      "//chrome/browser/ui/views/contextual_tasks",
       "//chrome/browser/ui/views/permissions:permission_prompt_observer",
       "//chrome/browser/ui/webui:webui_util",
       "//chrome/browser/ui/webui/cr_components/searchbox",
@@ -1001,6 +1002,7 @@ source_set("interactive_ui_tests") {
       ":user_data",
       "//chrome/browser/extensions",
       "//chrome/browser/ui/omnibox",
+      "//chrome/browser/ui/tabs:tab_menu",
 
       # TabUnderlineView currently resides under glic/browser_ui.
       "//chrome/browser/glic/browser_ui:glow",
@@ -1019,6 +1021,7 @@ source_set("interactive_ui_tests") {
       "//chrome/browser/ui/views/toolbar:test_support",
       "//chrome/browser/ui/webui/new_tab_page/composebox/variations",
       "//chrome/browser/ui/webui/searchbox:searchbox_test_utils",
+      "//components/content_settings/browser",
       "//components/contextual_search:test_support",
       "//components/lens:enterprise_policy",
       "//components/strings:components_strings",
@@ -1073,6 +1076,7 @@ if (is_android) {
       "android/java/src/org/chromium/chrome/browser/contextual_tasks/ContextualTaskBottomSheetComponentProvider.java",
       "android/java/src/org/chromium/chrome/browser/contextual_tasks/ContextualTaskBottomSheetContent.java",
       "android/java/src/org/chromium/chrome/browser/contextual_tasks/ContextualTasksBridge.java",
+      "android/java/src/org/chromium/chrome/browser/contextual_tasks/ContextualTasksBridgeRegistrar.java",
       "android/java/src/org/chromium/chrome/browser/contextual_tasks/ui/ContextualTasksControlCoordinator.java",
       "android/java/src/org/chromium/chrome/browser/contextual_tasks/ui/ContextualTasksControlMediator.java",
     ]
@@ -1090,6 +1094,7 @@ if (is_android) {
       "//chrome/browser/flags:java",
       "//chrome/browser/profiles/android:java",
       "//chrome/browser/tab:java",
+      "//chrome/browser/tabmodel:java",
       "//chrome/browser/ui/android/omnibox:java",
       "//chrome/browser/ui/android/strings:ui_strings_grd",
       "//chrome/browser/ui/browser_window/public/android:java",
@@ -1120,6 +1125,7 @@ if (is_android) {
 
   robolectric_library("junit") {
     sources = [
+      "android/java/src/org/chromium/chrome/browser/contextual_tasks/ContextualTasksBridgeRegistrarUnitTest.java",
       "android/java/src/org/chromium/chrome/browser/contextual_tasks/ContextualTasksBridgeUnitTest.java",
       "android/java/src/org/chromium/chrome/browser/contextual_tasks/ContextualTasksUtilsUnitTest.java",
       "android/java/src/org/chromium/chrome/browser/contextual_tasks/ui/ContextualTasksControlCoordinatorUnitTest.java",
@@ -1138,6 +1144,7 @@ if (is_android) {
       "//chrome/browser/flags:java",
       "//chrome/browser/profiles/android:java",
       "//chrome/browser/tab:java",
+      "//chrome/browser/tabmodel:java",
       "//chrome/browser/ui/android/omnibox:java",
       "//chrome/browser/ui/browser_window/public/android:java",
       "//chrome/browser/ui/messages/android:java",

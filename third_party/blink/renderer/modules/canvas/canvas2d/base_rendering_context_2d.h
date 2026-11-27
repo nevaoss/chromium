@@ -28,6 +28,7 @@
 #include "third_party/blink/renderer/platform/graphics/flush_for_image_listener.h"
 #include "third_party/blink/renderer/platform/graphics/flush_reason.h"
 #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_recorder.h"
+#include "third_party/blink/renderer/platform/graphics/scoped_raster_timer.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/web_graphics_context_3d_provider_wrapper.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
@@ -87,7 +88,8 @@ class MODULES_EXPORT BaseRenderingContext2D
       public MemoryManagedPaintRecorder::Client,
       public FlushForImageObserver,
       public CanvasMemoryDumpClient,
-      public WebGraphicsContext3DProviderWrapper::DestructionObserver {
+      public WebGraphicsContext3DProviderWrapper::DestructionObserver,
+      public ScopedRasterTimer::Host {
  public:
   // MemoryManagedPaintRecorder::Client implementation.
   void InitializeForRecording(cc::PaintCanvas* canvas) const override;
@@ -95,6 +97,8 @@ class MODULES_EXPORT BaseRenderingContext2D
 
   // FlushForImageObserver implementation.
   void OnFlushForImage(cc::PaintImage::ContentId content_id) override;
+
+  using CanvasRenderingContext::Host;
 
   using Canvas2DRecorderContext::Recorder;
   const MemoryManagedPaintRecorder* Recorder() const final;
@@ -314,6 +318,7 @@ class MODULES_EXPORT BaseRenderingContext2D
 
   void ConfigureRecorder(const gfx::Size& size, bool is_graphite);
   void ResetRecorder();
+  bool IsGraphite() const;
 
   explicit BaseRenderingContext2D(
       CanvasRenderingContextHost* canvas,
@@ -404,6 +409,7 @@ class MODULES_EXPORT BaseRenderingContext2D
   // WebGraphicsContext3DProviderWrapper::DestructionObserver implementation.
   void OnContextDestroyed() override;
 
+  void RasterRecordToSharedImage(cc::PaintRecord last_recording);
   void RasterRecordToSoftwareSurface(cc::PaintRecord last_recording);
   void ApplyAnimatedImageFrameIndexesForId(SkCanvas* canvas, uint32_t id);
   // Returns a map of frame indexes to be used by
@@ -411,15 +417,16 @@ class MODULES_EXPORT BaseRenderingContext2D
   // ElementImage drawn into the canvas via drawElementImage()).
   scoped_refptr<const cc::AnimatedImageFrameIndexMap>
   GetAnimatedImageFrameIndexMap(uint32_t id) const;
-  CanvasImageProvider* GetOrCreateSWCanvasImageProvider();
+  CanvasImageProvider* GetOrCreateCanvasImageProvider();
 
   Canvas2DColorParams color_params_;
   std::unique_ptr<Canvas2DResourceProvider> shared_image_provider_;
   sk_sp<SkSurface> surface_;
   std::unique_ptr<CanvasImageProvider> canvas_image_provider_;
-  // Even when using a software surface, it may be called upon to
-  // rasterize a texture-backed resource, and that resource must be bound to a
-  // gpu context for the current thread.
+  // Initialized on GPU-composited `shared_image_provider_` creation. Also
+  // lazily initialized when rasterizing to a software surface, as that
+  // surface may be called upon to rasterize a texture-backed resource, which
+  // must be bound to a GPU context for the current thread.
   base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper_;
   cc::PaintImage::Id sw_snapshot_paint_image_id_ = cc::PaintImage::kInvalidId;
   cc::PaintImage::ContentId sw_snapshot_paint_image_content_id_ =

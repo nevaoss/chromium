@@ -47,6 +47,10 @@ std::string_view CreationSourceToString(waap::NewWindowCreationSource source) {
       return ".MoveTabsToNewWindow";
     case waap::NewWindowCreationSource::kLaunch:
       return ".Launch";
+    case waap::NewWindowCreationSource::kNavigation:
+      return ".Navigation";
+    case waap::NewWindowCreationSource::kExtension:
+      return ".Extension";
     case waap::NewWindowCreationSource::kUnknown:
       NOTREACHED();
   }

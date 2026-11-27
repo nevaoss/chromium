@@ -279,6 +279,7 @@ import org.chromium.components.search_engines.TemplateUrl;
 import org.chromium.components.search_engines.TemplateUrlService;
 import org.chromium.components.search_engines.TemplateUrlService.TemplateUrlServiceObserver;
 import org.chromium.components.tab_group_sync.TabGroupSyncService;
+import org.chromium.content_public.browser.BackForwardTransitionAnimationManager;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.NavigationController;
 import org.chromium.content_public.browser.NavigationEntry;
@@ -743,7 +744,7 @@ public class ToolbarManager
             final boolean navigateForward = isForward();
             final boolean navigable = navigateForward ? tab.canGoForward() : tab.canGoBack();
             return navigable
-                    && TabOnBackGestureHandler.shouldAnimateNavigationTransition(
+                    && BackForwardTransitionAnimationManager.shouldAnimateNavigationTransition(
                             navigateForward, backEvent.getSwipeEdge());
         }
     }
@@ -2587,7 +2588,7 @@ public class ToolbarManager
     public boolean maybeShowBottomBarPromo(Profile profile) {
         // The host manager is only created when the bottom bar is on.
         if (mBottomBarHostManager != null) {
-            return mBottomBarHostManager.maybeShowBottomBarPromo(profile);
+            return mBottomBarHostManager.maybeClaimPromoSlotForEducation(profile);
         }
         return mBottomBarEducationDialogCoordinator != null
                 && mBottomBarEducationDialogCoordinator.maybeShow(profile);
@@ -3964,10 +3965,13 @@ public class ToolbarManager
 
     private void onBackForwardTransitionAnimationChange() {
         Tab tab = mActivityTabProvider.get();
+        var manager =
+                tab == null || tab.getWebContents() == null
+                        ? null
+                        : tab.getWebContents().getBackForwardTransitionAnimationManager();
         final boolean nativeDrawsProgressBar =
-                tab != null
-                        && tab.getWebContents() != null
-                        && tab.getWebContents().getCurrentBackForwardTransitionStage()
+                manager != null
+                        && manager.getCurrentAnimationStage()
                                 == AnimationStage.INVOKE_ANIMATION_WITH_PROGRESS_BAR;
         mToolbar.setShowingProgressBarForBackForwardTransition(nativeDrawsProgressBar);
     }

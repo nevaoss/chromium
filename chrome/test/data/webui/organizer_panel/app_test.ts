@@ -5,12 +5,14 @@
 import 'chrome://organizer-panel.top-chrome/organizer_panel.js';
 
 import type {OrganizerPanelAppElement, OrganizerPanelPageRemote} from 'chrome://organizer-panel.top-chrome/organizer_panel.js';
-import {browserProxyFactory, foreignTabsBrowserProxyFactory, ForeignTabsPageHandlerRemote, organizerPanelBrowserProxyFactory, OrganizerPanelPageHandlerRemote, PageHandlerRemote, RecentTabsDelegate, tabGroupsBrowserProxyFactory, TabGroupsOrganizerPageHandlerRemote} from 'chrome://organizer-panel.top-chrome/organizer_panel.js';
+import {browserProxyFactory, foreignTabsBrowserProxyFactory, ForeignTabsPageHandlerRemote, organizerPanelBrowserProxyFactory, OrganizerPanelPageHandlerRemote, PageHandlerRemote, RecentTabsDelegate, SearchApiProxyImpl, tabGroupsBrowserProxyFactory, TabGroupsOrganizerPageHandlerRemote} from 'chrome://organizer-panel.top-chrome/organizer_panel.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {getDeepActiveElement} from 'chrome://resources/js/util.js';
 import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {hasStyle, microtasksFinished} from 'chrome://webui-test/test_util.js';
+
+import {TestSearchApiProxy} from './test_search_api_proxy.js';
 
 suite('OrganizerPanelAppTest', () => {
   let app: OrganizerPanelAppElement;
@@ -31,9 +33,11 @@ suite('OrganizerPanelAppTest', () => {
       collapse: 'Collapse',
       createTabGroup: 'Create tab group',
       currentlyPlaying: 'Currently playing',
+      diceSupportEnabled: true,
       expand: 'Expand',
       foreignTabsEnabled: false,
       isIncognitoMode: false,
+      isUserSignedIn: true,
       noRecentlyClosedTabs: 'No recently closed tabs',
       noResults: 'No results',
       options: 'Options',
@@ -43,6 +47,7 @@ suite('OrganizerPanelAppTest', () => {
       shortcutText: 'Ctrl+Shift+A',
       tabGroupMoreOptions: 'More options',
       tabGroups: 'Tab Groups',
+      tabsOnOtherDevices: 'Tabs on other devices',
     });
     mockOrganizerPanelHandler =
         TestMock.fromClass(OrganizerPanelPageHandlerRemote);
@@ -152,10 +157,7 @@ suite('OrganizerPanelAppTest', () => {
   });
 
   test('renders foreign tabs section when flag is enabled', async () => {
-    loadTimeData.overrideValues({
-      tabsOnOtherDevices: 'Tabs on other devices',
-      foreignTabsEnabled: true,
-    });
+    loadTimeData.overrideValues({foreignTabsEnabled: true});
     const testApp = document.createElement('organizer-panel-app');
     document.body.appendChild(testApp);
     await microtasksFinished();
@@ -164,6 +166,27 @@ suite('OrganizerPanelAppTest', () => {
     assertEquals(
         'Tabs on other devices',
         testApp.$.list.sectionDelegates[3]!.getHeader());
+    const sections =
+        testApp.$.list.shadowRoot.querySelectorAll('organizer-list-section');
+    assertEquals(4, sections.length);
+    assertFalse(sections[3]!.hidden);
+    assertEquals(4, testApp.$.list.getVisibleSections().length);
+  });
+
+  test('hides foreign tabs section when user is signed out', async () => {
+    loadTimeData.overrideValues({
+      foreignTabsEnabled: true,
+      isUserSignedIn: false,
+    });
+    const testApp = document.createElement('organizer-panel-app');
+    document.body.appendChild(testApp);
+    await microtasksFinished();
+
+    const sections =
+        testApp.$.list.shadowRoot.querySelectorAll('organizer-list-section');
+    assertEquals(4, sections.length);
+    assertTrue(sections[3]!.hidden);
+    assertEquals(3, testApp.$.list.getVisibleSections().length);
   });
 
   test('updates list searchQuery when search field changes', async () => {
@@ -394,5 +417,48 @@ suite('OrganizerPanelAppTest', () => {
     await microtasksFinished();
     assertEquals(closeBtn, getDeepActiveElement());
     assertTrue(withCloseEvent.defaultPrevented);
+  });
+
+  test('tab navigation from search field to list', async () => {
+    SearchApiProxyImpl.setInstance(new TestSearchApiProxy());
+    const sections = app.$.list.getVisibleSections();
+    sections[0]!.items = [{title: ['Open Tab']}];
+    await microtasksFinished();
+
+    const searchInput = app.$.searchField.getSearchInput();
+    app.$.searchField.setValue('Tab');
+    await microtasksFinished();
+
+    // Tab on searchInput does not prevent default (allowing natural Tab to the
+    // clear button).
+    searchInput.focus();
+    const inputTabEvent = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+    });
+    searchInput.dispatchEvent(inputTabEvent);
+    await microtasksFinished();
+    assertFalse(inputTabEvent.defaultPrevented);
+
+    // Tab on the clear button focuses the first search result item.
+    const clearButton = app.$.searchField.shadowRoot.querySelector<HTMLElement>(
+        '#clearSearch')!;
+    assertTrue(!!clearButton);
+    clearButton.focus();
+    const clearButtonTabEvent = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+    });
+    clearButton.dispatchEvent(clearButtonTabEvent);
+    await microtasksFinished();
+    assertTrue(clearButtonTabEvent.defaultPrevented);
+    assertEquals(
+        sections[0]!.getVisibleItems()[0]!.$.crUrlListItem
+            .getFocusableElement(),
+        getDeepActiveElement());
   });
 });

@@ -132,7 +132,7 @@ mojo::Remote<webnn::mojom::WebNNCompilerService> LaunchCompilerProcess(
 int g_webnn_compiler_crash_count = 0;
 
 mojo::Remote<webnn::mojom::WebNNCompilerService> LaunchCompilerProcess() {
-  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  CHECK_CURRENTLY_ON(BrowserThread::UI, base::NotFatalUntil::M163);
 
   ServiceProcessHost::Options options;
   options.WithDisplayName("WebNN Compiler");
@@ -290,6 +290,9 @@ void WebNNBrowserHostImpl::OnEpsResolvedForCompilerContext(
                  << target_device.ToSwitchValue() << "].";
       return;
     }
+    VLOG(1) << "[WebNN] Launched Compiler process for ["
+            << target_device.ToSwitchValue()
+            << "] (library: " << ep_library_path << ").";
 
     compiler_remote.set_disconnect_handler(
         base::BindOnce(&WebNNBrowserHostImpl::OnDisconnected,
@@ -434,7 +437,7 @@ void WebNNBrowserHostImpl::CopyCompiledModel(
 }
 
 void WebNNBrowserHostImpl::OnDisconnected() {
-  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  CHECK_CURRENTLY_ON(BrowserThread::UI, base::NotFatalUntil::M163);
   webnn_compiler_remote_.reset();
 
   int crash_count = ++g_webnn_compiler_crash_count;

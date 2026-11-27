@@ -39,12 +39,14 @@ export interface SettingsRoutes {
   GEMINI_ENTERPRISE: Route;
   GENERAL: Route;
   GLIC_SECTION: Route;
-  HISTORY_SEARCH: Route;
   IDENTITY_DOCS: Route;
   INLINE_CUE_MENU: Route;
   LANGUAGES: Route;
   MANAGE_PROFILE: Route;
   OFFER_WRITING_HELP: Route;
+  // <if expr="_google_chrome">
+  ON_DEVICE_AI: Route;
+  // </if>
   ON_STARTUP: Route;
   PASSKEYS: Route;
   PAYMENTS: Route;

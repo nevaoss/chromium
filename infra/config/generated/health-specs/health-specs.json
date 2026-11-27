@@ -5601,27 +5601,6 @@
           }
         ]
       },
-      "Win ASan Release Schema v1": {
-        "contact_team_email": "chrome-sanitizer-builder-owners@google.com",
-        "problem_specs": [
-          {
-            "name": "Unhealthy",
-            "period_days": 7,
-            "score": 5,
-            "thresholds": {
-              "_default": "_default"
-            }
-          },
-          {
-            "name": "Low Value",
-            "period_days": 90,
-            "score": 1,
-            "thresholds": {
-              "_default": "_default"
-            }
-          }
-        ]
-      },
       "Win Builder": {
         "contact_team_email": "chrome-desktop-engprod@google.com",
         "problem_specs": [
@@ -9167,7 +9146,7 @@
           }
         ]
       },
-      "ios26-beta-simulator": {
+      "ios27-beta-simulator": {
         "problem_specs": [
           {
             "name": "Unhealthy",
@@ -9187,7 +9166,7 @@
           }
         ]
       },
-      "ios27-beta-simulator": {
+      "ios27-duo-beta-simulator": {
         "problem_specs": [
           {
             "name": "Unhealthy",

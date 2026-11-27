@@ -162,7 +162,6 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmNavigationInterception);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmNativeIdPs);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFileChooserMinWindowSize);
 #if BUILDFLAG(IS_ANDROID)
-CONTENT_EXPORT BASE_DECLARE_FEATURE(kFluidResize);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kFocusRenderWidgetHostViewAndroidOnActionDown);
 #endif
@@ -360,6 +359,7 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kSuppressDifferentOriginSubframeJSDialogs);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kSyntheticPointerActions);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kTouchDragAndContextMenu);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kTrackEmptyRendererProcessesForReuse);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kTriggerNetworkDataMigration);
 #if BUILDFLAG(IS_ANDROID)
 CONTENT_EXPORT extern const base::FeatureParam<int>
     kTouchDragMovementThresholdDip;

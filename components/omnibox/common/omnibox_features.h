@@ -86,6 +86,13 @@ inline constexpr base::FeatureParam<int>
         250};
 BASE_DECLARE_FEATURE(kOmniboxAimDeferShowUntilVisualStateReadyWithFullWebUI);
 BASE_DECLARE_FEATURE(kOmniboxAimPopupDeferCreation);
+// When false, the deferred AIM popup content is not created after the browser
+// window's first presentation, only when something needs it (showing the popup,
+// the classic popup's context menu, a location bar action), so windows that
+// never open AI Mode never create its WebContents.
+inline constexpr base::FeatureParam<bool>
+    kOmniboxAimPopupCreateOnFirstPresentation{
+        &kOmniboxAimPopupDeferCreation, "create_on_first_presentation", true};
 BASE_DECLARE_FEATURE(kOmniboxWebUIPopupDeferCreation);
 BASE_DECLARE_FEATURE(kOmniboxWebUIDebounceResize);
 BASE_DECLARE_FEATURE(kOmniboxAimDebounceResize);
@@ -286,6 +293,9 @@ BASE_DECLARE_FEATURE(kSuppressIntermediateACUpdatesOnLowEndDevices);
 // Delay focusTab to prioritize navigation (https://crbug.com/374852568).
 BASE_DECLARE_FEATURE(kPostDelayedTaskFocusTab);
 BASE_DECLARE_FEATURE(kResetSuggestionsScroll);
+// If enabled, typed-text autocomplete requests are started right after the
+// next frame is drawn, instead of after a fixed 30ms delay.
+BASE_DECLARE_FEATURE(kOmniboxPostFrameAutocompleteStart);
 BASE_DECLARE_FEATURE(kOmniboxSessionlessVoiceSearch);
 BASE_DECLARE_FEATURE(kSuppressStatusIconDuringHttpNavigation);
 BASE_DECLARE_FEATURE(kOmniboxAndroidIntranetRedirect);

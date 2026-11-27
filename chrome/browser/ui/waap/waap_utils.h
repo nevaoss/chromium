@@ -33,15 +33,18 @@ enum class NewWindowCreationSource {
   // Created by session restore (`SessionRestoreImpl`) for a window restored
   // from a saved session.
   kSessionRestore = 3,
-  // Created via `chrome::OpenEmptyWindow()`, e.g. keyboard shortcut
+  // Created via `chrome::OpenEmptyWindow()` or
+  // `chrome::ScopedTabbedBrowserDisplayer`, e.g. keyboard shortcut
   // (Ctrl/Cmd+N), app menu "New window" / "New Incognito window", macOS Dock
-  // click when no window is visible, or features such as Glic or background
-  // mode opening a window when the profile has none. The window usually starts
-  // with a single NTP tab, but startup tabs may be added during browser
+  // click when no window is visible, or features such as Glic, background mode,
+  // or singleton-tab helpers opening a window when the profile has none. The
+  // window usually starts with a single NTP tab (or initially empty before the
+  // caller adds a tab), though startup tabs may be added during browser
   // creation when `should_trigger_session_restore` is true.
   kNewEmptyWindow = 4,
-  // Created by moving existing tab(s) into a new window via
-  // `chrome::MoveTabsToNewWindow()`, e.g. from the tab context menu.
+  // Created by moving existing tab(s) or a tab group into a new window via
+  // `chrome::MoveTabsToNewWindow()` or `chrome::MoveGroupToNewWindow()`, e.g.
+  // from the tab or tab group context menu.
   kMoveTabsToNewWindow = 5,
   // Created by a browser launch in
   // `StartupBrowserCreatorImpl::OpenTabsInBrowser()` (i.e.
@@ -55,7 +58,20 @@ enum class NewWindowCreationSource {
   // `kSessionRestore`, this window restores no tabs; it only opens the startup
   // tabs or the NTP.
   kSessionRestoreFallback = 7,
-  kMaxValue = kSessionRestoreFallback,
+  // Created during navigation in `Navigate()` (`browser_navigator.cc`) or web
+  // app navigation capturing (`navigation_capturing_process.cc`), e.g. opening
+  // a link in a new window or incognito window
+  // (`WindowOpenDisposition::NEW_WINDOW` / `OFF_THE_RECORD`), Shift+Enter in
+  // the omnibox, navigating when no tabbed browser window exists for the
+  // profile, or capturing/reparenting a web app navigation into a new tabbed
+  // browser window.
+  kNavigation = 8,
+  // Created by an extension API or extension host helper opening a new normal
+  // browser window, e.g. `chrome.windows.create()`, `chrome.tabs.create()`,
+  // `chrome.runtime.openOptionsPage()`, `OpenTabHelper`, or
+  // `ChromeExtensionHostDelegate`.
+  kExtension = 9,
+  kMaxValue = kExtension,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/histograms.xml:CreationSource)
 
@@ -81,11 +97,15 @@ class PrewarmHelper {
  public:
   // Configures the WebContents used for the initial WebUI (e.g. page load
   // metrics, background color, zoom gestures, and color provider source).
+  // `profile` is the profile of the window showing `web_contents`. When
+  // `web_contents` is in TopChromeWebUIProfile, `profile` is first set as its
+  // user profile.
   static void ConfigureWebUIContents(content::WebContents* web_contents,
                                      Profile* profile);
 
-  // Prewarms the WebUI toolbar WebContents for the given profile.
-  // Creates the WebContents and configures it using ConfigureWebUIContents.
+  // Prewarms the WebUI toolbar WebContents for a window of `profile`.
+  // Creates the WebContents and configures it for `profile` using
+  // ConfigureWebUIContents.
   // If `pre_navigate` is true, starts loading the toolbar URL; otherwise, only
   // initializes the renderer process.
   static std::unique_ptr<content::WebContents> PrewarmWebUIContents(

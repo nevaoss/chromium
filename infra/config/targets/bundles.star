@@ -4716,61 +4716,6 @@ targets.bundle(
 )
 
 targets.bundle(
-    name = "ios26_beta_simulator_tests",
-    targets = [
-        targets.bundle(
-            targets = "ios_common_tests",
-            variants = [
-                "SIM_IPHONE_15_18_5",
-            ],
-        ),
-        targets.bundle(
-            targets = "ios_crash_xcuitests",
-            mixins = [
-                "xcodebuild_sim_runner",
-            ],
-            variants = [
-                "SIM_IPHONE_15_18_5",
-            ],
-        ),
-        targets.bundle(
-            targets = "ios_eg2_cq_tests",
-            mixins = [
-                "xcodebuild_sim_runner",
-                "record_failed_tests",
-            ],
-            variants = [
-                "SIM_IPAD_10TH_GEN_18_5",
-                "SIM_IPAD_AIR_6TH_GEN_18_5",
-                "SIM_IPHONE_15_18_5",
-            ],
-        ),
-        targets.bundle(
-            targets = "ios_eg2_tests",
-            mixins = [
-                "xcodebuild_sim_runner",
-                "record_failed_tests",
-            ],
-            variants = [
-                "SIM_IPAD_10TH_GEN_18_5",
-                "SIM_IPAD_AIR_6TH_GEN_18_5",
-                "SIM_IPAD_PRO_7TH_GEN_18_5",
-                "SIM_IPHONE_15_18_5",
-            ],
-        ),
-        targets.bundle(
-            targets = "ios_screen_size_dependent_tests",
-            variants = [
-                "SIM_IPAD_AIR_6TH_GEN_18_5",
-                "SIM_IPAD_PRO_7TH_GEN_18_5",
-                "SIM_IPHONE_15_18_5",
-                "SIM_IPHONE_15_PRO_MAX_18_5",
-            ],
-        ),
-    ],
-)
-
-targets.bundle(
     name = "ios27_beta_simulator_tests",
     targets = [
         targets.bundle(
@@ -4818,6 +4763,53 @@ targets.bundle(
                 "SIM_IPAD_A16_27_2",
                 "SIM_IPHONE_16_27_2",
                 "SIM_IPHONE_SE_3RD_GEN_27_2",
+            ],
+        ),
+    ],
+)
+
+targets.bundle(
+    name = "ios27_duo_beta_simulator_tests",
+    targets = [
+        targets.bundle(
+            targets = "ios_common_tests",
+            variants = [
+                "SIM_IPHONE_DUO_27_2",
+            ],
+        ),
+        targets.bundle(
+            targets = "ios_crash_xcuitests",
+            mixins = [
+                "xcodebuild_sim_runner",
+            ],
+            variants = [
+                "SIM_IPHONE_DUO_27_2",
+            ],
+        ),
+        targets.bundle(
+            targets = "ios_eg2_cq_tests",
+            mixins = [
+                "xcodebuild_sim_runner",
+                "record_failed_tests",
+            ],
+            variants = [
+                "SIM_IPHONE_DUO_27_2",
+            ],
+        ),
+        targets.bundle(
+            targets = "ios_eg2_tests",
+            mixins = [
+                "xcodebuild_sim_runner",
+                "record_failed_tests",
+            ],
+            variants = [
+                "SIM_IPHONE_DUO_27_2",
+            ],
+        ),
+        targets.bundle(
+            targets = "ios_screen_size_dependent_tests",
+            variants = [
+                "SIM_IPHONE_DUO_27_2",
             ],
         ),
     ],
@@ -5443,7 +5435,6 @@ targets.bundle(
             ],
             mixins = [
                 "xcodebuild_sim_runner",
-                "record_failed_tests",
                 "mac_26_vm_optional",
             ],
             variants = [

@@ -90,6 +90,8 @@
 #         webgpu-shared-worker ]
 # WebGPU Compat context
 # tags: [ compat-default compat-min-es31 ]
+# WebGPU default features
+# tags: [ unsafe-webgpu-disabled unsafe-webgpu-enabled ]
 # Clang coverage
 # tags: [ clang-coverage no-clang-coverage ]
 # Skia Graphite
@@ -107,7 +109,7 @@
 # platform/configuration.
 
 # Software compositing is not supported on Android/ChromeOS/Fuchsia: we skip the
-# tests that disable GPU compositing (--disable-gpu-compositing).
+# tests that disable GPU acceleration (--disable-gpu).
 [ android ] Pixel_OffscreenCanvasUnaccelerated2D [ Skip ]
 [ android ] Pixel_OffscreenCanvasUnaccelerated2DWorker [ Skip ]
 [ android ] Pixel_OffscreenCanvasUnaccelerated2DGPUCompositing [ Skip ]
@@ -451,13 +453,6 @@ crbug.com/372055518 [ angle-metal asan mac ] Pixel_WebGLReadPixelsTabSwitch_Soft
 # Win/AMD RX 7600 failures
 crbug.com/402171652 [ win11 amd-0x7480 ] Pixel_DirectComposition_Video_VP9_YUY2 [ Failure ]
 crbug.com/402171652 [ win11 amd-0x7480 ] Pixel_DirectComposition_Video_VP9_BGRA [ Failure ]
-crbug.com/577963606 [ win11 amd-0x7480 ] Pixel_DirectComposition_Video_VP9 [ Failure ]
-crbug.com/577963606 [ win11 amd-0x7480 ] Pixel_DirectComposition_Video_VP9_Fullsize [ Failure ]
-crbug.com/577963606 [ win11 amd-0x7480 ] Pixel_DirectComposition_Video_VP9_NV12 [ Failure ]
-crbug.com/577963606 [ win11 amd-0x7480 ] Pixel_DirectComposition_Video_VP9_VP_SCALING [ Failure ]
-crbug.com/577963606 [ win11 amd-0x7480 ] Pixel_Video_AV1 [ Failure ]
-crbug.com/577963606 [ win11 amd-0x7480 ] Pixel_Video_Context_Loss_VP9 [ Failure ]
-crbug.com/577963606 [ win11 amd-0x7480 ] Pixel_Video_VP9 [ Failure ]
 
 
 # Win/AMD 780M failures
@@ -568,6 +563,11 @@ crbug.com/417782068 [ win nvidia-0x2184 target-cpu-32 ] Pixel_MediaFoundationCle
 # Linux/Wayland NVIDIA RTX 4070 Super failures
 crbug.com/563391402 [ linux nvidia-0x2783 display-server-wayland ] Pixel_OffscreenCanvasUnaccelerated2DGPUCompositing [ Failure ]
 crbug.com/563391402 [ linux nvidia-0x2783 display-server-wayland ] Pixel_OffscreenCanvasUnaccelerated2DGPUCompositingWorker [ Failure ]
+
+# Samsung S23/A23/A13 Pixel_Video_Context_Loss_VP9 failures after Crashpad roll
+crbug.com/579027409 [ android android-sm-a137f no-passthrough ] Pixel_Video_Context_Loss_VP9 [ Failure ]
+crbug.com/579027409 [ android android-sm-a236b no-passthrough ] Pixel_Video_Context_Loss_VP9 [ Failure ]
+crbug.com/579027409 [ android android-sm-s911u1 no-passthrough ] Pixel_Video_Context_Loss_VP9 [ Failure ]
 
 #######################################################################
 # Automated Entries After This Point - Do Not Manually Add Below Here #

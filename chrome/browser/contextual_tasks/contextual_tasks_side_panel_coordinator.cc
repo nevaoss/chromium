@@ -11,6 +11,7 @@
 #include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/auto_reset.h"
 #include "base/check.h"
@@ -24,6 +25,7 @@
 #include "base/metrics/user_metrics_action.h"
 #include "base/no_destructor.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/content_settings/page_specific_content_settings_delegate.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
@@ -49,10 +51,14 @@
 #include "chrome/browser/feature_engagement/tracker_factory.h"
 #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/navigator/browser_navigator.h"
+#include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "components/omnibox/common/composebox_features.h"
 #include "components/sessions/core/session_id.h"
+#include "components/signin/public/identity_manager/accounts_in_cookie_jar_info.h"
 #include "extensions/buildflags/buildflags.h"
 #include "net/base/url_util.h"
 #if !BUILDFLAG(IS_ANDROID)
@@ -106,6 +112,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
 #include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
 #include "url/gurl.h"
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -383,6 +390,17 @@ ContextualTasksSidePanelCoordinator::ContextualTasksSidePanelCoordinator(
   active_task_context_provider_->SetContextualTasksPanelController(this);
   TabListInterface::From(browser_window_)->AddTabListInterfaceObserver(this);
   contextual_tasks_panel_host_->AddObserver(this);
+
+  if (IsContextualTasksSidePanelRearchitectureEnabled()) {
+    if (signin::IdentityManager* identity_manager =
+            IdentityManagerFactory::GetForProfile(
+                browser_window_->GetProfile())) {
+      identity_manager_observation_.Observe(identity_manager);
+      is_signed_in_to_web_ = !identity_manager->GetAccountsInCookieJar()
+                                  .GetPotentiallyInvalidSignedInAccounts()
+                                  .empty();
+    }
+  }
 
 #if !BUILDFLAG(IS_ANDROID)
   if (Profile* profile = browser_window_->GetProfile()) {
@@ -776,6 +794,16 @@ void ContextualTasksSidePanelCoordinator::OpenInZeroState() {
                            kEphemeralToolbarButton));
 }
 
+void ContextualTasksSidePanelCoordinator::OpenUrlInNewTab(const GURL& url) {
+  base::AutoReset<bool> opening_tab_from_panel_ui(
+      &is_opening_tab_from_panel_ui_, true);
+  NavigateParams params(browser_window_->GetProfile(), url,
+                        ui::PAGE_TRANSITION_LINK);
+  params.disposition = WindowOpenDisposition::kNewForegroundTab;
+  params.browser = browser_window_;
+  Navigate(&params);
+}
+
 bool ContextualTasksSidePanelCoordinator::MoveActiveTabToNewThreadIfShared() {
   TabListInterface* tab_list = TabListInterface::From(browser_window_);
   ContextualTasksUiService* ui_service = GetUiService();
@@ -883,7 +911,7 @@ ContextualTasksSidePanelCoordinator::GetTabRestoreData(
   return data;
 }
 
-void ContextualTasksSidePanelCoordinator::ShareTabsWithActiveOrNewThread(
+void ContextualTasksSidePanelCoordinator::ShareTabsWithNewThread(
     const std::vector<tabs::TabHandle>& tab_handles) {
   if (!browser_window_ || !CanShareTabContext(browser_window_->GetProfile())) {
     return;
@@ -895,10 +923,11 @@ void ContextualTasksSidePanelCoordinator::ShareTabsWithActiveOrNewThread(
     return;
   }
 
-  // If the side panel is already open on the active tab, attach the selected
-  // tabs directly to the open task so sharing multiple tabs from the tab strip
-  // stages them together without resetting previously staged tabs.
-  if (IsPanelOpenForContextualTask()) {
+  // If the side panel is already open in zero state on the active tab, attach
+  // the selected tabs directly to the open task so sharing multiple tabs from
+  // the tab strip stages them together without resetting previously staged
+  // tabs.
+  if (IsPanelOpenForContextualTask() && !IsShowingResults()) {
     if (std::optional<ContextualTask> current_task = GetCurrentTask()) {
       AttachTabsToTask(current_task->GetTaskId(), valid_tab_handles);
       return;
@@ -1000,22 +1029,25 @@ ContextualTasksSidePanelCoordinator::GetRecentThreads() const {
 
     std::u16string title;
     std::string query_value;
-    if (net::GetValueForKeyInQuery(url, "q", &query_value) &&
-        !query_value.empty()) {
-      title = base::UTF8ToUTF16(query_value);
+    if (net::GetValueForKeyInQuery(url, "q", &query_value)) {
+      title = std::u16string(
+          base::TrimWhitespace(base::UTF8ToUTF16(query_value), base::TRIM_ALL));
     }
     if (title.empty() && contextual_tasks_service_) {
       for (SessionID tab_id :
            contextual_tasks_service_->GetTabsAssociatedWithTask(task_id)) {
         if (std::optional<ContextualTask> task =
                 contextual_tasks_service_->GetContextualTaskForTab(tab_id)) {
-          if (task->GetThread().has_value() &&
-              !task->GetThread()->title.empty()) {
-            title = base::UTF8ToUTF16(task->GetThread()->title);
-            break;
+          const std::optional<Thread> thread = task->GetThread();
+          if (thread && !thread->title.empty()) {
+            title = std::u16string(base::TrimWhitespace(
+                base::UTF8ToUTF16(thread->title), base::TRIM_ALL));
           }
-          if (!task->GetTitle().empty()) {
-            title = base::UTF8ToUTF16(task->GetTitle());
+          if (title.empty() && !task->GetTitle().empty()) {
+            title = std::u16string(base::TrimWhitespace(
+                base::UTF8ToUTF16(task->GetTitle()), base::TRIM_ALL));
+          }
+          if (!title.empty()) {
             break;
           }
         }
@@ -1433,6 +1465,12 @@ void ContextualTasksSidePanelCoordinator::OnTabAdded(TabListInterface& tab_list,
     return;
   }
 
+  // A tab opened by the panel's own UI isn't a link opened from the opener
+  // tab's page, even though the tab strip makes the active tab its opener.
+  if (is_opening_tab_from_panel_ui_) {
+    return;
+  }
+
   content::WebContents* content = tab->GetContents();
 
   // If the new tab is already associated with a task, do nothing.
@@ -1529,6 +1567,137 @@ void ContextualTasksSidePanelCoordinator::OnNativeThemeUpdated(
   MaybeRefreshWebContentsForDarkModeChange();
 }
 #endif
+
+void ContextualTasksSidePanelCoordinator::OnAccountsInCookieUpdated(
+    const signin::AccountsInCookieJarInfo& accounts_in_cookie_jar_info,
+    const GoogleServiceAuthError& error) {
+  if (!accounts_in_cookie_jar_info.AreAccountsFresh()) {
+    return;
+  }
+  const bool was_signed_in_to_web = is_signed_in_to_web_;
+  is_signed_in_to_web_ =
+      !accounts_in_cookie_jar_info.GetPotentiallyInvalidSignedInAccounts()
+           .empty();
+  if (was_signed_in_to_web && !is_signed_in_to_web_) {
+    ResetWebContentsToZeroStateAfterWebSignOut();
+  }
+}
+
+void ContextualTasksSidePanelCoordinator::OnIdentityManagerShutdown(
+    signin::IdentityManager* identity_manager) {
+  identity_manager_observation_.Reset();
+}
+
+void ContextualTasksSidePanelCoordinator::
+    ResetWebContentsToZeroStateAfterWebSignOut() {
+  ContextualTasksUiService* ui_service = GetUiService();
+  TabListInterface* tab_list = TabListInterface::From(browser_window_);
+  if (!ui_service || !contextual_tasks_service_ || !tab_list) {
+    return;
+  }
+
+  const std::set<SessionID> window_tab_ids = GetAllTabIdsInTabList(tab_list);
+  tabs::TabInterface* active_tab = tab_list->GetActiveTab();
+  const SessionID active_tab_id =
+      active_tab && active_tab->GetContents()
+          ? sessions::SessionTabHelper::IdForTab(active_tab->GetContents())
+          : SessionID::InvalidValue();
+
+  // Move any panels pending a rebuild (e.g. from a reopened tab) to a new
+  // zero-state task so that activating the tab does not load the signed-out
+  // account's thread.
+  for (const auto& [old_task_id, entry_source] :
+       std::exchange(tasks_pending_panel_rebuild_, {})) {
+    if (task_id_to_web_contents_cache_.contains(old_task_id)) {
+      continue;
+    }
+    std::vector<SessionID> tabs_in_window;
+    for (SessionID tab_id :
+         contextual_tasks_service_->GetTabsAssociatedWithTask(old_task_id)) {
+      if (window_tab_ids.contains(tab_id)) {
+        tabs_in_window.push_back(tab_id);
+      }
+    }
+    if (tabs_in_window.empty()) {
+      continue;
+    }
+    const base::Uuid new_task_id =
+        contextual_tasks_service_->CreateTask().GetTaskId();
+    for (SessionID tab_id : tabs_in_window) {
+      contextual_tasks_service_->AssociateTabWithTask(new_task_id, tab_id);
+    }
+    ui_service->SetInitialUrlForTask(
+        new_task_id, ui_service->GetDefaultAiPageUrlForTask(new_task_id));
+    tasks_pending_panel_rebuild_[new_task_id] = entry_source;
+  }
+
+  // Collect weak pointers first, as moving a panel to a new task re-keys the
+  // cache.
+  struct CachedPanelToReset {
+    base::Uuid task_id;
+    base::WeakPtr<content::WebContents> web_contents;
+  };
+  std::vector<CachedPanelToReset> panels_to_reset;
+  panels_to_reset.reserve(task_id_to_web_contents_cache_.size());
+  for (auto& [task_id, cache_item] : task_id_to_web_contents_cache_) {
+    if (cache_item && cache_item->web_contents) {
+      panels_to_reset.push_back(
+          {task_id, cache_item->web_contents->GetWeakPtr()});
+    }
+  }
+
+  for (const CachedPanelToReset& panel : panels_to_reset) {
+    if (!panel.web_contents) {
+      continue;
+    }
+    // Move the panel to a new task so that its signed-out account's thread
+    // stays with the previous task and isn't restored in the panel.
+    auto* thread_observer = ContextualTasksPanelThreadObserver::FromWebContents(
+        panel.web_contents.get());
+    if (!thread_observer) {
+      continue;
+    }
+
+    // When side panel state is scoped to the tab, `OnTaskChanged` only moves
+    // the active tab to the new task and rebuilds `panel.task_id` for any other
+    // tabs in this window still associated with it. Temporarily disassociate
+    // those background tabs so that they move to the new zero-state task too
+    // instead of rebuilding the signed-out thread.
+    std::vector<SessionID> shared_background_tabs;
+    if (ShouldScopeSidePanelStateToTab() && active_tab_id.is_valid()) {
+      const std::vector<SessionID> associated_tabs =
+          contextual_tasks_service_->GetTabsAssociatedWithTask(panel.task_id);
+      if (std::ranges::contains(associated_tabs, active_tab_id)) {
+        for (SessionID tab_id : associated_tabs) {
+          if (tab_id != active_tab_id && window_tab_ids.contains(tab_id)) {
+            shared_background_tabs.push_back(tab_id);
+            contextual_tasks_service_->DisassociateTabFromTask(panel.task_id,
+                                                               tab_id);
+          }
+        }
+      }
+    }
+
+    std::optional<base::Uuid> new_task_id = thread_observer->MoveToNewTask();
+    for (SessionID tab_id : shared_background_tabs) {
+      contextual_tasks_service_->AssociateTabWithTask(
+          new_task_id.value_or(panel.task_id), tab_id);
+    }
+    if (!new_task_id || !panel.web_contents) {
+      continue;
+    }
+    if (auto it = task_id_to_web_contents_cache_.find(*new_task_id);
+        it != task_id_to_web_contents_cache_.end() && it->second) {
+      it->second->restored_url = GURL();
+    }
+    const GURL url = ContextualTasksUiService::AddRequiredSidePanelUrlChanges(
+        ui_service->GetDefaultAiPageUrlForTask(*new_task_id),
+        panel.web_contents.get());
+    panel.web_contents->GetController().LoadURL(
+        url, content::Referrer(), ui::PAGE_TRANSITION_AUTO_TOPLEVEL,
+        std::string());
+  }
+}
 
 std::optional<ContextualTask>
 ContextualTasksSidePanelCoordinator::GetCurrentTask() {
@@ -2011,7 +2180,8 @@ bool ContextualTasksSidePanelCoordinator::ShouldPreserveTaskOnClose() const {
   const bool can_resume_from_pinned_button =
       contextual_tasks::IsContextualTasksPinningV2Enabled() &&
       contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled() &&
-      contextual_tasks::GetEffectivePinState(browser_window_->GetProfile());
+      (contextual_tasks::GetEffectivePinState(browser_window_->GetProfile()) ||
+       contextual_tasks::IsContextualTasksEphemeralPinButtonRefactorEnabled());
   return contextual_tasks::kShowEntryPoint.Get() ==
              contextual_tasks::EntryPointOption::kToolbarEphemeralBranded ||
          can_resume_from_pinned_button;
@@ -2788,7 +2958,9 @@ void ContextualTasksSidePanelCoordinator::OnEligibilityChange(
     tabs_with_closed_panel_.clear();
   }
 #if !BUILDFLAG(IS_ANDROID)
-  if (browser_window_ && BrowserActions::From(browser_window_)) {
+  if (IsContextualTasksEphemeralPinButtonRefactorEnabled()) {
+    UpdatePinButtonVisibilityState(browser_window_);
+  } else if (browser_window_ && BrowserActions::From(browser_window_)) {
     if (auto* action_item = actions::ActionManager::Get().FindAction(
             kActionSidePanelShowContextualTasks,
             BrowserActions::From(browser_window_)->root_action_item())) {

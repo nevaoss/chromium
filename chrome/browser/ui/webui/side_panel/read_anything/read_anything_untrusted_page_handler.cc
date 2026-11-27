@@ -172,6 +172,10 @@ class ReadAnythingUntrustedPageHandler::DomDistillerDelegate
 
 namespace {
 
+// Histogram bounds for Accessibility.ReadAnything.WordsDistilledAfterOmnibox.
+constexpr int kMaxWordsDistilled = 25000;
+constexpr int kWordsDistilledBuckets = 100;
+
 // All AXMode flags of kAXModeWebContentsOnly are needed. |ui::AXMode::kHTML| is
 // needed for retrieveing the `aria-expanded` attribute.
 // |ui::AXMode::kExtendedProperties| is needed for HTML tag, and heading level
@@ -843,7 +847,8 @@ void ReadAnythingUntrustedPageHandler::OnDistillationStateChanged(
   auto* ra_controller = GetReadAnythingController();
   CHECK(ra_controller);
 
-  ra_controller->OnDistillationStateChanged(new_state);
+  ra_controller->OnEmptyStateChanged(
+      new_state == ReadAnythingDistillationState::kDistillationEmpty);
 
   // Translate only once the content is distilled, so that the translation
   // applies to the content shown in Reading Mode.
@@ -1489,10 +1494,24 @@ void ReadAnythingUntrustedPageHandler::OnCollapseSelection(
 void ReadAnythingUntrustedPageHandler::OnDistillationStatus(
     read_anything::mojom::DistillationStatus status,
     int word_count) {
-  if (!read_anything_controller_) {
-    return;
+  if (last_open_trigger_ == ReadAnythingOpenTrigger::kOmniboxChip &&
+      status != read_anything::mojom::DistillationStatus::kStillRunning) {
+    last_open_trigger_ = ReadAnythingOpenTrigger::kUnknown;
+    base::UmaHistogramEnumeration(
+        "Accessibility.ReadAnything.DistillationStatusAfterOmnibox", status);
+    base::UmaHistogramCustomCounts(
+        "Accessibility.ReadAnything.WordsDistilledAfterOmnibox", word_count, 1,
+        kMaxWordsDistilled, kWordsDistilledBuckets);
+
+    content::WebContents* web_contents =
+        main_observer_ ? main_observer_->web_contents() : nullptr;
+    if (web_contents && web_contents->GetPrimaryMainFrame()) {
+      ukm::builders::Accessibility_ReadAnything_OmniboxEntryPointDistillation(
+          web_contents->GetPrimaryMainFrame()->GetPageUkmSourceId())
+          .SetDistillationStatus(static_cast<int>(status))
+          .Record(ukm::UkmRecorder::Get());
+    }
   }
-  read_anything_controller_->OnDistillationStatus(status, word_count);
 }
 
 void ReadAnythingUntrustedPageHandler::SetDefaultLanguageCode(
@@ -1510,6 +1529,7 @@ void ReadAnythingUntrustedPageHandler::Activate(
     ReadAnythingOpenTrigger open_trigger,
     std::optional<base::TimeDelta> completed_session_duration) {
   if (active) {
+    last_open_trigger_ = open_trigger;
     if (features::IsReadAnythingImprovedUiEnabled() &&
         open_trigger == ReadAnythingOpenTrigger::kListenToThisPageContextMenu) {
       if (listen_to_this_page_playback_state_ !=
@@ -1841,10 +1861,10 @@ bool ReadAnythingUntrustedPageHandler::RequestDomDistillerDistillation(
   // scripts from leaking.
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           switches::kEnableAutomation)) {
-    page_->OnReadabilityDistillationStateChanged(
-        read_anything::mojom::ReadAnythingDistillationState::
-            kDistillationEmpty);
     if (!features::IsReadAnythingDistillerRefactorEnabled()) {
+      page_->OnReadabilityDistillationStateChanged(
+          read_anything::mojom::ReadAnythingDistillationState::
+              kDistillationEmpty);
       page_->UpdateContent("", "");
     }
     return false;
@@ -1860,10 +1880,10 @@ bool ReadAnythingUntrustedPageHandler::RequestDomDistillerDistillation(
             << url.spec();
     // Call UpdateContent with empty values so status can be updated from show
     // loading to no content.
-    page_->OnReadabilityDistillationStateChanged(
-        read_anything::mojom::ReadAnythingDistillationState::
-            kDistillationEmpty);
     if (!features::IsReadAnythingDistillerRefactorEnabled()) {
+      page_->OnReadabilityDistillationStateChanged(
+          read_anything::mojom::ReadAnythingDistillationState::
+              kDistillationEmpty);
       page_->UpdateContent("", "");
     }
     return false;
@@ -1873,9 +1893,11 @@ bool ReadAnythingUntrustedPageHandler::RequestDomDistillerDistillation(
       dom_distiller::DomDistillerServiceFactory::GetForBrowserContext(
           content->GetBrowserContext());
   CHECK(dom_distiller_service, base::NotFatalUntil::M162);
-  page_->OnReadabilityDistillationStateChanged(
-      read_anything::mojom::ReadAnythingDistillationState::
-          kDistillationInProgress);
+  if (!features::IsReadAnythingDistillerRefactorEnabled()) {
+    page_->OnReadabilityDistillationStateChanged(
+        read_anything::mojom::ReadAnythingDistillationState::
+            kDistillationInProgress);
+  }
   distiller_delegate_->StartDistillation(dom_distiller_service, content);
   return true;
 }
@@ -1943,9 +1965,6 @@ void ReadAnythingUntrustedPageHandler::ProcessDistilledArticle(
     // If distillation successfully produced content, update the distillation
     // state and notify the renderer.
     if (dom_distiller_content()) {
-      page_->OnReadabilityDistillationStateChanged(
-          read_anything::mojom::ReadAnythingDistillationState::
-              kDistillationWithContent);
       // `readability_callback_` Set only for renderer-requested distillations.
       if (readability_callback_) {
         const std::string& content = dom_distiller_content().value();
@@ -1957,6 +1976,9 @@ void ReadAnythingUntrustedPageHandler::ProcessDistilledArticle(
                  dom_distiller_title().value_or(""), content);
       }
       if (!features::IsReadAnythingDistillerRefactorEnabled()) {
+        page_->OnReadabilityDistillationStateChanged(
+            read_anything::mojom::ReadAnythingDistillationState::
+                kDistillationWithContent);
         page_->UpdateContent(dom_distiller_title().value_or(""),
                              dom_distiller_content().value());
       }
@@ -1972,15 +1994,15 @@ void ReadAnythingUntrustedPageHandler::ProcessDistilledArticle(
       }
     }
   } else {
-    page_->OnReadabilityDistillationStateChanged(
-        read_anything::mojom::ReadAnythingDistillationState::
-            kDistillationEmpty);
     if (readability_callback_) {
       std::move(readability_callback_)
           .Run(read_anything::mojom::ReadabilityDistillationResult::kEmpty,
                /*title=*/"", /*content=*/"");
     }
     if (!features::IsReadAnythingDistillerRefactorEnabled()) {
+      page_->OnReadabilityDistillationStateChanged(
+          read_anything::mojom::ReadAnythingDistillationState::
+              kDistillationEmpty);
       page_->UpdateContent(/*title=*/"", /*content=*/"");
     }
   }

@@ -530,6 +530,8 @@ public class FullscreenSigninMediator
     }
 
     void onAccountAdded(String accountEmail) {
+        if (mDestroyed) return;
+        SigninMetricsUtils.logSigninFunnelEvent(mAccessPoint, SigninFunnelEvent.ACCOUNT_ADDED);
         var accounts = getAccountsIfLoadedOrEmpty();
         mAddedAccount = AccountUtils.findAccountByEmail(accounts, accountEmail);
         if (mAddedAccount == null) {
@@ -585,6 +587,19 @@ public class FullscreenSigninMediator
 
     @Override
     public void onAccountSelected(CoreAccountInfo account) {
+        // An account was selected in the account picker.
+        if (mDefaultAccount != null && account.getId().equals(mDefaultAccount.getId())) {
+            SigninMetricsUtils.logSigninFunnelEvent(
+                    mAccessPoint, SigninFunnelEvent.DEFAULT_ACCOUNT_SELECTED);
+        } else {
+            SigninMetricsUtils.logSigninFunnelEvent(
+                    mAccessPoint, SigninFunnelEvent.NON_DEFAULT_ACCOUNT_SELECTED);
+        }
+        selectAccount(account);
+    }
+
+    /** Selects {@code account} and closes the account picker if it is open. */
+    private void selectAccount(CoreAccountInfo account) {
         if (mPendingSelectedAccountEmail != null) {
             // If the user manually selects an account before the pending selection is available in
             // the account list, clear the pending email to prevent it from overriding the user's
@@ -595,8 +610,19 @@ public class FullscreenSigninMediator
         if (mDialogCoordinator != null) mDialogCoordinator.dismissDialog();
     }
 
+    /** Called when the account picker dialog is dismissed without selecting an account. */
+    @VisibleForTesting
+    void onAccountPickerDismissed() {
+        if (mDestroyed) return;
+        SigninMetricsUtils.logSigninFunnelEvent(
+                mAccessPoint, SigninFunnelEvent.ACCOUNT_PICKER_DISMISSED);
+    }
+
     @Override
     public void addAccount() {
+        // "Add account to device" was clicked in the account picker.
+        SigninMetricsUtils.logSigninFunnelEvent(
+                mAccessPoint, SigninFunnelEvent.ACCOUNT_PICKER_ADD_ACCOUNT_CLICKED);
         mDelegate.addAccount(mConfig.selectedAccountEmail);
     }
 
@@ -616,6 +642,8 @@ public class FullscreenSigninMediator
      */
     private void onSelectedAccountClicked() {
         if (isContinueOrDismissClicked()) return;
+        SigninMetricsUtils.logSigninFunnelEvent(
+                mAccessPoint, SigninFunnelEvent.CHOOSE_OTHER_ACCOUNT_CLICKED);
 
         IdentityManager identityManager =
                 IdentityServicesProvider.get()
@@ -624,7 +652,13 @@ public class FullscreenSigninMediator
                                         .getOriginalProfile());
         mDialogCoordinator =
                 new AccountPickerDialogCoordinator(
-                        mContext, this, mModalDialogManager, assertNonNull(identityManager));
+                        mContext,
+                        this,
+                        this::onAccountPickerDismissed,
+                        mModalDialogManager,
+                        assertNonNull(identityManager));
+        SigninMetricsUtils.logSigninFunnelEvent(
+                mAccessPoint, SigninFunnelEvent.ACCOUNT_PICKER_SHOWN);
     }
 
     /** Callback for the PropertyKey {@link FullscreenSigninProperties#ON_CONTINUE_AS_CLICKED}. */
@@ -640,10 +674,15 @@ public class FullscreenSigninMediator
             return;
         }
         if (mSelectedAccount == null) {
+            // Without an account, the button starts the add account flow instead of signing in.
+            SigninMetricsUtils.logSigninFunnelEvent(
+                    mAccessPoint, SigninFunnelEvent.ADD_ACCOUNT_CLICKED);
             mDelegate.addAccount(mConfig.selectedAccountEmail);
             return;
         }
 
+        SigninMetricsUtils.logSigninFunnelEvent(
+                mAccessPoint, SigninFunnelEvent.SIGNIN_BUTTON_CLICKED);
         if (DeviceInfo.isAutomotive()) {
             mDelegate.displayDeviceLockPage(mSelectedAccount.getId());
             return;
@@ -872,6 +911,8 @@ public class FullscreenSigninMediator
 
         assert mDelegate.getNativeInitializationPromise().isFulfilled();
 
+        SigninMetricsUtils.logSigninFunnelEvent(
+                mAccessPoint, SigninFunnelEvent.SIGNIN_DECLINED_BUTTON_CLICKED);
         dismiss();
     }
 
@@ -960,7 +1001,7 @@ public class FullscreenSigninMediator
                 mAddedAccount = pendingSelectedAccount;
             }
             mPendingSelectedAccountEmail = null;
-            onAccountSelected(pendingSelectedAccount);
+            selectAccount(pendingSelectedAccount);
         } else if (accounts.isEmpty()) {
             mDefaultAccount = null;
             mSelectedAccount = null;

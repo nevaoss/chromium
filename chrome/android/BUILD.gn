@@ -471,6 +471,7 @@ if (_is_default_toolchain) {
       "//chrome/browser/preferences:pref_service_java",
       "//chrome/browser/prefetch/android:java",
       "//chrome/browser/preloading/android:java",
+      "//chrome/browser/printing/android:java",
       "//chrome/browser/privacy:java",
       "//chrome/browser/privacy:privacy_settings_java",
       "//chrome/browser/privacy_guide/android:java",
@@ -921,11 +922,11 @@ if (_is_default_toolchain) {
       sources += [
         "java/src/org/chromium/chrome/browser/printing/ChromeThinWebViewPrintingController.java",
         "java/src/org/chromium/chrome/browser/printing/PrintHelper.java",
+        "java/src/org/chromium/chrome/browser/printing/PrintingDelegateImpl.java",
         "java/src/org/chromium/chrome/browser/printing/TabPrinter.java",
         "java/src/org/chromium/chrome/browser/printing/WebContentsPrinter.java",
       ]
       deps += [
-        "//base:supplier_java",
         "//components/thin_webview/internal:internal_java",
         "//printing:printing_java",
       ]
@@ -1069,10 +1070,6 @@ if (_is_default_toolchain) {
       "//chrome/browser/notifications/notification_platform_bridge_android.cc",
       "//chrome/browser/prefs/session_startup_pref.h",
     ]
-  }
-
-  java_cpp_enum("chrome_vr_android_java_enums_srcjar") {
-    sources = [ "//chrome/browser/vr/ui_test_input.h" ]
   }
 
   proto_java_library("usage_stats_proto_java") {
@@ -2680,13 +2677,6 @@ if (_is_default_toolchain) {
       ]
     }
 
-    android_resource_sizes_test("resource_sizes_chrome_and_webview") {
-      apk_name = "ChromeAndWebView"
-      chrome_path = "$root_build_dir/apks/$_chrome_32_basename"
-      webview_path = "$root_build_dir/apks/$_webview_32_basename"
-      data_deps = [ ":chrome_and_webview_32_minimal_apks" ]
-    }
-
     android_size_bot_config("resource_size_config") {
       name = "ChromeAndWebView"
       mapping_files = [
@@ -2839,7 +2829,6 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/chrome/browser/feedback/ScreenshotTask.java",
       "java/src/org/chromium/chrome/browser/firstrun/FirstRunUtils.java",
       "java/src/org/chromium/chrome/browser/flags/BadFlagsSnackbarManager.java",
-      "java/src/org/chromium/chrome/browser/gesturenav/GestureNavigationUtils.java",
       "java/src/org/chromium/chrome/browser/gesturenav/OverscrollSceneLayer.java",
       "java/src/org/chromium/chrome/browser/history/BrowsingHistoryBridge.java",
       "java/src/org/chromium/chrome/browser/history/HistoryDeletionBridge.java",
@@ -2893,8 +2882,6 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/chrome/browser/permissions/PermissionUpdateRequester.java",
       "java/src/org/chromium/chrome/browser/policy/PolicyAuditor.java",
       "java/src/org/chromium/chrome/browser/policy/PolicyAuditorBridge.java",
-      "java/src/org/chromium/chrome/browser/printing/TabPrinter.java",
-      "java/src/org/chromium/chrome/browser/printing/WebContentsPrinter.java",
       "java/src/org/chromium/chrome/browser/privacy/settings/PrivacyPreferencesManagerImpl.java",
       "java/src/org/chromium/chrome/browser/push_messaging/PushMessagingServiceObserver.java",
       "java/src/org/chromium/chrome/browser/recent_tabs/RecentTabsPagePrefs.java",
@@ -2942,6 +2929,13 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/chrome/browser/webapps/WebappRegistry.java",
       "java/src/org/chromium/chrome/browser/xr/scenecore/XrModuleBridge.java",
     ]
+
+    if (enable_printing) {
+      sources += [
+        "java/src/org/chromium/chrome/browser/printing/TabPrinter.java",
+        "java/src/org/chromium/chrome/browser/printing/WebContentsPrinter.java",
+      ]
+    }
 
     if (enable_screen_capture) {
       sources += [

@@ -26,7 +26,6 @@
 #include "third_party/blink/renderer/platform/graphics/flush_for_image_listener.h"
 #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_recorder.h"
-#include "third_party/blink/renderer/platform/graphics/scoped_raster_timer.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/web_graphics_context_3d_provider_wrapper.h"
 #include "third_party/blink/renderer/platform/wtf/thread_specific.h"
@@ -50,6 +49,7 @@ PLATFORM_EXPORT BASE_DECLARE_FEATURE(kCanvas2DReclaimUnusedResources);
 PLATFORM_EXPORT BASE_DECLARE_FEATURE(kAppendCpuUsages);
 PLATFORM_EXPORT BASE_DECLARE_FEATURE(kCanvasResourceIsWebGPUCompatible);
 
+class BaseRenderingContext2D;
 class ExportedCanvasResource;
 class CanvasResourceSharedImage;
 class Canvas2DResourceProvider;
@@ -102,23 +102,21 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
     : public CanvasResourceSharedImage::Client,
       public WebGraphicsContext3DProviderWrapper::DestructionObserver,
       public viz::ContextLostObserver,
-      public BitmapGpuChannelLostObserver,
-      public ScopedRasterTimer::Host {
+      public BitmapGpuChannelLostObserver {
  public:
   constexpr static base::TimeDelta kUnusedResourceExpirationTime =
       base::Seconds(5);
 
-  static std::unique_ptr<Canvas2DResourceProvider> CreateWithClear(
+  Canvas2DResourceProvider(
       gfx::Size size,
       viz::SharedImageFormat format,
       SkAlphaType alpha_type,
       const gfx::ColorSpace& color_space,
       const gfx::HDRMetadata& hdr_metadata,
       base::WeakPtr<WebGraphicsContext3DProviderWrapper>,
-      RasterMode raster_mode,
+      bool is_accelerated,
       gpu::SharedImageUsageSet shared_image_usage_flags,
       base::OnceClosure context_lost_callback = {});
-
   Canvas2DResourceProvider(
       gfx::Size size,
       viz::SharedImageFormat format,
@@ -151,8 +149,6 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
   bool IsValid() const;
   scoped_refptr<StaticBitmapImage> Snapshot();
 
-  void SetAnimatedImageFrameIndexes(
-      scoped_refptr<const cc::AnimatedImageFrameIndexMap>);
   // Notifies before any unaccelerated drawing will be done on the resource used
   // by this provider.
   void WillDrawUnaccelerated();
@@ -164,24 +160,19 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
 
   void SetResourceRecyclingEnabled(bool value);
 
-  void RasterRecord(
-      cc::PaintRecord last_recording,
-      cc::PlaybackCallbacks::CustomDataRasterCallback custom_callback);
   gpu::raster::RasterInterface* RasterInterface() const;
-  bool IsGraphite() const;
   void RecordingCleared();
   void OnMemoryDump(base::trace_event::ProcessMemoryDump* pmd);
 
+  CanvasResourceSharedImage* resource() {
+    return static_cast<CanvasResourceSharedImage*>(resource_.get());
+  }
+  const CanvasResourceSharedImage* resource() const {
+    return static_cast<const CanvasResourceSharedImage*>(resource_.get());
+  }
+
  private:
-  Canvas2DResourceProvider(gfx::Size,
-                           viz::SharedImageFormat,
-                           SkAlphaType,
-                           const gfx::ColorSpace&,
-                           const gfx::HDRMetadata&,
-                           base::WeakPtr<WebGraphicsContext3DProviderWrapper>,
-                           bool is_accelerated,
-                           gpu::SharedImageUsageSet shared_image_usage_flags,
-                           base::OnceClosure context_lost_callback = {});
+  friend class BaseRenderingContext2D;
 
   void ClearUnusedResources();
   bool IsGpuContextLost() const;
@@ -212,7 +203,6 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
   bool ShouldReplaceTargetBuffer(
       PaintImage::ContentId content_id = PaintImage::kInvalidContentId);
 
-  CanvasImageProvider* GetOrCreateCanvasImageProvider();
   void EnsureResourceReadyForDraw();
 
   base::WeakPtr<Canvas2DResourceProvider> CreateWeakPtr();
@@ -223,14 +213,6 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
   // recycling.
   static constexpr int kMaxRecycledCanvasResources = 3;
 
-  CanvasResourceSharedImage* resource() {
-    return static_cast<CanvasResourceSharedImage*>(resource_.get());
-  }
-  const CanvasResourceSharedImage* resource() const {
-    return static_cast<const CanvasResourceSharedImage*>(resource_.get());
-  }
-
-  std::unique_ptr<CanvasImageProvider> canvas_image_provider_;
   // If this instance is single-buffered or |resource_recycling_enabled_| is
   // false, |image_pool_| will not recycle resources.
   std::unique_ptr<gpu::SharedImagePool<CanvasResourceSharedImage>> image_pool_;

@@ -158,8 +158,6 @@ build_webui("build") {
     "ai_page/dictation_browser_proxy.ts",
     "ai_page/dictation_page.html.ts",
     "ai_page/dictation_page.ts",
-    "ai_page/history_search_page.html.ts",
-    "ai_page/history_search_page.ts",
     "ai_page/inline_cue_menu_page.html.ts",
     "ai_page/inline_cue_menu_page.ts",
     "ai_page/offer_writing_help_page.html.ts",
@@ -495,6 +493,7 @@ build_webui("build") {
     "time.ts",
     "tooltip_mixin.ts",
     "tooltip_mixin_lit.ts",
+    "window_proxy.ts",
   ]
 
   if (is_chromeos) {
@@ -551,7 +550,11 @@ build_webui("build") {
   }
 
   if (is_chrome_branded) {
-    ts_files += [ "ai_page/on_device_ai_browser_proxy.ts" ]
+    ts_files += [
+      "ai_page/on_device_ai_browser_proxy.ts",
+      "ai_page/on_device_ai_page.html.ts",
+      "ai_page/on_device_ai_page.ts",
+    ]
   }
 
   if (is_linux) {
@@ -608,7 +611,6 @@ build_webui("build") {
     "ai_page/ai_site_add_dialog.css",
     "ai_page/ai_suggestions_page.css",
     "ai_page/dictation_page.css",
-    "ai_page/history_search_page.css",
     "ai_page/inline_cue_menu_page.css",
     "ai_page/offer_writing_help_page.css",
     "ai_page/skills_page.css",

@@ -3434,8 +3434,7 @@ const flags_ui::FeatureEntry::FeatureVariation
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 const char kReplaceSyncPromosWithSignInPromosDesktopFeatures[] =
-    "ReplaceSyncPromosWithSignInPromos,"
-    "IPH_SignInBenefits";
+    "ReplaceSyncPromosWithSignInPromos";
 
 const FeatureEntry::Choice kReplaceSyncPromosWithSignInPromosDesktopChoices[] =
     {{"Default", "", ""},
@@ -6694,10 +6693,6 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kArcUnthrottleOnActiveAudioV2Name,
      flag_descriptions::kArcUnthrottleOnActiveAudioV2Description, kOsCrOS,
      FEATURE_VALUE_TYPE(arc::kUnthrottleOnActiveAudioV2)},
-    {"arc-vmm-swap-keyboard-shortcut",
-     flag_descriptions::kArcVmmSwapKBShortcutName,
-     flag_descriptions::kArcVmmSwapKBShortcutDesc, kOsCrOS,
-     FEATURE_VALUE_TYPE(arc::kVmmSwapKeyboardShortcut)},
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -7180,6 +7175,12 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kOmniboxVoicePlateIntentName,
      flag_descriptions::kOmniboxVoicePlateIntentDescription, kOsAndroid,
      FEATURE_VALUE_TYPE(omnibox::kOmniboxVoicePlateIntent)},
+
+    {"omnibox-post-frame-autocomplete-start",
+     flag_descriptions::kOmniboxPostFrameAutocompleteStartName,
+     flag_descriptions::kOmniboxPostFrameAutocompleteStartDescription,
+     kOsAndroid,
+     FEATURE_VALUE_TYPE(omnibox::kOmniboxPostFrameAutocompleteStart)},
 
     {"omnibox-diagnostics", flag_descriptions::kOmniboxDiagnosticsName,
      flag_descriptions::kOmniboxDiagnosticsDescription, kOsAndroid,
@@ -7787,12 +7788,6 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kEnablePixelCanvasRecordingName,
      flag_descriptions::kEnablePixelCanvasRecordingDescription, kOsDesktop,
      FEATURE_VALUE_TYPE(features::kEnablePixelCanvasRecording)},
-
-#if BUILDFLAG(IS_ANDROID)
-    {"fluid-resize", flag_descriptions::kFluidResizeName,
-     flag_descriptions::kFluidResizeDescription, kOsAndroid,
-     FEATURE_VALUE_TYPE(features::kFluidResize)},
-#endif  // BUILDFLAG(IS_ANDROID)
 
     {"enable-parallel-downloading", flag_descriptions::kParallelDownloadingName,
      flag_descriptions::kParallelDownloadingDescription, kOsAll,
@@ -10465,10 +10460,6 @@ const FeatureEntry kFeatureEntries[] = {
      FEATURE_VALUE_TYPE(
          net::features::kDeviceBoundSessionsIncludeAudienceClaim)},
 
-    {"responsive-iframes", flag_descriptions::kResponsiveIframesName,
-     flag_descriptions::kResponsiveIframesDescription, kOsAll,
-     FEATURE_VALUE_TYPE(blink::features::kResponsiveIframes)},
-
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
     {"replace-sync-promos-with-sign-in-promos-desktop",
      flag_descriptions::kReplaceSyncPromosWithSignInPromosName,
@@ -12266,6 +12257,15 @@ const FeatureEntry kFeatureEntries[] = {
          kContextualTasksUpdatedEntryPointsVariations,
          "ContextualTasksUpdatedEntryPoints")},
 
+    {"contextual-tasks-ephemeral-pin-button-refactor",
+     contextual_tasks::flag_descriptions::
+         kContextualTasksEphemeralPinButtonRefactorName,
+     contextual_tasks::flag_descriptions::
+         kContextualTasksEphemeralPinButtonRefactorDescription,
+     kOsDesktop,
+     FEATURE_VALUE_TYPE(
+         contextual_tasks::kContextualTasksEphemeralPinButtonRefactor)},
+
     {"contextual-tasks-ephemeral-pinning-visible-when-permanently-pinned",
      contextual_tasks::flag_descriptions::
          kEphemeralPinningVisibleWhenPermanentlyPinnedName,
@@ -13514,10 +13514,6 @@ const FeatureEntry kFeatureEntries[] = {
      FEATURE_VALUE_TYPE(media::kAudioRendererMixerImmediatePause)},
 
 #if BUILDFLAG(IS_ANDROID)
-    {"update-padding-for-display-calculation",
-     flag_descriptions::kUpdatePaddingForDisplayCalculationName,
-     flag_descriptions::kUpdatePaddingForDisplayCalculationDescription,
-     kOsAndroid, FEATURE_VALUE_TYPE(ui::kUpdatePaddingForDisplayCalculation)},
     {"text-classifier-timeout", flag_descriptions::kTextClassifierTimeoutName,
      flag_descriptions::kTextClassifierTimeoutDescription, kOsAndroid,
      FEATURE_WITH_PARAMS_VALUE_TYPE(::features::kTextClassifierTimeout,
@@ -14363,6 +14359,27 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kSmartCardContextReleaseDescription, kOsCrOS,
      FEATURE_VALUE_TYPE(blink::features::kSmartCardContextRelease)},
 #endif  // BUILDFLAG(ENABLE_SMART_CARD)
+
+    {"trusted-vault-shared-recovery-factors-and-encryption",
+     flag_descriptions::kTrustedVaultSharedRecoveryFactorsAndEncryptionName,
+     flag_descriptions::
+         kTrustedVaultSharedRecoveryFactorsAndEncryptionDescription,
+     kOsDesktop,
+     FEATURE_VALUE_TYPE(
+         trusted_vault::kTrustedVaultSharedRecoveryFactorsAndEncryption)},
+
+    {"autofill-custom-form-control-scripts",
+     flag_descriptions::kAutofillCustomFormControlScriptsName,
+     flag_descriptions::kAutofillCustomFormControlScriptsDescription,
+     kOsDesktop,
+     FEATURE_VALUE_TYPE(autofill::features::kAutofillCustomFormControlScripts)},
+
+    {"autofill-custom-form-control-scripts-dir",
+     flag_descriptions::kAutofillCustomFormControlScriptsDirName,
+     flag_descriptions::kAutofillCustomFormControlScriptsDirDescription,
+     kOsDesktop,
+     STRING_VALUE_TYPE(autofill::switches::kAutofillCustomFormControlScriptsDir,
+                       "")},
 
     // Add new entries above this line.
     // NOTE: Adding a new flag requires adding a corresponding entry to enum

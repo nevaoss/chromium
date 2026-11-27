@@ -2132,21 +2132,21 @@ FontBaseline ComputedStyle::GetFontBaseline() const {
     case EDominantBaseline::kAuto:
       break;
     case EDominantBaseline::kMiddle:
-      return kXMiddleBaseline;
+      return FontBaseline::kXMiddle;
     case EDominantBaseline::kAlphabetic:
-      return kAlphabeticBaseline;
+      return FontBaseline::kAlphabetic;
     case EDominantBaseline::kHanging:
-      return kHangingBaseline;
+      return FontBaseline::kHanging;
     case EDominantBaseline::kCentral:
-      return kCentralBaseline;
+      return FontBaseline::kCentral;
     case EDominantBaseline::kTextBeforeEdge:
-      return kTextOverBaseline;
+      return FontBaseline::kTextOver;
     case EDominantBaseline::kTextAfterEdge:
-      return kTextUnderBaseline;
+      return FontBaseline::kTextUnder;
     case EDominantBaseline::kIdeographic:
-      return kIdeographicUnderBaseline;
+      return FontBaseline::kIdeographicUnder;
     case EDominantBaseline::kMathematical:
-      return kMathBaseline;
+      return FontBaseline::kMath;
 
     case EDominantBaseline::kUseScript:
     case EDominantBaseline::kNoChange:
@@ -2157,8 +2157,9 @@ FontBaseline ComputedStyle::GetFontBaseline() const {
   // Vertical flow (except 'text-orientation: sideways') uses ideographic
   // central baseline.
   // https://drafts.csswg.org/css-writing-modes-3/#text-baselines
-  return !GetFontDescription().IsVerticalAnyUpright() ? kAlphabeticBaseline
-                                                      : kCentralBaseline;
+  return !GetFontDescription().IsVerticalAnyUpright()
+             ? FontBaseline::kAlphabetic
+             : FontBaseline::kCentral;
 }
 
 FontHeight ComputedStyle::GetFontHeight(FontBaseline baseline) const {
@@ -2240,6 +2241,7 @@ const AppliedTextDecorationVector& ComputedStyle::AppliedTextDecorations()
     const {
   DEFINE_STATIC_LOCAL(Persistent<AppliedTextDecorationVector>, empty,
                       (MakeGarbageCollected<AppliedTextDecorationVector>()));
+  CHECK(IsMainThread());
   if (!HasAppliedTextDecorations()) {
     return *empty;
   }
@@ -2307,6 +2309,7 @@ const ComputedGridTrackList& ComputedStyle::ComputedGridTemplate(
   DEFINE_STATIC_LOCAL(
       Persistent<ComputedGridTrackList>, default_track_list,
       (MakeGarbageCollected<ComputedGridTrackList>(ComputedGridTrackList())));
+  CHECK(IsMainThread());
   return *default_track_list;
 }
 
@@ -2808,12 +2811,44 @@ bool ComputedStyle::MarkerShouldBeInside(
   return false;
 }
 
+namespace {
+
+std::optional<blink::Color> ResolveMirroredAccentColorImpl(
+    const StyleAutoColor& accent_color,
+    const blink::Color& current_color,
+    mojom::blink::ColorScheme color_scheme,
+    bool in_forced_colors_mode,
+    EForcedColorAdjust forced_color_adjust) {
+  if (!RuntimeEnabledFeatures::CSSAccentColorKeywordEnabled()) {
+    return std::nullopt;
+  }
+  // In forced colors mode the keywords fall back to the system accent color so
+  // that user color overrides are respected.
+  if (in_forced_colors_mode &&
+      forced_color_adjust == EForcedColorAdjust::kAuto) {
+    return std::nullopt;
+  }
+  // `accent-color: auto` defers to the system accent color.
+  if (accent_color.IsAutoColor()) {
+    return std::nullopt;
+  }
+  return accent_color.ToStyleColor().Resolve(current_color, color_scheme);
+}
+
+}  // namespace
+
 std::optional<blink::Color> ComputedStyle::AccentColorResolved() const {
   const StyleAutoColor& auto_color = AccentColor();
   if (auto_color.IsAutoColor()) {
     return std::nullopt;
   }
   return auto_color.Resolve(GetCurrentColor(), UsedColorScheme());
+}
+
+std::optional<blink::Color> ComputedStyle::ResolveMirroredAccentColor() const {
+  return ResolveMirroredAccentColorImpl(AccentColor(), GetCurrentColor(),
+                                        UsedColorScheme(), InForcedColorsMode(),
+                                        ForcedColorAdjust());
 }
 
 std::optional<blink::Color> ComputedStyle::ResolvedCaretTextColor() const {
@@ -2917,6 +2952,9 @@ bool ComputedStyle::CalculateIsStackingContextWithoutContainment() const {
     return true;
   }
   if (ForcesStackingContext()) {
+    return true;
+  }
+  if (IsUnboundedElementActive()) {
     return true;
   }
   if (StyleType() == kPseudoIdBackdrop) {
@@ -3090,6 +3128,13 @@ const ComputedStyle* ComputedStyleBuilder::CloneStyle() const {
   has_own_transitions_ = false;
   return MakeGarbageCollected<ComputedStyle>(ComputedStyle::BuilderPassKey(),
                                              *this);
+}
+
+std::optional<blink::Color> ComputedStyleBuilder::ResolveMirroredAccentColor(
+    mojom::blink::ColorScheme color_scheme) const {
+  return ResolveMirroredAccentColorImpl(AccentColor(), GetCurrentColor(),
+                                        color_scheme, InForcedColorsMode(),
+                                        ForcedColorAdjust());
 }
 
 void ComputedStyleBuilder::PropagateIndependentInheritedProperties(

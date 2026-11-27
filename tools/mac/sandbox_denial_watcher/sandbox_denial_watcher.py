@@ -155,10 +155,12 @@ RuleType = Union[str, tuple[str, str]]
 _KNOWN_TARGET_DENIALS: dict[str, frozenset[RuleType]] = {
     "sysctl-read": frozenset(
         (
-            ("kern.bootargs", "gpu.sb"),
+            "hw.physicalcpu",
+            "kern.bootargs",
             "kern.willshutdown",
             "machdep.cpu.brand_string",
             "net.inet.ip.portrange.first",
+            ("security.mac.amfi.qa_root_certs_allowed", "gpu.sb"),
             ("sysctl.proc_translated", "audio.sb"),
         )
     ),
@@ -167,10 +169,11 @@ _KNOWN_TARGET_DENIALS: dict[str, frozenset[RuleType]] = {
     ),
     "file-read-data": frozenset(
         (
-            ("/", "renderer.sb"),
+            "/",
             "/Library/Preferences/Logging/com.apple.diagnosticd.filter.plist",
             "/Library/Preferences/com.apple.networkd.plist",
             "/Library/Preferences/com.apple.security.plist",
+            ("/System/Library/Keychains/SystemTrustSettings.plist", "gpu.sb"),
             "/System/Library/xpc/extensions.plist",
             f"{_HOME_DIR}/Desktop",
         )
@@ -180,6 +183,9 @@ _KNOWN_TARGET_DENIALS: dict[str, frozenset[RuleType]] = {
             (f"{_DARWIN_USER_DIR}/T/tmp.*", "renderer.sb"),
             (f"{_DARWIN_USER_DIR}/T/tmp.*", "speech_recognition.sb"),
         )
+    ),
+    "iokit-open-user-client": frozenset(
+        (("IOSurfaceAcceleratorClient", "gpu.sb"),)
     ),
     "mach-lookup": frozenset(
         (
@@ -195,8 +201,9 @@ _KNOWN_TARGET_DENIALS: dict[str, frozenset[RuleType]] = {
             "com.apple.diagnosticd",
             "com.apple.distributed_notifications@Uv3",
             "com.apple.lsd.mapdb",
-            ("com.apple.lsd.modifydb", "renderer.sb"),
-            ("com.apple.system.notification_center", "utility.sb"),
+            "com.apple.lsd.modifydb",
+            ("com.apple.security.syspolicy", "gpu.sb"),
+            "com.apple.system.notification_center",
             "com.apple.system.opendirectoryd.membership",
             "com.apple.tccd",
             "com.apple.tccd.system",
@@ -224,6 +231,10 @@ _KNOWN_SUBPATH_DENIALS: dict[str, frozenset[RuleType]] = {
     "file-read-data": frozenset(
         (
             "/Library/Managed Preferences/",
+            (
+                "/System/Library/Audio/Plug-Ins/HAL/BTAudioHALPlugin.driver/",
+                "audio.sb",
+            ),
             ("/System/Library/CoreServices/RawCamera.bundle/", "renderer.sb"),
             (
                 "/System/Library/CoreServices/SystemFolderLocalizations/",
@@ -237,6 +248,7 @@ _KNOWN_SUBPATH_DENIALS: dict[str, frozenset[RuleType]] = {
             "/System/Library/ExtensionKit/ExtensionPoints/",
             "/System/iOSSupport/System/Library/ExtensionKit/ExtensionPoints/",
             "/private/var/db/cmiodalassistants/Library/Preferences/",
+            ("/private/var/db/mds/messages/", "gpu.sb"),
             f"{_HOME_DIR}/Library/Preferences/",
         )
     ),

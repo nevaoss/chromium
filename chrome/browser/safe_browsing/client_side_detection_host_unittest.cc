@@ -332,7 +332,10 @@ class MockIntelligentScanDelegate : public IntelligentScanDelegate {
   MOCK_METHOD(ModelType, GetIntelligentScanModelType, (bool), (override));
   MOCK_METHOD(std::optional<base::UnguessableToken>,
               StartIntelligentScan,
-              (std::string, std::string, IntelligentScanDoneCallback),
+              (std::string,
+               std::string,
+               std::optional<std::string>,
+               IntelligentScanDoneCallback),
               (override));
   MOCK_METHOD(bool,
               CancelIntelligentScan,
@@ -1716,6 +1719,85 @@ TEST_F(ClientSideDetectionHostTest, TestPreClassificationCheckTwoNavigations) {
   WaitAndCheckPreClassificationChecks();
 
   fake_phishing_detector_.CheckMessage(&url2);
+}
+
+TEST_F(ClientSideDetectionHostTest, RecordsSurfaceAvailabilityAtDispatch) {
+  base::HistogramTester histogram_tester;
+  GURL url("http://host.com/");
+  database_manager_->SetAllowlistLookupDetailsForUrl(url, false);
+  ExpectPreClassificationChecks(url, &kFalse, &kFalse, &kFalse, &kFalse);
+  NavigateAndCommit(url);
+  WaitAndCheckPreClassificationChecks();
+  fake_phishing_detector_.CheckMessage(&url);
+
+  // The test RenderWidgetHostView never has a compositing surface to copy.
+  histogram_tester.ExpectUniqueSample(
+      "SBClientPhishing.SurfaceAvailableForCopy", false, 1);
+  histogram_tester.ExpectUniqueSample(
+      "SBClientPhishing.SurfaceAvailableForCopy.TriggerModel", false, 1);
+  histogram_tester.ExpectUniqueSample(
+      "SBClientPhishing.VisibilityAtClassification",
+      ClientSideDetectionHost::ClassificationVisibility::kVisible, 1);
+  histogram_tester.ExpectUniqueSample(
+      "SBClientPhishing.VisibilityAtClassification.TriggerModel",
+      ClientSideDetectionHost::ClassificationVisibility::kVisible, 1);
+}
+
+TEST_F(ClientSideDetectionHostTest,
+       RecordsHiddenVisibilityAtDispatchForBackgroundTab) {
+  base::HistogramTester histogram_tester;
+  web_contents()->WasHidden();
+  ASSERT_EQ(web_contents()->GetVisibility(), content::Visibility::HIDDEN);
+
+  GURL url("http://host.com/");
+  database_manager_->SetAllowlistLookupDetailsForUrl(url, false);
+  ExpectPreClassificationChecks(url, &kFalse, &kFalse, &kFalse, &kFalse);
+  NavigateAndCommit(url);
+  WaitAndCheckPreClassificationChecks();
+  fake_phishing_detector_.CheckMessage(&url);
+
+  histogram_tester.ExpectUniqueSample(
+      "SBClientPhishing.VisibilityAtClassification",
+      ClientSideDetectionHost::ClassificationVisibility::kHidden, 1);
+  histogram_tester.ExpectUniqueSample(
+      "SBClientPhishing.VisibilityAtClassification.TriggerModel",
+      ClientSideDetectionHost::ClassificationVisibility::kHidden, 1);
+  histogram_tester.ExpectUniqueSample(
+      "SBClientPhishing.SurfaceAvailableForCopy", false, 1);
+
+  web_contents()->WasOccluded();
+  ASSERT_EQ(web_contents()->GetVisibility(), content::Visibility::OCCLUDED);
+
+  GURL occluded_url("http://other.host.com/");
+  database_manager_->SetAllowlistLookupDetailsForUrl(occluded_url, false);
+  ExpectPreClassificationChecks(occluded_url, &kFalse, &kFalse, &kFalse,
+                                &kFalse);
+  NavigateAndCommit(occluded_url);
+  WaitAndCheckPreClassificationChecks();
+  fake_phishing_detector_.CheckMessage(&occluded_url);
+
+  histogram_tester.ExpectBucketCount(
+      "SBClientPhishing.VisibilityAtClassification",
+      ClientSideDetectionHost::ClassificationVisibility::kOccluded, 1);
+  histogram_tester.ExpectBucketCount(
+      "SBClientPhishing.VisibilityAtClassification.TriggerModel",
+      ClientSideDetectionHost::ClassificationVisibility::kOccluded, 1);
+}
+
+TEST_F(ClientSideDetectionHostTest,
+       DoesNotRecordSurfaceAvailabilityWhenPreClassificationFails) {
+  base::HistogramTester histogram_tester;
+  GURL url("http://host.com/");
+  // Matching the CSD allowlist stops the request before dispatch.
+  ExpectPreClassificationChecks(url, &kFalse, &kTrue, nullptr, nullptr);
+  NavigateAndCommit(url);
+  WaitAndCheckPreClassificationChecks();
+  fake_phishing_detector_.CheckMessage(nullptr);
+
+  histogram_tester.ExpectTotalCount("SBClientPhishing.SurfaceAvailableForCopy",
+                                    0);
+  histogram_tester.ExpectTotalCount(
+      "SBClientPhishing.VisibilityAtClassification", 0);
 }
 
 TEST_F(ClientSideDetectionHostTest, TestPreClassificationCheckCancelActor) {
@@ -4627,10 +4709,11 @@ class ClientSideDetectionHostScamDetectionTest
   void SetIntelligentScanCallback(bool should_return_response,
                                   std::optional<float> returned_scam_score) {
     EXPECT_CALL(*intelligent_scan_delegate_,
-                StartIntelligentScan(_, example_url_.spec(), _))
+                StartIntelligentScan(_, example_url_.spec(), _, _))
         .WillOnce(
             [=, this](
                 std::string rendered_text, std::string url,
+                std::optional<std::string> tab_screenshot,
                 IntelligentScanDelegate::IntelligentScanDoneCallback callback) {
               base::UnguessableToken token = base::UnguessableToken::Create();
               IntelligentScanDelegate::IntelligentScanResult
@@ -4863,7 +4946,7 @@ TEST_F(ClientSideDetectionHostScamDetectionTest,
       .WillOnce(Return(false));
   // Because the delegate has disabled intelligent scan, we will
   // NOT start the intelligent scan.
-  EXPECT_CALL(*intelligent_scan_delegate_, StartIntelligentScan(_, _, _))
+  EXPECT_CALL(*intelligent_scan_delegate_, StartIntelligentScan(_, _, _, _))
       .Times(0);
   EXPECT_CALL(*intelligent_scan_delegate_, OnScamWarningShown()).Times(0);
   SetSendClientReportPhishingRequestCallback(
@@ -4947,7 +5030,7 @@ TEST_F(ClientSideDetectionHostScamDetectionTest,
        EmptyInnerTextDoesNotTriggersIntelligentScan) {
   raw_delegate_->ForceEmptyInnerText();
   // Because the inner text is empty, we will NOT start the intelligent scan.
-  EXPECT_CALL(*intelligent_scan_delegate_, StartIntelligentScan(_, _, _))
+  EXPECT_CALL(*intelligent_scan_delegate_, StartIntelligentScan(_, _, _, _))
       .Times(0);
   SetSendClientReportPhishingRequestCallback(
       /*has_expected_brand_and_intent=*/false,
@@ -4978,7 +5061,7 @@ TEST_F(ClientSideDetectionHostScamDetectionTest,
   raw_delegate_->SetInnerText("text");
   // Because the inner text is too short, we will NOT start the intelligent
   // scan.
-  EXPECT_CALL(*intelligent_scan_delegate_, StartIntelligentScan(_, _, _))
+  EXPECT_CALL(*intelligent_scan_delegate_, StartIntelligentScan(_, _, _, _))
       .Times(0);
   SetSendClientReportPhishingRequestCallback(
       /*has_expected_brand_and_intent=*/false,
@@ -5006,7 +5089,7 @@ TEST_F(ClientSideDetectionHostScamDetectionTest,
        AllowlistedOnHCDoesNotTriggersIntelligentScan) {
   // Because the URL is on the HC allowlist, we will NOT start the intelligent
   // scan.
-  EXPECT_CALL(*intelligent_scan_delegate_, StartIntelligentScan(_, _, _))
+  EXPECT_CALL(*intelligent_scan_delegate_, StartIntelligentScan(_, _, _, _))
       .Times(0);
   SetSendClientReportPhishingRequestCallback(
       /*has_expected_brand_and_intent=*/false,
@@ -5039,7 +5122,7 @@ TEST_F(ClientSideDetectionHostScamDetectionTest,
           Return(IntelligentScanDelegate::ModelType::kNotSupportedOnDevice));
   // Because the intelligent scan is unavailable, we will NOT start the
   // intelligent scan.
-  EXPECT_CALL(*intelligent_scan_delegate_, StartIntelligentScan(_, _, _))
+  EXPECT_CALL(*intelligent_scan_delegate_, StartIntelligentScan(_, _, _, _))
       .Times(0);
   SetSendClientReportPhishingRequestCallback(
       /*has_expected_brand_and_intent=*/false,
@@ -5747,10 +5830,11 @@ TEST_F(ClientSideDetectionHostScamDetectionTest,
        MultimodalScreenshotDiscardedWhenUrlChanged) {
   SetFeatures({kClientSideDetectionServerModelMultimodal}, {});
   EXPECT_CALL(*intelligent_scan_delegate_,
-              StartIntelligentScan(_, "http://otherurl.com/", _))
+              StartIntelligentScan(_, "http://otherurl.com/", _, _))
       .WillOnce(
           [this](
               std::string rendered_text, std::string url,
+              std::optional<std::string> tab_screenshot,
               IntelligentScanDelegate::IntelligentScanDoneCallback callback) {
             IntelligentScanDelegate::IntelligentScanResult response;
             response.model_type = IntelligentScanDelegate::ModelType::kOnDevice;
@@ -5876,7 +5960,7 @@ TEST_F(ClientSideDetectionHostScamDetectionTest,
        EmptyInnerTextAndEmptyScreenshotDoesNotTriggerIntelligentScan) {
   SetFeatures({kClientSideDetectionServerModelMultimodal}, {});
   raw_delegate_->ForceEmptyInnerText();
-  EXPECT_CALL(*intelligent_scan_delegate_, StartIntelligentScan(_, _, _))
+  EXPECT_CALL(*intelligent_scan_delegate_, StartIntelligentScan(_, _, _, _))
       .Times(0);
   SetSendClientReportPhishingRequestCallback(
       /*has_expected_brand_and_intent=*/false,
@@ -5904,7 +5988,7 @@ TEST_F(ClientSideDetectionHostScamDetectionTest,
        ShortInnerTextAndEmptyScreenshotDoesNotTriggerIntelligentScan) {
   SetFeatures({kClientSideDetectionServerModelMultimodal}, {});
   raw_delegate_->SetInnerText("text");
-  EXPECT_CALL(*intelligent_scan_delegate_, StartIntelligentScan(_, _, _))
+  EXPECT_CALL(*intelligent_scan_delegate_, StartIntelligentScan(_, _, _, _))
       .Times(0);
   SetSendClientReportPhishingRequestCallback(
       /*has_expected_brand_and_intent=*/false,
@@ -5935,7 +6019,7 @@ TEST_F(ClientSideDetectionHostScamDetectionTest,
       switches::kEnableLowEndDeviceMode);
   SetFeatures({kClientSideDetectionServerModelMultimodal}, {});
   raw_delegate_->ForceEmptyInnerText();
-  EXPECT_CALL(*intelligent_scan_delegate_, StartIntelligentScan(_, _, _))
+  EXPECT_CALL(*intelligent_scan_delegate_, StartIntelligentScan(_, _, _, _))
       .Times(0);
   SetSendClientReportPhishingRequestCallback(
       /*has_expected_brand_and_intent=*/false,

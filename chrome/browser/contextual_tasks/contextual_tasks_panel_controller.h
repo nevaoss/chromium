@@ -17,6 +17,7 @@
 #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
 
 class BrowserWindowInterface;
+class GURL;
 
 namespace contextual_search {
 class ContextualSearchSessionHandle;
@@ -93,6 +94,11 @@ class ContextualTasksPanelController {
   // Open the panel in zero state, or reset to zero state if already open.
   virtual void OpenInZeroState() = 0;
 
+  // Opens `url` in a new foreground tab on behalf of the panel's own UI. The
+  // new tab doesn't inherit the active tab's task, so the panel stays on the
+  // current tab.
+  virtual void OpenUrlInNewTab(const GURL& url) = 0;
+
   // Moves only the active tab to a new task with a zero-state panel if other
   // tabs share its task. Returns whether the active tab was moved.
   virtual bool MoveActiveTabToNewThreadIfShared() = 0;
@@ -103,11 +109,11 @@ class ContextualTasksPanelController {
       tabs::TabInterface* tab) const = 0;
 
   // Shares `tab_handles` when starting a new thread from the tab context menu.
-  // If the side panel is already open on the active tab, attaches `tab_handles`
-  // to the current task; otherwise, opens a fresh zero-state thread and
-  // attaches both the active tab (if valid for context sharing) and
+  // If the side panel is already open in zero state on the active tab, attaches
+  // `tab_handles` to the current task; otherwise, opens a fresh zero-state
+  // thread and attaches both the active tab (if valid for context sharing) and
   // `tab_handles` as context.
-  virtual void ShareTabsWithActiveOrNewThread(
+  virtual void ShareTabsWithNewThread(
       const std::vector<tabs::TabHandle>& tab_handles) = 0;
 
   // Switches the side panel to the existing cached thread `task_id`, opens the

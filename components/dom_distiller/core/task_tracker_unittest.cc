@@ -9,6 +9,7 @@
 
 #include "base/functional/bind.h"
 #include "base/run_loop.h"
+#include "base/task/single_thread_task_runner.h"
 #include "base/test/gmock_move_support.h"
 #include "base/test/task_environment.h"
 #include "components/dom_distiller/core/article_distillation_update.h"
@@ -417,6 +418,162 @@ TEST_F(DomDistillerTaskTrackerTest, ContentIsSaved) {
   ASSERT_EQ(stored_distilled_article.SerializeAsString(),
             distilled_article.SerializeAsString());
   EXPECT_FALSE(cancel_callback.Cancelled());
+}
+
+// Tests that cancelling a `ViewerHandle` and destroying its
+// `ViewRequestDelegate` before the posted notification runs does not
+// dereference a freed delegate when `AddViewer()` is called after content is
+// already ready.
+TEST_F(DomDistillerTaskTrackerTest,
+       TestViewerCancelledAfterContentReadyBeforeNotification) {
+  MockDistillerFactory distiller_factory;
+  FakeDistiller* distiller = new FakeDistiller(true);
+  EXPECT_CALL(distiller_factory, CreateDistillerImpl())
+      .WillOnce(Return(distiller));
+  TestCancelCallback cancel_callback;
+  TaskTracker task_tracker(GetDefaultEntry(), cancel_callback.GetCallback(),
+                           nullptr);
+
+  base::RunLoop initial_ready_loop;
+  FakeViewRequestDelegate viewer_delegate;
+  std::unique_ptr<ViewerHandle> handle(
+      task_tracker.AddViewer(&viewer_delegate));
+  EXPECT_CALL(viewer_delegate, OnArticleReady(_))
+      .WillOnce(
+          [&](const DistilledArticleProto*) { initial_ready_loop.Quit(); });
+
+  task_tracker.StartDistiller(&distiller_factory,
+                              std::unique_ptr<DistillerPage>(),
+                              /*use_cache=*/false);
+  initial_ready_loop.Run();
+
+  // Add a second and third viewer after content is ready, then cancel the
+  // second viewer's handle and destroy its delegate before the posted
+  // notification tasks execute.
+  auto cancelled_delegate = std::make_unique<FakeViewRequestDelegate>();
+  EXPECT_CALL(*cancelled_delegate, OnArticleReady(_)).Times(0);
+  std::unique_ptr<ViewerHandle> cancelled_handle(
+      task_tracker.AddViewer(cancelled_delegate.get()));
+
+  FakeViewRequestDelegate active_delegate;
+  EXPECT_CALL(active_delegate, OnArticleReady(_));
+  std::unique_ptr<ViewerHandle> active_handle(
+      task_tracker.AddViewer(&active_delegate));
+
+  cancelled_handle.reset();
+  cancelled_delegate.reset();
+
+  base::RunLoop pending_loop;
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, pending_loop.QuitClosure());
+  pending_loop.Run();
+  EXPECT_FALSE(cancel_callback.Cancelled());
+}
+
+// Tests that a viewer added after distillation fails (while an existing viewer
+// still keeps the `TaskTracker` alive) receives `OnArticleReady()` with an
+// empty article rather than waiting indefinitely.
+TEST_F(DomDistillerTaskTrackerTest, TestViewerAddedAfterDistillationFails) {
+  MockDistillerFactory distiller_factory;
+  auto owned_distiller =
+      std::make_unique<FakeDistiller>(/*execute_callback=*/false);
+  FakeDistiller* distiller = owned_distiller.get();
+  EXPECT_CALL(distiller_factory, CreateDistillerImpl()).WillOnce([&] {
+    return owned_distiller.release();
+  });
+
+  TestCancelCallback cancel_callback;
+  TaskTracker task_tracker(GetDefaultEntry(), cancel_callback.GetCallback(),
+                           nullptr);
+
+  base::RunLoop first_viewer_loop;
+  FakeViewRequestDelegate viewer_delegate1;
+  std::unique_ptr<ViewerHandle> handle1(
+      task_tracker.AddViewer(&viewer_delegate1));
+  EXPECT_CALL(viewer_delegate1, OnArticleReady(_))
+      .WillOnce([&](const DistilledArticleProto* article) {
+        ASSERT_TRUE(article);
+        EXPECT_EQ(0, article->pages_size());
+        first_viewer_loop.Quit();
+      });
+
+  task_tracker.StartDistiller(&distiller_factory,
+                              std::unique_ptr<DistillerPage>(),
+                              /*use_cache=*/false);
+  distiller->RunDistillerCallback(std::make_unique<DistilledArticleProto>());
+  first_viewer_loop.Run();
+
+  base::RunLoop second_viewer_loop;
+  FakeViewRequestDelegate viewer_delegate2;
+  EXPECT_CALL(viewer_delegate2, OnArticleReady(_))
+      .WillOnce([&](const DistilledArticleProto* article) {
+        ASSERT_TRUE(article);
+        EXPECT_EQ(0, article->pages_size());
+        second_viewer_loop.Quit();
+      });
+  std::unique_ptr<ViewerHandle> handle2(
+      task_tracker.AddViewer(&viewer_delegate2));
+  second_viewer_loop.Run();
+
+  handle1.reset();
+  handle2.reset();
+  EXPECT_TRUE(cancel_callback.Cancelled());
+}
+
+// Tests that a save callback added after distillation fails is invoked with
+// `distillation_succeeded = false` and does not prevent `MaybeCancel()` from
+// cancelling the `TaskTracker` once all viewer handles are released.
+TEST_F(DomDistillerTaskTrackerTest,
+       TestSaveCallbackAddedAfterDistillationFails) {
+  MockDistillerFactory distiller_factory;
+  auto owned_distiller =
+      std::make_unique<FakeDistiller>(/*execute_callback=*/false);
+  FakeDistiller* distiller = owned_distiller.get();
+  EXPECT_CALL(distiller_factory, CreateDistillerImpl()).WillOnce([&] {
+    return owned_distiller.release();
+  });
+
+  TestCancelCallback cancel_callback;
+  TaskTracker task_tracker(GetDefaultEntry(), cancel_callback.GetCallback(),
+                           nullptr);
+
+  base::RunLoop viewer_loop;
+  FakeViewRequestDelegate viewer_delegate;
+  std::unique_ptr<ViewerHandle> handle(
+      task_tracker.AddViewer(&viewer_delegate));
+  EXPECT_CALL(viewer_delegate, OnArticleReady(_))
+      .WillOnce([&](const DistilledArticleProto* article) {
+        ASSERT_TRUE(article);
+        EXPECT_EQ(0, article->pages_size());
+        viewer_loop.Quit();
+      });
+
+  task_tracker.StartDistiller(&distiller_factory,
+                              std::unique_ptr<DistillerPage>(),
+                              /*use_cache=*/false);
+  distiller->RunDistillerCallback(std::make_unique<DistilledArticleProto>());
+  viewer_loop.Run();
+
+  base::RunLoop save_loop;
+  bool save_callback_executed = false;
+  MockSaveCallback save_callback;
+  EXPECT_CALL(save_callback, Save(_, _, false))
+      .WillOnce([&](const ArticleEntry&, const DistilledArticleProto* article,
+                    bool succeeded) {
+        ASSERT_TRUE(article);
+        EXPECT_FALSE(succeeded);
+        EXPECT_EQ(0, article->pages_size());
+        save_callback_executed = true;
+        save_loop.Quit();
+      });
+  task_tracker.AddSaveCallback(base::BindOnce(
+      &MockSaveCallback::Save, base::Unretained(&save_callback)));
+  save_loop.Run();
+  EXPECT_TRUE(save_callback_executed);
+  EXPECT_FALSE(cancel_callback.Cancelled());
+
+  handle.reset();
+  EXPECT_TRUE(cancel_callback.Cancelled());
 }
 
 }  // namespace test

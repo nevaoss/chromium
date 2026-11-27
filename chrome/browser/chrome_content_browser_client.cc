@@ -449,6 +449,7 @@
 #include "third_party/blink/public/common/chrome_debug_urls.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/loader/url_loader_throttle.h"
+#include "third_party/blink/public/common/manifest/manifest.h"
 #include "third_party/blink/public/common/mime_util/mime_util.h"
 #include "third_party/blink/public/common/navigation/navigation_policy.h"
 #include "third_party/blink/public/common/permissions/permission_utils.h"
@@ -459,10 +460,10 @@
 #include "third_party/blink/public/public_buildflags.h"
 #include "ui/base/clipboard/clipboard_format_type.h"
 #include "ui/base/clipboard/clipboard_metadata.h"
+#include "ui/base/mojom/window_open_disposition.mojom.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/ui_base_features.h"
-#include "ui/base/window_open_disposition.h"
 #include "ui/color/color_provider.h"
 #include "ui/color/color_provider_key.h"
 #include "ui/gfx/color_utils.h"
@@ -1017,8 +1018,7 @@ blink::mojom::AutoplayPolicy DetermineWebContentsAutoplayPolicy(
     blink::mojom::AutoplayPolicy current_policy) {
   using PolicyStatus = AutoplayPolicyStatusObserver::PolicyStatus;
 
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents->GetBrowserContext());
+  Profile* profile = GetProfileForWebPreferences(web_contents);
   PrefService* prefs = profile->GetPrefs();
 
   AutoplayPolicyStatusObserver* observer =
@@ -4507,7 +4507,7 @@ bool ChromeContentBrowserClient::CanCreateWindow(
     const GURL& target_url,
     const content::Referrer& referrer,
     const std::string& frame_name,
-    WindowOpenDisposition disposition,
+    ui::mojom::WindowOpenDisposition disposition,
     const blink::mojom::WindowFeatures& features,
     bool user_gesture,
     bool opener_suppressed,
@@ -4629,7 +4629,7 @@ bool ChromeContentBrowserClient::CanCreateWindow(
   // For Automatic Document Picture-in-Picture, the window creation is
   // authorized by the browser rather than a user gesture. If AutoPip
   // preconditions are met, permit the window creation.
-  if (disposition == WindowOpenDisposition::kNewPictureInPicture) {
+  if (disposition == ui::mojom::WindowOpenDisposition::kNewPictureInPicture) {
     auto* auto_pip_tab_helper =
         AutoPictureInPictureTabHelper::FromWebContents(web_contents);
     if (auto_pip_tab_helper &&
@@ -4682,22 +4682,29 @@ ChromeContentBrowserClient::GetTtsControllerDelegate() {
 }
 #endif
 
-void ChromeContentBrowserClient::MaybeOverrideManifest(
+std::optional<blink::Manifest>
+ChromeContentBrowserClient::MaybeOverrideManifest(
     content::RenderFrameHost* render_frame_host,
-    blink::mojom::ManifestPtr& manifest) {
+    const blink::Manifest& manifest) {
+  std::optional<blink::Manifest> cros_overridden;
 #if BUILDFLAG(IS_CHROMEOS)
-  web_app::ChromeOsWebAppExperiments::MaybeOverrideManifest(render_frame_host,
-                                                            manifest);
+  cros_overridden = web_app::ChromeOsWebAppExperiments::MaybeOverrideManifest(
+      render_frame_host, manifest);
 #endif
 #if !BUILDFLAG(IS_ANDROID)
   Profile* profile =
       Profile::FromBrowserContext(render_frame_host->GetBrowserContext());
   auto* provider = web_app::WebAppProvider::GetForWebApps(profile);
   if (provider) {
-    provider->policy_manager().MaybeOverrideManifest(render_frame_host,
-                                                     manifest);
+    if (std::optional<blink::Manifest> policy_overridden =
+            provider->policy_manager().MaybeOverrideManifest(
+                render_frame_host,
+                cros_overridden ? *cros_overridden : manifest)) {
+      return policy_overridden;
+    }
   }
 #endif
+  return cros_overridden;
 }
 
 content::TtsPlatform* ChromeContentBrowserClient::GetTtsPlatform() {
@@ -5961,29 +5968,36 @@ void ChromeContentBrowserClient::InitOnUIThread() {
   safe_browsing_service_ = g_browser_process->safe_browsing_service();
 #endif
 
-  // Initialize `network_contexts_parent_directory_`.
-  base::FilePath user_data_dir;
-  base::PathService::Get(chrome::DIR_USER_DATA, &user_data_dir);
-  DCHECK(!user_data_dir.empty());
-  network_contexts_parent_directory_.push_back(user_data_dir);
+  // Initialize `network_contexts_parent_directory_`,
+  // `network_contexts_data_directory_`, and
+  // `network_contexts_cache_directory_`.
+  std::optional<base::FilePath> data_dir = GetNetworkContextsDataDirectory();
+  if (data_dir.has_value()) {
+    network_contexts_parent_directory_.push_back(*data_dir);
+  }
 
-  base::FilePath cache_dir;
-  chrome::GetUserCacheDirectory(user_data_dir, &cache_dir);
-  DCHECK(!cache_dir.empty());
+  std::optional<base::FilePath> cache_dir = GetNetworkContextsCacheDirectory();
   // On some platforms, the cache is a child of the user_data_dir so only
   // return the one path.
-  if (cache_dir != user_data_dir && !user_data_dir.IsParent(cache_dir)) {
-    network_contexts_parent_directory_.push_back(cache_dir);
+  if (cache_dir.has_value() && *cache_dir != network_contexts_data_directory_ &&
+      !network_contexts_data_directory_.IsParent(*cache_dir)) {
+    network_contexts_parent_directory_.push_back(*cache_dir);
   }
 
   // If the cache location has been overridden by a switch or policy to a
   // directory outside `user_data_dir` and `cache_dir`, include that as well.
   const base::FilePath pref_cache_dir =
       chrome_browser_net::GetDiskCacheDir(g_browser_process->local_state());
-  if (!pref_cache_dir.empty() && pref_cache_dir != user_data_dir &&
-      !user_data_dir.IsParent(pref_cache_dir) && pref_cache_dir != cache_dir &&
-      !cache_dir.IsParent(pref_cache_dir)) {
-    network_contexts_parent_directory_.push_back(pref_cache_dir);
+  if (!pref_cache_dir.empty()) {
+    const bool is_inside_existing_dirs =
+        pref_cache_dir == network_contexts_data_directory_ ||
+        network_contexts_data_directory_.IsParent(pref_cache_dir) ||
+        (cache_dir.has_value() &&
+         (pref_cache_dir == *cache_dir || cache_dir->IsParent(pref_cache_dir)));
+    if (!is_inside_existing_dirs) {
+      network_contexts_cache_directory_ = pref_cache_dir;
+      network_contexts_parent_directory_.push_back(pref_cache_dir);
+    }
   }
 }
 
@@ -7269,6 +7283,37 @@ ChromeContentBrowserClient::GetNetworkContextsParentDirectory() {
   return network_contexts_parent_directory_;
 }
 
+std::optional<base::FilePath>
+ChromeContentBrowserClient::GetNetworkContextsDataDirectory() {
+  if (network_contexts_data_directory_.empty()) {
+    base::PathService::Get(chrome::DIR_USER_DATA,
+                           &network_contexts_data_directory_);
+    DCHECK(!network_contexts_data_directory_.empty());
+  }
+  if (network_contexts_data_directory_.empty()) {
+    return std::nullopt;
+  }
+  return network_contexts_data_directory_;
+}
+
+std::optional<base::FilePath>
+ChromeContentBrowserClient::GetNetworkContextsCacheDirectory() {
+  if (network_contexts_cache_directory_.empty()) {
+    std::optional<base::FilePath> network_data_dir =
+        GetNetworkContextsDataDirectory();
+    if (!network_data_dir.has_value()) {
+      return std::nullopt;
+    }
+    chrome::GetUserCacheDirectory(*network_data_dir,
+                                  &network_contexts_cache_directory_);
+    DCHECK(!network_contexts_cache_directory_.empty());
+  }
+  if (network_contexts_cache_directory_.empty()) {
+    return std::nullopt;
+  }
+  return network_contexts_cache_directory_;
+}
+
 base::DictValue ChromeContentBrowserClient::GetNetLogConstants() {
   return net_log::GetPlatformConstantsForNetLog(
       base::CommandLine::ForCurrentProcess()->GetCommandLineString(),
@@ -7577,7 +7622,8 @@ bool ChromeContentBrowserClient::HandleExternalProtocol(
             *new_url,
             content::Referrer(web_contents->GetLastCommittedURL(),
                               network::mojom::ReferrerPolicy::kDefault),
-            WindowOpenDisposition::kNewForegroundTab, page_transition,
+            ui::mojom::WindowOpenDisposition::kNewForegroundTab,
+            page_transition,
             /*is_renderer_initiated=*/true);
         // Fallback to an opaque origin if the initiating origin is not
         // provided (e.g., for external OS-initiated or browser-initiated
@@ -8197,6 +8243,20 @@ ChromeContentBrowserClient::MaybeOverrideSourceURLForClipboardAccess(
 #endif  // BUILDFLAG(ENTERPRISE_DATA_CONTROLS)
 }
 
+content::BrowserContext* ChromeContentBrowserClient::GetUserBrowserContext(
+    content::RenderFrameHost& render_frame_host) {
+#if !BUILDFLAG(IS_ANDROID)
+  // When the WebContents of a Top Chrome WebUI is in TopChromeWebUIProfile,
+  // which is shared by the windows of all profiles, return its user profile.
+  // Otherwise, this is the profile of the WebContents.
+  if (Profile* user_profile = webui::GetUserProfile(
+          content::WebContents::FromRenderFrameHost(&render_frame_host))) {
+    return user_profile;
+  }
+#endif  // !BUILDFLAG(IS_ANDROID)
+  return render_frame_host.GetBrowserContext();
+}
+
 bool ChromeContentBrowserClient::IsClipboardPasteAllowed(
     content::RenderFrameHost* render_frame_host) {
   DCHECK(render_frame_host);
@@ -8292,10 +8352,13 @@ void ChromeContentBrowserClient::IsClipboardPasteAllowedByPolicy(
   if (destination.web_contents() &&
       glic::IsGlicGuest(destination.web_contents())) {
     glic::LogPasteAttempt(source, metadata);
-    if (!glic::IsClipboardPasteAllowed(source, destination, metadata)) {
+    if (!glic::IsClipboardPasteAllowed(source, destination, metadata) ||
+        glic::MaybeBlockPasteForRestrictedCopy(source, destination, metadata)) {
       std::move(callback).Run(std::nullopt);
       return;
     }
+    callback = glic::WrapClipboardPasteAllowedCallback(
+        source, destination, metadata, std::move(callback));
   }
 
 // TODO(b/352728209): Add Android-specific hook for Data Controls.
@@ -8320,7 +8383,8 @@ void ChromeContentBrowserClient::IsClipboardCopyAllowedByPolicy(
     const ui::ClipboardMetadata& metadata,
     const ClipboardPasteData& data,
     IsClipboardCopyAllowedCallback callback) {
-  glic::OnBeforeClipboardCopy(source);
+  callback =
+      glic::WrapClipboardCopyAllowedCallback(source, data, std::move(callback));
 
 #if BUILDFLAG(ENTERPRISE_DATA_CONTROLS)
   enterprise_data_protection::IsClipboardCopyAllowedByPolicy(
@@ -9599,7 +9663,8 @@ void ChromeContentBrowserClient::ShowCaptionSettings(
   content::OpenURLParams params =
       content::OpenURLParams::CreateBrowserInitiated(
           GURL(captions::GetCaptionSettingsUrl()),
-          WindowOpenDisposition::kNewForegroundTab, ui::PAGE_TRANSITION_LINK);
+          ui::mojom::WindowOpenDisposition::kNewForegroundTab,
+          ui::PAGE_TRANSITION_LINK);
   web_contents->OpenURL(params, /*navigation_handle_callback=*/{});
 #endif
 }

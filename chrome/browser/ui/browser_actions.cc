@@ -166,6 +166,7 @@
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_action_item.h"
 #include "chrome/browser/ui/views/commerce/discounts_page_action_view_controller.h"
+#include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_ephemeral_button_controller.h"
 #include "chrome/browser/ui/views/file_system_access/file_system_access_bubble_controller.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
@@ -766,6 +767,14 @@ void BrowserActions::InitializeSidePanelActions() {
                                               kNewThread);
                       }
                     }
+                    if (!is_open) {
+                      if (auto* const ephemeral_controller =
+                              ContextualTasksEphemeralButtonController::From(
+                                  bwi)) {
+                        ephemeral_controller->RecordToolbarButtonOpenClick(
+                            /*is_permanent_button=*/true);
+                      }
+                    }
                   }
                   if (contextual_tasks::
                           IsContextualTasksPinButtonInToolbarEnabled() &&
@@ -787,7 +796,12 @@ void BrowserActions::InitializeSidePanelActions() {
                 actions::kActionItemPinnableKey,
                 static_cast<
                     std::underlying_type_t<actions::ActionPinnableState>>(
-                    actions::ActionPinnableState::kPinnable))
+                    (!contextual_tasks::
+                         IsContextualTasksEphemeralPinButtonRefactorEnabled() ||
+                     contextual_tasks::EntryPointEligibilityManager::
+                         IsPinningEligible(profile))
+                        ? actions::ActionPinnableState::kPinnable
+                        : actions::ActionPinnableState::kNotPinnable))
             .SetVisible(contextual_tasks::EntryPointEligibilityManager::
                             IsPinningEligible(profile))
             .Build());

@@ -31,7 +31,6 @@
 #include "components/autofill/core/browser/data_manager/autofill_ai/entity_data_manager.h"
 #include "components/autofill/core/browser/data_manager/autofill_ai/entity_data_manager_test_util.h"
 #include "components/autofill/core/browser/data_manager/autofill_ai/entity_suppression_manager.h"
-#include "components/autofill/core/browser/data_manager/autofill_ai/entity_suppression_manager_impl.h"
 #include "components/autofill/core/browser/data_manager/autofill_ai/entity_suppression_sync_bridge.h"
 #include "components/autofill/core/browser/data_manager/autofill_ai/entity_suppression_sync_bridge_test_util.h"
 #include "components/autofill/core/browser/data_manager/payments/payments_data_manager.h"
@@ -77,7 +76,7 @@ class AutofillCounterTest : public InProcessBrowserTest {
         context,
         base::BindRepeating(
             [](content::BrowserContext*) -> std::unique_ptr<KeyedService> {
-              return std::make_unique<autofill::EntitySuppressionManagerImpl>(
+              return std::make_unique<autofill::EntitySuppressionManager>(
                   autofill::CreateTestEntitySuppressionSyncBridge());
             }));
   }
@@ -515,7 +514,7 @@ IN_PROC_BROWSER_TEST_F(AutofillCounterTest, ComplexResult) {
 
 // Tests that the counting respects time ranges.
 IN_PROC_BROWSER_TEST_F(AutofillCounterTest, TimeRanges) {
-  autofill::TestAutofillClock test_clock;
+  autofill::TestAutofillClockDeprecated test_clock;
   const base::Time kTime1 = base::Time::FromSecondsSinceUnixEpoch(25);
   test_clock.SetNow(kTime1);
   AddAutocompleteSuggestion("email", "Email:", "example@example.com");

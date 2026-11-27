@@ -1309,6 +1309,124 @@ suite('OmniboxEverywhereOmniboxTest', () => {
         assertTrue(enterLensEvent.defaultPrevented);
         assertEquals(1, testProxy.handler.getCallCount('showScreenshotMenu'));
       });
+
+  test(
+      'cycles through all four placeholder hints when focused and Fusebox is ' +
+          'enabled',
+      async () => {
+        const inputEl = omnibox.$.input.inputElement;
+        const advanceToNextPlaceholder = async () => {
+          // Each transition runs HOLD -> FADE_OUT -> FADE_IN (which updates
+          // inputEl.placeholder at the start of FADE_IN). `Animation.finish()`
+          // queues the `finish` event for the next animation frame, so await
+          // `finish` before advancing the next stage.
+          for (let i = 0; i < 3; i++) {
+            const anim = inputEl.getAnimations()[0];
+            assertTrue(!!anim);
+            const finished = eventToPromise('finish', anim);
+            anim.finish();
+            await finished;
+          }
+        };
+
+        assertEquals('Ask Google or type a URL', inputEl.placeholder);
+
+        await advanceToNextPlaceholder();
+        assertEquals(
+            'Ask about your screen with Google Lens', inputEl.placeholder);
+
+        await advanceToNextPlaceholder();
+        assertEquals('Ask about a file or image', inputEl.placeholder);
+
+        await advanceToNextPlaceholder();
+        assertEquals('Drag and drop files here', inputEl.placeholder);
+
+        // Wraps back around to the first hint.
+        await advanceToNextPlaceholder();
+        assertEquals('Ask Google or type a URL', inputEl.placeholder);
+      });
+
+  test(
+      'pauses placeholder cycling when unfocused or typing and filters hints ' +
+          'by capability',
+      async () => {
+        const inputEl = omnibox.$.input.inputElement;
+        const advanceToNextPlaceholder =
+            async (targetInput: HTMLElement = inputEl) => {
+          for (let i = 0; i < 3; i++) {
+            const anim = targetInput.getAnimations()[0];
+            assertTrue(!!anim);
+            const finished = eventToPromise('finish', anim);
+            anim.finish();
+            await finished;
+          }
+        };
+
+        // Advance to the second hint ("Ask about your screen with Google Lens").
+        await advanceToNextPlaceholder();
+        assertEquals(
+            'Ask about your screen with Google Lens', inputEl.placeholder);
+
+        // Unfocusing (persistent resting state) stops cycling and resets to the
+        // initial placeholder.
+        omnibox.isActive = false;
+        await microtasksFinished();
+        assertEquals(0, inputEl.getAnimations().length);
+        assertEquals('Ask Google or type a URL', inputEl.placeholder);
+
+        // Refocusing resumes cycling from the first hint.
+        omnibox.isActive = true;
+        await microtasksFinished();
+        assertEquals(1, inputEl.getAnimations().length);
+        await advanceToNextPlaceholder();
+        assertEquals(
+            'Ask about your screen with Google Lens', inputEl.placeholder);
+
+        // Typing stops cycling; clearing restarts from the first hint.
+        omnibox.setInputText('cats');
+        await microtasksFinished();
+        assertEquals(0, inputEl.getAnimations().length);
+
+        omnibox.setInputText('');
+        await microtasksFinished();
+        assertEquals(1, inputEl.getAnimations().length);
+        assertEquals('Ask Google or type a URL', inputEl.placeholder);
+
+        // Disabling Lens search and drag-and-drop omits their respective hints.
+        document.body.innerHTML = window.trustedTypes!.emptyHTML;
+        loadTimeData.overrideValues({
+          isFuseboxEnabled: true,
+          searchboxLensSearch: false,
+          composeboxContextDragAndDropEnabled: false,
+        });
+        const filteredOmnibox =
+            document.createElement('omnibox-everywhere-omnibox');
+        document.body.appendChild(filteredOmnibox);
+        await microtasksFinished();
+
+        const filteredInput = filteredOmnibox.$.input.inputElement;
+        assertEquals('Ask Google or type a URL', filteredInput.placeholder);
+        await advanceToNextPlaceholder(filteredInput);
+        assertEquals('Ask about a file or image', filteredInput.placeholder);
+        await advanceToNextPlaceholder(filteredInput);
+        assertEquals('Ask Google or type a URL', filteredInput.placeholder);
+
+        // Disabling Fusebox falls back to static searchBoxHint without cycling.
+        document.body.innerHTML = window.trustedTypes!.emptyHTML;
+        loadTimeData.overrideValues({
+          isFuseboxEnabled: false,
+        });
+        const nonFuseboxOmnibox =
+            document.createElement('omnibox-everywhere-omnibox');
+        document.body.appendChild(nonFuseboxOmnibox);
+        await microtasksFinished();
+
+        const nonFuseboxInput = nonFuseboxOmnibox.$.input.inputElement;
+        assertEquals(0, nonFuseboxInput.getAnimations().length);
+        assertEquals(
+            loadTimeData.getString('searchBoxHint'),
+            nonFuseboxInput.placeholder);
+      });
 });
 
 
@@ -2756,7 +2874,7 @@ suite('OmniboxEverywhereAppTest', () => {
     assertTrue(smallApp.hasAttribute('small-loomnibox'));
     const mv = smallApp.shadowRoot.querySelector('cr-most-visited')!;
     assertTrue(!!mv);
-    assertEquals('5', mv.getAttribute('max-tiles'));
+    assertEquals('4', mv.getAttribute('max-tiles'));
 
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
     loadTimeData.overrideValues({
@@ -2771,7 +2889,7 @@ suite('OmniboxEverywhereAppTest', () => {
     assertFalse(normalApp.hasAttribute('small-loomnibox'));
     const normalMv = normalApp.shadowRoot.querySelector('cr-most-visited')!;
     assertTrue(!!normalMv);
-    assertEquals('7', normalMv.getAttribute('max-tiles'));
+    assertEquals('5', normalMv.getAttribute('max-tiles'));
   });
 
   test(
@@ -2794,41 +2912,43 @@ suite('OmniboxEverywhereAppTest', () => {
         // Deactivate window to enter resting state in persistent mode.
         window.dispatchEvent(new Event('blur'));
         await microtasksFinished();
-        assertEquals('5', mv.getAttribute('max-tiles'));
+        assertTrue(dynamicApp.hasAttribute('small-loomnibox'));
+        assertEquals('4', mv.getAttribute('max-tiles'));
 
-        // Focus window (active state) expands to 7 tiles.
+        // Focus window (active state) expands searchbox and MVT to 5 tiles.
         window.dispatchEvent(new Event('focus'));
         await microtasksFinished();
-        assertEquals('7', mv.getAttribute('max-tiles'));
+        assertFalse(dynamicApp.hasAttribute('small-loomnibox'));
+        assertEquals('5', mv.getAttribute('max-tiles'));
 
         // Blur window again.
         window.dispatchEvent(new Event('blur'));
         await microtasksFinished();
-        assertEquals('5', mv.getAttribute('max-tiles'));
+        assertTrue(dynamicApp.hasAttribute('small-loomnibox'));
+        assertEquals('4', mv.getAttribute('max-tiles'));
       });
 
-  test(
-      'dynamicSizing in ephemeral mode always uses expanded max-tiles',
-      async () => {
-        document.body.innerHTML = window.trustedTypes!.emptyHTML;
-        loadTimeData.overrideValues({
-          omniboxEverywhereMostVisitedEnabled: true,
-          dynamicSizing: true,
-          dynamicSizingWidth: 680,
-          isPersistentMode: false,
-          initialFreStage: 0,
-        });
-        const ephemeralApp = document.createElement('omnibox-everywhere-app');
-        document.body.appendChild(ephemeralApp);
-        await microtasksFinished();
+  test('dynamicSizing in ephemeral mode uses 5 max-tiles', async () => {
+    document.body.innerHTML = window.trustedTypes!.emptyHTML;
+    loadTimeData.overrideValues({
+      omniboxEverywhereMostVisitedEnabled: true,
+      dynamicSizing: true,
+      dynamicSizingWidth: 680,
+      isPersistentMode: false,
+      initialFreStage: 0,
+    });
+    const ephemeralApp = document.createElement('omnibox-everywhere-app');
+    document.body.appendChild(ephemeralApp);
+    await microtasksFinished();
 
-        const mv = ephemeralApp.shadowRoot.querySelector('cr-most-visited')!;
-        assertTrue(!!mv);
-        assertEquals('7', mv.getAttribute('max-tiles'));
-      });
+    const mv = ephemeralApp.shadowRoot.querySelector('cr-most-visited')!;
+    assertTrue(!!mv);
+    assertFalse(ephemeralApp.hasAttribute('small-loomnibox'));
+    assertEquals('5', mv.getAttribute('max-tiles'));
+  });
 
   test(
-      'dynamicSizing with 600px width updates max-tiles between 5 and 6',
+      'dynamicSizing with 600px width updates max-tiles between 4 and 5',
       async () => {
         document.body.innerHTML = window.trustedTypes!.emptyHTML;
         loadTimeData.overrideValues({
@@ -2846,15 +2966,17 @@ suite('OmniboxEverywhereAppTest', () => {
         const mv = dynamicApp600.shadowRoot.querySelector('cr-most-visited')!;
         assertTrue(!!mv);
 
-        // Resting state uses 5 tiles.
+        // Resting state uses 4 tiles.
         window.dispatchEvent(new Event('blur'));
         await microtasksFinished();
-        assertEquals('5', mv.getAttribute('max-tiles'));
+        assertTrue(dynamicApp600.hasAttribute('small-loomnibox'));
+        assertEquals('4', mv.getAttribute('max-tiles'));
 
-        // Active state in 600px variant expands to 6 tiles.
+        // Active state in 600px variant expands to 5 tiles.
         window.dispatchEvent(new Event('focus'));
         await microtasksFinished();
-        assertEquals('6', mv.getAttribute('max-tiles'));
+        assertFalse(dynamicApp600.hasAttribute('small-loomnibox'));
+        assertEquals('5', mv.getAttribute('max-tiles'));
       });
 
   test(
@@ -3397,13 +3519,47 @@ suite('OmniboxEverywhereAppTest', () => {
     const searchbox =
         app.shadowRoot.querySelector('omnibox-everywhere-omnibox')!;
     searchbox.setInputText('searchbox query');
+    await microtasksFinished();
     assertEquals('searchbox query', searchbox.$.input.getInputValue());
+    assertTrue(searchbox.hasAttribute('has-user-input'));
 
     window.dispatchEvent(new KeyboardEvent(
         'keydown', {key: 'Escape', bubbles: true, cancelable: true}));
     await microtasksFinished();
 
     assertEquals('', searchbox.$.input.getInputValue());
+    assertFalse(searchbox.hasAttribute('has-user-input'));
+    assertEquals(0, testProxy.handler.getCallCount('onEscapePressed'));
+
+    // Also verify pressing Escape in the input when autocomplete matches are
+    // visible (`SearchboxMixin.handleKeyNavigation` path) resets
+    // `has-user-input` without dismissing the window.
+    searchbox.setInputText('hello');
+    searchbox.activeQueryId = 0;
+    searchbox.lastQueriedInput = 'hello';
+    testProxy.page.autocompleteResultChanged(
+        createAutocompleteResultForTesting({
+          queryId: 0,
+          input: 'hello',
+          matches: [
+            createSearchMatchForTesting({
+              allowedToBeDefaultMatch: true,
+              fillIntoEdit: 'hello',
+            }),
+          ],
+        }));
+    await microtasksFinished();
+    assertTrue(searchbox.hasAttribute('has-user-input'));
+    assertTrue(searchbox.hasAttribute('dropdown-is-visible'));
+
+    searchbox.$.input.inputElement.dispatchEvent(new KeyboardEvent(
+        'keydown',
+        {key: 'Escape', bubbles: true, composed: true, cancelable: true}));
+    await microtasksFinished();
+
+    assertEquals('', searchbox.$.input.getInputValue());
+    assertFalse(searchbox.hasAttribute('dropdown-is-visible'));
+    assertFalse(searchbox.hasAttribute('has-user-input'));
     assertEquals(0, testProxy.handler.getCallCount('onEscapePressed'));
   });
 

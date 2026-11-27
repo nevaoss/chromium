@@ -986,10 +986,6 @@ void AddressComponent::RegisterSynthesizedSubcomponent(
   synthesized_subcomponents_.push_back(synthesized_component);
 }
 
-const std::vector<AddressToken> AddressComponent::GetSortedTokens() const {
-  return TokenizeValue(GetValue());
-}
-
 bool AddressComponent::IsMergeableWithComponent(
     const AddressComponent& newer_component) const {
   const AddressCountryCode common_country_code =
@@ -1399,31 +1395,6 @@ bool AddressComponent::MergeTokenEquivalentComponent(
     }
   }
   return true;
-}
-
-void AddressComponent::ConsumeAdditionalToken(
-    const std::u16string& token_value) {
-  if (IsAtomic()) {
-    if (GetValue().empty()) {
-      SetValue(token_value, VerificationStatus::kParsed);
-    } else {
-      SetValue(base::StrCat({GetValue(), u" ", token_value}),
-               VerificationStatus::kParsed);
-    }
-    return;
-  }
-
-  // Try the first free subcomponent.
-  for (AddressComponent* subcomponent : subcomponents_) {
-    if (subcomponent->GetValue().empty()) {
-      subcomponent->SetValue(token_value, VerificationStatus::kParsed);
-      return;
-    }
-  }
-
-  // Otherwise append the value to the first component.
-  subcomponents_[0]->SetValue(base::StrCat({GetValue(), u" ", token_value}),
-                              VerificationStatus::kParsed);
 }
 
 int AddressComponent::GetStructureVerificationScore() const {

@@ -8,9 +8,9 @@ import 'chrome://new-tab-page/lazy_load.js';
 
 import type {IframeElement, ThreadsRailElement} from 'chrome://new-tab-page/lazy_load.js';
 import type {LeftHandSideElement} from 'chrome://new-tab-page/new_tab_page.js';
-import {NtpLhsMessageType, WindowProxy} from 'chrome://new-tab-page/new_tab_page.js';
+import {COLOR_PROVIDER_CHANGED, ColorChangeUpdater, NtpLhsMessageType, WindowProxy} from 'chrome://new-tab-page/new_tab_page.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
+import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import type {TestMock} from 'chrome://webui-test/test_mock.js';
 import {eventToPromise, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
@@ -63,6 +63,23 @@ suite('NewTabPageLeftHandSideTest', () => {
   function getExpandedIframe(): IframeElement|null {
     return leftHandSide.shadowRoot.querySelector<IframeElement>('#expanded');
   }
+
+  test('updates color-scheme on isDark changes', async () => {
+    await createLeftHandSide();
+
+    const iframe = getExpandedIframe()!;
+    assertEquals('light', getComputedStyle(iframe).colorScheme);
+
+    leftHandSide.isDark = true;
+    await microtasksFinished();
+    assertTrue(leftHandSide.hasAttribute('is-dark'));
+    assertEquals('dark', getComputedStyle(iframe).colorScheme);
+
+    leftHandSide.isDark = false;
+    await microtasksFinished();
+    assertFalse(leftHandSide.hasAttribute('is-dark'));
+    assertEquals('light', getComputedStyle(iframe).colorScheme);
+  });
 
   test('renders folded rail when hybrid is enabled', async () => {
     loadTimeData.overrideValues({enableThreadsRailHybrid: true});
@@ -293,5 +310,70 @@ suite('NewTabPageLeftHandSideTest', () => {
     });
 
     assertEquals(0, windowProxy.getCallCount('navigate'));
+  });
+
+  test('posts NTP_LHS_SET_THEME message on theme change', async () => {
+    await createLeftHandSide();
+    leftHandSide.isDark = true;
+    leftHandSide.style.setProperty(
+        '--color-new-tab-page-threads-rail-primary-font',
+        'rgba(31, 31, 31, 1)');
+    leftHandSide.style.setProperty(
+        '--color-new-tab-page-threads-rail-background',
+        'rgba(241, 243, 244, 1)');
+
+    ColorChangeUpdater.forDocument().eventTarget.dispatchEvent(
+        new CustomEvent(COLOR_PROVIDER_CHANGED));
+
+    assertEquals(1, windowProxy.getCallCount('postMessage'));
+    const [iframe, message, targetOrigin] =
+        windowProxy.getArgs('postMessage')[0];
+    assertEquals(
+        getExpandedIframe()!.shadowRoot.querySelector('#iframe'), iframe);
+    assertDeepEquals(
+        {
+          type: NtpLhsMessageType.NTP_LHS_SET_THEME,
+          theme: {
+            primaryFont: 'rgba(31, 31, 31, 1)',
+            railBackground: 'rgba(241, 243, 244, 1)',
+          },
+          isDark: true,
+        },
+        message);
+    assertEquals(EXPANDED_LHS_ORIGIN, targetOrigin);
+  });
+
+  test('posts NTP_LHS_SET_THEME on NTP_LHS_READY', async () => {
+    await createLeftHandSide();
+    leftHandSide.isDark = false;
+    leftHandSide.style.setProperty(
+        '--color-new-tab-page-threads-rail-primary-font',
+        'rgba(31, 31, 31, 1)');
+    leftHandSide.style.setProperty(
+        '--color-new-tab-page-threads-rail-background',
+        'rgba(241, 243, 244, 1)');
+
+    postLhsMessage({
+      type: NtpLhsMessageType.NTP_LHS_READY,
+      width: 320,
+    });
+    await microtasksFinished();
+
+    assertEquals(1, windowProxy.getCallCount('postMessage'));
+    const [iframe, message, targetOrigin] =
+        windowProxy.getArgs('postMessage')[0];
+    assertEquals(
+        getExpandedIframe()!.shadowRoot.querySelector('#iframe'), iframe);
+    assertDeepEquals(
+        {
+          type: NtpLhsMessageType.NTP_LHS_SET_THEME,
+          theme: {
+            primaryFont: 'rgba(31, 31, 31, 1)',
+            railBackground: 'rgba(241, 243, 244, 1)',
+          },
+          isDark: false,
+        },
+        message);
+    assertEquals(EXPANDED_LHS_ORIGIN, targetOrigin);
   });
 });

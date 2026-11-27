@@ -1351,6 +1351,22 @@ HeadingClassifier GetHeadingClassifier(
   return HeadingClassifier::kNone;
 }
 
+// Returns how `run_context` classifies as a heading: `kFontSize` if its font
+// size exceeds the heading threshold, otherwise its styled classifier.
+HeadingClassifier ClassifyHeading(
+    const TextRunContext& run_context,
+    const HeuristicPageProperties& page_properties) {
+  if (page_properties.heading_font_size_threshold > 0 &&
+      run_context.run->style.font_size >
+          page_properties.heading_font_size_threshold) {
+    return HeadingClassifier::kFontSize;
+  }
+  if (!features::IsPdfAccessibilityHeuristicEnhancementsEnabled()) {
+    return HeadingClassifier::kNone;
+  }
+  return GetHeadingClassifier(run_context, page_properties);
+}
+
 void PromoteNodeToHeading(ui::AXNodeData* block_node, int heading_level) {
   CHECK(IsValidHeadingLevel(heading_level));
   block_node->role = ax::mojom::Role::kHeading;
@@ -1657,9 +1673,12 @@ ListMarkerForm ClassifyNestedOnlyMarker(std::string_view text,
 }
 
 // Returns how a list marker at `x` should be placed relative to `levels`.
+// `is_ordered` is whether the marker is ordered; a level of the other kind
+// cannot accept it, so it starts a new list instead.
 ListPlacement GetListPlacement(base::span<const ListLevel> levels,
                                float x,
-                               float max_nest) {
+                               float max_nest,
+                               bool is_ordered) {
   if (levels.empty() || x > levels.back().marker_x + max_nest) {
     return {.kind = ListPlacementKind::kNewList};
   }
@@ -1674,6 +1693,17 @@ ListPlacement GetListPlacement(base::span<const ListLevel> levels,
   while (target_level > 0 &&
          x < levels[target_level].marker_x - kListIndentThreshold) {
     --target_level;
+  }
+
+  // A marker can't join a level of the other kind (ordered vs. unordered), so
+  // start a new list at the same depth instead: a new top-level list, or a new
+  // sublist in the parent level's last item.
+  if (levels[target_level].last_ordered_value.has_value() != is_ordered) {
+    if (target_level == 0) {
+      return {.kind = ListPlacementKind::kNewList};
+    }
+    return {.kind = ListPlacementKind::kNested,
+            .level_index = target_level - 1};
   }
 
   return {.kind = ListPlacementKind::kExistingLevel,
@@ -1812,7 +1842,7 @@ ListMarkerKind ClassifyListMarker(const PageLayoutData& layout,
       GetListItemFontSize(run_context, ordered_kind.form);
   const float max_nest = kMaxListNestingIndentEm * item_font_size;
   const ListPlacement placement =
-      GetListPlacement(list_levels, run_x, max_nest);
+      GetListPlacement(list_levels, run_x, max_nest, /*is_ordered=*/true);
 
   const int value = *ordered_kind.ordered_value;
   if (placement.kind == ListPlacementKind::kExistingLevel) {
@@ -2628,41 +2658,24 @@ PdfAccessibilityTreeBuilderHeuristic::CreateBlockLevelNode(
       header_footer_ax_role.has_value();
 
   if (!is_page_number_in_margin) {
-    float font_size = run_context.run->style.font_size;
-    if (page_properties.heading_font_size_threshold > 0 &&
-        font_size > page_properties.heading_font_size_threshold) {
-      int heading_level = kDefaultHeadingLevel;
+    const HeadingClassifier classifier =
+        ClassifyHeading(run_context, page_properties);
+    if (classifier != HeadingClassifier::kNone) {
+      int heading_level = classifier == HeadingClassifier::kFontSize
+                              ? kDefaultHeadingLevel
+                              : kLargestStyledHeadingLevel;
       if (features::IsPdfAccessibilityHeuristicEnhancementsEnabled()) {
-        int heuristic_heading_level = GetHeadingLevelFromSize(
-            page_properties.heading_font_size_mapping, font_size);
+        int heuristic_heading_level =
+            GetHeadingLevelFromSize(page_properties.heading_font_size_mapping,
+                                    run_context.run->style.font_size);
         if (IsValidHeadingLevel(heuristic_heading_level)) {
           heading_level = heuristic_heading_level;
         }
       }
       PromoteNodeToHeading(block_node, heading_level);
       result.node = block_node;
-      result.heading_classifier = HeadingClassifier::kFontSize;
+      result.heading_classifier = classifier;
       return result;
-    }
-
-    // Use other styling information to classify headings for text that is
-    // smaller than the heading_font_size_threshold.
-    if (features::IsPdfAccessibilityHeuristicEnhancementsEnabled()) {
-      HeadingClassifier classifier =
-          GetHeadingClassifier(run_context, page_properties);
-
-      if (classifier != HeadingClassifier::kNone) {
-        int heading_level = kLargestStyledHeadingLevel;
-        int heuristic_heading_level = GetHeadingLevelFromSize(
-            page_properties.heading_font_size_mapping, font_size);
-        if (IsValidHeadingLevel(heuristic_heading_level)) {
-          heading_level = heuristic_heading_level;
-        }
-        PromoteNodeToHeading(block_node, heading_level);
-        result.node = block_node;
-        result.heading_classifier = classifier;
-        return result;
-      }
     }
   }
 
@@ -2686,8 +2699,9 @@ ui::AXNodeData* PdfAccessibilityTreeBuilderHeuristic::CreateListItemNode(
   const float marker_x = run_context.run->bounds.x();
   const float max_nest = kMaxListNestingIndentEm *
                          GetListItemFontSize(run_context, marker_kind.form);
-  const ListPlacement placement = GetListPlacement(levels, marker_x, max_nest);
   const std::optional<int>& ordered_value = marker_kind.ordered_value;
+  const ListPlacement placement = GetListPlacement(
+      levels, marker_x, max_nest, /*is_ordered=*/ordered_value.has_value());
   const char* list_tag = ordered_value ? "ol" : "ul";
 
   switch (placement.kind) {

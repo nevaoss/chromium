@@ -65,11 +65,11 @@ To keep each CL small and independently reviewable:
 - [x] **Milestone 1: Enforce Precondition `C0` in
   `ManifestManagerHost::ParseManifestFromString`**
 - [x] **Milestone 2: Make `Manifest?` Nullable in `ManifestManager` Mojo IPCs**
-- [ ] **Milestone 3: Implement `blink::Manifest` Class, `Builder`, Nested Struct
+- [x] **Milestone 3: Implement `blink::Manifest` Class, `Builder`, Nested Struct
   Traits, and Bridges**
-- [ ] **Milestone 4: Switch `ManifestManagerHost` Internals to `blink::Manifest`
+- [x] **Milestone 4: Switch `ManifestManagerHost` Internals to `blink::Manifest`
   and Contextual Checks `C1`–`C5`**
-- [ ] **Milestone 5: Migrate `ContentBrowserClient::MaybeOverrideManifest` and
+- [x] **Milestone 5: Migrate `ContentBrowserClient::MaybeOverrideManifest` and
   Embedder Overrides**
 - [ ] **Milestone 6: Migrate `RequestManifestDebugInfo` and DevTools
   `PageHandler`**
@@ -91,8 +91,21 @@ ______________________________________________________________________
 
 ## 4. Surprises & Discoveries
 
-_(Document unexpected behaviors, optimizations, or bugs discovered during
-implementation)_
+- **Typemapped Mojom Structs:** In `manifest.mojom`, several types
+  (`DisplayOverrideItem`, `ManifestImageResource`, `ManifestShortcutItem`,
+  `ManifestShareTarget`, `ManifestRelatedApplication`, `ManifestLaunchHandler`,
+  `ManifestTranslationItem`, and `ManifestTabStrip`) are already mapped to
+  `blink::Manifest` nested types in `third_party/blink/public/mojom/BUILD.gn`.
+  Only the 8 new nested structs (`Screenshot`, `FileHandler`, `ProtocolHandler`,
+  `ScopeExtension`, `LockScreen`, `NoteTaking`, `MigrateFrom`, `MigrateTo`)
+  required new `StructTraits` and conversion in temporary bridges.
+- **Default Display Mode:** In `ManifestParser` and Mojo's `Manifest::New()`,
+  `display` defaults to `kUndefined`, which is accurately mirrored by
+  `Manifest::CreateDefault` and `Builder`.
+- **Manifest Constructor:** Kept `Manifest()` default constructor private with
+  `friend class Builder;` to construct `Manifest` inside `Builder::Build()`
+  safely without exposing default construction to arbitrary callers or violating
+  `mojo::DefaultConstruct::Tag` privacy.
 
 ______________________________________________________________________
 

@@ -56,7 +56,7 @@ import org.chromium.chrome.browser.pdf.PdfFragmentViewTrackerImpl;
 import org.chromium.chrome.browser.pdf.PdfInfo;
 import org.chromium.chrome.browser.pdf.PdfPage;
 import org.chromium.chrome.browser.price_tracking.PriceDropNotificationManagerFactory;
-import org.chromium.chrome.browser.printing.PrintHelper;
+import org.chromium.chrome.browser.printing.PrintingDelegate;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.recent_tabs.RecentTabsManager;
 import org.chromium.chrome.browser.recent_tabs.RecentTabsPage;
@@ -345,7 +345,8 @@ public class NativePageFactory {
                             () -> BookmarkModel.getForProfile(profile),
                             mActivity,
                             mActivity.getComponentName(),
-                            /* multiInstanceManager= */ null),
+                            /* multiInstanceManager= */ null,
+                            /* currentTabSupplier= */ null),
                     new BookmarkManagerOpenerImpl(),
                     PriceDropNotificationManagerFactory.create(profile),
                     SigninAndHistorySyncActivityLauncherImpl.get(),
@@ -737,7 +738,10 @@ public class NativePageFactory {
 
         @Override
         public void print() {
-            PrintHelper.printTab(mTab);
+            PrintingDelegate printingDelegate = PrintingDelegate.getInstance();
+            if (printingDelegate != null) {
+                printingDelegate.print(mTab);
+            }
         }
 
         @Override

@@ -342,6 +342,7 @@ public abstract class ChromeFeatureList {
     public static final String APP_SPECIFIC_HISTORY = "AppSpecificHistory";
     public static final String APP_SPECIFIC_HISTORY_VIEW_INTENT = "AppSpecificHistoryViewIntent";
     public static final String ARCHIVED_TABS_TEARDOWN = "ArchivedTabsTeardown";
+    public static final String ASYNC_FIRST_FRAME_DRAWN = "AsyncFirstFrameDrawn";
     public static final String ASYNC_NOTIFICATION_MANAGER = "AsyncNotificationManager";
     public static final String ASYNC_NOTIFICATION_MANAGER_FOR_DOWNLOAD =
             "AsyncNotificationManagerForDownload";
@@ -607,6 +608,7 @@ public abstract class ChromeFeatureList {
             "FacilitatedPaymentsEnableA2APayment";
     public static final String FEED_AUDIO_OVERVIEWS = "FeedAudioOverviews";
     public static final String FEED_CONTAINMENT = "FeedContainment";
+    public static final String FEED_CONTAINMENT_CLIP_FIRST_CARD = "FeedContainmentClipFirstCard";
     public static final String FEED_IMAGE_MEMORY_CACHE_SIZE_PERCENTAGE =
             "FeedImageMemoryCacheSizePercentage";
     public static final String FEED_LOADING_PLACEHOLDER = "FeedLoadingPlaceholder";
@@ -614,7 +616,6 @@ public abstract class ChromeFeatureList {
             "FeedNullItemAnimatorOnScrollRestore";
     public static final String FILLING_PASSWORDS_FROM_ANY_ORIGIN = "FillingPasswordsFromAnyOrigin";
     public static final String FIX_TOOLBAR_HAIRLINE_REGRESSION = "FixToolbarHairlineRegression";
-    public static final String FLUID_RESIZE = "FluidResize";
     public static final String FLYOUT_IN_BOOKMARKS_BAR = "FlyoutInBookmarksBar";
     public static final String FORCE_TRANSLUCENT_NOTIFICATION_TRAMPOLINE =
             "ForceTranslucentNotificationTrampoline";
@@ -926,7 +927,7 @@ public abstract class ChromeFeatureList {
                             Map.entry(ACCOUNT_FOR_SUPPRESSED_KEYBOARD_INSETS, true),
                             Map.entry(ANDROID_THEME_MODULE, true),
                             Map.entry(ANDROID_THEME_RESOURCE_PROVIDER, false),
-                            Map.entry(DEVICE_REAUTH_REFACTOR, false),
+                            Map.entry(DEVICE_REAUTH_REFACTOR, true),
                             Map.entry(GMSCORE_BIND_SERVICE_OPTIMIZATION, true),
                             Map.entry(NTP_AURORA, true),
                             Map.entry(NTP_AURORA_V2, true),
@@ -1025,6 +1026,8 @@ public abstract class ChromeFeatureList {
             newCachedFlag(APP_SPECIFIC_HISTORY_VIEW_INTENT, true);
     public static final CachedFlag sArchivedTabsTeardown =
             newCachedFlag(ARCHIVED_TABS_TEARDOWN, /* defaultValue= */ false);
+    public static final CachedFlag sAsyncFirstFrameDrawn =
+            newCachedFlag(ASYNC_FIRST_FRAME_DRAWN, /* defaultValue= */ false);
     public static final CachedFlag sAsyncNotificationManager =
             newCachedFlag(ASYNC_NOTIFICATION_MANAGER, false, true);
     public static final CachedFlag sAsyncNotificationManagerForDownload =
@@ -1240,8 +1243,6 @@ public abstract class ChromeFeatureList {
             newCachedFlag(ENFORCE_INCOGNITO_ISOLATION, /* defaultValue= */ false);
     public static final CachedFlag sFixToolbarHairlineRegression =
             newCachedFlag(FIX_TOOLBAR_HAIRLINE_REGRESSION, /* defaultValue= */ true);
-    public static final CachedFlag sFluidResize =
-            newCachedFlag(FLUID_RESIZE, /* defaultValue= */ true, /* defaultValueInTests= */ true);
     public static final CachedFlag sForceTranslucentNotificationTrampoline =
             newCachedFlag(FORCE_TRANSLUCENT_NOTIFICATION_TRAMPOLINE, false);
     public static final CachedFlag sFullscreenInsetsApiMigration =
@@ -1511,6 +1512,7 @@ public abstract class ChromeFeatureList {
                     sAppSpecificHistory,
                     sAppSpecificHistoryViewIntent,
                     sArchivedTabsTeardown,
+                    sAsyncFirstFrameDrawn,
                     sAsyncNotificationManager,
                     sAutomotiveBackButtonBarStreamline,
                     sAvoidRecreateOnTouchscreenOrColorModeChange,
@@ -1596,7 +1598,6 @@ public abstract class ChromeFeatureList {
                     sEnableXAxisActivityTransition,
                     sEnforceIncognitoIsolation,
                     sFixToolbarHairlineRegression,
-                    sFluidResize,
                     sForceTranslucentNotificationTrampoline,
                     sFullscreenInsetsApiMigration,
                     sFullscreenInsetsApiMigrationOnAutomotive,
@@ -1868,6 +1869,8 @@ public abstract class ChromeFeatureList {
     public static final String NTP_AURORA_PADDING_STYLE = "padding_style";
     public static final String NTP_AURORA_V2_ACTION_CHIPS = "action_chips";
     public static final String NTP_AURORA_V2_LAYOUT_TYPE = "layout_type";
+    public static final String USE_P_LINK_IN_HELP_HOMEPAGE_CONTEXTS =
+            "extra_homepage_help_contexts";
     public static final String XPLAT_SYNCED_SETUP_THEMES_OBSERVATION_ONLY = "observation_only";
 
     // keep-sorted end
@@ -1903,6 +1906,7 @@ public abstract class ChromeFeatureList {
                             Map.ofEntries(
                                     Map.entry(NTP_AURORA_V2_ACTION_CHIPS, "0"),
                                     Map.entry(NTP_AURORA_V2_LAYOUT_TYPE, "0"))),
+                    Map.entry(USE_P_LINK_IN_HELP, Map.of(USE_P_LINK_IN_HELP_HOMEPAGE_CONTEXTS, "")),
                     Map.entry(
                             XPLAT_SYNCED_SETUP_THEMES,
                             Map.of(XPLAT_SYNCED_SETUP_THEMES_OBSERVATION_ONLY, "false")));
@@ -1940,6 +1944,9 @@ public abstract class ChromeFeatureList {
                                     Map.ofEntries(
                                             Map.entry(NTP_AURORA_V2_ACTION_CHIPS, "1"),
                                             Map.entry(NTP_AURORA_V2_LAYOUT_TYPE, "0"))),
+                            Map.entry(
+                                    USE_P_LINK_IN_HELP,
+                                    Map.of(USE_P_LINK_IN_HELP_HOMEPAGE_CONTEXTS, "")),
                             Map.entry(
                                     XPLAT_SYNCED_SETUP_THEMES,
                                     Map.of(XPLAT_SYNCED_SETUP_THEMES_OBSERVATION_ONLY, "false")));

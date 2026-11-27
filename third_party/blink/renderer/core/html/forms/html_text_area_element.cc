@@ -485,6 +485,7 @@ void HTMLTextAreaElement::SubtreeHasChanged() {
     GetDocument().GetPage()->GetChromeClient().DidClearValueInTextField(*this);
   }
   GetDocument().GetPage()->GetChromeClient().DidChangeValueInTextField(*this);
+  GetDocument().DidHaveFormEdit();
 }
 
 void HTMLTextAreaElement::HandleBeforeTextInsertedEvent(
@@ -886,8 +887,7 @@ HTMLElement* HTMLTextAreaElement::UpdatePlaceholderText() {
   if (!placeholder) {
     auto* new_element = MakeGarbageCollected<HTMLDivElement>(GetDocument());
     placeholder = new_element;
-    placeholder->SetShadowPseudoId(
-        shadow_element_names::kPseudoInputPlaceholder);
+    UpdatePlaceholderShadowPseudoId(*placeholder);
     placeholder->setAttribute(html_names::kIdAttr,
                               shadow_element_names::kIdPlaceholder);
     placeholder->SetInlineStyleProperty(

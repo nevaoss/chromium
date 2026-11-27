@@ -95,10 +95,18 @@ linux_memory_builder(
         ),
     ),
     gn_args = gn_args.config(
+        args = {
+            # ASan test binary links are too large to run many concurrently.
+            "concurrent_links": 2,
+        },
         configs = [
             "asan",
             "lsan",
             "fail_on_san_warnings",
+            # Sanitizer builds set enable_fuzztest_fuzz by default, which adds
+            # coverage instrumentation to all code. CI never uses --fuzz, so
+            # disable it to reduce test runtime.
+            "no_fuzztest_fuzz",
             "release_builder",
             "dcheck_always_on",
             "minimal_symbols",
@@ -160,13 +168,17 @@ linux_memory_builder(
                     "--gtest_filter=-AXPlatformNodeAuraLinuxTest.AtkComponentScrollTo:AtkUtilAuraLinuxTest.*",
                 ],
             ),
-            "blink_unittests": targets.mixin(
-                # These are very slow on the ASAN trybot for some reason.
-                # crbug.com/1257927
-                swarming = targets.swarming(
-                    shards = 5,
+            "blink_unittests": [
+                targets.mixin(
+                    # These are very slow on the ASAN trybot for some reason.
+                    # crbug.com/1257927
+                    swarming = targets.swarming(
+                        shards = 5,
+                    ),
                 ),
-            ),
+                # TODO(crbug.com/579036960): Remove once e4 failures are fixed.
+                "e2-standard-8",
+            ],
             "browser_tests": targets.mixin(
                 args = [
                     "--test-launcher-filter-file=../../testing/buildbot/filters/linux.asan.browser_tests.filter",
@@ -953,9 +965,17 @@ linux_memory_builder(
         ),
     ),
     gn_args = gn_args.config(
+        args = {
+            # UBSan test binary links are too large to run many concurrently.
+            "concurrent_links": 4,
+        },
         configs = [
             "ubsan_no_recover",
             "fail_on_san_warnings",
+            # Sanitizer builds set enable_fuzztest_fuzz by default, which adds
+            # coverage instrumentation to all code. CI never uses --fuzz, so
+            # disable it to reduce test runtime.
+            "no_fuzztest_fuzz",
             "release_builder",
             "remoteexec",
             "linux",

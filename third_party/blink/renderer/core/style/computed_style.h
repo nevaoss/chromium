@@ -947,6 +947,9 @@ class ComputedStyle final : public ComputedStyleBase {
   // accent-color
   // An empty optional means the accent-color is 'auto'
   std::optional<blink::Color> AccentColorResolved() const;
+  // Returns the color mirrored by AccentColor/AccentColorText, or nullopt when
+  // the keywords should use the system accent color.
+  CORE_EXPORT std::optional<blink::Color> ResolveMirroredAccentColor() const;
 
   // scrollbar-color
   // An empty optional means the scrollbar-color is 'auto'
@@ -3151,6 +3154,10 @@ class ComputedStyleBuilder final : public ComputedStyleBuilderBase {
     return Color().Resolve(blink::Color(), UsedColorScheme());
   }
 
+  // accent-color
+  std::optional<blink::Color> ResolveMirroredAccentColor(
+      mojom::blink::ColorScheme color_scheme) const;
+
   // column-count
   void SetColumnCount(uint16_t c) {
     SetHasAutoColumnCountInternal(false);
@@ -3602,6 +3609,11 @@ class ComputedStyleBuilder final : public ComputedStyleBuilderBase {
     FontDescription description(GetFontDescription());
     description.SetWordSpacing(word_spacing);
     SetFontDescription(description);
+  }
+
+  // -internal-unbounded
+  bool IsUnboundedElementActive() const {
+    return InternalUnbounded() == EInternalUnbounded::kActive;
   }
 
   // z-index

@@ -1,3 +1,5 @@
+              // Defer the click to the next task to ensure the Promise resolves
+              // before the click event triggers iframe unmounting and teardown.
 // Copyright 2026 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -121,12 +123,8 @@ class ContextualTasksLensOverlayControllerInteractiveUiTest
   void SetUpFeatureList() override {
     feature_list_.InitWithFeaturesAndParameters(
         /*enabled_features=*/
-        {{contextual_tasks::kContextualTasks, {}},
-         {contextual_tasks::kContextualTasksForceEntryPointEligibility, {}},
-         {lens::features::kLensOverlayTextSelectionContextMenuEntrypoint,
-          {{"contextualize", "true"}}},
-         {lens::features::kLensSidePanelUnification,
-          {{"allow-signed-out", "true"}}}},
+        {{lens::features::kLensOverlayTextSelectionContextMenuEntrypoint,
+          {{"contextualize", "true"}}}},
         /*disabled_features=*/
         {features::kNonBlockingOsClipboardReads,
          // These tests expect closing the side panel to close Lens sessions in
@@ -861,6 +859,7 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksLensOverlayControllerInteractiveUiTest,
   const GURL page_url =
       embedded_test_server()->GetURL(kDocumentWithNamedElement);
   const DeepQuery kPathToParagraph{"p"};
+  base::HistogramTester histogram_tester;
 
   RunTestSequence(
       // Step 1: Navigate the active tab to a webpage and select text.
@@ -892,18 +891,14 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksLensOverlayControllerInteractiveUiTest,
       WaitForShow(kContextualTasksSidePanelWebViewElementId),
       CheckResult(
           [this]() {
-            return LensSearchController::FromTabWebContents(
-                       browser()->GetTabStripModel()->GetWebContentsAt(0))
-                ->invocation_source();
-          },
-          std::make_optional(
-              lens::LensOverlayInvocationSource::kContentAreaContextMenuText),
-          "Text query was issued from the text selection context menu"),
-      CheckResult(
-          [this]() {
             return SidePanelUI::From(browser())->IsSidePanelShowing();
           },
           true));
+
+  histogram_tester.ExpectUniqueSample(
+      "Lens.Overlay.ContextualTasks.QueryEligibility.ByInvocationSource."
+      "ContentAreaContextMenuText",
+      lens::LensContextualTasksQueryEligibility::kEligible, 1);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -920,12 +915,8 @@ class ContextualTasksLensOverlayEphemeralButtonInteractiveUiTest
   void SetUpFeatureList() override {
     feature_list_.InitWithFeaturesAndParameters(
         /*enabled_features=*/
-        {{contextual_tasks::kContextualTasks, {}},
-         {contextual_tasks::kContextualTasksEphemeralBrandedEntryPoint,
-          {{"ContextualTasksEntryPoint", "toolbar-ephemeral-branded"}}},
-         {contextual_tasks::kContextualTasksForceEntryPointEligibility, {}},
-         {lens::features::kLensSidePanelUnification,
-          {{"allow-signed-out", "true"}}}},
+        {{contextual_tasks::kContextualTasksEphemeralBrandedEntryPoint,
+          {{"ContextualTasksEntryPoint", "toolbar-ephemeral-branded"}}}},
         /*disabled_features=*/{features::kNonBlockingOsClipboardReads});
   }
 };
@@ -992,14 +983,7 @@ class ContextualTasksLensOverlayControllerEligibilityInteractiveUiTest
   }
 
   void SetUpFeatureList() override {
-    feature_list_.InitWithFeaturesAndParameters(
-        /*enabled_features=*/{{contextual_tasks::kContextualTasks, {}},
-                              {contextual_tasks::
-                                   kContextualTasksForceEntryPointEligibility,
-                               {}},
-                              {lens::features::kLensSidePanelUnification,
-                               {{"allow-signed-out", "true"}}}},
-        /*disabled_features=*/{features::kNonBlockingOsClipboardReads});
+    feature_list_.InitAndDisableFeature(features::kNonBlockingOsClipboardReads);
   }
 
   std::unique_ptr<KeyedService> BuildMockAimServiceInstance(
@@ -1107,18 +1091,13 @@ class OmniboxContextualSuggestionInteractiveUiTest
  public:
   void SetUpFeatureList() override {
     feature_list_.InitWithFeaturesAndParameters(
-        /*enabled_features=*/{{contextual_tasks::kContextualTasks, {}},
-                              {contextual_tasks::kContextualTasksContext, {}},
-                              {contextual_tasks::
-                                   kContextualTasksForceEntryPointEligibility,
-                               {}},
+        /*enabled_features=*/{{contextual_tasks::kContextualTasksContext, {}},
                               {lens::features::kLensOverlay, {}},
                               {lens::features::kLensOverlayContextualSearchbox,
                                {}},
                               {omnibox::kWebUIOmniboxAskGAboutThisPage,
                                {{"Omnibox_AskGBypassPrivacyNotice", "true"}}}},
-        /*disabled_features=*/{features::kNonBlockingOsClipboardReads,
-                               lens::features::kLensSidePanelUnification});
+        /*disabled_features=*/{features::kNonBlockingOsClipboardReads});
   }
 };
 
@@ -1156,16 +1135,16 @@ IN_PROC_BROWSER_TEST_P(
             GURL("https://www.google.com/search?q=Help+me+with+this+page"),
             omnibox::AutocompleteMatchType::kSearchSuggest,
             /*is_zero_prefix_suggestion=*/true);
+
+        ASSERT_TRUE(controller->lens_overlay_query_controller());
+        EXPECT_TRUE(controller->lens_overlay_query_controller()
+                        ->HasPermissionForSession());
       }),
       // Verify the Contextual Tasks side panel web view shows.
       WaitForShow(kContextualTasksSidePanelWebViewElementId),
       CheckResult(
           [this]() {
-            auto* controller = LensSearchController::FromTabWebContents(
-                browser()->GetTabStripModel()->GetActiveWebContents());
-            return controller && controller->lens_overlay_query_controller() &&
-                   controller->lens_overlay_query_controller()
-                       ->HasPermissionForSession();
+            return SidePanelUI::From(browser())->IsSidePanelShowing();
           },
           true));
 }
@@ -1187,14 +1166,10 @@ class ContextualTasksContextMenuAskGoogleInteractiveUiTest
   void SetUpFeatureList() override {
     feature_list_.InitWithFeaturesAndParameters(
         /*enabled_features=*/
-        {{contextual_tasks::kContextualTasks, {}},
-         {contextual_tasks::kContextualTasksForceEntryPointEligibility, {}},
-         {contextual_tasks::kEnableContextualTasksPinButtonInToolbar, {}},
+        {{contextual_tasks::kEnableContextualTasksPinButtonInToolbar, {}},
          {lens::features::kLensOverlay, {}},
          {lens::features::kLensOverlayEduActionChip,
           {{"max-shown-count", "5"}}},
-         {lens::features::kLensSidePanelUnification,
-          {{"allow-signed-out", "true"}}},
          {contextual_tasks::kContextualTasksUpdatedEntryPoints,
           {{"ContextualTasksContextMenuShowAskGoogle", "true"},
            {"ContextualTasksContextMenuSubmenu", "false"},
@@ -1485,11 +1460,7 @@ class ContextualTasksContextMenuSubmenuInteractiveUiTest
   void SetUpFeatureList() override {
     feature_list_.InitWithFeaturesAndParameters(
         /*enabled_features=*/
-        {{contextual_tasks::kContextualTasks, {}},
-         {contextual_tasks::kContextualTasksForceEntryPointEligibility, {}},
-         {lens::features::kLensSidePanelUnification,
-          {{"allow-signed-out", "true"}}},
-         {contextual_tasks::kContextualTasksUpdatedEntryPoints,
+        {{contextual_tasks::kContextualTasksUpdatedEntryPoints,
           {{"ContextualTasksContextMenuShowAskGoogle", "true"},
            {"ContextualTasksContextMenuSubmenu", "true"},
            {"ContextualTasksContextMenuRouteAskGoogleToOmnibox", "false"}}}},
@@ -1691,14 +1662,10 @@ class ContextualTasksContextMenuRouteOmniboxInteractiveUiTest
   void SetUpFeatureList() override {
     feature_list_.InitWithFeaturesAndParameters(
         /*enabled_features=*/
-        {{contextual_tasks::kContextualTasks, {}},
-         {contextual_tasks::kContextualTasksForceEntryPointEligibility, {}},
-         {contextual_tasks::kEnableContextualTasksPinButtonInToolbar, {}},
+        {{contextual_tasks::kEnableContextualTasksPinButtonInToolbar, {}},
          {lens::features::kLensOverlay, {}},
          {lens::features::kLensOverlayEduActionChip,
           {{"max-shown-count", "5"}}},
-         {lens::features::kLensSidePanelUnification,
-          {{"allow-signed-out", "true"}}},
          {contextual_tasks::kContextualTasksUpdatedEntryPoints,
           {{"ContextualTasksContextMenuShowAskGoogle", "true"},
            {"ContextualTasksContextMenuSubmenu", "false"},
@@ -1875,9 +1842,7 @@ class ContextualTasksLensRegionChipInteractiveUiTest
   void SetUpFeatureList() override {
     feature_list_.InitWithFeaturesAndParameters(
         /*enabled_features=*/
-        {{contextual_tasks::kContextualTasks, {}},
-         {contextual_tasks::kContextualTasksForceEntryPointEligibility, {}},
-         {contextual_tasks::kEnableContextualTasksPinButtonInToolbar, {}},
+        {{contextual_tasks::kEnableContextualTasksPinButtonInToolbar, {}},
          {contextual_tasks::kContextualTasksRearchitecture, {}},
          {contextual_tasks::kContextualTasksSidePanelRearchitecture, {}},
          {extensions_features::kApiContextualTasksPrivate, {}}},
@@ -2187,7 +2152,7 @@ class ContextualTasksLensRegionChipInteractiveUiTest
             const app = document.querySelector('lens-chip-app');
             const btn = app?.shadowRoot?.querySelector('#closeButton');
             if (btn && !btn.disabled) {
-              btn.click();
+              setTimeout(() => btn.click(), 0);
               resolve(true);
             } else {
               setTimeout(check, 50);
@@ -2268,16 +2233,8 @@ class ContextualTasksLensRegionChipInteractiveUiTest
   }
 };
 
-// TODO(crbug.com/577352347): Flaky timeouts on MSan.
-#if defined(MEMORY_SANITIZER)
-#define MAYBE_OpenOverlaySelectRegionMountChipAndDismiss \
-  DISABLED_OpenOverlaySelectRegionMountChipAndDismiss
-#else
-#define MAYBE_OpenOverlaySelectRegionMountChipAndDismiss \
-  OpenOverlaySelectRegionMountChipAndDismiss
-#endif
 IN_PROC_BROWSER_TEST_F(ContextualTasksLensRegionChipInteractiveUiTest,
-                       MAYBE_OpenOverlaySelectRegionMountChipAndDismiss) {
+                       OpenOverlaySelectRegionMountChipAndDismiss) {
   WaitForTemplateURLServiceToLoad();
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayId);
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kActiveTab);
@@ -2342,16 +2299,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensRegionChipInteractiveUiTest,
       VerifyLensChipMetrics(&histogram_tester, &user_action_tester));
 }
 
-// TODO(crbug.com/577352347): Flaky timeouts on MSan.
-#if defined(MEMORY_SANITIZER)
-#define MAYBE_OpenOverlaySelectRegionSubmitQueryAndDismissChip \
-  DISABLED_OpenOverlaySelectRegionSubmitQueryAndDismissChip
-#else
-#define MAYBE_OpenOverlaySelectRegionSubmitQueryAndDismissChip \
-  OpenOverlaySelectRegionSubmitQueryAndDismissChip
-#endif
 IN_PROC_BROWSER_TEST_F(ContextualTasksLensRegionChipInteractiveUiTest,
-                       MAYBE_OpenOverlaySelectRegionSubmitQueryAndDismissChip) {
+                       OpenOverlaySelectRegionSubmitQueryAndDismissChip) {
   WaitForTemplateURLServiceToLoad();
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayId);
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kActiveTab);

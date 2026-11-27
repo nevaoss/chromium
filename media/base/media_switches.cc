@@ -510,7 +510,7 @@ BASE_FEATURE(kContextMenuSaveVideoFrameAs, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kContextMenuSearchForVideoFrame, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kD3D11VideoDecoderUseSharedHandle,
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Runs the media service in the GPU process on a dedicated thread.
 BASE_FEATURE(kDedicatedMediaServiceThread,
@@ -540,7 +540,7 @@ BASE_FEATURE(kDirectOpusAudioDecoding, base::FEATURE_ENABLED_BY_DEFAULT);
 // ResourceMultiBufferDataProvider (crbug.com/572363265).
 // TODO(crbug.com/572363265): Remove after M158 reaches stable.
 BASE_FEATURE(kDisallowMixedOpaqueMediaResponses,
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Adds an animation to document picture-in-picture resizes.
 BASE_FEATURE(kDocumentPictureInPictureAnimateResize,
@@ -1182,6 +1182,13 @@ const base::FeatureParam<int> kWebRtcVoiceIsolationProcessingFifoSize{
     &kWebRtcVoiceIsolationProcessingFifo, "fifo_size", 10};
 
 #endif  // BUILDFLAG(CHROME_WIDE_ECHO_CANCELLATION)
+
+#if BUILDFLAG(ENABLE_DAV2D_DECODER)
+// Controls whether the Dav2dVideoDecoder is used for AV2 video decoding.
+// Owner: tmathmeyer@chromium.org
+// Expiry: When enabled by default (crbug.com/576731818).
+BASE_FEATURE(kDav2dVideoDecoder, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(ENABLE_DAV2D_DECODER)
 
 #if BUILDFLAG(ENABLE_HEVC_PARSER_AND_HW_DECODER)
 // Enables HEVC MediaRecorder muxer support.

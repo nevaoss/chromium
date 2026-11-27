@@ -2406,18 +2406,58 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerTest,
 }
 
 IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerTest,
-                       OnDistillationStatus_ForwardsToController) {
+                       OnDistillationStatus_AfterOmniboxOpen_LogsResultOnce) {
   base::HistogramTester histogram_tester;
   handler_ = CreateHandler();
-  auto status = read_anything::mojom::DistillationStatus::kSuccess;
-  int word_count = 3001;
   SidePanelOpenTrigger trigger = SidePanelOpenTrigger::kReadAnythingOmniboxChip;
   Activate(true, &trigger);
 
-  handler_->OnDistillationStatus(status, word_count);
+  // A still running distillation has no result yet, so it isn't logged.
+  handler_->OnDistillationStatus(
+      read_anything::mojom::DistillationStatus::kStillRunning, 10);
+  histogram_tester.ExpectTotalCount(
+      "Accessibility.ReadAnything.DistillationStatusAfterOmnibox", 0);
+
+  // The result is only logged once per omnibox open, even after closing.
+  handler_->OnDistillationStatus(
+      read_anything::mojom::DistillationStatus::kSuccess, 3001);
+  handler_->OnDistillationStatus(
+      read_anything::mojom::DistillationStatus::kFailure, 3002);
+  Activate(false);
+  handler_->OnDistillationStatus(
+      read_anything::mojom::DistillationStatus::kFailure, 3003);
+
+  // The result is still logged if Reading Mode is closed before it arrives.
+  Activate(true, &trigger);
+  Activate(false);
+  handler_->OnDistillationStatus(
+      read_anything::mojom::DistillationStatus::kSuccess, 20);
 
   histogram_tester.ExpectUniqueSample(
-      "Accessibility.ReadAnything.DistillationStatusAfterOmnibox", status, 1);
+      "Accessibility.ReadAnything.DistillationStatusAfterOmnibox",
+      read_anything::mojom::DistillationStatus::kSuccess, 2);
+  histogram_tester.ExpectTotalCount(
+      "Accessibility.ReadAnything.WordsDistilledAfterOmnibox", 2);
+  histogram_tester.ExpectBucketCount(
+      "Accessibility.ReadAnything.WordsDistilledAfterOmnibox", 3001, 1);
+  histogram_tester.ExpectBucketCount(
+      "Accessibility.ReadAnything.WordsDistilledAfterOmnibox", 20, 1);
+}
+
+IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerTest,
+                       OnDistillationStatus_AfterOtherOpenTrigger_DoesNotLog) {
+  base::HistogramTester histogram_tester;
+  handler_ = CreateHandler();
+  SidePanelOpenTrigger trigger = SidePanelOpenTrigger::kReadAnythingContextMenu;
+  Activate(true, &trigger);
+
+  handler_->OnDistillationStatus(
+      read_anything::mojom::DistillationStatus::kSuccess, 3001);
+
+  histogram_tester.ExpectTotalCount(
+      "Accessibility.ReadAnything.DistillationStatusAfterOmnibox", 0);
+  histogram_tester.ExpectTotalCount(
+      "Accessibility.ReadAnything.WordsDistilledAfterOmnibox", 0);
 }
 
 IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerTest,
@@ -3372,7 +3412,9 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerDistillerRefactorTest,
   extensions::mime_handler::MimeHandlerStreamManager::Create(contents);
   handler_->OnActiveAXTreeIDChanged();
 
-  // Attempt to make a readability distillation
+  // Attempt to make a readability distillation. With the refactor, the renderer
+  // owns distillation state transitions.
+  EXPECT_CALL(page_, OnReadabilityDistillationStateChanged).Times(0);
   base::test::TestFuture<read_anything::mojom::ReadabilityDistillationResult,
                          const std::string&, const std::string&>
       future;
@@ -3389,6 +3431,7 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerDistillerRefactorTest,
   EXPECT_TRUE(title.empty());
   EXPECT_TRUE(content.empty());
   EXPECT_FALSE(handler_->dom_distiller_content().has_value());
+  page_.receiver_.FlushForTesting();
 
   contents->RemoveUserData(
       extensions::mime_handler::MimeHandlerStreamManager::UserDataKey());
@@ -3405,16 +3448,9 @@ IN_PROC_BROWSER_TEST_F(
       WindowOpenDisposition::kCurrentTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
 
-  {
-    testing::InSequence s;
-    EXPECT_CALL(page_, OnReadabilityDistillationStateChanged(
-                           read_anything::mojom::ReadAnythingDistillationState::
-                               kDistillationInProgress));
-    EXPECT_CALL(page_, OnReadabilityDistillationStateChanged(
-                           read_anything::mojom::ReadAnythingDistillationState::
-                               kDistillationWithContent));
-  }
-  // With the refactor, content is returned via the callback only.
+  // With the refactor, distillation state is owned by the renderer and content
+  // is returned via the callback only.
+  EXPECT_CALL(page_, OnReadabilityDistillationStateChanged).Times(0);
   EXPECT_CALL(page_, UpdateContent).Times(0);
 
   base::test::TestFuture<read_anything::mojom::ReadabilityDistillationResult,
@@ -3503,16 +3539,9 @@ IN_PROC_BROWSER_TEST_F(
       WindowOpenDisposition::kCurrentTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
 
-  {
-    testing::InSequence s;
-    EXPECT_CALL(page_, OnReadabilityDistillationStateChanged(
-                           read_anything::mojom::ReadAnythingDistillationState::
-                               kDistillationInProgress));
-    EXPECT_CALL(page_, OnReadabilityDistillationStateChanged(
-                           read_anything::mojom::ReadAnythingDistillationState::
-                               kDistillationEmpty));
-  }
-  // With the refactor, content is returned via the callback only.
+  // With the refactor, distillation state is owned by the renderer and content
+  // is returned via the callback only.
+  EXPECT_CALL(page_, OnReadabilityDistillationStateChanged).Times(0);
   EXPECT_CALL(page_, UpdateContent).Times(0);
 
   base::test::TestFuture<read_anything::mojom::ReadabilityDistillationResult,
@@ -3539,9 +3568,7 @@ IN_PROC_BROWSER_TEST_F(
       browser(), GURL("about:blank"), WindowOpenDisposition::kCurrentTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
 
-  EXPECT_CALL(page_, OnReadabilityDistillationStateChanged(
-                         read_anything::mojom::ReadAnythingDistillationState::
-                             kDistillationEmpty));
+  EXPECT_CALL(page_, OnReadabilityDistillationStateChanged).Times(0);
 
   base::test::TestFuture<read_anything::mojom::ReadabilityDistillationResult,
                          const std::string&, const std::string&>
@@ -3848,10 +3875,8 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerDistillerRefactorTest,
       WindowOpenDisposition::kCurrentTab,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
 
-  // Only kDistillationEmpty is sent; any other state change is unexpected.
-  EXPECT_CALL(page_, OnReadabilityDistillationStateChanged(
-                         read_anything::mojom::ReadAnythingDistillationState::
-                             kDistillationEmpty));
+  // With the refactor, the renderer owns distillation state transitions.
+  EXPECT_CALL(page_, OnReadabilityDistillationStateChanged).Times(0);
   EXPECT_CALL(page_, UpdateContent).Times(0);
 
   handler_ = CreateHandler();

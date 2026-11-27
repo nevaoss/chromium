@@ -127,6 +127,7 @@
 #include "crypto/crypto_buildflags.h"
 #include "extensions/buildflags/buildflags.h"
 #include "google_apis/gaia/gaia_id.h"
+#include "media/base/media_switches.h"
 #include "media/media_buildflags.h"
 #include "net/base/url_util.h"
 #include "net/log/net_log.h"
@@ -2322,6 +2323,61 @@ TEST_F(ChromeContentBrowserClientTest,
   client.OverrideWebPreferences(web_contents, *web_contents->GetSiteInstance(),
                                 &web_prefs);
   EXPECT_EQ(22, web_prefs.default_font_size);
+}
+
+// Tests that the autoplay policy of a WebContents in the Top Chrome WebUI
+// profile is computed from the user profile set for it.
+TEST_F(ChromeContentBrowserClientTest,
+       TopChromeWebUIProfileAutoplayPolicyUsesUserProfile) {
+  base::test::ScopedFeatureList scoped_feature_list(
+      media::kAutoplayDisableSettings);
+  base::test::ScopedCommandLine scoped_command_line;
+  scoped_command_line.GetProcessCommandLine()->AppendSwitchASCII(
+      switches::kAutoplayPolicy,
+      switches::autoplay::kDocumentUserActivationRequiredPolicy);
+  webui::ScopedTopChromeWebUIProfileForTesting scoped_profile;
+
+  content::TestWebContentsFactory web_contents_factory;
+  content::WebContents* web_contents =
+      web_contents_factory.CreateWebContents(webui::GetTopChromeWebUIProfile());
+  webui::SetUserProfile(web_contents, profile());
+  // The user profile allows autoplay without a user gesture.
+  profile()->GetPrefs()->SetBoolean(prefs::kBlockAutoplayEnabled, false);
+
+  ChromeContentBrowserClient client;
+  blink::web_pref::WebPreferences web_prefs;
+  client.OverrideWebPreferences(web_contents, *web_contents->GetSiteInstance(),
+                                &web_prefs);
+  EXPECT_EQ(blink::mojom::AutoplayPolicy::kNoUserGestureRequired,
+            web_prefs.autoplay_policy);
+}
+
+// Tests that the user BrowserContext of a WebContents in the Top Chrome WebUI
+// profile is the user profile set for it.
+TEST_F(ChromeContentBrowserClientTest,
+       TopChromeWebUIProfileUserBrowserContext) {
+  webui::ScopedTopChromeWebUIProfileForTesting scoped_profile;
+  Profile* top_chrome_webui_profile = webui::GetTopChromeWebUIProfile();
+  ASSERT_TRUE(top_chrome_webui_profile);
+
+  content::TestWebContentsFactory web_contents_factory;
+  content::WebContents* web_contents =
+      web_contents_factory.CreateWebContents(top_chrome_webui_profile);
+  content::RenderFrameHost& rfh = *web_contents->GetPrimaryMainFrame();
+  ChromeContentBrowserClient client;
+
+  // Without a user profile, the BrowserContext of the frame is used.
+  EXPECT_EQ(top_chrome_webui_profile, client.GetUserBrowserContext(rfh));
+
+  // With a user profile, the user profile is used.
+  webui::SetUserProfile(web_contents, profile());
+  EXPECT_EQ(profile(), client.GetUserBrowserContext(rfh));
+
+  // A frame in another profile uses its own BrowserContext.
+  content::WebContents* other_web_contents =
+      web_contents_factory.CreateWebContents(profile());
+  EXPECT_EQ(profile(), client.GetUserBrowserContext(
+                           *other_web_contents->GetPrimaryMainFrame()));
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 

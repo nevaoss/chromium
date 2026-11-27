@@ -136,6 +136,7 @@ _CONFIG = [
             'base::Milliseconds',
             'base::Minutes',
             'base::Nanoseconds',
+            'base::NoDestructor',
             'base::NotFatalUntil',
             'base::NotNullTag',
             'base::optional_ref',
@@ -2467,7 +2468,12 @@ _CONFIG = [
             'third_party/blink/renderer/core/paint/theme_painter.cc',
             'third_party/blink/renderer/core/paint/theme_painter_default.cc',
         ],
-        'allowed': ['ui::NativeTheme.*', 'ui::color_utils.*', 'ui::kColor.*'],
+        'allowed': [
+            'ui::NativeTheme.*',
+            'ui::color_utils.*',
+            'ui::kColor.*',
+            'color_utils::IsDark',
+        ],
     },
     {
         'paths': [

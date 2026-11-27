@@ -2,12 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert, assertNotReachedCase} from 'chrome://resources/js/assert.js';
 
 import {loadTimeData} from './i18n_setup.js';
 import {pageVisibility} from './page_visibility.js';
 import type {SettingsRoutes} from './router.js';
 import {Route, Router} from './router.js';
+
+// LINT.IfChange(AiSettingsSection)
+export enum AiSettingsSection {
+  NONE = '',
+  GEMINI = 'gemini',
+  GEMINI_ENTERPRISE = 'geminiEnterprise',
+}
+// LINT.ThenChange(//chrome/browser/glic/public/glic_provider_spec.h:AiSettingsSection)
 
 /**
  * Add all of the child routes that originate from the privacy route,
@@ -182,20 +190,26 @@ function createRoutes(): SettingsRoutes {
     if (loadTimeData.getBoolean('enableAiModeSearchSetting')) {
       r.AI_MODE_SEARCH = r.AI.createChild('/ai/aiModeSearch');
     }
-    if (loadTimeData.getBoolean('showHistorySearchControl')) {
-      r.HISTORY_SEARCH = r.AI.createChild('/ai/historySearch');
-    }
     if (loadTimeData.getBoolean('showComposeControl')) {
       r.OFFER_WRITING_HELP = r.AI.createChild('/ai/helpMeWrite');
     }
-    if (loadTimeData.getBoolean('showGlicSettings')) {
-      r.GEMINI = r.AI.createChild('/ai/gemini');
-      if (loadTimeData.getBoolean('actorLoginFederatedLoginSupportEnabled')) {
-        r.GEMINI_LOGIN = r.GEMINI.createChild('/ai/gemini/login');
-      }
-    }
-    if (loadTimeData.getBoolean('showGeicSettings')) {
-      r.GEMINI_ENTERPRISE = r.AI.createChild('/ai/geminienterprise');
+    const aiSettingsSection = loadTimeData.getString(
+        'aiSettingsSection') as AiSettingsSection;
+    switch (aiSettingsSection) {
+      case AiSettingsSection.NONE:
+        break;
+      case AiSettingsSection.GEMINI:
+        r.GEMINI = r.AI.createChild('/ai/gemini');
+        if (loadTimeData.getBoolean(
+                'actorLoginFederatedLoginSupportEnabled')) {
+          r.GEMINI_LOGIN = r.GEMINI.createChild('/ai/gemini/login');
+        }
+        break;
+      case AiSettingsSection.GEMINI_ENTERPRISE:
+        r.GEMINI_ENTERPRISE = r.AI.createChild('/ai/geminienterprise');
+        break;
+      default:
+        assertNotReachedCase(aiSettingsSection);
     }
     if (loadTimeData.getBoolean('showAiSuggestionsControl')) {
       r.AI_SUGGESTIONS = r.AI.createChild('/ai/suggestions');
@@ -209,6 +223,11 @@ function createRoutes(): SettingsRoutes {
     if (loadTimeData.getBoolean('showDictationControl')) {
       r.DICTATION = r.AI.createChild('/ai/dictation');
     }
+    // <if expr="_google_chrome">
+    if (loadTimeData.getBoolean('showOnDeviceAiAdvancedSettings')) {
+      r.ON_DEVICE_AI = r.AI.createChild('/ai/onDeviceAi');
+    }
+    // </if>
   }
 
   if (visibility.appearance !== false) {

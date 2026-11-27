@@ -2380,15 +2380,14 @@ void TabStripModel::RotateFocusedGroup(bool forward) {
 
   std::optional<tab_groups::TabGroupId> current_focused_group =
       GetFocusedGroup();
-  if (current_focused_group.has_value()) {
-    if (IsEphemeralTabGroup(current_focused_group.value())) {
-      return;
-    }
+  if (!current_focused_group.has_value() ||
+      IsEphemeralTabGroup(current_focused_group.value())) {
+    return;
   }
 
   std::vector<tab_groups::TabGroupId> groups_in_order =
       group_model_->ListTabGroups();
-  if (groups_in_order.empty()) {
+  if (groups_in_order.size() <= 1) {
     return;
   }
 
@@ -2396,30 +2395,18 @@ void TabStripModel::RotateFocusedGroup(bool forward) {
     return group_model_->GetTabGroup(id)->ListTabs().start();
   });
 
-  if (!current_focused_group.has_value()) {
-    EnterFocusMode(forward ? groups_in_order.front() : groups_in_order.back());
-    return;
-  }
-
   auto it = std::ranges::find(groups_in_order, *current_focused_group);
   if (it == groups_in_order.end()) {
-    ExitFocusMode();
     return;
   }
 
   if (forward) {
     auto next_it = std::next(it);
-    if (next_it != groups_in_order.end()) {
-      EnterFocusMode(*next_it);
-    } else {
-      ExitFocusMode();
-    }
+    EnterFocusMode(next_it != groups_in_order.end() ? *next_it
+                                                    : groups_in_order.front());
   } else {
-    if (it != groups_in_order.begin()) {
-      EnterFocusMode(*std::prev(it));
-    } else {
-      ExitFocusMode();
-    }
+    EnterFocusMode(it != groups_in_order.begin() ? *std::prev(it)
+                                                 : groups_in_order.back());
   }
 }
 
@@ -3094,7 +3081,7 @@ void TabStripModel::ExecuteContextMenuCommand(int context_index,
       base::UmaHistogramCounts1000(
           "Tab.ContextMenu.ToggleSiteMuted.SelectedTabsCount",
           selection_model_.size());
-      const bool mute = WillContextMenuMuteSites(context_index);
+      const bool mute = WillContextMenuMuteSites(context_tab);
       if (mute) {
         base::RecordAction(
             UserMetricsAction("SoundContentSetting.MuteBy.TabStrip"));
@@ -3102,7 +3089,7 @@ void TabStripModel::ExecuteContextMenuCommand(int context_index,
         base::RecordAction(
             UserMetricsAction("SoundContentSetting.UnmuteBy.TabStrip"));
       }
-      SetSitesMuted(GetIndicesForCommand(context_index), mute);
+      SetSitesMuted(GetTabsForCommand(context_tab), mute);
       break;
     }
 
@@ -3622,8 +3609,8 @@ void TabStripModel::ExecuteCloseTabsCommand(
   }
 }
 
-bool TabStripModel::WillContextMenuMuteSites(int index) {
-  return !AreAllSitesMuted(*this, GetIndicesForCommand(index));
+bool TabStripModel::WillContextMenuMuteSites(tabs::TabHandle context_tab) {
+  return !AreAllSitesMuted(GetTabsForCommand(context_tab));
 }
 
 bool TabStripModel::WillContextMenuPin(tabs::TabHandle context_tab) {
@@ -4477,14 +4464,6 @@ void TabStripModel::SelectRelativeTab(TabRelativeDirection direction,
   }
 
   const int start_index = active_index();
-  std::optional<tab_groups::TabGroupId> start_group =
-      GetTabGroupForTab(start_index);
-
-  // Ensure the active tab is not in a collapsed group so the while loop can
-  // fallback on activating the active tab.
-  // TODO(crbug.com/577979740): CHECK-exclusion: Convert to a CHECK once we are
-  // confident it won't be triggered.
-  DCHECK(!start_group.has_value() || !IsGroupCollapsed(start_group.value()));
 
   std::optional<tab_groups::TabGroupId> focused_group = GetFocusedGroup();
   const int delta = direction == TabRelativeDirection::kNext ? 1 : -1;
@@ -5722,11 +5701,16 @@ void TabStripModel::MoveTabsWithNotifications(
   }
 }
 
-// Sets the sound content setting for each site at the `indices`.
-void TabStripModel::SetSitesMuted(const std::vector<int>& indices,
+// Sets the sound content setting for each site for `tabs`.
+void TabStripModel::SetSitesMuted(const std::vector<tabs::TabHandle>& tabs,
                                   bool mute) const {
-  for (int tab_index : indices) {
-    content::WebContents* web_contents = GetWebContentsAt(tab_index);
+  for (tabs::TabHandle handle : tabs) {
+    tabs::TabInterface* tab = handle.Get();
+    if (!tab || static_cast<tabs::TabModel*>(tab)->owning_model() != this) {
+      continue;
+    }
+    content::WebContents* web_contents = tab->GetContents();
+    CHECK(web_contents);
     GURL url = web_contents->GetLastCommittedURL();
 
     // `GetLastCommittedURL` could return an empty URL if no navigation has

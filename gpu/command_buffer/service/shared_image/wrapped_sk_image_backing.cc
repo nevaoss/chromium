@@ -4,8 +4,10 @@
 
 #include "gpu/command_buffer/service/shared_image/wrapped_sk_image_backing.h"
 
+#include <optional>
 #include <utility>
 
+#include "base/feature.h"
 #include "base/logging.h"
 #include "base/task/bind_post_task.h"
 #include "base/task/single_thread_task_runner.h"
@@ -13,8 +15,10 @@
 #include "gpu/command_buffer/common/shared_image_info.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
 #include "gpu/command_buffer/service/shared_context_state.h"
+#include "gpu/command_buffer/service/shared_image/compound_image_backing.h"
 #include "gpu/command_buffer/service/shared_image/shared_image_representation.h"
 #include "gpu/command_buffer/service/skia_utils.h"
+#include "gpu/config/gpu_finch_features.h"
 #include "gpu/ipc/common/gpu_client_ids.h"
 #include "third_party/skia/include/core/SkAlphaType.h"
 #include "third_party/skia/include/core/SkCanvas.h"
@@ -33,10 +37,19 @@
 #include "third_party/skia/include/private/chromium/GrPromiseImageTexture.h"
 #include "ui/gl/gl_context.h"
 #include "ui/gl/gl_surface.h"
+#include "ui/gl/scoped_make_current.h"
 
 namespace gpu {
 
 namespace {
+
+// Kill switch for enforcing exclusive write access.
+BASE_FEATURE(kWrappedSkImageBackingExclusiveAccess,
+#if BUILDFLAG(IS_CHROMEOS)
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#else
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif
 
 // Given a debug label string from the client, construct a string we can pass to
 // debugging tools.
@@ -181,7 +194,9 @@ WrappedSkImageBacking::WrappedSkImageBacking(
           si_info,
           si_info.format.EstimatedSizeInBytes(si_info.size),
           thread_safe),
-      context_state_(std::move(context_state)) {
+      context_state_(std::move(context_state)),
+      enforce_exclusive_access_(
+          base::FeatureList::IsEnabled(kWrappedSkImageBackingExclusiveAccess)) {
   DCHECK(!!context_state_);
 
   // If the backing is meant to be thread safe, then grab the task runner to
@@ -398,7 +413,15 @@ bool WrappedSkImageBacking::UploadFromMemory(
     return false;
   }
 
-  DCHECK(context_state->IsCurrent(nullptr));
+  std::optional<ui::ScopedMakeCurrent> scoped_make_current;
+  if (!context_state->IsCurrent(nullptr)) {
+    scoped_make_current.emplace(context_state->context(),
+                                context_state->surface());
+    if (!scoped_make_current->IsContextCurrent()) {
+      return false;
+    }
+  }
+  context_state->set_need_context_state_reset(true);
 
   bool updated = true;
   for (size_t i = 0; i < textures_.size(); ++i) {
@@ -423,7 +446,15 @@ bool WrappedSkImageBacking::ReadbackToMemory(
     return false;
   }
 
-  DCHECK(context_state->IsCurrent(nullptr));
+  std::optional<ui::ScopedMakeCurrent> scoped_make_current;
+  if (!context_state->IsCurrent(nullptr)) {
+    scoped_make_current.emplace(context_state->context(),
+                                context_state->surface());
+    if (!scoped_make_current->IsContextCurrent()) {
+      return false;
+    }
+  }
+  context_state->set_need_context_state_reset(true);
 
   bool read = true;
   for (size_t i = 0; i < textures_.size(); ++i) {
@@ -442,6 +473,28 @@ bool WrappedSkImageBacking::ReadbackToMemory(
   }
 
   return read;
+}
+
+bool WrappedSkImageBacking::CheckSupportForAccessStream(
+    SharedImageAccessStream stream,
+    const AccessParams& params) {
+  if (base::FeatureList::IsEnabled(features::kUseDynamicBackingAllocations)) {
+    // WrappedSkImageBacking only produces SkiaGaneshImageRepresentation.
+    // Reject non-Skia streams and non-Ganesh contexts so
+    // CompoundImageBacking allocates a compatible backing instead.
+    if (stream != SharedImageAccessStream::kSkia) {
+      return false;
+    }
+    if (params.context_state && !params.context_state->gr_context()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool WrappedSkImageBacking::SupportsAccess(SharedImageAccessStream stream,
+                                           const AccessParams& params) const {
+  return CheckSupportForAccessStream(stream, params);
 }
 
 SharedContextState* WrappedSkImageBacking::GetContextStateForCurrentThread()
@@ -484,6 +537,10 @@ WrappedSkImageBacking::GetPromiseTextures() {
 }
 
 bool WrappedSkImageBacking::BeginAccess(bool readonly) {
+  if (!enforce_exclusive_access_) {
+    return true;
+  }
+
   AutoLock auto_lock(this);
   if (is_write_in_progress_) {
     LOG(ERROR) << "Unable to begin " << (readonly ? "read" : "write")
@@ -504,6 +561,10 @@ bool WrappedSkImageBacking::BeginAccess(bool readonly) {
 }
 
 void WrappedSkImageBacking::EndAccess(bool readonly) {
+  if (!enforce_exclusive_access_) {
+    return;
+  }
+
   AutoLock auto_lock(this);
   if (readonly) {
     CHECK_GT(reads_in_progress_, 0u);

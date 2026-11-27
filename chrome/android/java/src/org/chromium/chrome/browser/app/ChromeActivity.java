@@ -182,7 +182,7 @@ import org.chromium.chrome.browser.pdf.PdfPage;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.chrome.browser.price_tracking.PriceDropNotificationManagerFactory;
-import org.chromium.chrome.browser.printing.PrintHelper;
+import org.chromium.chrome.browser.printing.PrintingDelegate;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.profiles.ProfileManagerUtils;
@@ -2397,7 +2397,9 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         }
         mTabReparentingControllerSupplier.set(
                 new TabReparentingController(
-                        this::getTabModelSelector, AsyncTabParamsManagerSingleton.getInstance()));
+                        this::getTabModelSelector,
+                        AsyncTabParamsManagerSingleton.getInstance(),
+                        () -> mTabModelOrchestrator.destroyTabPersistentStore()));
 
         // This must be initialized after initialization of tab reparenting controller.
         var windowAndroid = getWindowAndroid();
@@ -3312,7 +3314,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                             mBookmarkModelSupplier,
                             this,
                             getComponentName(),
-                            /* multiInstanceManager= */ null);
+                            /* multiInstanceManager= */ null,
+                            mActivityTabProvider);
             opener.openBookmarkInCurrentTab(bookmarkId, currentTab.isIncognito());
             RecordUserAction.record("MobileMenuOpenBookmark");
             return true;
@@ -3446,7 +3449,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
         if (id == R.id.print_id) {
             RecordUserAction.record("MobileMenuPrint");
-            return PrintHelper.printTab(mActivityTabProvider.get());
+            PrintingDelegate printingDelegate = PrintingDelegate.getInstance();
+            return printingDelegate != null && printingDelegate.print(mActivityTabProvider.get());
         }
 
         if (id == R.id.universal_install) {

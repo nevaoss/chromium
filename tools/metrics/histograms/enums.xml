@@ -31,13 +31,6 @@ uploading your change for review.  These are checked by presubmit scripts.
   <int value="2" label="Restart caused network error"/>
 </enum>
 
-<enum name="AcceptLanguageNegotiationRestart">
-  <int value="0" label="Navigation started"/>
-  <int value="1" label="Variants and content-language header present"/>
-  <int value="2" label="Service worker preload request"/>
-  <int value="3" label="Navigation restarted"/>
-</enum>
-
 <enum name="AccessibilityCursorColorValue">
   <summary>List of possible cursor colors.</summary>
   <int value="0" label="Black (Default)"/>
@@ -8126,6 +8119,8 @@ from previous Chrome versions.
       label="JourneysOnDeviceClusteringContentClustering:enabled"/>
   <int value="-2049843624"
       label="TrustedWebActivityContactsDelegation:disabled"/>
+  <int value="-2049260649"
+      label="autofill-custom-form-control-scripts-dir:enabled"/>
   <int value="-2048927838" label="AutoplayWhitelistSettings:enabled"/>
   <int value="-2048873628" label="UseToastManager:enabled"/>
   <int value="-2048829250" label="LanguagePacksInOobe:disabled"/>
@@ -10532,6 +10527,7 @@ from previous Chrome versions.
   <int value="-1346055284" label="WebSerialWiredDevicesAndroid:enabled"/>
   <int value="-1345931804" label="TabbedAppOverflowMenuIcons:disabled"/>
   <int value="-1345569802" label="GlicMessageFirstFre:enabled"/>
+  <int value="-1345489958" label="OmniboxPostFrameAutocompleteStart:disabled"/>
   <int value="-1345471133" label="JourneysOmniboxAction:enabled"/>
   <int value="-1344775211"
       label="SyncChromeOSExplicitPassphraseSharing:disabled"/>
@@ -11416,6 +11412,7 @@ from previous Chrome versions.
   <int value="-1083796957" label="(Obsolete) PermissionsAIv1:disabled"/>
   <int value="-1083736482" label="OmniboxCompactSuggestions:enabled"/>
   <int value="-1083547717" label="NotificationExpansionAnimation:disabled"/>
+  <int value="-1083517855" label="OmniboxPostFrameAutocompleteStart:enabled"/>
   <int value="-1083146397" label="AutofillTypeSpecificPopupWidth:enabled"/>
   <int value="-1082602234" label="ReadAnythingReadAloud:enabled"/>
   <int value="-1082472229" label="LauncherContinueSectionWithRecents:disabled"/>
@@ -11841,6 +11838,8 @@ from previous Chrome versions.
   <int value="-958063963" label="DeduplicateNativePaymentApps:disabled"/>
   <int value="-957490473"
       label="PreinstalledWebAppAlwaysMigrateCalculator:disabled"/>
+  <int value="-957421738"
+      label="ContextualTasksEphemeralPinButtonRefactor:enabled"/>
   <int value="-957200826" label="enable-spdy-proxy-auth"/>
   <int value="-956696029" label="scheduler-configuration"/>
   <int value="-956563847" label="QueryTilesDisableCountryOverride:enabled"/>
@@ -12626,6 +12625,7 @@ from previous Chrome versions.
   <int value="-720304697" label="LauncherImageSearch:enabled"/>
   <int value="-719819631" label="TranslateUI:disabled"/>
   <int value="-719698123" label="LegacyTLSWarnings:enabled"/>
+  <int value="-719148301" label="AutofillCustomFormControlScripts:enabled"/>
   <int value="-719147284" label="ExperimentalProductivityFeatures:disabled"/>
   <int value="-719062737" label="SearchAggregatorProvider:disabled"/>
   <int value="-718884399" label="NewTabPageUIMd:enabled"/>
@@ -14623,6 +14623,8 @@ from previous Chrome versions.
   <int value="-120267301" label="SupervisedUserBlockInterstitialV3:disabled"/>
   <int value="-120091289" label="CrostiniAppSearch:enabled"/>
   <int value="-119841719" label="ThreadingOptimizationsOnIo:disabled"/>
+  <int value="-119363682"
+      label="TrustedVaultSharedRecoveryFactorsAndEncryption:enabled"/>
   <int value="-119283387" label="NtpAlphaBackgroundCollections:disabled"/>
   <int value="-119055644" label="GenericSensor:enabled"/>
   <int value="-118993417" label="TLS13HardeningForLocalAnchors:disabled"/>
@@ -15128,6 +15130,8 @@ from previous Chrome versions.
   <int value="31776417" label="EnableIkev2Vpn:disabled"/>
   <int value="31848187" label="ViewsTaskManager:disabled"/>
   <int value="32057053" label="EnterpriseReportingInBrowser:disabled"/>
+  <int value="32264644"
+      label="ContextualTasksEphemeralPinButtonRefactor:disabled"/>
   <int value="32352055" label="WebUIOmniboxAimPopupDisableAnimation:enabled"/>
   <int value="32488630" label="EphemeralTab:enabled"/>
   <int value="32557641" label="HTTPAuthCommittedInterstitials:disabled"/>
@@ -15877,6 +15881,8 @@ from previous Chrome versions.
   <int value="266787297" label="CreateShortcutIgnoresManifest:disabled"/>
   <int value="266793022"
       label="SourceSpecificMulticastInDirectSockets:disabled"/>
+  <int value="267091614"
+      label="autofill-custom-form-control-scripts-dir:disabled"/>
   <int value="267252476" label="WebXRDepthPerformance:disabled"/>
   <int value="267313220" label="ScreenSaverPreview:disabled"/>
   <int value="267332914" label="AvoidUnnecessaryBeforeUnloadCheck:disabled"/>
@@ -16664,6 +16670,7 @@ from previous Chrome versions.
   <int value="497039057" label="AdaptiveChargingForTesting:disabled"/>
   <int value="497137719" label="OmniboxVoiceSearchAlwaysVisible:disabled"/>
   <int value="497150691" label="AssistEmojiEnhanced:disabled"/>
+  <int value="497855272" label="AutofillCustomFormControlScripts:disabled"/>
   <int value="498150771" label="ContextualPageActions:disabled"/>
   <int value="499517390"
       label="NtpHistoryClustersModuleSuggestionChipHeader:enabled"/>
@@ -19739,6 +19746,8 @@ from previous Chrome versions.
       label="AutofillSkipAndroidBottomSheetForIban:disabled"/>
   <int value="1413158119" label="WebRtcRemoteEventLog:disabled"/>
   <int value="1413334779" label="WebPaymentsMinimalUI:enabled"/>
+  <int value="1413943782"
+      label="TrustedVaultSharedRecoveryFactorsAndEncryption:disabled"/>
   <int value="1413948819" label="NupPrinting:enabled"/>
   <int value="1414004676" label="TabStripLayoutTransitionDebounceFix:enabled"/>
   <int value="1414652547" label="LinkCapturingAutoDisplayIntentPicker:enabled"/>

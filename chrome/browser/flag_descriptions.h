@@ -703,11 +703,6 @@ inline constexpr char kForceShowWebSigninLoadingDialogDescription[] =
     "Force show the web signin loading dialog while waiting for cookies "
     "without a timeout.";
 
-inline constexpr char kFluidResizeName[] =
-    "Enable Android desktop fluid resize";
-inline constexpr char kFluidResizeDescription[] =
-    "Enable Android desktop fluid resize to improve UX.";
-
 inline constexpr char kForceStartupSigninPromoName[] =
     "Force Start-up Signin Promo";
 inline constexpr char kForceStartupSigninPromoDescription[] =
@@ -908,6 +903,20 @@ inline constexpr char kAutofillCardScanningBugfixesDescription[] =
     "Android, including matching the scanner theme to the Chrome theme and "
     "preventing a crash when camera permissions change after the scan card "
     "suggestion is selected.";
+
+inline constexpr char kAutofillCustomFormControlScriptsName[] =
+    "Autofill custom form control scripts";
+inline constexpr char kAutofillCustomFormControlScriptsDescription[] =
+    "When enabled, Autofill runs site-specific scripts to detect and fill "
+    "custom form controls, such as select-like widgets that aren't <select> "
+    "elements.";
+
+inline constexpr char kAutofillCustomFormControlScriptsDirName[] =
+    "Autofill custom form control scripts directory";
+inline constexpr char kAutofillCustomFormControlScriptsDirDescription[] =
+    "Absolute path of a local directory with an index.json file and the "
+    "custom form control scripts it references. Only used if "
+    "#autofill-custom-form-control-scripts is enabled.";
 
 inline constexpr char kAutofillDisableBnplCountryCheckForTestingName[] =
     "Disable the country check for BNPL testing";
@@ -3885,6 +3894,12 @@ inline constexpr char kOmniboxVoicePlateIntentDescription[] =
     "the Google app Voice Plate for voice capture and transcription, then "
     "navigates directly to the results";
 
+inline constexpr char kOmniboxPostFrameAutocompleteStartName[] =
+    "Omnibox post-frame autocomplete start";
+inline constexpr char kOmniboxPostFrameAutocompleteStartDescription[] =
+    "Starts the Omnibox autocomplete request right after the next frame is "
+    "drawn following a keystroke, instead of after a fixed 30ms delay.";
+
 inline constexpr char kContextualSearchBoxUsesContextualSearchProviderName[] =
     "Contextual search box uses contextual search provider";
 inline constexpr char
@@ -4476,10 +4491,6 @@ inline constexpr char kResetSuggestionsScrollName[] =
 inline constexpr char kResetSuggestionsScrollDescription[] =
     "Force resets the scroll position of the Omnibox suggestion list to the "
     "top during any re-layout.";
-
-inline constexpr char kResponsiveIframesName[] = "Responsive Iframes";
-inline constexpr char kResponsiveIframesDescription[] =
-    "Enable responsively-sized iframes.";
 
 inline constexpr char kScheduleWindowCleaningName[] =
     "Schedule window cleaning";
@@ -5863,12 +5874,6 @@ inline constexpr char kUniversalOptOutSettingsName[] =
 inline constexpr char kUniversalOptOutSettingsDescription[] =
     "Enables the Universal Opt Out settings for eligible users.";
 
-inline constexpr char kUpdatePaddingForDisplayCalculationName[] =
-    "Update Padding For Display Calculation";
-inline constexpr char kUpdatePaddingForDisplayCalculationDescription[] =
-    "When this is enabled, padding for display style calculations will use the "
-    "width of the containing view, not the entire screen width.";
-
 inline constexpr char kUpdateTabGroupColorsName[] = "Update Tab Group Colors";
 inline constexpr char kUpdateTabGroupColorsDescription[] =
     "Enable updating tab group colors.";
@@ -6738,6 +6743,13 @@ inline constexpr char kToolbarSnapshotRefactorName[] =
 inline constexpr char kToolbarSnapshotRefactorDescription[] =
     "Updates the margin and snapshotting of the Toolbar on Android.";
 
+inline constexpr char kTrustedVaultSharedRecoveryFactorsAndEncryptionName[] =
+    "Trusted Vault shared recovery factors and encryption";
+inline constexpr char
+    kTrustedVaultSharedRecoveryFactorsAndEncryptionDescription[] =
+        "Enables sharing recovery factors across security domains and "
+        "encrypting local storage using OSCrypt for Trusted Vault.";
+
 inline constexpr char kTrustedWebActivityContactsDelegationName[] =
     "TWA contact picker delegation";
 inline constexpr char kTrustedWebActivityContactsDelegationDescription[] =
@@ -7486,13 +7498,6 @@ inline constexpr char kArcResizeCompatName[] =
     "Enable ARC Resize Compatibility features";
 inline constexpr char kArcResizeCompatDescription[] =
     "Enable resize compatibility features for ARC++ apps";
-
-inline constexpr char kArcVmmSwapKBShortcutName[] =
-    "Keyboard shortcut trigger for ARCVM"
-    " vmm swap feature";
-inline constexpr char kArcVmmSwapKBShortcutDesc[] =
-    "Alt + Ctrl + Shift + O/P to enable / disable ARCVM vmm swap. Only for "
-    "experimental usage.";
 
 inline constexpr char kArcAAudioMMAPLowLatencyName[] =
     "Enable ARCVM AAudio MMAP low latency";

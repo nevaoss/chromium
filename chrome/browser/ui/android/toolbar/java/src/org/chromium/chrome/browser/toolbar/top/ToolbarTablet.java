@@ -32,6 +32,7 @@ import androidx.core.widget.ImageViewCompat;
 import org.chromium.base.Callback;
 import org.chromium.base.CallbackController;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
+import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.build.annotations.Initializer;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -263,7 +264,7 @@ public class ToolbarTablet extends ToolbarLayout {
         VisibleUrlText visibleUrlText =
                 new VisibleUrlText(
                         urlBarData.displayText, mLocationBar.getOmniboxVisibleTextPrefixHint());
-        int tabCount = mTabCountSupplier == null ? 0 : mTabCountSupplier.get();
+        int tabCount = SupplierUtils.getOr(mTabCountSupplier, 0);
 
         return new TabletCaptureStateToken(
                 mHomeButton,
@@ -584,8 +585,6 @@ public class ToolbarTablet extends ToolbarLayout {
     @Override
     public void onWidthConsumerVisibilityChanged() {
         assert !mIsDestroyed;
-
-        if (!ToolbarUtils.isToolbarTabletResizeRefactorEnabled()) return;
 
         // Re-allocate width to account for a change in a width consumer's visibility.
         int unspecifiedSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
@@ -948,7 +947,6 @@ public class ToolbarTablet extends ToolbarLayout {
 
         @Override
         public int updateVisibility(int availableWidth) {
-            assert ToolbarUtils.isToolbarTabletResizeRefactorEnabled();
             int width =
                     Math.min(
                             availableWidth,
@@ -984,7 +982,6 @@ public class ToolbarTablet extends ToolbarLayout {
 
         @Override
         public int updateVisibility(int availableWidth) {
-            assert ToolbarUtils.isToolbarTabletResizeRefactorEnabled();
             if (mOptionalButtonForciblyHidden) {
                 setOptionalButtonVisibility(false);
                 mHasSpaceToShow = false;
