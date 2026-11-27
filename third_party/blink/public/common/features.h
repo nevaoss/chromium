@@ -1120,20 +1120,10 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kLightweightNoStatePrefetch);
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kLoadingTasksUnfreezable);
 
-<<<<<<< HEAD
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
-    kLogUnexpectedIPCPostedToBackForwardCachedDocuments);
-
 #if defined(USE_FILESCHEME_CODECACHE)
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kLocalResourceCodeCache);
 #endif
 
-||||||| 7fa2c9454881b
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
-    kLogUnexpectedIPCPostedToBackForwardCachedDocuments);
-
-=======
->>>>>>> 159.0.8131.0~1
 #if BUILDFLAG(IS_ANDROID)
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kLowLatencyUsageSupportedForCanvas);
 #endif
